@@ -1,0 +1,12 @@
+[package]
+name = "doom"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+cxx = "1.0.194"
+raw-window-handle = "0.6.2"
+winit = "0.30.13"
+
+[build-dependencies]
+cxx-build = "1.0.194"
