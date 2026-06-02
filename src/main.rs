@@ -21,7 +21,7 @@ impl ApplicationHandler for App {
             let window = event_loop.create_window(Window::default_attributes()).unwrap();
             self.window = Some(window);
             
-            let cpp_renderer = ffi::create_renderer(1024, 768);
+            let cpp_renderer = ffi::create_renderer();
             self.renderer = Some(cpp_renderer);
 
             let window_handle = self.window.as_ref().unwrap().window_handle().unwrap().as_raw();
@@ -34,7 +34,9 @@ impl ApplicationHandler for App {
                 };
 
                 if let Some(renderer) = self.renderer.as_mut() {
-                    renderer.pin_mut().init_vulkan(&handles);
+                    let window_raw_ptr = self.window.as_ref().unwrap() as *const winit::window::Window as usize;
+
+                    renderer.pin_mut().initVulkan(&handles, window_raw_ptr);
                 }
             }
         }

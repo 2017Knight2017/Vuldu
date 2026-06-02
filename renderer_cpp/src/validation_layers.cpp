@@ -1,7 +1,7 @@
-#include "validation_layers.h"
 #include <cstdint>
 #include <cstring>
 #include <vulkan/vulkan_core.h>
+#include "validation_layers.h"
 
 const std::vector<const char*> validationLayers = {
     "VK_LAYER_KHRONOS_validation"

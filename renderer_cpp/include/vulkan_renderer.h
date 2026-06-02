@@ -1,15 +1,16 @@
 #pragma once
 #include <vulkan/vulkan.h>
 #include <memory>
+#include <vector>
 //#include "doom/src/FFI.rs.h"
 
 struct WindowHandles;
 
 class VulkanRenderer {
 public:
-    VulkanRenderer(uint32_t width, uint32_t height);
+    VulkanRenderer();
     ~VulkanRenderer();
-    bool init_vulkan(const WindowHandles& handles);
+    void initVulkan(const WindowHandles& handles, size_t window_raw_ptr);
 
 private:
     VkInstance instance;
@@ -17,10 +18,17 @@ private:
     VkPhysicalDevice physicalDevice;
     VkDevice device;
     VkQueue graphicsQueue;
+    VkQueue presentQueue;
+    VkSwapchainKHR swapChain;
+    VkFormat swapChainImageFormat;
+    VkExtent2D swapChainExtent;
+    std::vector<VkImage> swapChainImages;
+    size_t m_window_raw_ptr;
     void createInstance();
     void createSurface(const WindowHandles& handles);
     void pickPhysicalDevice();
     void createLogicalDevice();
+    void createSwapChain();
 };
 
-std::unique_ptr<VulkanRenderer> create_renderer(uint32_t width, uint32_t height);
+std::unique_ptr<VulkanRenderer> create_renderer();
