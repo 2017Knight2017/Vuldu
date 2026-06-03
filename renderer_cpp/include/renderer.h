@@ -75,6 +75,9 @@ private:
     VkRenderPass renderPass = VK_NULL_HANDLE;
     VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
     VkPipeline graphicsPipeline = VK_NULL_HANDLE;
+    std::vector<VkFramebuffer> swapChainFramebuffers;
+    VkCommandPool commandPool = VK_NULL_HANDLE;
+    VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
     
     void createInstance();
     void setupDebugMessenger();
@@ -85,6 +88,10 @@ private:
     void createImageViews();
     void createRenderPass();
     void createGraphicsPipeline();
+    void createFramebuffers();
+    void createCommandPool();
+    void createCommandBuffer();
+    void recordCommandBuffer(uint32_t imageIndex);
 };
 
 std::unique_ptr<VulkanRenderer> create_renderer();

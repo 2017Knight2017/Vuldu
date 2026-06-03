@@ -22,6 +22,9 @@ void VulkanRenderer::initVulkan(const WindowHandles& handles, size_t window_raw_
     createImageViews();
     createRenderPass();
     createGraphicsPipeline();
+    createFramebuffers();
+    createCommandPool();
+    createCommandBuffer();
 }
 
 void VulkanRenderer::cleanup() {
@@ -29,10 +32,18 @@ void VulkanRenderer::cleanup() {
         return;
     }
 
-    std::cout << "[Cleanup] Starting VulkanRenderer destruction..." << std::endl;
-
     if (this->device != VK_NULL_HANDLE) {
         vkDeviceWaitIdle(this->device);
+    }
+    std::cout << "[Cleanup] Starting VulkanRenderer destruction..." << std::endl;
+
+    if (this->commandPool != VK_NULL_HANDLE) {
+        vkDestroyCommandPool(this->device, this->commandPool, nullptr);
+        this->commandPool = VK_NULL_HANDLE;
+    }
+
+    for (auto framebuffer : this->swapChainFramebuffers) {
+        vkDestroyFramebuffer(this->device, framebuffer, nullptr);
     }
 
     if (this->graphicsPipeline != VK_NULL_HANDLE) {
