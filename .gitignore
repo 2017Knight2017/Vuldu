@@ -1,3 +1,4 @@
+*.spv
 /target
-/.cache
+/renderer_cpp/.cache
 compile_commands.json

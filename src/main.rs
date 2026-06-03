@@ -46,6 +46,9 @@ impl ApplicationHandler for App {
         match event {
             WindowEvent::CloseRequested => {
                 println!("The close button was pressed; stopping");
+                if let Some(mut renderer) = self.renderer.take() {
+                    renderer.pin_mut().cleanup();
+                }
                 event_loop.exit();
             },
             WindowEvent::RedrawRequested => {

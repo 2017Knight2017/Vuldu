@@ -15,7 +15,7 @@ pub mod ffi {
     }
 
     unsafe extern "C++" {
-        include!("vulkan_renderer.h");
+        include!("renderer.h");
 
         type VulkanRenderer;
 
@@ -26,6 +26,8 @@ pub mod ffi {
             handles: &WindowHandles,
             window_raw_ptr: usize
         );
+
+        fn cleanup(self: Pin<&mut VulkanRenderer>);
     }
 }
 

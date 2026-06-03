@@ -1,8 +1,11 @@
 fn main() {
     let mut build = cxx_build::bridge("src/FFI.rs");
     
-    build.file("renderer_cpp/src/vulkan_renderer.cpp")
-        .file("renderer_cpp/src/validation_layers.cpp")
+    build.file("renderer_cpp/src/renderer.cpp")
+        .file("renderer_cpp/src/instance.cpp")
+        .file("renderer_cpp/src/device.cpp")
+        .file("renderer_cpp/src/pipeline.cpp")
+        .file("renderer_cpp/src/debug_messenger.cpp")
         .include("renderer_cpp/include")
         .flag_if_supported("-std=c++20");
 
