@@ -25,6 +25,7 @@ void VulkanRenderer::initVulkan(const WindowHandles& handles, size_t window_raw_
     createFramebuffers();
     createCommandPool();
     createCommandBuffer();
+    createSyncObjects();
 }
 
 void VulkanRenderer::cleanup() {
@@ -36,6 +37,21 @@ void VulkanRenderer::cleanup() {
         vkDeviceWaitIdle(this->device);
     }
     std::cout << "[Cleanup] Starting VulkanRenderer destruction..." << std::endl;
+
+    if (this->inFlightFence != VK_NULL_HANDLE) {
+        vkDestroyFence(this->device, this->inFlightFence, nullptr);
+        this->inFlightFence = VK_NULL_HANDLE;
+    }
+
+    if (this->renderFinishedSemaphore != VK_NULL_HANDLE) {
+        vkDestroySemaphore(this->device, this->renderFinishedSemaphore, nullptr);
+        this->renderFinishedSemaphore = VK_NULL_HANDLE;
+    }
+
+    if (this->imageAvailableSemaphore != VK_NULL_HANDLE) {
+        vkDestroySemaphore(this->device, this->imageAvailableSemaphore, nullptr);
+        this->imageAvailableSemaphore = VK_NULL_HANDLE;
+    }
 
     if (this->commandPool != VK_NULL_HANDLE) {
         vkDestroyCommandPool(this->device, this->commandPool, nullptr);

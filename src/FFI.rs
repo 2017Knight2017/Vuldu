@@ -28,6 +28,8 @@ pub mod ffi {
         );
 
         fn cleanup(self: Pin<&mut VulkanRenderer>);
+
+        fn drawFrame(self: Pin<&mut VulkanRenderer>);
     }
 }
 

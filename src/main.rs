@@ -52,11 +52,17 @@ impl ApplicationHandler for App {
                 event_loop.exit();
             },
             WindowEvent::RedrawRequested => {
-                if let Some(ref window) = self.window {
-                    window.request_redraw();
+                if let Some(renderer) = self.renderer.as_mut() {
+                    renderer.pin_mut().drawFrame(); 
                 }
             }
             _ => (),
+        }
+    }
+
+    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+        if let Some(ref window) = self.window {
+            window.request_redraw();
         }
     }
 }

@@ -58,6 +58,7 @@ public:
     ~VulkanRenderer();
     void initVulkan(const WindowHandles& handles, size_t window_raw_ptr);
     void cleanup();
+    void drawFrame();
 private:
     VkInstance instance = VK_NULL_HANDLE;
     VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
@@ -78,6 +79,9 @@ private:
     std::vector<VkFramebuffer> swapChainFramebuffers;
     VkCommandPool commandPool = VK_NULL_HANDLE;
     VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
+    VkSemaphore imageAvailableSemaphore = VK_NULL_HANDLE;
+    VkSemaphore renderFinishedSemaphore = VK_NULL_HANDLE;
+    VkFence inFlightFence = VK_NULL_HANDLE;
     
     void createInstance();
     void setupDebugMessenger();
@@ -92,6 +96,7 @@ private:
     void createCommandPool();
     void createCommandBuffer();
     void recordCommandBuffer(uint32_t imageIndex);
+    void createSyncObjects();
 };
 
 std::unique_ptr<VulkanRenderer> create_renderer();
