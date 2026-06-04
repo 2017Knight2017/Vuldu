@@ -321,7 +321,7 @@ void VulkanRenderer::createRenderPass() {
     renderPassInfo.dependencyCount = 1;
     renderPassInfo.pDependencies = &dependency;
 
-	VkResult renderPassResult = vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass);
+	VkResult renderPassResult = vkCreateRenderPass(this->device, &renderPassInfo, nullptr, &this->renderPass);
 	if (renderPassResult != VK_SUCCESS) {
 	    throw std::runtime_error("failed to create render pass!");
 	}

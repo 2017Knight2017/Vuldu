@@ -1,7 +1,7 @@
 #include <iostream>
 #include "renderer.h"
 
-std::unique_ptr<VulkanRenderer> create_renderer() {
+std::unique_ptr<VulkanRenderer> createRenderer() {
     return std::make_unique<VulkanRenderer>();
 }
 
@@ -24,8 +24,37 @@ void VulkanRenderer::initVulkan(const WindowHandles& handles, size_t window_raw_
     createGraphicsPipeline();
     createFramebuffers();
     createCommandPool();
-    createCommandBuffer();
+    createCommandBuffers();
     createSyncObjects();
+}
+
+void VulkanRenderer::recreateSwapChain() {
+    vkDeviceWaitIdle(this->device);
+
+    cleanupSwapChain();
+
+    createSwapChain();
+    createImageViews();
+    createFramebuffers();
+
+    createSyncObjects(); 
+
+    this->currentFrame = 0;
+}
+
+void VulkanRenderer::cleanupSwapChain() {
+    for (auto framebuffer : this->swapChainFramebuffers) {
+        vkDestroyFramebuffer(this->device, framebuffer, nullptr);
+    }
+    this->swapChainFramebuffers.clear();
+
+    for (auto imageView : this->swapChainImageViews) {
+        vkDestroyImageView(this->device, imageView, nullptr);
+    }
+    this->swapChainImageViews.clear();
+
+    vkDestroySwapchainKHR(this->device, this->swapChain, nullptr);
+    this->swapChain = VK_NULL_HANDLE;
 }
 
 void VulkanRenderer::cleanup() {
@@ -38,29 +67,7 @@ void VulkanRenderer::cleanup() {
     }
     std::cout << "[Cleanup] Starting VulkanRenderer destruction..." << std::endl;
 
-    if (this->inFlightFence != VK_NULL_HANDLE) {
-        vkDestroyFence(this->device, this->inFlightFence, nullptr);
-        this->inFlightFence = VK_NULL_HANDLE;
-    }
-
-    if (this->renderFinishedSemaphore != VK_NULL_HANDLE) {
-        vkDestroySemaphore(this->device, this->renderFinishedSemaphore, nullptr);
-        this->renderFinishedSemaphore = VK_NULL_HANDLE;
-    }
-
-    if (this->imageAvailableSemaphore != VK_NULL_HANDLE) {
-        vkDestroySemaphore(this->device, this->imageAvailableSemaphore, nullptr);
-        this->imageAvailableSemaphore = VK_NULL_HANDLE;
-    }
-
-    if (this->commandPool != VK_NULL_HANDLE) {
-        vkDestroyCommandPool(this->device, this->commandPool, nullptr);
-        this->commandPool = VK_NULL_HANDLE;
-    }
-
-    for (auto framebuffer : this->swapChainFramebuffers) {
-        vkDestroyFramebuffer(this->device, framebuffer, nullptr);
-    }
+    cleanupSwapChain();
 
     if (this->graphicsPipeline != VK_NULL_HANDLE) {
         vkDestroyPipeline(this->device, this->graphicsPipeline, nullptr);
@@ -77,16 +84,21 @@ void VulkanRenderer::cleanup() {
         this->renderPass = VK_NULL_HANDLE; 
     }
 
-    for (auto imageView : this->swapChainImageViews) {
-        if (imageView != VK_NULL_HANDLE) {
-            vkDestroyImageView(this->device, imageView, nullptr);
-        }
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        vkDestroyFence(this->device, this->inFlightFences[i], nullptr);
     }
-    this->swapChainImageViews.clear();
+    this->inFlightFences.clear();
+    
+    for (size_t i = 0; i < this->swapChainImages.size(); i++) {
+        vkDestroySemaphore(this->device, this->renderFinishedSemaphores[i], nullptr);
+        vkDestroySemaphore(this->device, this->imageAvailableSemaphores[i], nullptr);
+    }
+    this->renderFinishedSemaphores.clear();
+    this->imageAvailableSemaphores.clear();
 
-    if (this->swapChain != VK_NULL_HANDLE) {
-        vkDestroySwapchainKHR(this->device, this->swapChain, nullptr);
-        this->swapChain = VK_NULL_HANDLE;
+    if (this->commandPool != VK_NULL_HANDLE) {
+        vkDestroyCommandPool(this->device, this->commandPool, nullptr);
+        this->commandPool = VK_NULL_HANDLE;
     }
 
     if (this->device != VK_NULL_HANDLE) {
@@ -94,14 +106,14 @@ void VulkanRenderer::cleanup() {
         this->device = VK_NULL_HANDLE; 
     }
 
-    if (this->surface != VK_NULL_HANDLE) {
-        vkDestroySurfaceKHR(this->instance, this->surface, nullptr);
-        this->surface = VK_NULL_HANDLE;
-    }
-
     if (enableValidationLayers && this->debugMessenger != VK_NULL_HANDLE) {
         DestroyDebugUtilsMessengerEXT(this->instance, this->debugMessenger, nullptr);
         this->debugMessenger = VK_NULL_HANDLE;
+    }
+
+    if (this->surface != VK_NULL_HANDLE) {
+        vkDestroySurfaceKHR(this->instance, this->surface, nullptr);
+        this->surface = VK_NULL_HANDLE;
     }
 
     if (this->instance != VK_NULL_HANDLE) {

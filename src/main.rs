@@ -21,7 +21,7 @@ impl ApplicationHandler for App {
             let window = event_loop.create_window(Window::default_attributes()).unwrap();
             self.window = Some(window);
             
-            let cpp_renderer = ffi::create_renderer();
+            let cpp_renderer = ffi::createRenderer();
             self.renderer = Some(cpp_renderer);
 
             let window_handle = self.window.as_ref().unwrap().window_handle().unwrap().as_raw();
@@ -52,15 +52,22 @@ impl ApplicationHandler for App {
                 event_loop.exit();
             },
             WindowEvent::RedrawRequested => {
+                if let Some(window) = &self.window {
+                    let size = window.inner_size();
+                    if size.width == 0 || size.height == 0 {
+                        return;
+                    }
+                }
+
                 if let Some(renderer) = self.renderer.as_mut() {
                     renderer.pin_mut().drawFrame(); 
                 }
-            }
+            },
             _ => (),
         }
     }
 
-    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
         if let Some(ref window) = self.window {
             window.request_redraw();
         }

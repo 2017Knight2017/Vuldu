@@ -13,6 +13,8 @@ const bool enableValidationLayers = true;
 const bool enableValidationLayers = false;
 #endif
 
+const int MAX_FRAMES_IN_FLIGHT = 2;
+
 struct WindowHandles;
 
 struct QueueFamilyIndices {
@@ -78,10 +80,11 @@ private:
     VkPipeline graphicsPipeline = VK_NULL_HANDLE;
     std::vector<VkFramebuffer> swapChainFramebuffers;
     VkCommandPool commandPool = VK_NULL_HANDLE;
-    VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
-    VkSemaphore imageAvailableSemaphore = VK_NULL_HANDLE;
-    VkSemaphore renderFinishedSemaphore = VK_NULL_HANDLE;
-    VkFence inFlightFence = VK_NULL_HANDLE;
+    std::vector<VkCommandBuffer> commandBuffers;
+    std::vector<VkSemaphore> imageAvailableSemaphores;
+    std::vector<VkSemaphore> renderFinishedSemaphores;
+    std::vector<VkFence> inFlightFences;
+    uint32_t currentFrame = 0;
     
     void createInstance();
     void setupDebugMessenger();
@@ -94,9 +97,11 @@ private:
     void createGraphicsPipeline();
     void createFramebuffers();
     void createCommandPool();
-    void createCommandBuffer();
+    void createCommandBuffers();
     void recordCommandBuffer(uint32_t imageIndex);
     void createSyncObjects();
+    void recreateSwapChain();
+    void cleanupSwapChain();
 };
 
-std::unique_ptr<VulkanRenderer> create_renderer();
+std::unique_ptr<VulkanRenderer> createRenderer();

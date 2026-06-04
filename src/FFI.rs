@@ -19,16 +19,9 @@ pub mod ffi {
 
         type VulkanRenderer;
 
-        fn create_renderer() -> UniquePtr<VulkanRenderer>;
-
-        fn initVulkan(
-            self: Pin<&mut VulkanRenderer>, 
-            handles: &WindowHandles,
-            window_raw_ptr: usize
-        );
-
+        fn createRenderer() -> UniquePtr<VulkanRenderer>;
+        fn initVulkan(self: Pin<&mut VulkanRenderer>, handles: &WindowHandles, window_raw_ptr: usize);
         fn cleanup(self: Pin<&mut VulkanRenderer>);
-
         fn drawFrame(self: Pin<&mut VulkanRenderer>);
     }
 }
