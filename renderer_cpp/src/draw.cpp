@@ -86,7 +86,7 @@ void VulkanRenderer::createFramebuffers() {
 }
 
 void VulkanRenderer::createCommandPool() {
-	QueueFamilyIndices queueFamilyIndices = findQueueFamilies(this->physicalDevice, this->surface);
+	QueueFamilyIndices queueFamilyIndices = findQueueFamilies(this->physicalDevice);
 
 	VkCommandPoolCreateInfo poolInfo{};
 	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;

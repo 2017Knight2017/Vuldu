@@ -29,6 +29,7 @@ pub mod ffi {
 
     unsafe extern "C++" {
         include!("renderer.h");
+        include!("utils.h");
 
         type VulkanRenderer;
 

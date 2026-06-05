@@ -3,7 +3,7 @@
 #include "renderer.h"
 #include "doom/src/FFI.rs.h"
 
-bool checkValidationLayerSupport() {
+bool VulkanRenderer::checkValidationLayerSupport() {
     uint32_t layerCount;
     vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
 
