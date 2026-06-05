@@ -1,7 +1,44 @@
 #include <algorithm>
 #include <fstream>
+#include <cstring>
 #include "renderer.h"
 #include "doom/src/FFI.rs.h"
+
+uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties) {
+	VkPhysicalDeviceMemoryProperties memProperties;
+	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+	    if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+	        return i;
+	    }
+	}
+
+	throw std::runtime_error("failed to find suitable memory type!");
+}
+
+VkVertexInputBindingDescription getBindingDescription() {
+    VkVertexInputBindingDescription bindingDescription{};
+	bindingDescription.binding = 0;
+	bindingDescription.stride = sizeof(Vertex);
+	bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+    return bindingDescription;
+}
+
+std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
+    std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
+	attributeDescriptions[0].binding = 0;
+	attributeDescriptions[0].location = 0;
+	attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+	attributeDescriptions[0].offset = offsetof(Vertex, pos);
+
+	attributeDescriptions[1].binding = 0;
+	attributeDescriptions[1].location = 1;
+	attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+	attributeDescriptions[1].offset = offsetof(Vertex, color);
+
+    return attributeDescriptions;
+}
 
 VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
     for (const auto& availableFormat : availableFormats) {
@@ -72,6 +109,61 @@ VkShaderModule createShaderModule(VkDevice device, const std::vector<char>& code
 	}
 
 	return shaderModule;
+}
+
+void VulkanRenderer::setVertices(const Vertex* vertices_ptr, size_t count) {
+	if (count == 0 || vertices_ptr == nullptr) return;
+
+    this->vertexCount = static_cast<uint32_t>(count); 
+    VkDeviceSize bufferSize = sizeof(Vertex) * count;
+
+	if (this->vertexBuffer != VK_NULL_HANDLE) {
+        vkDestroyBuffer(this->device, this->vertexBuffer, nullptr);
+        this->vertexBuffer = VK_NULL_HANDLE;
+    }
+    if (this->vertexBufferMemory != VK_NULL_HANDLE) {
+        vkFreeMemory(this->device, this->vertexBufferMemory, nullptr);
+        this->vertexBufferMemory = VK_NULL_HANDLE;
+    }
+
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+    void* data;
+    VkResult mapResult = vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
+    if (mapResult == VK_SUCCESS) {
+        memcpy(data, vertices_ptr, (size_t)bufferSize);
+        vkUnmapMemory(this->device, stagingBufferMemory);
+    } else {
+        throw std::runtime_error("failed to map vertex buffer memory!");
+    }
+
+	createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
+	copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
+
+	vkDestroyBuffer(this->device, stagingBuffer, nullptr);
+    vkFreeMemory(this->device, stagingBufferMemory, nullptr);
+}
+
+void VulkanRenderer::createIndexBuffer() {
+    VkDeviceSize bufferSize = sizeof(INDICES[0]) * INDICES.size();
+
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+    void* data;
+    vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, INDICES.data(), (size_t) bufferSize);
+    vkUnmapMemory(this->device, stagingBufferMemory);
+
+    createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, this->indexBuffer, this->indexBufferMemory);
+
+    copyBuffer(stagingBuffer, this->indexBuffer, bufferSize);
+
+    vkDestroyBuffer(this->device, stagingBuffer, nullptr);
+    vkFreeMemory(this->device, stagingBufferMemory, nullptr);
 }
 
 void VulkanRenderer::createSwapChain() {
@@ -185,12 +277,15 @@ void VulkanRenderer::createGraphicsPipeline() {
 	dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
 	dynamicState.pDynamicStates = dynamicStates.data();
 
+	auto bindingDescription = getBindingDescription();
+	auto attributeDescriptions = getAttributeDescriptions();
+
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfo.vertexBindingDescriptionCount = 0;
-	vertexInputInfo.pVertexBindingDescriptions = nullptr; // Optional
-	vertexInputInfo.vertexAttributeDescriptionCount = 0;
-	vertexInputInfo.pVertexAttributeDescriptions = nullptr; // Optional
+	vertexInputInfo.vertexBindingDescriptionCount = 1;
+	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -325,4 +420,67 @@ void VulkanRenderer::createRenderPass() {
 	if (renderPassResult != VK_SUCCESS) {
 	    throw std::runtime_error("failed to create render pass!");
 	}
+}
+
+void VulkanRenderer::createBuffer(VkDeviceSize bufferSize, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory) {
+	VkBufferCreateInfo bufferInfo{};
+	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferInfo.size = bufferSize;
+	bufferInfo.usage = usage;
+	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	VkResult bufferResult = vkCreateBuffer(this->device, &bufferInfo, nullptr, &buffer);
+	if (bufferResult != VK_SUCCESS) {
+        throw std::runtime_error("failed to create vertex buffer!");
+    }
+
+	VkMemoryRequirements memRequirements;
+	vkGetBufferMemoryRequirements(this->device, buffer, &memRequirements);
+
+	VkMemoryAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = memRequirements.size;
+	allocInfo.memoryTypeIndex = findMemoryType(this->physicalDevice, memRequirements.memoryTypeBits, properties);
+	
+	VkResult memoryAllocationResult = vkAllocateMemory(this->device, &allocInfo, nullptr, &bufferMemory);
+	if (memoryAllocationResult != VK_SUCCESS) {
+	    throw std::runtime_error("failed to allocate vertex buffer memory!");
+	}
+
+	vkBindBufferMemory(this->device, buffer, bufferMemory, 0);
+}
+
+void VulkanRenderer::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
+	VkCommandBufferAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandPool = this->commandPool;
+    allocInfo.commandBufferCount = 1;
+
+    VkCommandBuffer commandBuffer;
+    vkAllocateCommandBuffers(this->device, &allocInfo, &commandBuffer);
+
+	VkCommandBufferBeginInfo beginInfo{};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+	VkBufferCopy copyRegion{};
+	copyRegion.srcOffset = 0; // Optional
+	copyRegion.dstOffset = 0; // Optional
+	copyRegion.size = size;
+	vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+
+	vkEndCommandBuffer(commandBuffer);
+
+	VkSubmitInfo submitInfo{};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &commandBuffer;
+
+	vkQueueSubmit(this->graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+	vkQueueWaitIdle(this->graphicsQueue);
+
+	vkFreeCommandBuffers(this->device, this->commandPool, 1, &commandBuffer);
 }

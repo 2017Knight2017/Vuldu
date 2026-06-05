@@ -1,12 +1,14 @@
 #include "renderer.h" 
 
 void VulkanRenderer::recordCommandBuffer(uint32_t imageIndex) {
+	VkCommandBuffer currentCommandBuffer = this->commandBuffers[this->currentFrame];
+
 	VkCommandBufferBeginInfo beginInfo{};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.flags = 0; // Optional
 	beginInfo.pInheritanceInfo = nullptr; // Optional
 
-	if (vkBeginCommandBuffer(this->commandBuffers[this->currentFrame], &beginInfo) != VK_SUCCESS) {
+	if (vkBeginCommandBuffer(currentCommandBuffer, &beginInfo) != VK_SUCCESS) {
 	    throw std::runtime_error("failed to begin recording command buffer!");
 	}
 
@@ -21,9 +23,9 @@ void VulkanRenderer::recordCommandBuffer(uint32_t imageIndex) {
 	renderPassInfo.clearValueCount = 1;
 	renderPassInfo.pClearValues = &clearColor;
 
-	vkCmdBeginRenderPass(this->commandBuffers[this->currentFrame], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBeginRenderPass(currentCommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 	
-	vkCmdBindPipeline(this->commandBuffers[this->currentFrame], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+	vkCmdBindPipeline(currentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
 	VkViewport viewport{};
 	viewport.x = 0.0f;
@@ -32,18 +34,26 @@ void VulkanRenderer::recordCommandBuffer(uint32_t imageIndex) {
 	viewport.height = (float) this->swapChainExtent.height;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
-	vkCmdSetViewport(this->commandBuffers[this->currentFrame], 0, 1, &viewport);
+	vkCmdSetViewport(currentCommandBuffer, 0, 1, &viewport);
 
 	VkRect2D scissor{};
 	scissor.offset = {0, 0};
 	scissor.extent = this->swapChainExtent;
-	vkCmdSetScissor(this->commandBuffers[this->currentFrame], 0, 1, &scissor);
+	vkCmdSetScissor(currentCommandBuffer, 0, 1, &scissor);
 
-	vkCmdDraw(this->commandBuffers[this->currentFrame], 3, 1, 0, 0);
+	if (this->vertexBuffer != VK_NULL_HANDLE && this->vertexCount > 0) {
+	    VkBuffer vertexBuffers[] = {this->vertexBuffer};
+	    VkDeviceSize offsets[] = {0};
 
-	vkCmdEndRenderPass(this->commandBuffers[this->currentFrame]);
+	    vkCmdBindVertexBuffers(currentCommandBuffer, 0, 1, vertexBuffers, offsets);
+		vkCmdBindIndexBuffer(currentCommandBuffer, this->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-	if (vkEndCommandBuffer(this->commandBuffers[this->currentFrame]) != VK_SUCCESS) {
+	    vkCmdDrawIndexed(currentCommandBuffer, static_cast<uint32_t>(INDICES.size()), 1, 0, 0, 0);
+	}
+
+	vkCmdEndRenderPass(currentCommandBuffer);
+
+	if (vkEndCommandBuffer(currentCommandBuffer) != VK_SUCCESS) {
 	    throw std::runtime_error("failed to record command buffer!");
 	}
 }
@@ -159,7 +169,7 @@ void VulkanRenderer::drawFrame() {
 	submitInfo.pWaitSemaphores = waitSemaphores;
 	submitInfo.pWaitDstStageMask = waitStages;
 	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &commandBuffers[this->currentFrame];
+	submitInfo.pCommandBuffers = &this->commandBuffers[this->currentFrame];
 
 	VkSemaphore signalSemaphores[] = {this->renderFinishedSemaphores[imageIndex]};
 	submitInfo.signalSemaphoreCount = 1;

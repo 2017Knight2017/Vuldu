@@ -37,6 +37,17 @@ impl ApplicationHandler for App {
                     let window_raw_ptr = self.window.as_ref().unwrap() as *const winit::window::Window as usize;
 
                     renderer.pin_mut().initVulkan(&handles, window_raw_ptr);
+
+                    let mesh_vertices = vec![
+                        ffi::Vertex::new(glam::vec2(0.0, -1.0), glam::vec3(0.5, 0.0, 1.0)), 
+                        ffi::Vertex::new(glam::vec2(0.5, 0.0),  glam::vec3(1.0, 0.5, 0.0)), 
+                        ffi::Vertex::new(glam::vec2(0.0, 1.0),  glam::vec3(0.0, 1.0, 0.0)), 
+                        ffi::Vertex::new(glam::vec2(-0.5, 0.0), glam::vec3(0.0, 0.0, 1.0)),
+                    ];
+
+                    unsafe {
+                        renderer.pin_mut().setVertices(mesh_vertices.as_ptr(), mesh_vertices.len());
+                    }
                 }
             }
         }

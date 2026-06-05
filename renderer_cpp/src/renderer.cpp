@@ -25,6 +25,7 @@ void VulkanRenderer::initVulkan(const WindowHandles& handles, size_t window_raw_
     createFramebuffers();
     createCommandPool();
     createCommandBuffers();
+    createIndexBuffer();
     createSyncObjects();
 }
 
@@ -68,6 +69,26 @@ void VulkanRenderer::cleanup() {
     std::cout << "[Cleanup] Starting VulkanRenderer destruction..." << std::endl;
 
     cleanupSwapChain();
+
+    if (this->indexBuffer != VK_NULL_HANDLE) {
+        vkDestroyBuffer(this->device, this->indexBuffer, nullptr);
+        this->indexBuffer = VK_NULL_HANDLE;
+    }
+
+    if (this->indexBufferMemory != VK_NULL_HANDLE) {
+        vkFreeMemory(this->device, this->indexBufferMemory, nullptr);
+        this->indexBufferMemory = VK_NULL_HANDLE;
+    }
+
+    if (this->vertexBuffer != VK_NULL_HANDLE) {
+        vkDestroyBuffer(this->device, this->vertexBuffer, nullptr);
+        this->vertexBuffer = VK_NULL_HANDLE;
+    }
+
+    if (this->vertexBufferMemory != VK_NULL_HANDLE) {
+        vkFreeMemory(this->device, this->vertexBufferMemory, nullptr);
+        this->vertexBufferMemory = VK_NULL_HANDLE;
+    }
 
     if (this->graphicsPipeline != VK_NULL_HANDLE) {
         vkDestroyPipeline(this->device, this->graphicsPipeline, nullptr);

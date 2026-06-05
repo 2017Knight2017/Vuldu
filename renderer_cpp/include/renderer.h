@@ -14,8 +14,12 @@ const bool enableValidationLayers = false;
 #endif
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
+const std::vector<uint32_t> INDICES = {
+    0, 1, 2, 2, 3, 0
+};
 
 struct WindowHandles;
+struct Vertex;
 
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily;
@@ -61,6 +65,7 @@ public:
     void initVulkan(const WindowHandles& handles, size_t window_raw_ptr);
     void cleanup();
     void drawFrame();
+    void setVertices(const Vertex* vertices_ptr, size_t count);
 private:
     VkInstance instance = VK_NULL_HANDLE;
     VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
@@ -85,6 +90,11 @@ private:
     std::vector<VkSemaphore> renderFinishedSemaphores;
     std::vector<VkFence> inFlightFences;
     uint32_t currentFrame = 0;
+    VkBuffer vertexBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
+    uint32_t vertexCount = 0;
+    VkBuffer indexBuffer;
+    VkDeviceMemory indexBufferMemory;
     
     void createInstance();
     void setupDebugMessenger();
@@ -102,6 +112,9 @@ private:
     void createSyncObjects();
     void recreateSwapChain();
     void cleanupSwapChain();
+    void createBuffer(VkDeviceSize bufferSize, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+    void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+    void createIndexBuffer();
 };
 
 std::unique_ptr<VulkanRenderer> createRenderer();
