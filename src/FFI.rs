@@ -17,6 +17,12 @@ pub mod ffi {
         pub color: [f32; 3],
     }
 
+    pub struct UniformBufferObject {
+        pub model: [f32; 16],
+        pub view: [f32; 16],
+        pub proj: [f32; 16],
+    }
+
     extern "Rust" {
         unsafe fn get_winit_window_size(window_raw_ptr: usize) -> WindowSize;
     }
@@ -29,12 +35,8 @@ pub mod ffi {
         fn createRenderer() -> UniquePtr<VulkanRenderer>;
         fn initVulkan(self: Pin<&mut VulkanRenderer>, handles: &WindowHandles, window_raw_ptr: usize);
         fn cleanup(self: Pin<&mut VulkanRenderer>);
-        fn drawFrame(self: Pin<&mut VulkanRenderer>);
-        unsafe fn setVertices(
-            self: Pin<&mut VulkanRenderer>, 
-            vertices_ptr: *const Vertex, 
-            count: usize
-        );
+        unsafe fn drawFrame(self: Pin<&mut VulkanRenderer>, ubo_ptr: *const UniformBufferObject);
+        unsafe fn setVertices(self: Pin<&mut VulkanRenderer>, vertices_ptr: *const Vertex, count: usize);
     }
 }
 

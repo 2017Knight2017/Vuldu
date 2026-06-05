@@ -7,6 +7,7 @@ fn main() {
         .file("renderer_cpp/src/pipeline.cpp")
         .file("renderer_cpp/src/debug_messenger.cpp")
         .file("renderer_cpp/src/framebuffer.cpp")
+        .file("renderer_cpp/src/descriptors.cpp")
         .include("renderer_cpp/include")
         .flag_if_supported("-std=c++20");
 

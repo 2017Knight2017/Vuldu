@@ -2,17 +2,19 @@
 mod FFI;
 
 use FFI::ffi;
+use glam::{Mat4, vec3};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::window::{Window, WindowId};
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle, RawDisplayHandle, RawWindowHandle};
 use cxx::UniquePtr;
+use std::time::Instant;
 
-#[derive(Default)]
 struct App {
     window: Option<Window>,
-    renderer: Option<UniquePtr<ffi::VulkanRenderer>>
+    renderer: Option<UniquePtr<ffi::VulkanRenderer>>,
+    start_time: Instant,
 }
 
 impl ApplicationHandler for App {
@@ -62,18 +64,37 @@ impl ApplicationHandler for App {
                 }
                 event_loop.exit();
             },
+
             WindowEvent::RedrawRequested => {
-                if let Some(window) = &self.window {
+                if let (Some(renderer), Some(window)) = (self.renderer.as_mut(), &self.window) {
                     let size = window.inner_size();
                     if size.width == 0 || size.height == 0 {
                         return;
                     }
-                }
+                    
+                    let aspect_ratio = size.width as f32 / size.height as f32;
+                    let time = self.start_time.elapsed().as_secs_f32();
+                
+                    let model = Mat4::from_rotation_z(time * 90.0f32.to_radians());
+                    let view  = Mat4::look_at_rh(vec3(2.0, 2.0, 2.0), vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0));
+                    let mut proj = Mat4::perspective_rh(45.0f32.to_radians(), aspect_ratio, 0.1, 10.0);
+                
+                    proj.col_mut(1).y *= -1.0; 
+                
+                    let ubo = ffi::UniformBufferObject {
+                        model: model.to_cols_array(),
+                        view: view.to_cols_array(),
+                        proj: proj.to_cols_array(),
+                    };
+                
+                    unsafe { renderer.pin_mut().drawFrame(&ubo); }
 
-                if let Some(renderer) = self.renderer.as_mut() {
-                    renderer.pin_mut().drawFrame(); 
+                    if let Some(window) = &self.window {
+                        window.request_redraw();
+                    }
                 }
             },
+
             _ => (),
         }
     }
@@ -90,6 +111,10 @@ fn main() {
 
     event_loop.set_control_flow(ControlFlow::Poll);
 
-    let mut app = App::default();
+    let mut app = App {
+        window: None,
+        renderer: None,
+        start_time: Instant::now(),
+    };
     event_loop.run_app(&mut app).unwrap();
 }

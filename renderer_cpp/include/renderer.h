@@ -1,7 +1,7 @@
 #pragma once
-#ifndef VK_USE_PLATFORM_WAYLAND_KHR
 #define VK_USE_PLATFORM_WAYLAND_KHR
-#endif
+#define GLM_FORCE_RADIANS
+#include <glm/glm.hpp>
 #include <vulkan/vulkan.h>
 #include <memory>
 #include <vector>
@@ -14,12 +14,13 @@ const bool enableValidationLayers = false;
 #endif
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
-const std::vector<uint32_t> INDICES = {
+const std::vector<uint16_t> INDICES = {
     0, 1, 2, 2, 3, 0
 };
 
 struct WindowHandles;
 struct Vertex;
+struct UniformBufferObject;
 
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily;
@@ -64,7 +65,7 @@ public:
     ~VulkanRenderer();
     void initVulkan(const WindowHandles& handles, size_t window_raw_ptr);
     void cleanup();
-    void drawFrame();
+    void drawFrame(const UniformBufferObject* ubo_ptr);
     void setVertices(const Vertex* vertices_ptr, size_t count);
 private:
     VkInstance instance = VK_NULL_HANDLE;
@@ -81,6 +82,7 @@ private:
     std::vector<VkImage> swapChainImages;
     std::vector<VkImageView> swapChainImageViews;
     VkRenderPass renderPass = VK_NULL_HANDLE;
+    VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
     VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
     VkPipeline graphicsPipeline = VK_NULL_HANDLE;
     std::vector<VkFramebuffer> swapChainFramebuffers;
@@ -93,9 +95,14 @@ private:
     VkBuffer vertexBuffer = VK_NULL_HANDLE;
     VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
     uint32_t vertexCount = 0;
-    VkBuffer indexBuffer;
-    VkDeviceMemory indexBufferMemory;
-    
+    VkBuffer indexBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory indexBufferMemory = VK_NULL_HANDLE;
+    std::vector<VkBuffer> uniformBuffers;
+    std::vector<VkDeviceMemory> uniformBuffersMemory;
+    std::vector<void*> uniformBuffersMapped;
+    VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
+    std::vector<VkDescriptorSet> descriptorSets;
+
     void createInstance();
     void setupDebugMessenger();
     void createSurface(const WindowHandles& handles);
@@ -115,6 +122,11 @@ private:
     void createBuffer(VkDeviceSize bufferSize, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
     void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
     void createIndexBuffer();
+    void createDescriptorSetLayout();
+    void createUniformBuffers();
+    void updateUniformBuffer(const UniformBufferObject* ubo_ptr, uint32_t currentImage);
+    void createDescriptorPool();
+    void createDescriptorSets();
 };
 
 std::unique_ptr<VulkanRenderer> createRenderer();

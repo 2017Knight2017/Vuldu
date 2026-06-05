@@ -21,8 +21,12 @@ void VulkanRenderer::initVulkan(const WindowHandles& handles, size_t window_raw_
     createSwapChain();
     createImageViews();
     createRenderPass();
+    createDescriptorSetLayout();
     createGraphicsPipeline();
     createFramebuffers();
+    createUniformBuffers();
+    createDescriptorPool();
+    createDescriptorSets(); 
     createCommandPool();
     createCommandBuffers();
     createIndexBuffer();
@@ -69,6 +73,23 @@ void VulkanRenderer::cleanup() {
     std::cout << "[Cleanup] Starting VulkanRenderer destruction..." << std::endl;
 
     cleanupSwapChain();
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        vkDestroyBuffer(this->device, this->uniformBuffers[i], nullptr);
+        vkFreeMemory(this->device, this->uniformBuffersMemory[i], nullptr);
+    }
+    this->uniformBuffers.clear();
+    this->uniformBuffersMemory.clear();
+
+    if (this->descriptorPool != VK_NULL_HANDLE) {
+        vkDestroyDescriptorPool(this->device, this->descriptorPool, nullptr);
+        this->descriptorPool = VK_NULL_HANDLE;
+    }
+
+    if (this->descriptorSetLayout != VK_NULL_HANDLE) {
+        vkDestroyDescriptorSetLayout(this->device, this->descriptorSetLayout, nullptr);
+        this->descriptorSetLayout = VK_NULL_HANDLE;
+    }
 
     if (this->indexBuffer != VK_NULL_HANDLE) {
         vkDestroyBuffer(this->device, this->indexBuffer, nullptr);

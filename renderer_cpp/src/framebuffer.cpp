@@ -1,4 +1,7 @@
+#include <glm/gtc/matrix_transform.hpp>
+#include <cstring>
 #include "renderer.h" 
+#include "doom/src/FFI.rs.h"
 
 void VulkanRenderer::recordCommandBuffer(uint32_t imageIndex) {
 	VkCommandBuffer currentCommandBuffer = this->commandBuffers[this->currentFrame];
@@ -46,8 +49,9 @@ void VulkanRenderer::recordCommandBuffer(uint32_t imageIndex) {
 	    VkDeviceSize offsets[] = {0};
 
 	    vkCmdBindVertexBuffers(currentCommandBuffer, 0, 1, vertexBuffers, offsets);
-		vkCmdBindIndexBuffer(currentCommandBuffer, this->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdBindIndexBuffer(currentCommandBuffer, this->indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
+		vkCmdBindDescriptorSets(currentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipelineLayout, 0, 1, &this->descriptorSets[currentFrame], 0, nullptr);
 	    vkCmdDrawIndexed(currentCommandBuffer, static_cast<uint32_t>(INDICES.size()), 1, 0, 0, 0);
 	}
 
@@ -143,7 +147,15 @@ void VulkanRenderer::createSyncObjects() {
 	}
 }
 
-void VulkanRenderer::drawFrame() {
+void VulkanRenderer::updateUniformBuffer(const UniformBufferObject* ubo_ptr, uint32_t currentImage) {
+	if (ubo_ptr == nullptr) return;
+	memcpy(this->uniformBuffersMapped[currentImage], ubo_ptr, sizeof(UniformBufferObject));
+	
+	auto* ubo = reinterpret_cast<UniformBufferObject*>(this->uniformBuffersMapped[currentImage]);
+    ubo->proj[5] *= -1.0f;
+}
+
+void VulkanRenderer::drawFrame(const UniformBufferObject* ubo_ptr) {
 	vkWaitForFences(this->device, 1, &this->inFlightFences[this->currentFrame], VK_TRUE, UINT64_MAX);
 
 	uint32_t imageIndex;
@@ -159,6 +171,8 @@ void VulkanRenderer::drawFrame() {
 
 	vkResetCommandBuffer(this->commandBuffers[this->currentFrame], 0);
 	recordCommandBuffer(imageIndex);
+
+	updateUniformBuffer(ubo_ptr, this->currentFrame);
 
 	VkSubmitInfo submitInfo{};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
