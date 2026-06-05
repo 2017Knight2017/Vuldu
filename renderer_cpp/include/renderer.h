@@ -13,8 +13,8 @@ const bool enableValidationLayers = true;
 const bool enableValidationLayers = false;
 #endif
 
-const int MAX_FRAMES_IN_FLIGHT = 2;
-const std::vector<uint16_t> INDICES = {
+inline const int MAX_FRAMES_IN_FLIGHT = 2;
+inline const std::vector<uint16_t> INDICES = {
     0, 1, 2, 2, 3, 0
 };
 
@@ -49,15 +49,6 @@ const std::vector<const char*> deviceExtensions = {
 const std::vector<const char*> validationLayers = {
     "VK_LAYER_KHRONOS_validation"
 };
-
-bool checkValidationLayerSupport();
-
-QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface);
-SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface);
-bool checkDeviceExtensionSupport(VkPhysicalDevice device);
-
-void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
-void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
 
 class VulkanRenderer {
 public:
@@ -127,6 +118,13 @@ private:
     void updateUniformBuffer(const UniformBufferObject* ubo_ptr, uint32_t currentImage);
     void createDescriptorPool();
     void createDescriptorSets();
+    bool checkValidationLayerSupport();
+    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
+    SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
+    bool checkDeviceExtensionSupport(VkPhysicalDevice device);
+    void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
+    void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
+    bool isDeviceSuitable(VkPhysicalDevice device);
 };
 
 std::unique_ptr<VulkanRenderer> createRenderer();

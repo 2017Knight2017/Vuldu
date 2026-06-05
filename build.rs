@@ -6,8 +6,11 @@ fn main() {
         .file("renderer_cpp/src/device.cpp")
         .file("renderer_cpp/src/pipeline.cpp")
         .file("renderer_cpp/src/debug_messenger.cpp")
-        .file("renderer_cpp/src/framebuffer.cpp")
+        .file("renderer_cpp/src/draw.cpp")
         .file("renderer_cpp/src/descriptors.cpp")
+        .file("renderer_cpp/src/swapchain.cpp")
+        .file("renderer_cpp/src/buffers.cpp")
+        .file("renderer_cpp/src/utils.cpp")
         .include("renderer_cpp/include")
         .flag_if_supported("-std=c++20");
 
