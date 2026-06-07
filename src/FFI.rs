@@ -15,6 +15,7 @@ pub mod ffi {
     pub struct Vertex {
         pub pos: [f32; 2],
         pub color: [f32; 3],
+        pub texture_pos: [f32; 2],
     }
 
     pub struct UniformBufferObject {
@@ -38,6 +39,7 @@ pub mod ffi {
         fn cleanup(self: Pin<&mut VulkanRenderer>);
         unsafe fn drawFrame(self: Pin<&mut VulkanRenderer>, ubo_ptr: *const UniformBufferObject);
         unsafe fn setVertices(self: Pin<&mut VulkanRenderer>, vertices_ptr: *const Vertex, count: usize);
+        unsafe fn setTexture(self: Pin<&mut VulkanRenderer>, pixels: *const u8, width: u32, height: u32);
     }
 }
 
@@ -52,10 +54,11 @@ unsafe fn get_winit_window_size(window_raw_ptr: usize) -> ffi::WindowSize {
 }
 
 impl ffi::Vertex {
-    pub fn new(pos: glam::Vec2, color: glam::Vec3) -> ffi::Vertex {
+    pub fn new(pos: glam::Vec2, color: glam::Vec3, texture_pos: glam::Vec2) -> ffi::Vertex {
         ffi::Vertex {
             pos: pos.to_array(),
             color: color.to_array(),
+            texture_pos: texture_pos.to_array(),
         }
     }
 }

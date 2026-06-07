@@ -86,36 +86,18 @@ void VulkanRenderer::createSwapChain() {
         throw std::runtime_error("failed to create swap chain!");
     }
 
-    vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
-    swapChainImages.resize(imageCount);
-    vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
+    vkGetSwapchainImagesKHR(this->device, this->swapChain, &imageCount, nullptr);
+    this->swapChainImages.resize(imageCount);
+    vkGetSwapchainImagesKHR(this->device, this->swapChain, &imageCount, swapChainImages.data());
 
     this->swapChainImageFormat = surfaceFormat.format;
     this->swapChainExtent = extent;
 }
 
 void VulkanRenderer::createImageViews() {
-    swapChainImageViews.resize(swapChainImages.size());
+    this->swapChainImageViews.resize(this->swapChainImages.size());
 
     for (size_t i = 0; i < swapChainImages.size(); i++) {
-        VkImageViewCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        createInfo.image = swapChainImages[i];
-        createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        createInfo.format = swapChainImageFormat;
-        createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-        createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-        createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-        createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-        createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        createInfo.subresourceRange.baseMipLevel = 0;
-        createInfo.subresourceRange.levelCount = 1;
-        createInfo.subresourceRange.baseArrayLayer = 0;
-        createInfo.subresourceRange.layerCount = 1;
-
-        VkResult imageViewsResult = vkCreateImageView(device, &createInfo, nullptr, &swapChainImageViews[i]);
-        if (imageViewsResult != VK_SUCCESS) {
-            throw std::runtime_error("failed to create image views!");
-        }
+        swapChainImageViews[i] = createImageView(this->device, swapChainImages[i], swapChainImageFormat);
     }
 }

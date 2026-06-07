@@ -58,6 +58,7 @@ public:
     void cleanup();
     void drawFrame(const UniformBufferObject* ubo_ptr);
     void setVertices(const Vertex* vertices_ptr, size_t count);
+    void setTexture(const uint8_t* pixels_ptr, uint32_t width, uint32_t height);
 private:
     VkInstance instance = VK_NULL_HANDLE;
     VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
@@ -93,6 +94,10 @@ private:
     std::vector<void*> uniformBuffersMapped;
     VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
     std::vector<VkDescriptorSet> descriptorSets;
+    VkImage textureImage = VK_NULL_HANDLE;
+    VkDeviceMemory textureImageMemory = VK_NULL_HANDLE;
+    VkImageView textureImageView = VK_NULL_HANDLE;
+    VkSampler textureSampler = VK_NULL_HANDLE;
 
     void createInstance();
     void setupDebugMessenger();
@@ -117,7 +122,7 @@ private:
     void createUniformBuffers();
     void updateUniformBuffer(const UniformBufferObject* ubo_ptr, uint32_t currentImage);
     void createDescriptorPool();
-    void createDescriptorSets();
+    void updateDescriptorSets();
     bool checkValidationLayerSupport();
     QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
     SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
@@ -125,6 +130,13 @@ private:
     void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
     void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
     bool isDeviceSuitable(VkPhysicalDevice device);
+    void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
+    VkCommandBuffer beginSingleTimeCommands();
+    void endSingleTimeCommands(VkCommandBuffer commandBuffer);
+    void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+    void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+    void createTextureSampler();
+    void allocateDescriptorSets();
 };
 
 std::unique_ptr<VulkanRenderer> createRenderer();

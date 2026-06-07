@@ -1,5 +1,6 @@
 #include <iostream>
 #include "renderer.h"
+#include "utils.h"
 
 std::unique_ptr<VulkanRenderer> createRenderer() {
     return std::make_unique<VulkanRenderer>();
@@ -26,8 +27,11 @@ void VulkanRenderer::initVulkan(const WindowHandles& handles, size_t window_raw_
     createFramebuffers();
     createUniformBuffers();
     createDescriptorPool();
-    createDescriptorSets(); 
+    allocateDescriptorSets(); 
     createCommandPool();
+    createTextureSampler();
+    uint8_t dummyPixel[] = { 255, 0, 255, 255 };
+    setTexture(dummyPixel, 1, 1);
     createCommandBuffers();
     createIndexBuffer();
     createSyncObjects();
@@ -74,6 +78,11 @@ void VulkanRenderer::cleanup() {
 
     cleanupSwapChain();
 
+    destroyResource(this->device, this->textureSampler, vkDestroySampler);
+    destroyResource(this->device, this->textureImageView, vkDestroyImageView);
+    destroyResource(this->device, this->textureImage, vkDestroyImage);
+    destroyResource(this->device, this->textureImageMemory, vkFreeMemory);
+
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroyBuffer(this->device, this->uniformBuffers[i], nullptr);
         vkFreeMemory(this->device, this->uniformBuffersMemory[i], nullptr);
@@ -81,50 +90,15 @@ void VulkanRenderer::cleanup() {
     this->uniformBuffers.clear();
     this->uniformBuffersMemory.clear();
 
-    if (this->descriptorPool != VK_NULL_HANDLE) {
-        vkDestroyDescriptorPool(this->device, this->descriptorPool, nullptr);
-        this->descriptorPool = VK_NULL_HANDLE;
-    }
-
-    if (this->descriptorSetLayout != VK_NULL_HANDLE) {
-        vkDestroyDescriptorSetLayout(this->device, this->descriptorSetLayout, nullptr);
-        this->descriptorSetLayout = VK_NULL_HANDLE;
-    }
-
-    if (this->indexBuffer != VK_NULL_HANDLE) {
-        vkDestroyBuffer(this->device, this->indexBuffer, nullptr);
-        this->indexBuffer = VK_NULL_HANDLE;
-    }
-
-    if (this->indexBufferMemory != VK_NULL_HANDLE) {
-        vkFreeMemory(this->device, this->indexBufferMemory, nullptr);
-        this->indexBufferMemory = VK_NULL_HANDLE;
-    }
-
-    if (this->vertexBuffer != VK_NULL_HANDLE) {
-        vkDestroyBuffer(this->device, this->vertexBuffer, nullptr);
-        this->vertexBuffer = VK_NULL_HANDLE;
-    }
-
-    if (this->vertexBufferMemory != VK_NULL_HANDLE) {
-        vkFreeMemory(this->device, this->vertexBufferMemory, nullptr);
-        this->vertexBufferMemory = VK_NULL_HANDLE;
-    }
-
-    if (this->graphicsPipeline != VK_NULL_HANDLE) {
-        vkDestroyPipeline(this->device, this->graphicsPipeline, nullptr);
-        this->graphicsPipeline = VK_NULL_HANDLE; 
-    }
-
-    if (this->pipelineLayout != VK_NULL_HANDLE) {
-        vkDestroyPipelineLayout(this->device, this->pipelineLayout, nullptr);
-        this->pipelineLayout = VK_NULL_HANDLE; 
-    }
-
-    if (this->renderPass != VK_NULL_HANDLE) {
-        vkDestroyRenderPass(this->device, this->renderPass, nullptr);
-        this->renderPass = VK_NULL_HANDLE; 
-    }
+    destroyResource(this->device, this->descriptorPool, vkDestroyDescriptorPool);
+    destroyResource(this->device, this->descriptorSetLayout, vkDestroyDescriptorSetLayout);
+    destroyResource(this->device, this->indexBuffer, vkDestroyBuffer);
+    destroyResource(this->device, this->indexBufferMemory, vkFreeMemory);
+    destroyResource(this->device, this->vertexBuffer, vkDestroyBuffer);
+    destroyResource(this->device, this->vertexBufferMemory, vkFreeMemory);
+    destroyResource(this->device, this->graphicsPipeline, vkDestroyPipeline);
+    destroyResource(this->device, this->pipelineLayout, vkDestroyPipelineLayout);
+    destroyResource(this->device, this->renderPass, vkDestroyRenderPass);
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroyFence(this->device, this->inFlightFences[i], nullptr);
@@ -138,10 +112,7 @@ void VulkanRenderer::cleanup() {
     this->renderFinishedSemaphores.clear();
     this->imageAvailableSemaphores.clear();
 
-    if (this->commandPool != VK_NULL_HANDLE) {
-        vkDestroyCommandPool(this->device, this->commandPool, nullptr);
-        this->commandPool = VK_NULL_HANDLE;
-    }
+    destroyResource(this->device, this->commandPool, vkDestroyCommandPool);
 
     if (this->device != VK_NULL_HANDLE) {
         vkDestroyDevice(this->device, nullptr);

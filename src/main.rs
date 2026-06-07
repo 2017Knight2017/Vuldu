@@ -17,6 +17,8 @@ struct App {
     start_time: Instant,
 }
 
+
+
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if self.window.is_none() {
@@ -28,6 +30,12 @@ impl ApplicationHandler for App {
 
             let window_handle = self.window.as_ref().unwrap().window_handle().unwrap().as_raw();
             let display_handle = self.window.as_ref().unwrap().display_handle().unwrap().as_raw();
+
+            let img = image::open("images.jpg")
+                .expect("No textures found at images.jpg!")
+                .to_rgba8();
+            let (image_width, image_height) = img.dimensions();
+            let raw_img = img.as_raw();
 
             if let (RawDisplayHandle::Wayland(d), RawWindowHandle::Wayland(w)) = (display_handle, window_handle) {
                 let handles = ffi::WindowHandles {
@@ -41,14 +49,15 @@ impl ApplicationHandler for App {
                     renderer.pin_mut().initVulkan(&handles, window_raw_ptr);
 
                     let mesh_vertices = vec![
-                        ffi::Vertex::new(glam::vec2(0.0, -1.0), glam::vec3(0.5, 0.0, 1.0)), 
-                        ffi::Vertex::new(glam::vec2(0.5, 0.0),  glam::vec3(1.0, 0.5, 0.0)), 
-                        ffi::Vertex::new(glam::vec2(0.0, 1.0),  glam::vec3(0.0, 1.0, 0.0)), 
-                        ffi::Vertex::new(glam::vec2(-0.5, 0.0), glam::vec3(0.0, 0.0, 1.0)),
+                        ffi::Vertex::new(glam::vec2(-0.5, -0.5), glam::vec3(1.0, 0.0, 0.0), glam::vec2(1.0, 0.0)), 
+                        ffi::Vertex::new(glam::vec2(0.5, -0.5),  glam::vec3(0.0, 1.0, 0.0), glam::vec2(0.0, 0.0)), 
+                        ffi::Vertex::new(glam::vec2(0.5, 0.5),  glam::vec3(0.0, 0.0, 1.0), glam::vec2(0.0, 1.0)), 
+                        ffi::Vertex::new(glam::vec2(-0.5, 0.5), glam::vec3(1.0, 1.0, 1.0), glam::vec2(1.0, 1.0)),
                     ];
 
                     unsafe {
                         renderer.pin_mut().setVertices(mesh_vertices.as_ptr(), mesh_vertices.len());
+                        renderer.pin_mut().setTexture(raw_img.as_ptr(), image_width, image_height);
                     }
                 }
             }
