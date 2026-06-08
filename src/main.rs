@@ -49,10 +49,15 @@ impl ApplicationHandler for App {
                     renderer.pin_mut().initVulkan(&handles, window_raw_ptr);
 
                     let mesh_vertices = vec![
-                        ffi::Vertex::new(glam::vec2(-0.5, -0.5), glam::vec3(1.0, 0.0, 0.0), glam::vec2(1.0, 0.0)), 
-                        ffi::Vertex::new(glam::vec2(0.5, -0.5),  glam::vec3(0.0, 1.0, 0.0), glam::vec2(0.0, 0.0)), 
-                        ffi::Vertex::new(glam::vec2(0.5, 0.5),  glam::vec3(0.0, 0.0, 1.0), glam::vec2(0.0, 1.0)), 
-                        ffi::Vertex::new(glam::vec2(-0.5, 0.5), glam::vec3(1.0, 1.0, 1.0), glam::vec2(1.0, 1.0)),
+                        ffi::Vertex::new(glam::vec3(-0.5, -0.5, 0.0), glam::vec3(1.0, 0.0, 0.0), glam::vec2(1.0, 0.0)), 
+                        ffi::Vertex::new(glam::vec3(0.5, -0.5, 0.0),  glam::vec3(0.0, 1.0, 0.0), glam::vec2(0.0, 0.0)), 
+                        ffi::Vertex::new(glam::vec3(0.5, 0.5, 0.0),  glam::vec3(0.0, 0.0, 1.0), glam::vec2(0.0, 1.0)), 
+                        ffi::Vertex::new(glam::vec3(-0.5, 0.5, 0.0), glam::vec3(1.0, 1.0, 1.0), glam::vec2(1.0, 1.0)),
+
+                        ffi::Vertex::new(glam::vec3(-0.5, -0.5, -0.5), glam::vec3(1.0, 0.0, 0.0), glam::vec2(1.0, 0.0)), 
+                        ffi::Vertex::new(glam::vec3(0.5, -0.5, -0.5),  glam::vec3(0.0, 1.0, 0.0), glam::vec2(0.0, 0.0)), 
+                        ffi::Vertex::new(glam::vec3(0.5, 0.5, -0.5),  glam::vec3(0.0, 0.0, 1.0), glam::vec2(0.0, 1.0)), 
+                        ffi::Vertex::new(glam::vec3(-0.5, 0.5, -0.5), glam::vec3(1.0, 1.0, 1.0), glam::vec2(1.0, 1.0)),
                     ];
 
                     unsafe {

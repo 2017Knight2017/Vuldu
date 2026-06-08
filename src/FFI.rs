@@ -13,7 +13,7 @@ pub mod ffi {
     }
 
     pub struct Vertex {
-        pub pos: [f32; 2],
+        pub pos: [f32; 3],
         pub color: [f32; 3],
         pub texture_pos: [f32; 2],
     }
@@ -54,7 +54,7 @@ unsafe fn get_winit_window_size(window_raw_ptr: usize) -> ffi::WindowSize {
 }
 
 impl ffi::Vertex {
-    pub fn new(pos: glam::Vec2, color: glam::Vec3, texture_pos: glam::Vec2) -> ffi::Vertex {
+    pub fn new(pos: glam::Vec3, color: glam::Vec3, texture_pos: glam::Vec2) -> ffi::Vertex {
         ffi::Vertex {
             pos: pos.to_array(),
             color: color.to_array(),

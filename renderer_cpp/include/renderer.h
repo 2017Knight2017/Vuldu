@@ -1,7 +1,5 @@
 #pragma once
 #define VK_USE_PLATFORM_WAYLAND_KHR
-#define GLM_FORCE_RADIANS
-#include <glm/glm.hpp>
 #include <vulkan/vulkan.h>
 #include <memory>
 #include <vector>
@@ -15,7 +13,8 @@ const bool enableValidationLayers = false;
 
 inline const int MAX_FRAMES_IN_FLIGHT = 2;
 inline const std::vector<uint16_t> INDICES = {
-    0, 1, 2, 2, 3, 0
+    0, 1, 2, 2, 3, 0,
+    4, 5, 6, 6, 7, 4
 };
 
 struct WindowHandles;
@@ -98,6 +97,9 @@ private:
     VkDeviceMemory textureImageMemory = VK_NULL_HANDLE;
     VkImageView textureImageView = VK_NULL_HANDLE;
     VkSampler textureSampler = VK_NULL_HANDLE;
+    VkImage depthImage = VK_NULL_HANDLE;
+    VkDeviceMemory depthImageMemory = VK_NULL_HANDLE;
+    VkImageView depthImageView = VK_NULL_HANDLE;
 
     void createInstance();
     void setupDebugMessenger();
@@ -137,6 +139,8 @@ private:
     void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
     void createTextureSampler();
     void allocateDescriptorSets();
+    VkFormat findDepthFormat();
+    void createDepthResources();
 };
 
 std::unique_ptr<VulkanRenderer> createRenderer();

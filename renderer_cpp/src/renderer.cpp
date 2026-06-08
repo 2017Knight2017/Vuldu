@@ -24,11 +24,12 @@ void VulkanRenderer::initVulkan(const WindowHandles& handles, size_t window_raw_
     createRenderPass();
     createDescriptorSetLayout();
     createGraphicsPipeline();
-    createFramebuffers();
     createUniformBuffers();
     createDescriptorPool();
     allocateDescriptorSets(); 
     createCommandPool();
+    createDepthResources();
+    createFramebuffers();
     createTextureSampler();
     uint8_t dummyPixel[] = { 255, 0, 255, 255 };
     setTexture(dummyPixel, 1, 1);
@@ -44,6 +45,7 @@ void VulkanRenderer::recreateSwapChain() {
 
     createSwapChain();
     createImageViews();
+    createDepthResources();
     createFramebuffers();
 
     createSyncObjects(); 
@@ -52,6 +54,10 @@ void VulkanRenderer::recreateSwapChain() {
 }
 
 void VulkanRenderer::cleanupSwapChain() {
+    destroyResource(this->device, this->depthImageView, vkDestroyImageView);
+    destroyResource(this->device, this->depthImage, vkDestroyImage);
+    destroyResource(this->device, this->depthImageMemory, vkFreeMemory);
+
     for (auto framebuffer : this->swapChainFramebuffers) {
         vkDestroyFramebuffer(this->device, framebuffer, nullptr);
     }

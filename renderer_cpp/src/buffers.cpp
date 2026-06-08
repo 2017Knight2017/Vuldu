@@ -181,7 +181,7 @@ void VulkanRenderer::setTexture(const uint8_t* pixels_ptr, uint32_t width, uint3
     vkDestroyBuffer(this->device, stagingBuffer, nullptr);
     vkFreeMemory(this->device, stagingBufferMemory, nullptr);
 
-	this->textureImageView = createImageView(this->device, this->textureImage, VK_FORMAT_R8G8B8A8_SRGB);
+	this->textureImageView = createImageView(this->device, this->textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
 
 	updateDescriptorSets();
 }

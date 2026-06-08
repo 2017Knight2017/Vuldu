@@ -1,4 +1,3 @@
-#include <glm/gtc/matrix_transform.hpp>
 #include <cstring>
 #include "renderer.h" 
 #include "doom/src/FFI.rs.h"
@@ -15,45 +14,47 @@ void VulkanRenderer::recordCommandBuffer(uint32_t imageIndex) {
 	    throw std::runtime_error("failed to begin recording command buffer!");
 	}
 
+	std::array<VkClearValue, 2> clearValues{};
+	clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
+	clearValues[1].depthStencil = {1.0f, 0};
+
 	VkRenderPassBeginInfo renderPassInfo{};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassInfo.renderPass = this->renderPass;
 	renderPassInfo.framebuffer = this->swapChainFramebuffers[imageIndex];
 	renderPassInfo.renderArea.offset = {0, 0};
 	renderPassInfo.renderArea.extent = this->swapChainExtent;
-	
-	VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
-	renderPassInfo.clearValueCount = 1;
-	renderPassInfo.pClearValues = &clearColor;
+	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+	renderPassInfo.pClearValues = clearValues.data();
 
 	vkCmdBeginRenderPass(currentCommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 	
-	vkCmdBindPipeline(currentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+		vkCmdBindPipeline(currentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
-	VkViewport viewport{};
-	viewport.x = 0.0f;
-	viewport.y = 0.0f;
-	viewport.width = (float) this->swapChainExtent.width;
-	viewport.height = (float) this->swapChainExtent.height;
-	viewport.minDepth = 0.0f;
-	viewport.maxDepth = 1.0f;
-	vkCmdSetViewport(currentCommandBuffer, 0, 1, &viewport);
+		VkViewport viewport{};
+		viewport.x = 0.0f;
+		viewport.y = 0.0f;
+		viewport.width = (float) this->swapChainExtent.width;
+		viewport.height = (float) this->swapChainExtent.height;
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+		vkCmdSetViewport(currentCommandBuffer, 0, 1, &viewport);
 
-	VkRect2D scissor{};
-	scissor.offset = {0, 0};
-	scissor.extent = this->swapChainExtent;
-	vkCmdSetScissor(currentCommandBuffer, 0, 1, &scissor);
+		VkRect2D scissor{};
+		scissor.offset = {0, 0};
+		scissor.extent = this->swapChainExtent;
+		vkCmdSetScissor(currentCommandBuffer, 0, 1, &scissor);
 
-	if (this->vertexBuffer != VK_NULL_HANDLE && this->vertexCount > 0) {
-	    VkBuffer vertexBuffers[] = {this->vertexBuffer};
-	    VkDeviceSize offsets[] = {0};
+		if (this->vertexBuffer != VK_NULL_HANDLE && this->vertexCount > 0) {
+		    VkBuffer vertexBuffers[] = {this->vertexBuffer};
+		    VkDeviceSize offsets[] = {0};
 
-	    vkCmdBindVertexBuffers(currentCommandBuffer, 0, 1, vertexBuffers, offsets);
-		vkCmdBindIndexBuffer(currentCommandBuffer, this->indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+		    vkCmdBindVertexBuffers(currentCommandBuffer, 0, 1, vertexBuffers, offsets);
+			vkCmdBindIndexBuffer(currentCommandBuffer, this->indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
-		vkCmdBindDescriptorSets(currentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipelineLayout, 0, 1, &this->descriptorSets[currentFrame], 0, nullptr);
-	    vkCmdDrawIndexed(currentCommandBuffer, static_cast<uint32_t>(INDICES.size()), 1, 0, 0, 0);
-	}
+			vkCmdBindDescriptorSets(currentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipelineLayout, 0, 1, &this->descriptorSets[currentFrame], 0, nullptr);
+		    vkCmdDrawIndexed(currentCommandBuffer, static_cast<uint32_t>(INDICES.size()), 1, 0, 0, 0);
+		}
 
 	vkCmdEndRenderPass(currentCommandBuffer);
 
@@ -65,15 +66,16 @@ void VulkanRenderer::recordCommandBuffer(uint32_t imageIndex) {
 void VulkanRenderer::createFramebuffers() {
 	this->swapChainFramebuffers.resize(this->swapChainImageViews.size());
 	for (size_t i = 0; i < this->swapChainImageViews.size(); i++) {
-	    VkImageView attachments[] = {
-	        this->swapChainImageViews[i]
+	    std::array<VkImageView, 2> attachments = {
+	        this->swapChainImageViews[i],
+			this->depthImageView
 	    };
 
 	    VkFramebufferCreateInfo framebufferInfo{};
 	    framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 	    framebufferInfo.renderPass = this->renderPass;
-	    framebufferInfo.attachmentCount = 1;
-	    framebufferInfo.pAttachments = attachments;
+	    framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+		framebufferInfo.pAttachments = attachments.data();
 	    framebufferInfo.width = this->swapChainExtent.width;
 	    framebufferInfo.height = this->swapChainExtent.height;
 	    framebufferInfo.layers = 1;

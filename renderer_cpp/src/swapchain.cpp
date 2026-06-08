@@ -26,11 +26,11 @@ VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities, size_t
     if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
         return capabilities.currentExtent;
     } else {
-        WindowSize rust_size = get_winit_window_size(window_raw_ptr);
+        WindowSize size = get_winit_window_size(window_raw_ptr);
 
         VkExtent2D actualExtent = {
-            rust_size.width,
-            rust_size.height
+            size.width,
+            size.height
         };
 
         actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
@@ -81,14 +81,14 @@ void VulkanRenderer::createSwapChain() {
     createInfo.clipped = VK_TRUE;
     createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-    VkResult swapChainResult = vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain);
+    VkResult swapChainResult = vkCreateSwapchainKHR(this->device, &createInfo, nullptr, &this->swapChain);
     if (swapChainResult != VK_SUCCESS) {
         throw std::runtime_error("failed to create swap chain!");
     }
 
     vkGetSwapchainImagesKHR(this->device, this->swapChain, &imageCount, nullptr);
     this->swapChainImages.resize(imageCount);
-    vkGetSwapchainImagesKHR(this->device, this->swapChain, &imageCount, swapChainImages.data());
+    vkGetSwapchainImagesKHR(this->device, this->swapChain, &imageCount, this->swapChainImages.data());
 
     this->swapChainImageFormat = surfaceFormat.format;
     this->swapChainExtent = extent;
@@ -97,7 +97,7 @@ void VulkanRenderer::createSwapChain() {
 void VulkanRenderer::createImageViews() {
     this->swapChainImageViews.resize(this->swapChainImages.size());
 
-    for (size_t i = 0; i < swapChainImages.size(); i++) {
-        swapChainImageViews[i] = createImageView(this->device, swapChainImages[i], swapChainImageFormat);
+    for (size_t i = 0; i < this->swapChainImages.size(); i++) {
+        this->swapChainImageViews[i] = createImageView(this->device, this->swapChainImages[i], this->swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
     }
 }
