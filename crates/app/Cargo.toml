@@ -1,0 +1,14 @@
+[package]
+name = "app"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+glam = "0.33.0"
+image = "0.25.10"
+micropool = "0.3.0"
+raw-window-handle = "0.6.2"
+tinywad = "0.1.3"
+winit = "0.30.13"
+cxx = "1.0.194"
+renderer = { path = "../renderer" }

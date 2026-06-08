@@ -1,7 +1,4 @@
-#[allow(non_snake_case)]
-mod FFI;
-
-use FFI::ffi;
+use renderer::ffi;
 use glam::{Mat4, vec3};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::application::ApplicationHandler;

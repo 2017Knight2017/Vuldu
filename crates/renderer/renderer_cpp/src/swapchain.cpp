@@ -1,6 +1,6 @@
 #include <algorithm>
 #include "renderer.h"
-#include "doom/src/FFI.rs.h"
+#include "renderer/src/lib.rs.h"
 
 VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
     for (const auto& availableFormat : availableFormats) {

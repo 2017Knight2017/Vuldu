@@ -1,0 +1,12 @@
+[package]
+name = "renderer"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+cxx = "1.0.194"
+glam = "0.33.0"
+winit = "0.30.13"
+
+[build-dependencies]
+cxx-build = "1.0.194"

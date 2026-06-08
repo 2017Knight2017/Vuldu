@@ -1,5 +1,5 @@
 fn main() {
-    let mut build = cxx_build::bridge("src/FFI.rs");
+    let mut build = cxx_build::bridge("src/lib.rs");
     
     build.file("renderer_cpp/src/renderer.cpp")
         .file("renderer_cpp/src/instance.cpp")

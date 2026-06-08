@@ -1,5 +1,5 @@
 #include "renderer.h"
-#include "doom/src/FFI.rs.h"
+#include "renderer/src/lib.rs.h"
 
 void VulkanRenderer::createDescriptorSetLayout() {
 	VkDescriptorSetLayoutBinding uboLayoutBinding{};

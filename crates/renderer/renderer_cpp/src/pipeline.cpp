@@ -1,6 +1,6 @@
 #include <cstring>
 #include "renderer.h"
-#include "doom/src/FFI.rs.h"
+#include "renderer/src/lib.rs.h"
 #include "utils.h"
 
 VkFormat findSupportedFormat(VkPhysicalDevice physicalDevice, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) {
@@ -117,8 +117,8 @@ void VulkanRenderer::updateGeometry(const Vertex* vertices_ptr, size_t vertex_co
 }
 
 void VulkanRenderer::createGraphicsPipeline() {
-    auto vertShaderCode = readFile("renderer_cpp/shaders/vert.spv");
-    auto fragShaderCode = readFile("renderer_cpp/shaders/frag.spv");
+    auto vertShaderCode = readFile("crates/renderer/renderer_cpp/shaders/vert.spv");
+    auto fragShaderCode = readFile("crates/renderer/renderer_cpp/shaders/frag.spv");
 
 	VkShaderModule vertShaderModule = createShaderModule(this->device, vertShaderCode);
     VkShaderModule fragShaderModule = createShaderModule(this->device, fragShaderCode);

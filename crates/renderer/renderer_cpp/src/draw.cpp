@@ -1,6 +1,6 @@
 #include <cstring>
 #include "renderer.h" 
-#include "doom/src/FFI.rs.h"
+#include "renderer/src/lib.rs.h"
 
 void VulkanRenderer::recordCommandBuffer(uint32_t imageIndex) {
 	VkCommandBuffer currentCommandBuffer = this->commandBuffers[this->currentFrame];
