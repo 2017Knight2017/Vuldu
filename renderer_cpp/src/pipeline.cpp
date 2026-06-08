@@ -63,59 +63,57 @@ void VulkanRenderer::createDepthResources() {
 	this->depthImageView = createImageView(this->device, this->depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
-void VulkanRenderer::setVertices(const Vertex* vertices_ptr, size_t count) {
-	if (count == 0 || vertices_ptr == nullptr) return;
+void VulkanRenderer::updateGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint16_t* indices_ptr, size_t index_count) {
+    if (vertex_count == 0 || vertices_ptr == nullptr || index_count == 0 || indices_ptr == nullptr) return;
 
-    this->vertexCount = static_cast<uint32_t>(count); 
-    VkDeviceSize bufferSize = sizeof(Vertex) * count;
+    vkDeviceWaitIdle(this->device);
 
-	if (this->vertexBuffer != VK_NULL_HANDLE) {
-        vkDestroyBuffer(this->device, this->vertexBuffer, nullptr);
-        this->vertexBuffer = VK_NULL_HANDLE;
+    destroyResource(this->device, this->vertexBuffer, vkDestroyBuffer);
+    destroyResource(this->device, this->vertexBufferMemory, vkFreeMemory);
+    destroyResource(this->device, this->indexBuffer, vkDestroyBuffer);
+    destroyResource(this->device, this->indexBufferMemory, vkFreeMemory);
+
+    this->vertexCount = static_cast<uint32_t>(vertex_count);
+    this->indexCount = static_cast<uint32_t>(index_count);
+
+    VkDeviceSize vertexBufferSize = sizeof(Vertex) * vertex_count;
+    VkDeviceSize indexBufferSize = sizeof(uint16_t) * index_count;
+
+    VkBuffer vertexStagingBuffer;
+    VkDeviceMemory vertexStagingBufferMemory;
+    createBuffer(vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertexStagingBuffer, vertexStagingBufferMemory);
+
+    void* vertexData;
+    if (vkMapMemory(this->device, vertexStagingBufferMemory, 0, vertexBufferSize, 0, &vertexData) != VK_SUCCESS) {
+        throw std::runtime_error("failed to map vertex staging buffer memory!");
     }
-    if (this->vertexBufferMemory != VK_NULL_HANDLE) {
-        vkFreeMemory(this->device, this->vertexBufferMemory, nullptr);
-        this->vertexBufferMemory = VK_NULL_HANDLE;
+    memcpy(vertexData, vertices_ptr, static_cast<size_t>(vertexBufferSize));
+    vkUnmapMemory(this->device, vertexStagingBufferMemory);
+
+    createBuffer(vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, this->vertexBuffer, this->vertexBufferMemory);
+    copyBuffer(vertexStagingBuffer, this->vertexBuffer, vertexBufferSize);
+
+    vkDestroyBuffer(this->device, vertexStagingBuffer, nullptr);
+    vkFreeMemory(this->device, vertexStagingBufferMemory, nullptr);
+
+    
+    VkBuffer indexStagingBuffer;
+    VkDeviceMemory indexStagingBufferMemory;
+    createBuffer(indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, indexStagingBuffer, indexStagingBufferMemory);
+	
+    void* indexData;
+    if (vkMapMemory(this->device, indexStagingBufferMemory, 0, indexBufferSize, 0, &indexData) != VK_SUCCESS) {
+        throw std::runtime_error("failed to map index staging buffer memory!");
     }
+    memcpy(indexData, indices_ptr, static_cast<size_t>(indexBufferSize));
+    vkUnmapMemory(this->device, indexStagingBufferMemory);
 
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
-    createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+    createBuffer(indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, this->indexBuffer, this->indexBufferMemory);
+    copyBuffer(indexStagingBuffer, this->indexBuffer, indexBufferSize);
 
-    void* data;
-    VkResult mapResult = vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
-    if (mapResult == VK_SUCCESS) {
-        memcpy(data, vertices_ptr, (size_t)bufferSize);
-        vkUnmapMemory(this->device, stagingBufferMemory);
-    } else {
-        throw std::runtime_error("failed to map vertex buffer memory!");
-    }
-
-	createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
-	copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
-
-	vkDestroyBuffer(this->device, stagingBuffer, nullptr);
-    vkFreeMemory(this->device, stagingBufferMemory, nullptr);
-}
-
-void VulkanRenderer::createIndexBuffer() {
-    VkDeviceSize bufferSize = sizeof(INDICES[0]) * INDICES.size();
-
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
-    createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-
-    void* data;
-    vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
-    memcpy(data, INDICES.data(), (size_t) bufferSize);
-    vkUnmapMemory(this->device, stagingBufferMemory);
-
-    createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, this->indexBuffer, this->indexBufferMemory);
-
-    copyBuffer(stagingBuffer, this->indexBuffer, bufferSize);
-
-    vkDestroyBuffer(this->device, stagingBuffer, nullptr);
-    vkFreeMemory(this->device, stagingBufferMemory, nullptr);
+    vkDestroyBuffer(this->device, indexStagingBuffer, nullptr);
+    vkFreeMemory(this->device, indexStagingBufferMemory, nullptr);
+    
 }
 
 void VulkanRenderer::createGraphicsPipeline() {

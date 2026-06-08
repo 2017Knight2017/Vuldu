@@ -60,8 +60,13 @@ impl ApplicationHandler for App {
                         ffi::Vertex::new(glam::vec3(-0.5, 0.5, -0.5), glam::vec3(1.0, 1.0, 1.0), glam::vec2(1.0, 1.0)),
                     ];
 
+                    let mesh_indices: Vec<u16> = Vec::from([
+                        0, 1, 2, 2, 3, 0,
+                        4, 5, 6, 6, 7, 4
+                    ]);
+
                     unsafe {
-                        renderer.pin_mut().setVertices(mesh_vertices.as_ptr(), mesh_vertices.len());
+                        renderer.pin_mut().updateGeometry(mesh_vertices.as_ptr(), mesh_vertices.len(), mesh_indices.as_ptr(), mesh_indices.len());
                         renderer.pin_mut().setTexture(raw_img.as_ptr(), image_width, image_height);
                     }
                 }

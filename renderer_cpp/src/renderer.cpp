@@ -34,7 +34,6 @@ void VulkanRenderer::initVulkan(const WindowHandles& handles, size_t window_raw_
     uint8_t dummyPixel[] = { 255, 0, 255, 255 };
     setTexture(dummyPixel, 1, 1);
     createCommandBuffers();
-    createIndexBuffer();
     createSyncObjects();
 }
 

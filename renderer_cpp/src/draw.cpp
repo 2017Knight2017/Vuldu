@@ -53,7 +53,7 @@ void VulkanRenderer::recordCommandBuffer(uint32_t imageIndex) {
 			vkCmdBindIndexBuffer(currentCommandBuffer, this->indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
 			vkCmdBindDescriptorSets(currentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipelineLayout, 0, 1, &this->descriptorSets[currentFrame], 0, nullptr);
-		    vkCmdDrawIndexed(currentCommandBuffer, static_cast<uint32_t>(INDICES.size()), 1, 0, 0, 0);
+		    vkCmdDrawIndexed(currentCommandBuffer, this->indexCount, 1, 0, 0, 0);
 		}
 
 	vkCmdEndRenderPass(currentCommandBuffer);

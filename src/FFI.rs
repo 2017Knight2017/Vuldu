@@ -38,8 +38,8 @@ pub mod ffi {
         fn initVulkan(self: Pin<&mut VulkanRenderer>, handles: &WindowHandles, window_raw_ptr: usize);
         fn cleanup(self: Pin<&mut VulkanRenderer>);
         unsafe fn drawFrame(self: Pin<&mut VulkanRenderer>, ubo_ptr: *const UniformBufferObject);
-        unsafe fn setVertices(self: Pin<&mut VulkanRenderer>, vertices_ptr: *const Vertex, count: usize);
         unsafe fn setTexture(self: Pin<&mut VulkanRenderer>, pixels: *const u8, width: u32, height: u32);
+        unsafe fn updateGeometry(self: Pin<&mut VulkanRenderer>, vertices: *const Vertex, vertex_count: usize, indices: *const u16, index_count: usize);
     }
 }
 
