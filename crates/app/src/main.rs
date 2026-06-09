@@ -14,8 +14,6 @@ struct App {
     start_time: Instant,
 }
 
-
-
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if self.window.is_none() {
@@ -28,7 +26,7 @@ impl ApplicationHandler for App {
             let window_handle = self.window.as_ref().unwrap().window_handle().unwrap().as_raw();
             let display_handle = self.window.as_ref().unwrap().display_handle().unwrap().as_raw();
 
-            let img = image::open("images.jpg")
+            let img = image::open("assets/images.jpg")
                 .expect("No textures found at images.jpg!")
                 .to_rgba8();
             let (image_width, image_height) = img.dimensions();

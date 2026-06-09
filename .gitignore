@@ -1,5 +1,6 @@
 *.spv
 /target
 /renderer_cpp/.cache
+/assets/DOOM2.WAD
 compile_commands.json
 Cargo.lock
