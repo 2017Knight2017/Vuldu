@@ -1,2 +1,1 @@
-glslc shader.vert -o vert.spv
-glslc shader.frag -o frag.spv
+cd crates/renderer/renderer_cpp/shaders && glslc shader.vert -o vert.spv && glslc shader.frag -o frag.spv && cd ../../../..

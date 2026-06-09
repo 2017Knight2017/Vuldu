@@ -11,11 +11,12 @@ pub mod ffi {
         pub width: u32,
         pub height: u32,
     }
-
+    
     pub struct Vertex {
         pub pos: [f32; 3],
         pub color: [f32; 3],
         pub texture_pos: [f32; 2],
+        pub texture_id: i32,
     }
 
     pub struct UniformBufferObject {
@@ -38,7 +39,7 @@ pub mod ffi {
         fn initVulkan(self: Pin<&mut VulkanRenderer>, handles: &WindowHandles, window_raw_ptr: usize);
         fn cleanup(self: Pin<&mut VulkanRenderer>);
         unsafe fn drawFrame(self: Pin<&mut VulkanRenderer>, ubo_ptr: *const UniformBufferObject);
-        unsafe fn setTexture(self: Pin<&mut VulkanRenderer>, pixels: *const u8, width: u32, height: u32);
+        unsafe fn addTexture(self: Pin<&mut VulkanRenderer>, pixels: *const u8, width: u32, height: u32) -> i32;
         unsafe fn updateGeometry(self: Pin<&mut VulkanRenderer>, vertices: *const Vertex, vertex_count: usize, indices: *const u16, index_count: usize);
     }
 }
@@ -54,11 +55,12 @@ unsafe fn get_winit_window_size(window_raw_ptr: usize) -> ffi::WindowSize {
 }
 
 impl ffi::Vertex {
-    pub fn new(pos: glam::Vec3, color: glam::Vec3, texture_pos: glam::Vec2) -> ffi::Vertex {
+    pub fn new(pos: glam::Vec3, color: glam::Vec3, texture_pos: glam::Vec2, texture_id: i32) -> ffi::Vertex {
         ffi::Vertex {
             pos: pos.to_array(),
             color: color.to_array(),
             texture_pos: texture_pos.to_array(),
+            texture_id: texture_id,
         }
     }
 }

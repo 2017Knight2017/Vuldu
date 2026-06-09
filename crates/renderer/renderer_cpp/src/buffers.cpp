@@ -152,10 +152,10 @@ void VulkanRenderer::endSingleTimeCommands(VkCommandBuffer commandBuffer) {
     vkFreeCommandBuffers(this->device, this->commandPool, 1, &commandBuffer);
 }
 
-void VulkanRenderer::setTexture(const uint8_t* pixels_ptr, uint32_t width, uint32_t height) {
-	destroyResource(this->device, this->textureImageView, vkDestroyImageView);
-    destroyResource(this->device, this->textureImage, vkDestroyImage);
-	destroyResource(this->device, this->textureImageMemory, vkFreeMemory);
+int32_t VulkanRenderer::addTexture(const uint8_t* pixels_ptr, uint32_t width, uint32_t height) {
+	VkImage newImage;
+    VkDeviceMemory newMemory;
+    VkImageView newView;
 
 	VkDeviceSize imageSize = width * height * 4;
 
@@ -172,18 +172,25 @@ void VulkanRenderer::setTexture(const uint8_t* pixels_ptr, uint32_t width, uint3
 		memcpy(data, pixels_ptr, static_cast<size_t>(imageSize));
 	vkUnmapMemory(this->device, stagingBufferMemory);
 
-	createImage(width, height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
-
-	transitionImageLayout(this->textureImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	copyBufferToImage(stagingBuffer, this->textureImage, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
-	transitionImageLayout(this->textureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	createImage(width, height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, newImage, newMemory);
+	
+	transitionImageLayout(newImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	copyBufferToImage(stagingBuffer, newImage, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+	transitionImageLayout(newImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
     vkDestroyBuffer(this->device, stagingBuffer, nullptr);
     vkFreeMemory(this->device, stagingBufferMemory, nullptr);
 
-	this->textureImageView = createImageView(this->device, this->textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+	newView = createImageView(this->device, newImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
 
-	updateDescriptorSets();
+	textureImages.push_back(newImage);
+    textureImageMemories.push_back(newMemory);
+    textureImageViews.push_back(newView);
+
+	int32_t textureId = static_cast<int32_t>(textureImageViews.size() - 1);
+
+	updateDescriptorSetWithTexture(textureId, newView);
+	return textureId;
 }
 
 void VulkanRenderer::createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory) {

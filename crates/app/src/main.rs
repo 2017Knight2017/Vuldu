@@ -26,11 +26,17 @@ impl ApplicationHandler for App {
             let window_handle = self.window.as_ref().unwrap().window_handle().unwrap().as_raw();
             let display_handle = self.window.as_ref().unwrap().display_handle().unwrap().as_raw();
 
-            let img = image::open("assets/images.jpg")
+            let img1 = image::open("assets/images.jpg")
                 .expect("No textures found at images.jpg!")
                 .to_rgba8();
-            let (image_width, image_height) = img.dimensions();
-            let raw_img = img.as_raw();
+            let (image_width1, image_height1) = img1.dimensions();
+            let raw_img1 = img1.as_raw();
+
+            let img2 = image::open("assets/trump.jpg")
+                .expect("No textures found at trump.jpg!")
+                .to_rgba8();
+            let (image_width2, image_height2) = img2.dimensions();
+            let raw_img2 = img2.as_raw();
 
             if let (RawDisplayHandle::Wayland(d), RawWindowHandle::Wayland(w)) = (display_handle, window_handle) {
                 let handles = ffi::WindowHandles {
@@ -43,16 +49,18 @@ impl ApplicationHandler for App {
 
                     renderer.pin_mut().initVulkan(&handles, window_raw_ptr);
 
-                    let mesh_vertices = vec![
-                        ffi::Vertex::new(glam::vec3(-0.5, -0.5, 0.0), glam::vec3(1.0, 0.0, 0.0), glam::vec2(1.0, 0.0)), 
-                        ffi::Vertex::new(glam::vec3(0.5, -0.5, 0.0),  glam::vec3(0.0, 1.0, 0.0), glam::vec2(0.0, 0.0)), 
-                        ffi::Vertex::new(glam::vec3(0.5, 0.5, 0.0),  glam::vec3(0.0, 0.0, 1.0), glam::vec2(0.0, 1.0)), 
-                        ffi::Vertex::new(glam::vec3(-0.5, 0.5, 0.0), glam::vec3(1.0, 1.0, 1.0), glam::vec2(1.0, 1.0)),
+                    let texture_id1: i32 = unsafe { renderer.pin_mut().addTexture(raw_img1.as_ptr(), image_width1, image_height1) };
+                    let texture_id2: i32 = unsafe { renderer.pin_mut().addTexture(raw_img2.as_ptr(), image_width2, image_height2) };
 
-                        ffi::Vertex::new(glam::vec3(-0.5, -0.5, -0.5), glam::vec3(1.0, 0.0, 0.0), glam::vec2(1.0, 0.0)), 
-                        ffi::Vertex::new(glam::vec3(0.5, -0.5, -0.5),  glam::vec3(0.0, 1.0, 0.0), glam::vec2(0.0, 0.0)), 
-                        ffi::Vertex::new(glam::vec3(0.5, 0.5, -0.5),  glam::vec3(0.0, 0.0, 1.0), glam::vec2(0.0, 1.0)), 
-                        ffi::Vertex::new(glam::vec3(-0.5, 0.5, -0.5), glam::vec3(1.0, 1.0, 1.0), glam::vec2(1.0, 1.0)),
+                    let mesh_vertices = vec![
+                        ffi::Vertex::new(glam::vec3(-0.5, -0.5, 0.0), glam::vec3(1.0, 0.0, 0.0), glam::vec2(1.0, 0.0), texture_id2), 
+                        ffi::Vertex::new(glam::vec3(0.5, -0.5, 0.0),  glam::vec3(0.0, 1.0, 0.0), glam::vec2(0.0, 0.0), texture_id2), 
+                        ffi::Vertex::new(glam::vec3(0.5, 0.5, 0.0),  glam::vec3(0.0, 0.0, 1.0), glam::vec2(0.0, 1.0), texture_id2), 
+                        ffi::Vertex::new(glam::vec3(-0.5, 0.5, 0.0), glam::vec3(1.0, 1.0, 1.0), glam::vec2(1.0, 1.0), texture_id2), 
+                        ffi::Vertex::new(glam::vec3(-0.5, -0.5, -0.5), glam::vec3(1.0, 0.0, 0.0), glam::vec2(1.0, 0.0), texture_id1), 
+                        ffi::Vertex::new(glam::vec3(0.5, -0.5, -0.5),  glam::vec3(0.0, 1.0, 0.0), glam::vec2(0.0, 0.0), texture_id1), 
+                        ffi::Vertex::new(glam::vec3(0.5, 0.5, -0.5),  glam::vec3(0.0, 0.0, 1.0), glam::vec2(0.0, 1.0), texture_id1), 
+                        ffi::Vertex::new(glam::vec3(-0.5, 0.5, -0.5), glam::vec3(1.0, 1.0, 1.0), glam::vec2(1.0, 1.0), texture_id1), 
                     ];
 
                     let mesh_indices: Vec<u16> = Vec::from([
@@ -62,7 +70,6 @@ impl ApplicationHandler for App {
 
                     unsafe {
                         renderer.pin_mut().updateGeometry(mesh_vertices.as_ptr(), mesh_vertices.len(), mesh_indices.as_ptr(), mesh_indices.len());
-                        renderer.pin_mut().setTexture(raw_img.as_ptr(), image_width, image_height);
                     }
                 }
             }

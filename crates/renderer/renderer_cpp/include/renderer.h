@@ -52,7 +52,7 @@ public:
     void initVulkan(const WindowHandles& handles, size_t window_raw_ptr);
     void cleanup();
     void drawFrame(const UniformBufferObject* ubo_ptr);
-    void setTexture(const uint8_t* pixels_ptr, uint32_t width, uint32_t height);
+    int32_t addTexture(const uint8_t* pixels_ptr, uint32_t width, uint32_t height);
     void updateGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint16_t* indices_ptr, size_t index_count);
 private:
     size_t window_raw_ptr = 0;
@@ -94,10 +94,11 @@ private:
     VkDeviceMemory indexBufferMemory = VK_NULL_HANDLE;
     uint32_t indexCount = 0;
 
-    VkImage textureImage = VK_NULL_HANDLE;
-    VkDeviceMemory textureImageMemory = VK_NULL_HANDLE;
-    VkImageView textureImageView = VK_NULL_HANDLE;
+    std::vector<VkImage> textureImages;
+    std::vector<VkDeviceMemory> textureImageMemories;
+    std::vector<VkImageView> textureImageViews;
     VkSampler textureSampler = VK_NULL_HANDLE;
+    const uint32_t MAX_TEXTURES = 512;  // Maximal amount of textures on a level
 
     VkImage depthImage = VK_NULL_HANDLE;
     VkDeviceMemory depthImageMemory = VK_NULL_HANDLE;
@@ -123,7 +124,7 @@ private:
     void createFramebuffers();
     void createUniformBuffers();
     void createDescriptorPool();
-    void allocateDescriptorSets();
+    void createDescriptorSets();
     void createTextureSampler();
     void createCommandPool();
     void createCommandBuffers();
@@ -131,7 +132,7 @@ private:
 
     void recordCommandBuffer(uint32_t imageIndex);
     void updateUniformBuffer(const UniformBufferObject* ubo_ptr, uint32_t currentImage);
-    void updateDescriptorSets();
+    void updateDescriptorSetWithTexture(uint32_t textureId, VkImageView newView);
 
     void recreateSwapChain();
     void cleanupSwapChain();
