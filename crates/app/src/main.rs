@@ -1,4 +1,5 @@
 use renderer::ffi;
+use wad_parser::{Wad, Lump};
 use glam::{Mat4, vec3};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::application::ApplicationHandler;
@@ -11,6 +12,7 @@ use std::time::Instant;
 struct App {
     window: Option<Window>,
     renderer: Option<UniquePtr<ffi::VulkanRenderer>>,
+    wad: Wad,
     start_time: Instant,
 }
 
@@ -48,6 +50,26 @@ impl ApplicationHandler for App {
                     let window_raw_ptr = self.window.as_ref().unwrap() as *const winit::window::Window as usize;
 
                     renderer.pin_mut().initVulkan(&handles, window_raw_ptr);
+
+                    let mut all_palettes_data = vec![0.0f32; 14 * 256 * 4];
+                    
+                    let playpal_lump = self.wad.get_lump("PLAYPAL").expect("No palette!");
+
+                    for palette_idx in 0..14 {
+                        for color_idx in 0..256 {
+                            let global_color_offset = palette_idx * 256 * 3 + color_idx * 3;
+                            let target_offset = (palette_idx * 256 + color_idx) * 4;
+                        
+                            all_palettes_data[target_offset + 0] = playpal_lump[global_color_offset + 0] as f32 / 255.0;
+                            all_palettes_data[target_offset + 1] = playpal_lump[global_color_offset + 1] as f32 / 255.0;
+                            all_palettes_data[target_offset + 2] = playpal_lump[global_color_offset + 2] as f32 / 255.0;
+                            all_palettes_data[target_offset + 3] = 1.0; 
+                        }
+                    }
+
+                    unsafe {
+                        renderer.pin_mut().uploadPalettes(all_palettes_data.as_ptr());
+                    }
 
                     let texture_id1: i32 = unsafe { renderer.pin_mut().addTexture(raw_img1.as_ptr(), image_width1, image_height1) };
                     let texture_id2: i32 = unsafe { renderer.pin_mut().addTexture(raw_img2.as_ptr(), image_width2, image_height2) };
@@ -109,6 +131,7 @@ impl ApplicationHandler for App {
                     };
                 
                     unsafe { renderer.pin_mut().drawFrame(&ubo); }
+                    renderer.pin_mut().setPaletteIndex(time as u32 / 2);
 
                     if let Some(window) = &self.window {
                         window.request_redraw();
@@ -127,7 +150,9 @@ impl ApplicationHandler for App {
     }
 }
 
-fn main() {
+fn main() -> Result<(), String> {
+    let wad = Wad::open("assets/DOOM2.WAD")?;
+
     let event_loop = EventLoop::new().unwrap();
 
     event_loop.set_control_flow(ControlFlow::Poll);
@@ -135,7 +160,10 @@ fn main() {
     let mut app = App {
         window: None,
         renderer: None,
+        wad: wad,
         start_time: Instant::now(),
     };
     event_loop.run_app(&mut app).unwrap();
+
+    Ok(())
 }

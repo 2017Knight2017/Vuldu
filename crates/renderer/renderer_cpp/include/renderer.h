@@ -11,7 +11,9 @@ const bool enableValidationLayers = true;
 const bool enableValidationLayers = false;
 #endif
 
-inline const int MAX_FRAMES_IN_FLIGHT = 2;
+inline const uint32_t MAX_FRAMES_IN_FLIGHT = 2;
+inline const uint32_t MAX_TEXTURES = 512;  // Maximal amount of textures on a level
+inline const uint32_t MAX_PAL = 14;
 
 struct WindowHandles;
 struct Vertex;
@@ -54,6 +56,9 @@ public:
     void drawFrame(const UniformBufferObject* ubo_ptr);
     int32_t addTexture(const uint8_t* pixels_ptr, uint32_t width, uint32_t height);
     void updateGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint16_t* indices_ptr, size_t index_count);
+    void uploadPalettes(const float* palettes_ptr);
+    void setPaletteIndex(uint32_t idx);
+    
 private:
     size_t window_raw_ptr = 0;
     VkInstance instance = VK_NULL_HANDLE;
@@ -98,7 +103,6 @@ private:
     std::vector<VkDeviceMemory> textureImageMemories;
     std::vector<VkImageView> textureImageViews;
     VkSampler textureSampler = VK_NULL_HANDLE;
-    const uint32_t MAX_TEXTURES = 512;  // Maximal amount of textures on a level
 
     VkImage depthImage = VK_NULL_HANDLE;
     VkDeviceMemory depthImageMemory = VK_NULL_HANDLE;
@@ -108,6 +112,10 @@ private:
     std::vector<VkSemaphore> imageAvailableSemaphores;
     std::vector<VkSemaphore> renderFinishedSemaphores;
     std::vector<VkFence> inFlightFences;
+
+    uint32_t currentPaletteIndex = 0;
+    VkBuffer paletteBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory paletteBufferMemory = VK_NULL_HANDLE;
 
     
     void createInstance();

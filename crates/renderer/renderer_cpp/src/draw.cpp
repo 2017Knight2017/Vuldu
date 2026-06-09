@@ -52,6 +52,15 @@ void VulkanRenderer::recordCommandBuffer(uint32_t imageIndex) {
 		    vkCmdBindVertexBuffers(currentCommandBuffer, 0, 1, vertexBuffers, offsets);
 			vkCmdBindIndexBuffer(currentCommandBuffer, this->indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
+			vkCmdPushConstants(
+			    currentCommandBuffer,
+			    this->pipelineLayout,
+			    VK_SHADER_STAGE_FRAGMENT_BIT,
+			    64,                    
+			    sizeof(int),
+			    &this->currentPaletteIndex 
+			);
+
 			vkCmdBindDescriptorSets(currentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipelineLayout, 0, 1, &this->descriptorSets[currentFrame], 0, nullptr);
 		    vkCmdDrawIndexed(currentCommandBuffer, this->indexCount, 1, 0, 0, 0);
 		}
@@ -216,3 +225,7 @@ void VulkanRenderer::drawFrame(const UniformBufferObject* ubo_ptr) {
 
 	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
+
+void VulkanRenderer::setPaletteIndex(uint32_t idx) {
+	this->currentPaletteIndex = idx % MAX_PAL;
+};

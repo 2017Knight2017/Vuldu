@@ -103,6 +103,8 @@ void VulkanRenderer::cleanup() {
 
     destroyResource(this->device, this->descriptorPool, vkDestroyDescriptorPool);
     destroyResource(this->device, this->descriptorSetLayout, vkDestroyDescriptorSetLayout);
+    destroyResource(this->device, this->paletteBuffer, vkDestroyBuffer);
+    destroyResource(this->device, this->paletteBufferMemory, vkFreeMemory);
     destroyResource(this->device, this->indexBuffer, vkDestroyBuffer);
     destroyResource(this->device, this->indexBufferMemory, vkFreeMemory);
     destroyResource(this->device, this->vertexBuffer, vkDestroyBuffer);
