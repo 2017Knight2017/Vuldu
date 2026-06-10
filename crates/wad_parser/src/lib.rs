@@ -1,7 +1,6 @@
 use std::collections::HashMap;
-use std::fs::File;
 use std::path::Path;
-use memmap2::Mmap;
+use std::fs::read;
 
 pub struct Lump {
     pub offset: usize,
@@ -9,16 +8,13 @@ pub struct Lump {
 }
 
 pub struct Wad {
-    mmap: Mmap,
+    data: Vec<u8>,
     pub directory: HashMap<String, Lump>,
 }
 
 impl Wad {
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Self, String> {
-        let file = File::open(path).map_err(|e| e.to_string())?;
-
-        let mmap = unsafe { Mmap::map(&file).map_err(|e| e.to_string())? };
-		let data = &mmap[..];
+		let data = read(path).map_err(|e| e.to_string())?;
 
         if data.len() < 12 {
             return Err("File is to small for a WAD".to_string());
@@ -52,7 +48,7 @@ impl Wad {
             current_dir_pos += 16;
         }
 
-        Ok(Wad { mmap, directory })
+        Ok(Wad { data, directory })
     }
 
     pub fn get_lump(&self, name: &str) -> Option<&[u8]> {
@@ -60,8 +56,8 @@ impl Wad {
         let start = lump.offset;
         let end = start + lump.size;
         
-        if end <= self.mmap.len() {
-            Some(&self.mmap[start..end])
+        if end <= self.data.len() {
+            Some(&self.data[start..end])
         } else {
             None
         }
