@@ -89,6 +89,13 @@ void VulkanRenderer::transitionImageLayout(VkImage image, VkImageLayout oldLayou
     endSingleTimeCommands(commandBuffer);
 }
 
+
+//TODO: When I get around to it, it would be cool to rewrite the logic like this:
+//1. Create one large Staging Buffer for all the level's textures at once.
+//2. Open one shared commandBuffer.
+//3. In a loop, create multiple VkBufferImageCopy structures with offsets (bufferOffset) inside this huge buffer and call vkCmdCopyBufferToImage multiple times in a row.
+//4. Send the command to the GPU once at the very end.
+
 void VulkanRenderer::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
     VkCommandBuffer commandBuffer = beginSingleTimeCommands();
 
@@ -152,12 +159,12 @@ void VulkanRenderer::endSingleTimeCommands(VkCommandBuffer commandBuffer) {
     vkFreeCommandBuffers(this->device, this->commandPool, 1, &commandBuffer);
 }
 
-int32_t VulkanRenderer::addTexture(const uint8_t* pixels_ptr, uint32_t width, uint32_t height) {
+uint32_t VulkanRenderer::addTexture(const uint8_t* pixels_ptr, uint32_t width, uint32_t height) {
 	VkImage newImage;
     VkDeviceMemory newMemory;
     VkImageView newView;
 
-	VkDeviceSize imageSize = width * height * 4;
+	VkDeviceSize imageSize = width * height * 1;
 
 	if (!pixels_ptr) {
         throw std::runtime_error("pixels_ptr is empty!");
@@ -172,7 +179,7 @@ int32_t VulkanRenderer::addTexture(const uint8_t* pixels_ptr, uint32_t width, ui
 		memcpy(data, pixels_ptr, static_cast<size_t>(imageSize));
 	vkUnmapMemory(this->device, stagingBufferMemory);
 
-	createImage(width, height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, newImage, newMemory);
+	createImage(width, height, VK_FORMAT_R8_UINT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, newImage, newMemory);
 	
 	transitionImageLayout(newImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	copyBufferToImage(stagingBuffer, newImage, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
@@ -181,13 +188,13 @@ int32_t VulkanRenderer::addTexture(const uint8_t* pixels_ptr, uint32_t width, ui
     vkDestroyBuffer(this->device, stagingBuffer, nullptr);
     vkFreeMemory(this->device, stagingBufferMemory, nullptr);
 
-	newView = createImageView(this->device, newImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+	newView = createImageView(this->device, newImage, VK_FORMAT_R8_UINT, VK_IMAGE_ASPECT_COLOR_BIT);
 
 	textureImages.push_back(newImage);
     textureImageMemories.push_back(newMemory);
     textureImageViews.push_back(newView);
 
-	int32_t textureId = static_cast<int32_t>(textureImageViews.size() - 1);
+	uint32_t textureId = static_cast<uint32_t>(textureImageViews.size() - 1);
 
 	updateDescriptorSetWithTexture(textureId, newView);
 	return textureId;
@@ -302,6 +309,6 @@ void VulkanRenderer::uploadPalettes(const float* palettes_ptr) {
         descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         descriptorWrite.pBufferInfo = &bufferInfo;
 
-        vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
+        vkUpdateDescriptorSets(this->device, 1, &descriptorWrite, 0, nullptr);
     }
 }

@@ -47,17 +47,33 @@ const std::vector<const char*> validationLayers = {
     "VK_LAYER_KHRONOS_validation"
 };
 
+struct SpritePushConstants {
+    uint32_t paletteIndex;      
+    uint32_t textureId;         
+    float spriteWidth;         
+    float spriteHeight;        
+    float leftOffset;          
+    float topOffset;           
+    float padding[2];    
+    float worldPos[4];         
+};
+
 class VulkanRenderer {
 public:
     VulkanRenderer();
     ~VulkanRenderer();
     void initVulkan(const WindowHandles& handles, size_t window_raw_ptr);
     void cleanup();
-    void drawFrame(const UniformBufferObject* ubo_ptr);
-    int32_t addTexture(const uint8_t* pixels_ptr, uint32_t width, uint32_t height);
+    uint32_t addTexture(const uint8_t* pixels_ptr, uint32_t width, uint32_t height);
     void updateGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint16_t* indices_ptr, size_t index_count);
     void uploadPalettes(const float* palettes_ptr);
     void setPaletteIndex(uint32_t idx);
+    void startFrame(const UniformBufferObject* ubo_ptr);
+    void endFrame();
+    void drawSprite(uint32_t textureId, uint32_t width, uint32_t height, 
+                    int16_t leftOffset, int16_t topOffset, 
+                    float x, float y, float z);
+    void drawLevel();
     
 private:
     size_t window_raw_ptr = 0;
@@ -79,8 +95,10 @@ private:
 
     VkRenderPass renderPass = VK_NULL_HANDLE;
     VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
-    VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
-    VkPipeline graphicsPipeline = VK_NULL_HANDLE;
+    VkPipelineLayout spritePipelineLayout = VK_NULL_HANDLE;
+    VkPipeline spritePipeline = VK_NULL_HANDLE;
+    VkPipelineLayout levelPipelineLayout = VK_NULL_HANDLE;
+    VkPipeline levelPipeline = VK_NULL_HANDLE;
 
     VkCommandPool commandPool = VK_NULL_HANDLE;
     std::vector<VkCommandBuffer> commandBuffers;
@@ -109,6 +127,7 @@ private:
     VkImageView depthImageView = VK_NULL_HANDLE;
 
     uint32_t currentFrame = 0;
+    uint32_t currentImageIndex = 0;
     std::vector<VkSemaphore> imageAvailableSemaphores;
     std::vector<VkSemaphore> renderFinishedSemaphores;
     std::vector<VkFence> inFlightFences;
@@ -138,7 +157,6 @@ private:
     void createCommandBuffers();
     void createSyncObjects();
 
-    void recordCommandBuffer(uint32_t imageIndex);
     void updateUniformBuffer(const UniformBufferObject* ubo_ptr, uint32_t currentImage);
     void updateDescriptorSetWithTexture(uint32_t textureId, VkImageView newView);
 

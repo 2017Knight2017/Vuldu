@@ -1,7 +1,10 @@
+pub mod sprite;
+
 use std::collections::HashMap;
 use std::path::Path;
 use std::fs::read;
 
+#[derive(Clone, Copy)]
 pub struct Lump {
     pub offset: usize,
     pub size: usize,
@@ -51,7 +54,7 @@ impl Wad {
         Ok(Wad { data, directory })
     }
 
-    pub fn get_lump(&self, name: &str) -> Option<&[u8]> {
+    pub fn get_data_by_lumpname(&self, name: &str) -> Option<&[u8]> {
         let lump = self.directory.get(&name.to_uppercase())?;
         let start = lump.offset;
         let end = start + lump.size;

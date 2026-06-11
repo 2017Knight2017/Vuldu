@@ -109,8 +109,10 @@ void VulkanRenderer::cleanup() {
     destroyResource(this->device, this->indexBufferMemory, vkFreeMemory);
     destroyResource(this->device, this->vertexBuffer, vkDestroyBuffer);
     destroyResource(this->device, this->vertexBufferMemory, vkFreeMemory);
-    destroyResource(this->device, this->graphicsPipeline, vkDestroyPipeline);
-    destroyResource(this->device, this->pipelineLayout, vkDestroyPipelineLayout);
+    destroyResource(this->device, this->levelPipeline, vkDestroyPipeline);
+    destroyResource(this->device, this->levelPipelineLayout, vkDestroyPipelineLayout);
+    destroyResource(this->device, this->spritePipeline, vkDestroyPipeline);
+    destroyResource(this->device, this->spritePipelineLayout, vkDestroyPipelineLayout);
     destroyResource(this->device, this->renderPass, vkDestroyRenderPass);
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {

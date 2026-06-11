@@ -122,26 +122,48 @@ void VulkanRenderer::updateGeometry(const Vertex* vertices_ptr, size_t vertex_co
 }
 
 void VulkanRenderer::createGraphicsPipeline() {
-    auto vertShaderCode = readFile("crates/renderer/renderer_cpp/shaders/vert.spv");
-    auto fragShaderCode = readFile("crates/renderer/renderer_cpp/shaders/frag.spv");
+    auto spriteVertShader = readFile("crates/renderer/renderer_cpp/shaders/sprite_vert.spv");
+    auto spriteFragShader = readFile("crates/renderer/renderer_cpp/shaders/sprite_frag.spv");
 
-	VkShaderModule vertShaderModule = createShaderModule(this->device, vertShaderCode);
-    VkShaderModule fragShaderModule = createShaderModule(this->device, fragShaderCode);
+	VkShaderModule spriteVertShaderModule = createShaderModule(this->device, spriteVertShader);
+    VkShaderModule spriteFragShaderModule = createShaderModule(this->device, spriteFragShader);
 
-	VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
-	vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	vertShaderStageInfo.module = vertShaderModule;
-	vertShaderStageInfo.pName = "main";
+	VkPipelineShaderStageCreateInfo spriteVertShaderInfo{};
+	spriteVertShaderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	spriteVertShaderInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	spriteVertShaderInfo.module = spriteVertShaderModule;
+	spriteVertShaderInfo.pName = "main";
 
-	VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
-	fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	fragShaderStageInfo.module = fragShaderModule;
-	fragShaderStageInfo.pName = "main";
+	VkPipelineShaderStageCreateInfo spriteFragShaderInfo{};
+	spriteFragShaderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	spriteFragShaderInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	spriteFragShaderInfo.module = spriteFragShaderModule;
+	spriteFragShaderInfo.pName = "main";
 
-	VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+	VkPipelineShaderStageCreateInfo spriteShaderStages[] = {spriteVertShaderInfo, spriteFragShaderInfo};
 
+
+	auto levelVertShader = readFile("crates/renderer/renderer_cpp/shaders/level_vert.spv");
+    auto levelFragShader = readFile("crates/renderer/renderer_cpp/shaders/level_frag.spv");
+
+	VkShaderModule levelVertShaderModule = createShaderModule(this->device, levelVertShader);
+    VkShaderModule levelFragShaderModule = createShaderModule(this->device, levelFragShader);
+
+	VkPipelineShaderStageCreateInfo levelVertShaderInfo{};
+	levelVertShaderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	levelVertShaderInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	levelVertShaderInfo.module = levelVertShaderModule;
+	levelVertShaderInfo.pName = "main";
+
+	VkPipelineShaderStageCreateInfo levelFragShaderInfo{};
+	levelFragShaderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	levelFragShaderInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	levelFragShaderInfo.module = levelFragShaderModule;
+	levelFragShaderInfo.pName = "main";
+
+	VkPipelineShaderStageCreateInfo levelShaderStages[] = {levelVertShaderInfo, levelFragShaderInfo};
+
+	
 	std::vector<VkDynamicState> dynamicStates = {
 	    VK_DYNAMIC_STATE_VIEWPORT,
 	    VK_DYNAMIC_STATE_SCISSOR
@@ -154,13 +176,6 @@ void VulkanRenderer::createGraphicsPipeline() {
 
 	auto bindingDescription = getBindingDescription();
 	auto attributeDescriptions = getAttributeDescriptions();
-
-	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
-	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfo.vertexBindingDescriptionCount = 1;
-	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -178,7 +193,7 @@ void VulkanRenderer::createGraphicsPipeline() {
 	rasterizer.rasterizerDiscardEnable = VK_FALSE;
 	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
 	rasterizer.lineWidth = 1.0f;
-	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+	rasterizer.cullMode = VK_CULL_MODE_NONE; //VK_CULL_MODE_BACK_BIT;
 	rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
 	rasterizer.depthBiasEnable = VK_FALSE;
 	rasterizer.depthBiasConstantFactor = 0.0f; // Optional
@@ -227,48 +242,106 @@ void VulkanRenderer::createGraphicsPipeline() {
 	colorBlending.blendConstants[2] = 0.0f; // Optional
 	colorBlending.blendConstants[3] = 0.0f; // Optional
 
-	VkPushConstantRange pushConstantRange{};
-	pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; 
-	pushConstantRange.offset = 64;
-	pushConstantRange.size = sizeof(int32_t);
+	VkPipelineVertexInputStateCreateInfo spriteVertexInputInfo{};
+	spriteVertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	spriteVertexInputInfo.vertexBindingDescriptionCount = 0;
+	spriteVertexInputInfo.vertexAttributeDescriptionCount = 0;
+	spriteVertexInputInfo.pVertexBindingDescriptions = nullptr;
+	spriteVertexInputInfo.pVertexAttributeDescriptions = nullptr;
 
-	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutInfo.setLayoutCount = 1;
-	pipelineLayoutInfo.pSetLayouts = &this->descriptorSetLayout;
-	pipelineLayoutInfo.pushConstantRangeCount = 1;
-	pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
+	VkPushConstantRange spritePushConstantRange{};
+	spritePushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT; 
+	spritePushConstantRange.offset = 0;
+	spritePushConstantRange.size = sizeof(SpritePushConstants);
 
-	VkResult pipelineLayoutResult = vkCreatePipelineLayout(this->device, &pipelineLayoutInfo, nullptr, &pipelineLayout);
-	if (pipelineLayoutResult != VK_SUCCESS) {
+	VkPipelineLayoutCreateInfo spritePipelineLayoutInfo{};
+	spritePipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	spritePipelineLayoutInfo.setLayoutCount = 1;
+	spritePipelineLayoutInfo.pSetLayouts = &this->descriptorSetLayout;
+	spritePipelineLayoutInfo.pushConstantRangeCount = 1;
+	spritePipelineLayoutInfo.pPushConstantRanges = &spritePushConstantRange;
+
+	VkResult spritePipelineLayoutResult = vkCreatePipelineLayout(this->device, &spritePipelineLayoutInfo, nullptr, &spritePipelineLayout);
+	if (spritePipelineLayoutResult != VK_SUCCESS) {
 	    throw std::runtime_error("failed to create pipeline layout!");
 	}
 
-	VkGraphicsPipelineCreateInfo pipelineInfo{};
-	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	pipelineInfo.stageCount = 2;
-	pipelineInfo.pStages = shaderStages;
-	pipelineInfo.pVertexInputState = &vertexInputInfo;
-	pipelineInfo.pInputAssemblyState = &inputAssembly;
-	pipelineInfo.pViewportState = &viewportState;
-	pipelineInfo.pRasterizationState = &rasterizer;
-	pipelineInfo.pMultisampleState = &multisampling;
-	pipelineInfo.pDepthStencilState = &depthStencil;
-	pipelineInfo.pColorBlendState = &colorBlending;
-	pipelineInfo.pDynamicState = &dynamicState;
-	pipelineInfo.layout = this->pipelineLayout;
-	pipelineInfo.renderPass = this->renderPass;
-	pipelineInfo.subpass = 0;
-	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
-	pipelineInfo.basePipelineIndex = -1; // Optional
+	VkGraphicsPipelineCreateInfo spritePipelineInfo{};
+	spritePipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	spritePipelineInfo.stageCount = 2;
+	spritePipelineInfo.pStages = spriteShaderStages;
+	spritePipelineInfo.pVertexInputState = &spriteVertexInputInfo;
+	spritePipelineInfo.pInputAssemblyState = &inputAssembly;
+	spritePipelineInfo.pViewportState = &viewportState;
+	spritePipelineInfo.pRasterizationState = &rasterizer;
+	spritePipelineInfo.pMultisampleState = &multisampling;
+	spritePipelineInfo.pDepthStencilState = &depthStencil;
+	spritePipelineInfo.pColorBlendState = &colorBlending;
+	spritePipelineInfo.pDynamicState = &dynamicState;
+	spritePipelineInfo.layout = this->spritePipelineLayout;
+	spritePipelineInfo.renderPass = this->renderPass;
+	spritePipelineInfo.subpass = 0;
+	spritePipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
+	spritePipelineInfo.basePipelineIndex = -1; // Optional
 
-	VkResult pipelineResult = vkCreateGraphicsPipelines(this->device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline);
-	if (pipelineResult != VK_SUCCESS) {
+	VkResult spritePipelineResult = vkCreateGraphicsPipelines(this->device, VK_NULL_HANDLE, 1, &spritePipelineInfo, nullptr, &spritePipeline);
+	if (spritePipelineResult != VK_SUCCESS) {
     	throw std::runtime_error("failed to create graphics pipeline!");
 	}
 	
-	vkDestroyShaderModule(this->device, fragShaderModule, nullptr);
-    vkDestroyShaderModule(this->device, vertShaderModule, nullptr);
+	vkDestroyShaderModule(this->device, spriteFragShaderModule, nullptr);
+    vkDestroyShaderModule(this->device, spriteVertShaderModule, nullptr);
+
+	VkPipelineVertexInputStateCreateInfo levelVertexInputInfo{};
+	levelVertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	levelVertexInputInfo.vertexBindingDescriptionCount = 1;
+	levelVertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+	levelVertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+	levelVertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+
+	VkPushConstantRange levelPushConstantRange{};
+	levelPushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; 
+	levelPushConstantRange.offset = 0;
+	levelPushConstantRange.size = sizeof(uint32_t);
+
+	VkPipelineLayoutCreateInfo levelPipelineLayoutInfo{};
+	levelPipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	levelPipelineLayoutInfo.setLayoutCount = 1;
+	levelPipelineLayoutInfo.pSetLayouts = &this->descriptorSetLayout;
+	levelPipelineLayoutInfo.pushConstantRangeCount = 1;
+	levelPipelineLayoutInfo.pPushConstantRanges = &levelPushConstantRange;
+
+	VkResult levelPipelineLayoutResult = vkCreatePipelineLayout(this->device, &levelPipelineLayoutInfo, nullptr, &levelPipelineLayout);
+	if (levelPipelineLayoutResult != VK_SUCCESS) {
+	    throw std::runtime_error("failed to create pipeline layout!");
+	}
+
+	VkGraphicsPipelineCreateInfo levelPipelineInfo{};
+	levelPipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	levelPipelineInfo.stageCount = 2;
+	levelPipelineInfo.pStages = levelShaderStages;
+	levelPipelineInfo.pVertexInputState = &levelVertexInputInfo;
+	levelPipelineInfo.pInputAssemblyState = &inputAssembly;
+	levelPipelineInfo.pViewportState = &viewportState;
+	levelPipelineInfo.pRasterizationState = &rasterizer;
+	levelPipelineInfo.pMultisampleState = &multisampling;
+	levelPipelineInfo.pDepthStencilState = &depthStencil;
+	levelPipelineInfo.pColorBlendState = &colorBlending;
+	levelPipelineInfo.pDynamicState = &dynamicState;
+	levelPipelineInfo.layout = this->levelPipelineLayout;
+	levelPipelineInfo.renderPass = this->renderPass;
+	levelPipelineInfo.subpass = 0;
+	levelPipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
+	levelPipelineInfo.basePipelineIndex = -1; // Optional
+
+	VkResult levelPipelineResult = vkCreateGraphicsPipelines(this->device, VK_NULL_HANDLE, 1, &levelPipelineInfo, nullptr, &levelPipeline);
+	if (levelPipelineResult != VK_SUCCESS) {
+    	throw std::runtime_error("failed to create graphics pipeline!");
+	}
+	
+	vkDestroyShaderModule(this->device, levelFragShaderModule, nullptr);
+    vkDestroyShaderModule(this->device, levelVertShaderModule, nullptr);
+
 }
 
 void VulkanRenderer::createRenderPass() {
