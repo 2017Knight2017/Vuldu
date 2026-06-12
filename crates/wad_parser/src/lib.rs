@@ -3,6 +3,7 @@ pub mod sprite;
 use std::collections::HashMap;
 use std::path::Path;
 use std::fs::read;
+use std::array::TryFromSliceError;
 
 #[derive(Clone, Copy)]
 pub struct Lump {
@@ -39,8 +40,12 @@ impl Wad {
                 return Err(format!("Directory is damaged on lump {}", i));
             }
 
-            let lump_offset = u32::from_le_bytes(data[current_dir_pos..current_dir_pos+4].try_into().unwrap()) as usize;
-            let lump_size = u32::from_le_bytes(data[current_dir_pos+4..current_dir_pos+8].try_into().unwrap()) as usize;
+            let lump_offset = u32::from_le_bytes(data[current_dir_pos..current_dir_pos+4]
+                .try_into()
+                .map_err(|e: TryFromSliceError| e.to_string())?) as usize;
+            let lump_size = u32::from_le_bytes(data[current_dir_pos+4..current_dir_pos+8]
+                .try_into()
+                .map_err(|e: TryFromSliceError| e.to_string())?) as usize;
             
             let name_bytes = &data[current_dir_pos+8..current_dir_pos+16];
             let name = String::from_utf8_lossy(name_bytes)

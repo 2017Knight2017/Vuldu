@@ -4,6 +4,7 @@ pub trait Sprite {
 	fn into_raw_pixels(&self, sprite_lump: Lump) -> Option<DoomPicture>;
 }
 
+#[derive(Debug, PartialEq)]
 pub struct DoomPicture {
 	pub raw_pixels: Vec<u8>,
 	pub width: u32,
