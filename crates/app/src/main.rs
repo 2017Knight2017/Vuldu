@@ -1,7 +1,7 @@
 use renderer::ffi;
 use wad_parser::Wad;
 use wad_parser::sprite::Sprite;
-use glam::{Mat4, vec3};
+use glam::Mat4;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
@@ -63,24 +63,15 @@ impl ApplicationHandler for App {
 
                     renderer.pin_mut().initVulkan(&handles, window_raw_ptr);
 
-                    let mut all_palettes_data = vec![0.0f32; 14 * 256 * 4];
-                    
-                    let playpal_lump = self.wad.get_data_by_lumpname("PLAYPAL").expect("No palette!");
-
-                    for palette_idx in 0..14 {
-                        for color_idx in 0..256 {
-                            let global_color_offset = palette_idx * 256 * 3 + color_idx * 3;
-                            let target_offset = (palette_idx * 256 + color_idx) * 4;
-                        
-                            all_palettes_data[target_offset + 0] = playpal_lump[global_color_offset + 0] as f32 / 255.0;
-                            all_palettes_data[target_offset + 1] = playpal_lump[global_color_offset + 1] as f32 / 255.0;
-                            all_palettes_data[target_offset + 2] = playpal_lump[global_color_offset + 2] as f32 / 255.0;
-                            all_palettes_data[target_offset + 3] = 1.0; 
-                        }
-                    }
-
                     unsafe {
-                        renderer.pin_mut().uploadPalettes(all_palettes_data.as_ptr());
+                        renderer.pin_mut().uploadPalettes(self.wad
+                            .get_palettes()
+                            .expect("No PLAYPAL in the wad!")
+                            .as_ptr());
+                        renderer.pin_mut().uploadColormap(self.wad
+                            .get_data_by_lumpname("COLORMAP")
+                            .expect("No COLORMAP in the wad!")
+                            .as_ptr());
                     }
 
                     let names = ["TROOA1", "TROOB1", "TROOC1", "TROOD1"];
@@ -168,11 +159,14 @@ impl ApplicationHandler for App {
                     let frame_idx = ((time * 5.0) as usize) % 4; 
                     let current_frame = &self.textures[frame_idx];
 
+                    let light_level = time as u32 * 5 % 33;
+
                     for imp in &self.obj {
                         renderer.pin_mut().drawSprite(
                             current_frame.texture_id,
                             current_frame.width, 
                             current_frame.height,
+                            light_level,
                             current_frame.left_offset, 
                             current_frame.top_offset,
                             imp.x, imp.y, imp.z

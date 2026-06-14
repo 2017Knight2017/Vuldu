@@ -158,7 +158,7 @@ void VulkanRenderer::startFrame(const UniformBufferObject* ubo_ptr) {
 }
 
 void VulkanRenderer::drawSprite(uint32_t textureId, uint32_t width, uint32_t height, 
-                                int16_t leftOffset, int16_t topOffset, 
+                                uint32_t lightLevel, int16_t leftOffset, int16_t topOffset, 
                                 float x, float y, float z) {
     VkCommandBuffer currentCommandBuffer = this->commandBuffers[this->currentFrame];
 
@@ -175,6 +175,7 @@ void VulkanRenderer::drawSprite(uint32_t textureId, uint32_t width, uint32_t hei
     
     SpritePushConstants constants{};
     constants.paletteIndex = this->currentPaletteIndex;
+    constants.lightLevel = lightLevel;
     constants.textureId = textureId;
     constants.spriteWidth = static_cast<float>(width);
     constants.spriteHeight = static_cast<float>(height);
@@ -270,13 +271,17 @@ void VulkanRenderer::drawLevel() {
         vkCmdBindVertexBuffers(currentCommandBuffer, 0, 1, vertexBuffers, offsets);
         vkCmdBindIndexBuffer(currentCommandBuffer, this->indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
+        LevelPushConstants constants{};
+        constants.paletteIndex = this->currentPaletteIndex;
+        constants.lightLevel = 0;  // temporary
+
 		vkCmdPushConstants(
             currentCommandBuffer,
             this->levelPipelineLayout,
             VK_SHADER_STAGE_FRAGMENT_BIT,
             0,                    
             sizeof(int),
-            &this->currentPaletteIndex 
+            &constants 
         );
 
         vkCmdDrawIndexed(currentCommandBuffer, this->indexCount, 1, 0, 0, 0);

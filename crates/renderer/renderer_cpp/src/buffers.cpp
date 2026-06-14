@@ -284,7 +284,7 @@ void VulkanRenderer::uploadPalettes(const float* palettes_ptr) {
 
     createBuffer(
         bufferSize, 
-        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
         this->paletteBuffer, 
         this->paletteBufferMemory 
@@ -299,14 +299,64 @@ void VulkanRenderer::uploadPalettes(const float* palettes_ptr) {
         VkDescriptorBufferInfo bufferInfo{};
         bufferInfo.buffer = this->paletteBuffer;
         bufferInfo.offset = 0;
-        bufferInfo.range = 57344;
+        bufferInfo.range = bufferSize;
 
         VkWriteDescriptorSet descriptorWrite{};
         descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrite.dstSet = this->descriptorSets[i];
         descriptorWrite.dstBinding = 2;
         descriptorWrite.descriptorCount = 1;
-        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptorWrite.pBufferInfo = &bufferInfo;
+
+        vkUpdateDescriptorSets(this->device, 1, &descriptorWrite, 0, nullptr);
+    }
+}
+
+void VulkanRenderer::uploadColormap(const uint8_t* colormap_ptr) {
+    VkDeviceSize bufferSize = MAX_LIGHTLEVEL * 256 * sizeof(uint8_t);
+
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    
+    createBuffer(
+        bufferSize, 
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
+        stagingBuffer, 
+        stagingBufferMemory
+    );
+
+    void* data;
+    vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, colormap_ptr, bufferSize);
+    vkUnmapMemory(this->device, stagingBufferMemory);
+
+    createBuffer(
+        bufferSize, 
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
+        this->colormapBuffer, 
+        this->colormapBufferMemory 
+    );
+
+    copyBuffer(stagingBuffer, this->colormapBuffer, bufferSize);
+
+    vkDestroyBuffer(this->device, stagingBuffer, nullptr);
+    vkFreeMemory(this->device, stagingBufferMemory, nullptr);
+
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = this->colormapBuffer;
+        bufferInfo.offset = 0;
+        bufferInfo.range = bufferSize;
+
+        VkWriteDescriptorSet descriptorWrite{};
+        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite.dstSet = this->descriptorSets[i];
+        descriptorWrite.dstBinding = 3;
+        descriptorWrite.descriptorCount = 1;
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         descriptorWrite.pBufferInfo = &bufferInfo;
 
         vkUpdateDescriptorSets(this->device, 1, &descriptorWrite, 0, nullptr);

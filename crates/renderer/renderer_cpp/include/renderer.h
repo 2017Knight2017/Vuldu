@@ -14,6 +14,7 @@ const bool enableValidationLayers = false;
 inline const uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 inline const uint32_t MAX_TEXTURES = 512;  // Maximal amount of textures on a level
 inline const uint32_t MAX_PAL = 14;
+inline const uint32_t MAX_LIGHTLEVEL = 32;
 
 struct WindowHandles;
 struct Vertex;
@@ -47,14 +48,20 @@ const std::vector<const char*> validationLayers = {
     "VK_LAYER_KHRONOS_validation"
 };
 
+struct LevelPushConstants {
+    uint32_t paletteIndex;
+    uint32_t lightLevel;     
+};
+
 struct SpritePushConstants {
-    uint32_t paletteIndex;      
+    uint32_t paletteIndex;
+    uint32_t lightLevel;      
     uint32_t textureId;         
     float spriteWidth;         
     float spriteHeight;        
     float leftOffset;          
     float topOffset;           
-    float padding[2];    
+    float padding;    
     float worldPos[4];         
 };
 
@@ -67,11 +74,12 @@ public:
     uint32_t addTexture(const uint8_t* pixels_ptr, uint32_t width, uint32_t height);
     void updateGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint16_t* indices_ptr, size_t index_count);
     void uploadPalettes(const float* palettes_ptr);
+    void uploadColormap(const uint8_t* colormap_ptr);
     void setPaletteIndex(uint32_t idx);
     void startFrame(const UniformBufferObject* ubo_ptr);
     void endFrame();
     void drawSprite(uint32_t textureId, uint32_t width, uint32_t height, 
-                    int16_t leftOffset, int16_t topOffset, 
+                    uint32_t lightLevel, int16_t leftOffset, int16_t topOffset, 
                     float x, float y, float z);
     void drawLevel();
     
@@ -136,6 +144,8 @@ private:
     VkBuffer paletteBuffer = VK_NULL_HANDLE;
     VkDeviceMemory paletteBufferMemory = VK_NULL_HANDLE;
 
+    VkBuffer colormapBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory colormapBufferMemory = VK_NULL_HANDLE;
     
     void createInstance();
     void setupDebugMessenger();

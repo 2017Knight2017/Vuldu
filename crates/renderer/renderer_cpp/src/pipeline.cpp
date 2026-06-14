@@ -302,7 +302,7 @@ void VulkanRenderer::createGraphicsPipeline() {
 	VkPushConstantRange levelPushConstantRange{};
 	levelPushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; 
 	levelPushConstantRange.offset = 0;
-	levelPushConstantRange.size = sizeof(uint32_t);
+	levelPushConstantRange.size = sizeof(LevelPushConstants);
 
 	VkPipelineLayoutCreateInfo levelPipelineLayoutInfo{};
 	levelPipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;

@@ -41,12 +41,13 @@ pub mod ffi {
         unsafe fn startFrame(self: Pin<&mut VulkanRenderer>, ubo_ptr: *const UniformBufferObject);
         fn endFrame(self: Pin<&mut VulkanRenderer>);
         fn drawSprite(self: Pin<&mut VulkanRenderer>, textureId: u32, width: u32, height: u32, 
-                      leftOffset: i16, topOffset: i16, 
+                      lightLevel: u32, leftOffset: i16, topOffset: i16, 
                       x: f32, y: f32, z: f32);
         fn drawLevel(self: Pin<&mut VulkanRenderer>);
         unsafe fn addTexture(self: Pin<&mut VulkanRenderer>, pixels: *const u8, width: u32, height: u32) -> u32;
         unsafe fn updateGeometry(self: Pin<&mut VulkanRenderer>, vertices: *const Vertex, vertex_count: usize, indices: *const u16, index_count: usize);
         unsafe fn uploadPalettes(self: Pin<&mut VulkanRenderer>, palettes_ptr: *const f32);
+        unsafe fn uploadColormap(self: Pin<&mut VulkanRenderer>, colormap_ptr: *const u8);
         fn setPaletteIndex(self: Pin<&mut VulkanRenderer>, idx: u32);
     }
 }

@@ -70,4 +70,24 @@ impl Wad {
             None
         }
     }
+
+    pub fn get_palettes(&self) -> Option<Vec<f32>> {
+        let mut all_palettes_data = vec![0.0f32; 14 * 256 * 4];
+                    
+        let playpal_lump = self.get_data_by_lumpname("PLAYPAL").expect("No palette!");
+
+        for palette_idx in 0..14 {
+            for color_idx in 0..256 {
+                let global_color_offset = palette_idx * 256 * 3 + color_idx * 3;
+                let target_offset = (palette_idx * 256 + color_idx) * 4;
+            
+                all_palettes_data[target_offset + 0] = playpal_lump[global_color_offset + 0] as f32 / 255.0;
+                all_palettes_data[target_offset + 1] = playpal_lump[global_color_offset + 1] as f32 / 255.0;
+                all_palettes_data[target_offset + 2] = playpal_lump[global_color_offset + 2] as f32 / 255.0;
+                all_palettes_data[target_offset + 3] = 1.0; 
+            }
+        }
+
+        Some(all_palettes_data)
+    }
 }

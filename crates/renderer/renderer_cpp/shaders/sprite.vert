@@ -7,19 +7,17 @@ layout(binding = 0) uniform UniformBufferObject {
 } ubo;
 
 layout(location = 0) out vec2 fragTexCoord;
-layout(location = 1) flat out int fragTexId;
+layout(location = 1) flat out uint fragTexId;
 
 layout(push_constant) uniform SpriteConstants {
-    int paletteIndex;      // offset = 0
-    int textureId;         // offset = 4
-    float spriteWidth;     // offset = 8
-    float spriteHeight;    // offset = 12
-    float leftOffset;      // offset = 16
-    float topOffset;       // offset = 20
-    
-    // For alignment purposes
-    float padding[2];      // offset = 24
-    
+    uint paletteIndex;      // offset = 0
+    uint lightLevel;        // offset = 4
+    uint textureId;         // offset = 8
+    float spriteWidth;     // offset = 12
+    float spriteHeight;    // offset = 16
+    float leftOffset;      // offset = 20
+    float topOffset;       // offset = 24
+    float padding;         // offset = 28
     vec4 spriteWorldPos;   // offset = 32
 } sc;
 

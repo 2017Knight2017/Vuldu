@@ -18,16 +18,29 @@ void VulkanRenderer::createDescriptorSetLayout() {
 
     VkDescriptorSetLayoutBinding paletteLayoutBinding{};
     paletteLayoutBinding.binding = 2;
-    paletteLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    paletteLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     paletteLayoutBinding.descriptorCount = 1;
     paletteLayoutBinding.pImmutableSamplers = nullptr;
     paletteLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-    std::array<VkDescriptorSetLayoutBinding, 3> bindings = {uboLayoutBinding, samplerLayoutBinding, paletteLayoutBinding};
+    VkDescriptorSetLayoutBinding colormapLayoutBinding{};
+    colormapLayoutBinding.binding = 3;
+    colormapLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    colormapLayoutBinding.descriptorCount = 1;
+    colormapLayoutBinding.pImmutableSamplers = nullptr;
+    colormapLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-    std::array<VkDescriptorBindingFlags, 3> bindingFlags = {
+    std::array<VkDescriptorSetLayoutBinding, 4> bindings = {
+        uboLayoutBinding,
+        samplerLayoutBinding, 
+        paletteLayoutBinding, 
+        colormapLayoutBinding
+    };
+
+    std::array<VkDescriptorBindingFlags, 4> bindingFlags = {
         0,
         VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
+        0,
         0,
     };
 
@@ -64,13 +77,15 @@ void VulkanRenderer::createUniformBuffers() {
 }
 
 void VulkanRenderer::createDescriptorPool() {
-	std::array<VkDescriptorPoolSize, 3> poolSizes{};
+	std::array<VkDescriptorPoolSize, 4> poolSizes{};
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	poolSizes[0].descriptorCount = MAX_FRAMES_IN_FLIGHT;
 	poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	poolSizes[1].descriptorCount = MAX_FRAMES_IN_FLIGHT * MAX_TEXTURES;
-    poolSizes[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    poolSizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 	poolSizes[2].descriptorCount = MAX_FRAMES_IN_FLIGHT;
+    poolSizes[3].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	poolSizes[3].descriptorCount = MAX_FRAMES_IN_FLIGHT;
 	
 	VkDescriptorPoolCreateInfo poolInfo{};
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
