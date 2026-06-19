@@ -1,6 +1,6 @@
 #include <cstring>
 #include "renderer.h" 
-#include "renderer/src/lib.rs.h"
+#include "renderer/src/bridge.rs.h"
 
 void VulkanRenderer::createFramebuffers() {
 	this->swapChainFramebuffers.resize(this->swapChainImageViews.size());
@@ -273,7 +273,6 @@ void VulkanRenderer::drawLevel() {
 
         LevelPushConstants constants{};
         constants.paletteIndex = this->currentPaletteIndex;
-        constants.lightLevel = 0;  // temporary
 
 		vkCmdPushConstants(
             currentCommandBuffer,

@@ -34,7 +34,7 @@ void main() {
     float scale = 1.0 / 64.0; 
     
     float xOffset = (inPosition.x * sc.spriteWidth) - sc.leftOffset;
-    float yOffset = ((1.0 - inPosition.y) * sc.spriteHeight) - sc.topOffset;
+    float yOffset = (1.0 - inPosition.y) * sc.spriteHeight - sc.topOffset;
 
     xOffset *= scale;
     yOffset *= scale;

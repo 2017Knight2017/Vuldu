@@ -126,8 +126,17 @@ void VulkanRenderer::createLogicalDevice() {
         queueCreateInfos.push_back(queueCreateInfo);
     }
 
+    //VkPhysicalDeviceDescriptorIndexingFeatures indexingFeatures{};
+    //indexingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+    //indexingFeatures.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
+    //indexingFeatures.descriptorBindingPartiallyBound = VK_TRUE;
+    //indexingFeatures.descriptorBindingVariableDescriptorCount = VK_TRUE;
+    //indexingFeatures.runtimeDescriptorArray = VK_TRUE;
+
     VkPhysicalDeviceVulkan12Features vulkan12Features{};
     vulkan12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+    //vulkan12Features.pNext = &indexingFeatures;
+    vulkan12Features.descriptorBindingVariableDescriptorCount = VK_TRUE;
     vulkan12Features.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
     vulkan12Features.descriptorBindingPartiallyBound = VK_TRUE;
     vulkan12Features.runtimeDescriptorArray = VK_TRUE;
@@ -142,9 +151,9 @@ void VulkanRenderer::createLogicalDevice() {
 
     VkDeviceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    createInfo.pNext = &deviceFeatures2;
     createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
     createInfo.pQueueCreateInfos = queueCreateInfos.data();
-    createInfo.pNext = &deviceFeatures2;
     createInfo.pEnabledFeatures = nullptr;
     createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
     createInfo.ppEnabledExtensionNames = deviceExtensions.data();

@@ -1,5 +1,5 @@
 fn main() {
-    let mut build = cxx_build::bridge("src/lib.rs");
+    let mut build = cxx_build::bridge("src/bridge.rs");
     
     build.file("renderer_cpp/src/renderer.cpp")
         .file("renderer_cpp/src/instance.cpp")
@@ -38,5 +38,5 @@ fn main() {
     println!("cargo:rustc-link-lib=vulkan");
     println!("cargo:rerun-if-changed=renderer_cpp/src");
     println!("cargo:rerun-if-changed=renderer_cpp/include");
-    println!("cargo:rerun-if-changed=src/FFI.rs");
+    println!("cargo:rerun-if-changed=src/bridge.rs");
 }

@@ -2,5 +2,8 @@
 /target
 /renderer_cpp/.cache
 /assets/DOOM2.WAD
+/.vscode
+/cache
 compile_commands.json
 Cargo.lock
+doomdata.h

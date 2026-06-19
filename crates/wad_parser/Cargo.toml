@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-glam = "0.33.0"
+bytemuck = { version = "1.25.0", features = ["derive"] }
 image = "0.25.10"
-memmap2 = "0.9.10"
 rayon = "1.12.0"
+renderer = { path = "../renderer" }

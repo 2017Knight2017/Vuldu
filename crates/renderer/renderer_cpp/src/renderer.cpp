@@ -31,8 +31,8 @@ void VulkanRenderer::initVulkan(const WindowHandles& handles, size_t window_raw_
     createDepthResources();
     createFramebuffers();
     createTextureSampler();
-    uint8_t dummyPixel[] = { 255, 0, 255, 255 };
-    addTexture(dummyPixel, 1, 1);
+    //uint8_t dummyPixel[] = { 255, 0, 255, 255 };
+    //addTexture(dummyPixel, 1, 1);
     createCommandBuffers();
     createSyncObjects();
 }
@@ -85,13 +85,19 @@ void VulkanRenderer::cleanup() {
 
     destroyResource(this->device, this->textureSampler, vkDestroySampler);
 
-    for (size_t i = 0; i < this->textureImages.size(); i++) {
+    for (size_t i = 0; i < this->textureImageViews.size(); i++) {
         vkDestroyImageView(this->device, this->textureImageViews[i], nullptr);
-        vkDestroyImage(this->device, this->textureImages[i], nullptr);
-        vkFreeMemory(this->device, this->textureImageMemories[i], nullptr);
     }
     this->textureImageViews.clear();
+
+    for (size_t i = 0; i < this->textureImages.size(); i++) {
+        vkDestroyImage(this->device, this->textureImages[i], nullptr);
+    }
     this->textureImages.clear();
+
+    for (size_t i = 0; i < this->textureImageMemories.size(); i++) {
+        vkFreeMemory(this->device, this->textureImageMemories[i], nullptr);
+    }
     this->textureImageMemories.clear();
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
@@ -122,7 +128,7 @@ void VulkanRenderer::cleanup() {
     }
     this->inFlightFences.clear();
     
-    for (size_t i = 0; i < this->swapChainImages.size(); i++) {
+    for (size_t i = 0; i < this->renderFinishedSemaphores.size(); i++) {
         vkDestroySemaphore(this->device, this->renderFinishedSemaphores[i], nullptr);
         vkDestroySemaphore(this->device, this->imageAvailableSemaphores[i], nullptr);
     }

@@ -1,4 +1,4 @@
-use wad_parser::{*, sprite::*};
+use wad_parser::*;
 
 
 #[cfg(test)]
@@ -41,7 +41,7 @@ mod tests {
 			.get("HEADA1")
     		.expect("Lump HEADA1 not found in WAD directory");
 		
-		let picture = parsed_file.into_raw_pixels(*valid_picture_lump);
+		let picture = parsed_file.decode_column_picture(*valid_picture_lump);
 		assert!(picture.is_some());
 
 		let unwrapped_picture = picture.unwrap();

@@ -12,13 +12,14 @@ const bool enableValidationLayers = false;
 #endif
 
 inline const uint32_t MAX_FRAMES_IN_FLIGHT = 2;
-inline const uint32_t MAX_TEXTURES = 512;  // Maximal amount of textures on a level
+inline const uint32_t MAX_TEXTURES = 2048;  // Maximal amount of textures on a level
 inline const uint32_t MAX_PAL = 14;
 inline const uint32_t MAX_LIGHTLEVEL = 32;
 
 struct WindowHandles;
 struct Vertex;
 struct UniformBufferObject;
+struct TextureDescriptor;
 
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily;
@@ -48,9 +49,14 @@ const std::vector<const char*> validationLayers = {
     "VK_LAYER_KHRONOS_validation"
 };
 
+struct Texture {
+    VkImage image;
+    VkDeviceMemory memory;
+    VkImageView view;
+};
+
 struct LevelPushConstants {
-    uint32_t paletteIndex;
-    uint32_t lightLevel;     
+    uint32_t paletteIndex;   
 };
 
 struct SpritePushConstants {
@@ -75,6 +81,7 @@ public:
     void updateGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint16_t* indices_ptr, size_t index_count);
     void uploadPalettes(const float* palettes_ptr);
     void uploadColormap(const uint8_t* colormap_ptr);
+    void uploadTextureArray(const TextureDescriptor* descriptors_ptr, size_t descriptor_count, const uint8_t* all_pixels_ptr, size_t all_pixels_count);
     void setPaletteIndex(uint32_t idx);
     void startFrame(const UniformBufferObject* ubo_ptr);
     void endFrame();

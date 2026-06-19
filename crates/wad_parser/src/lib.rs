@@ -1,16 +1,18 @@
-pub mod sprite;
+pub mod map;
+pub mod textures;
 
 use std::collections::HashMap;
 use std::path::Path;
 use std::fs::read;
 use std::array::TryFromSliceError;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Lump {
     pub offset: usize,
     pub size: usize,
 }
 
+#[derive(Debug)] 
 pub struct Wad {
     data: Vec<u8>,
     pub directory: HashMap<String, Lump>,
@@ -35,9 +37,9 @@ impl Wad {
         let mut directory = HashMap::new();
         let mut current_dir_pos = dir_offset;
 
-        for i in 0..num_lumps {
+        while current_dir_pos < dir_offset + num_lumps * 16 {
             if current_dir_pos + 16 > data.len() {
-                return Err(format!("Directory is damaged on lump {}", i));
+                return Err(format!("Directory is damaged on lump {}", current_dir_pos / 16));
             }
 
             let lump_offset = u32::from_le_bytes(data[current_dir_pos..current_dir_pos+4]
@@ -52,8 +54,30 @@ impl Wad {
                 .trim_matches('\0')
                 .to_uppercase();
 
-            directory.insert(name, Lump { offset: lump_offset, size: lump_size });
             current_dir_pos += 16;
+
+            if &name[0..3] == "MAP" || (&name[0..1] == "E" && &name[2..3] == "M") {
+                for _ in 0..10 {
+                    let maplump_offset = u32::from_le_bytes(data[current_dir_pos..current_dir_pos+4]
+                        .try_into()
+                        .map_err(|e: TryFromSliceError| e.to_string())?) as usize;
+                    let maplump_size = u32::from_le_bytes(data[current_dir_pos+4..current_dir_pos+8]
+                        .try_into()
+                        .map_err(|e: TryFromSliceError| e.to_string())?) as usize;
+                    
+                    let maplump_name_bytes = &data[current_dir_pos+8..current_dir_pos+16];
+                    let maplump_name = String::from_utf8_lossy(maplump_name_bytes)
+                        .trim_matches('\0')
+                        .to_uppercase();
+
+                    directory.insert(maplump_name + "_" + &name, Lump { offset: maplump_offset, size: maplump_size });
+
+                    current_dir_pos += 16;
+                }
+            } else {
+                directory.insert(name, Lump { offset: lump_offset, size: lump_size });
+            }
+
         }
 
         Ok(Wad { data, directory })

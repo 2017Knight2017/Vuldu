@@ -1,74 +1,102 @@
-use glam;
+mod bridge; 
 
-#[cxx::bridge]
-pub mod ffi {
-    struct WindowHandles {
-        display_ptr: usize, 
-        window_ptr: usize, 
-    }
+pub use bridge::ffi::{WindowHandles, WindowSize, Vertex, UniformBufferObject, TextureDescriptor};
+use bridge::ffi::{VulkanRenderer, createRenderer};
+use std::pin::Pin;
+use cxx::UniquePtr;
 
-    pub struct WindowSize {
-        pub width: u32,
-        pub height: u32,
-    }
-    
-    pub struct Vertex {
-        pub pos: [f32; 3],
-        pub color: [f32; 3],
-        pub texture_pos: [f32; 2],
-        pub texture_id: u32,
-    }
-
-    pub struct UniformBufferObject {
-        pub model: [f32; 16],
-        pub view: [f32; 16],
-        pub proj: [f32; 16],
-    }
-
-    extern "Rust" {
-        unsafe fn get_winit_window_size(window_raw_ptr: usize) -> WindowSize;
-    }
-
-    unsafe extern "C++" {
-        include!("renderer.h");
-        include!("utils.h");
-
-        type VulkanRenderer;
-
-        fn createRenderer() -> UniquePtr<VulkanRenderer>;
-        fn initVulkan(self: Pin<&mut VulkanRenderer>, handles: &WindowHandles, window_raw_ptr: usize);
-        fn cleanup(self: Pin<&mut VulkanRenderer>);
-        unsafe fn startFrame(self: Pin<&mut VulkanRenderer>, ubo_ptr: *const UniformBufferObject);
-        fn endFrame(self: Pin<&mut VulkanRenderer>);
-        fn drawSprite(self: Pin<&mut VulkanRenderer>, textureId: u32, width: u32, height: u32, 
-                      lightLevel: u32, leftOffset: i16, topOffset: i16, 
-                      x: f32, y: f32, z: f32);
-        fn drawLevel(self: Pin<&mut VulkanRenderer>);
-        unsafe fn addTexture(self: Pin<&mut VulkanRenderer>, pixels: *const u8, width: u32, height: u32) -> u32;
-        unsafe fn updateGeometry(self: Pin<&mut VulkanRenderer>, vertices: *const Vertex, vertex_count: usize, indices: *const u16, index_count: usize);
-        unsafe fn uploadPalettes(self: Pin<&mut VulkanRenderer>, palettes_ptr: *const f32);
-        unsafe fn uploadColormap(self: Pin<&mut VulkanRenderer>, colormap_ptr: *const u8);
-        fn setPaletteIndex(self: Pin<&mut VulkanRenderer>, idx: u32);
-    }
+pub struct SafeRenderer {
+    renderer: UniquePtr<VulkanRenderer>,
 }
 
-unsafe fn get_winit_window_size(window_raw_ptr: usize) -> ffi::WindowSize {
-    let window_ref = unsafe { &*(window_raw_ptr as *const winit::window::Window) };
-    
-    let size = window_ref.inner_size();
-    ffi::WindowSize {
-        width: size.width,
-        height: size.height,
+impl SafeRenderer {
+    pub fn new() -> Self {
+        Self {
+            renderer: createRenderer(),
+        }
     }
-}
 
-impl ffi::Vertex {
-    pub fn new(pos: glam::Vec3, color: glam::Vec3, texture_pos: glam::Vec2, texture_id: u32) -> ffi::Vertex {
-        ffi::Vertex {
-            pos: pos.to_array(),
-            color: color.to_array(),
-            texture_pos: texture_pos.to_array(),
-            texture_id: texture_id,
+    fn pin_mut(&mut self) -> Pin<&mut VulkanRenderer> {
+        self.renderer.pin_mut()
+    }
+
+    pub fn init(&mut self, handles: &WindowHandles, window_raw_ptr: usize) {
+        self.pin_mut().initVulkan(handles, window_raw_ptr);
+    }
+
+    pub fn shutdown(&mut self) {
+        self.pin_mut().cleanup();
+    }
+
+    pub fn upload_palettes(&mut self, palettes: &[f32]) {
+        unsafe {
+            self.pin_mut().uploadPalettes(palettes.as_ptr());
+        }
+    }
+
+    pub fn upload_colormap(&mut self, colormap: &[u8]) {
+        unsafe {
+            self.pin_mut().uploadColormap(colormap.as_ptr());
+        }
+    }
+
+    pub fn set_palette_index(&mut self, idx: u32) {
+        self.pin_mut().setPaletteIndex(idx);
+    }
+
+    pub fn add_texture(&mut self, pixels: &[u8], width: u32, height: u32) -> u32 {
+        unsafe {
+            self.pin_mut().addTexture(pixels.as_ptr(), width, height)
+        }
+    }
+
+    pub fn update_geometry(&mut self, vertices: &[Vertex], indices: &[u16]) {
+        unsafe {
+            self.pin_mut().updateGeometry(
+                vertices.as_ptr(),
+                vertices.len(),
+                indices.as_ptr(),
+                indices.len(),
+            );
+        }
+    }
+
+    pub fn start_frame(&mut self, ubo: &UniformBufferObject) {
+        unsafe {
+            self.pin_mut().startFrame(ubo as *const UniformBufferObject);
+        }
+    }
+
+    pub fn end_frame(&mut self) {
+        self.pin_mut().endFrame();
+    }
+
+    pub fn draw_level(&mut self) {
+        self.pin_mut().drawLevel();
+    }
+
+    pub fn draw_sprite(
+        &mut self, 
+        texture_id: u32, width: u32, height: u32, 
+        light_level: u32, left_offset: i16, top_offset: i16, 
+        x: f32, y: f32, z: f32
+    ) {
+        self.pin_mut().drawSprite(
+            texture_id, width, height, 
+            light_level, left_offset, top_offset, 
+            x, y, z
+        );
+    }
+
+    pub fn upload_texture_array(
+        &mut self, 
+        descriptors: &[TextureDescriptor], 
+        descriptor_count: usize, 
+        all_pixels: &[u8], 
+        all_pixels_count: usize
+    ) {
+        unsafe {
+            self.pin_mut().uploadTextureArray(descriptors.as_ptr(), descriptor_count, all_pixels.as_ptr(), all_pixels_count);
         }
     }
 }

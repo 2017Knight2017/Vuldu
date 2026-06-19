@@ -2,15 +2,15 @@
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_EXT_shader_8bit_storage : require
 
-layout(binding = 1) uniform usampler2D texSamplers[512];
-
-layout(binding = 2) readonly buffer PaletteBuffer {
+layout(binding = 1) readonly buffer PaletteBuffer {
     vec4 colors[3584]; 
 } pal;
 
-layout(binding = 3) readonly buffer ColormapBuffer {
+layout(binding = 2) readonly buffer ColormapBuffer {
     uint8_t colors[8448]; 
 } colormap;
+
+layout(binding = 3) uniform sampler2D texSamplers[];
 
 layout(push_constant) uniform SpriteConstants {
     uint paletteIndex;      // offset = 0
@@ -30,7 +30,8 @@ layout(location = 1) flat in uint fragTexId;
 layout(location = 0) out vec4 outColor;
 
 void main() {
-    uint colorIndex = texture(texSamplers[nonuniformEXT(fragTexId)], fragTexCoord).r;
+    float rawColor = texture(texSamplers[nonuniformEXT(fragTexId)], fragTexCoord).r;
+    uint colorIndex = uint(rawColor * 255.0);
     
     if (colorIndex == 255) {
         discard;

@@ -1,7 +1,7 @@
 #include <cstring>
 #include <vulkan/vulkan_core.h>
 #include "renderer.h"
-#include "renderer/src/lib.rs.h"
+#include "renderer/src/bridge.rs.h"
 
 bool VulkanRenderer::checkValidationLayerSupport() {
     uint32_t layerCount;

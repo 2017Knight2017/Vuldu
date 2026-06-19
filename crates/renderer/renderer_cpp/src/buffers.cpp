@@ -1,5 +1,7 @@
 #include <cstring>
+#include <iostream>
 #include "renderer.h"
+#include "renderer/src/bridge.rs.h"
 #include "utils.h"
 
 void VulkanRenderer::createBuffer(VkDeviceSize bufferSize, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory) {
@@ -166,7 +168,7 @@ uint32_t VulkanRenderer::addTexture(const uint8_t* pixels_ptr, uint32_t width, u
 
 	VkDeviceSize imageSize = width * height * 1;
 
-	if (!pixels_ptr) {
+	if (pixels_ptr == nullptr) {
         throw std::runtime_error("pixels_ptr is empty!");
     }
 
@@ -198,6 +200,102 @@ uint32_t VulkanRenderer::addTexture(const uint8_t* pixels_ptr, uint32_t width, u
 
 	updateDescriptorSetWithTexture(textureId, newView);
 	return textureId;
+}
+
+void VulkanRenderer::uploadTextureArray(const TextureDescriptor* descriptors_ptr, size_t descriptor_count, const uint8_t* all_pixels_ptr, size_t all_pixels_count) {
+    if (descriptors_ptr == nullptr) {
+        throw std::runtime_error("descriptors_ptr is empty!");
+    }
+    if (all_pixels_ptr == nullptr) {
+        throw std::runtime_error("all_pixels_ptr is empty!");
+    }
+    std::vector<TextureDescriptor> descriptors(descriptors_ptr, descriptors_ptr + descriptor_count);
+
+    VkBuffer pixelStagingBuffer;
+    VkDeviceMemory pixelStagingBufferMemory;
+    createBuffer(all_pixels_count, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
+                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
+                 pixelStagingBuffer, pixelStagingBufferMemory);
+
+    void* pixelsData;
+    vkMapMemory(this->device, pixelStagingBufferMemory, 0, all_pixels_count, 0, &pixelsData);
+        memcpy(pixelsData, all_pixels_ptr, all_pixels_count);
+    vkUnmapMemory(this->device, pixelStagingBufferMemory);
+
+    this->textureImages.resize(descriptor_count);
+    this->textureImageViews.resize(descriptor_count);
+    this->textureImageMemories.resize(descriptor_count);
+
+    for (size_t i = 0; i < descriptor_count; i++) {
+        const auto& desc = descriptors[i];
+        
+        createImage(desc.width, desc.height, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
+                    VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
+                    this->textureImages[i], this->textureImageMemories[i]);
+
+        transitionImageLayout(this->textureImages[i], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+        VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+        
+        VkBufferImageCopy region{};
+        region.bufferOffset = desc.pixel_offset;
+        region.bufferRowLength = 0;
+        region.bufferImageHeight = 0;
+        region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        region.imageSubresource.mipLevel = 0;
+        region.imageSubresource.baseArrayLayer = 0;
+        region.imageSubresource.layerCount = 1;
+        region.imageOffset = {0, 0, 0};
+        region.imageExtent = { desc.width, desc.height, 1 };
+
+        vkCmdCopyBufferToImage(commandBuffer, pixelStagingBuffer, this->textureImages[i], 
+                               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+        
+        endSingleTimeCommands(commandBuffer);
+
+        transitionImageLayout(this->textureImages[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+        VkImageViewCreateInfo viewInfo{};
+        viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        viewInfo.image = this->textureImages[i];
+        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+        viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        viewInfo.subresourceRange.baseMipLevel = 0;
+        viewInfo.subresourceRange.levelCount = 1;
+        viewInfo.subresourceRange.baseArrayLayer = 0;
+        viewInfo.subresourceRange.layerCount = 1;
+
+        if (vkCreateImageView(this->device, &viewInfo, nullptr, &this->textureImageViews[i]) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create texture image view!");
+        }
+    }
+
+    vkDestroyBuffer(this->device, pixelStagingBuffer, nullptr);
+    vkFreeMemory(this->device, pixelStagingBufferMemory, nullptr);
+
+    std::vector<VkDescriptorImageInfo> imageInfos(descriptor_count);
+    for (size_t i = 0; i < descriptor_count; i++) {
+        imageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageInfos[i].imageView = this->textureImageViews[i];
+        imageInfos[i].sampler = this->textureSampler;
+    }
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        VkWriteDescriptorSet descriptorWrite{};
+        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite.dstSet = this->descriptorSets[i];
+        descriptorWrite.dstBinding = 3;
+        descriptorWrite.dstArrayElement = 0;
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrite.descriptorCount = static_cast<uint32_t>(descriptors.size());
+        descriptorWrite.pImageInfo = imageInfos.data();
+
+        vkUpdateDescriptorSets(this->device, 1, &descriptorWrite, 0, nullptr);
+    }
+    
+    std::cout << "Successfully bound " << descriptor_count << " textures to Bindless Descriptor Set!" << std::endl;
 }
 
 void VulkanRenderer::createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory) {
@@ -304,7 +402,7 @@ void VulkanRenderer::uploadPalettes(const float* palettes_ptr) {
         VkWriteDescriptorSet descriptorWrite{};
         descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrite.dstSet = this->descriptorSets[i];
-        descriptorWrite.dstBinding = 2;
+        descriptorWrite.dstBinding = 1;
         descriptorWrite.descriptorCount = 1;
         descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         descriptorWrite.pBufferInfo = &bufferInfo;
@@ -354,7 +452,7 @@ void VulkanRenderer::uploadColormap(const uint8_t* colormap_ptr) {
         VkWriteDescriptorSet descriptorWrite{};
         descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrite.dstSet = this->descriptorSets[i];
-        descriptorWrite.dstBinding = 3;
+        descriptorWrite.dstBinding = 2;
         descriptorWrite.descriptorCount = 1;
         descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         descriptorWrite.pBufferInfo = &bufferInfo;

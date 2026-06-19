@@ -1,6 +1,6 @@
 #include <cstring>
 #include "renderer.h"
-#include "renderer/src/lib.rs.h"
+#include "renderer/src/bridge.rs.h"
 #include "utils.h"
 
 VkFormat findSupportedFormat(VkPhysicalDevice physicalDevice, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) {
@@ -36,8 +36,8 @@ VkVertexInputBindingDescription getBindingDescription() {
     return bindingDescription;
 }
 
-std::array<VkVertexInputAttributeDescription, 4> getAttributeDescriptions() {
-    std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions{};
+std::array<VkVertexInputAttributeDescription, 6> getAttributeDescriptions() {
+    std::array<VkVertexInputAttributeDescription, 6> attributeDescriptions{};
 	attributeDescriptions[0].binding = 0;
 	attributeDescriptions[0].location = 0;
 	attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
@@ -46,7 +46,7 @@ std::array<VkVertexInputAttributeDescription, 4> getAttributeDescriptions() {
 	attributeDescriptions[1].binding = 0;
 	attributeDescriptions[1].location = 1;
 	attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-	attributeDescriptions[1].offset = offsetof(Vertex, color);
+	attributeDescriptions[1].offset = offsetof(Vertex, light_level);
 
 	attributeDescriptions[2].binding = 0;
 	attributeDescriptions[2].location = 2;
@@ -57,6 +57,16 @@ std::array<VkVertexInputAttributeDescription, 4> getAttributeDescriptions() {
 	attributeDescriptions[3].location = 3;
 	attributeDescriptions[3].format = VK_FORMAT_R32_SINT;
 	attributeDescriptions[3].offset = offsetof(Vertex, texture_id);
+
+	attributeDescriptions[4].binding = 0;
+	attributeDescriptions[4].location = 4;
+	attributeDescriptions[4].format = VK_FORMAT_R32_SINT;
+	attributeDescriptions[4].offset = offsetof(Vertex, sector_id);
+
+	attributeDescriptions[5].binding = 0;
+	attributeDescriptions[5].location = 5;
+	attributeDescriptions[5].format = VK_FORMAT_R32_SINT;
+	attributeDescriptions[5].offset = offsetof(Vertex, colormap_idx);
 
     return attributeDescriptions;
 }
@@ -193,8 +203,10 @@ void VulkanRenderer::createGraphicsPipeline() {
 	rasterizer.rasterizerDiscardEnable = VK_FALSE;
 	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
 	rasterizer.lineWidth = 1.0f;
-	rasterizer.cullMode = VK_CULL_MODE_NONE; //VK_CULL_MODE_BACK_BIT;
-	rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+	//rasterizer.cullMode = VK_CULL_MODE_NONE;
+	rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+	
 	rasterizer.depthBiasEnable = VK_FALSE;
 	rasterizer.depthBiasConstantFactor = 0.0f; // Optional
 	rasterizer.depthBiasClamp = 0.0f; // Optional
