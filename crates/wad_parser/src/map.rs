@@ -173,23 +173,23 @@ impl DoomMap {
         Ok(map)
     }
 
-	pub fn get_walls_vertices(&self, texture_ids: &HashMap<String, u32>) -> (Vec<Vertex>, Vec<u16>) {
+	pub fn get_walls_vertices(&self, texture_ids: &HashMap<String, (u32, u32, u32)>) -> (Vec<Vertex>, Vec<u16>) {
 		let mut vertices = Vec::new();
 		let mut indices = Vec::new();
-		for linedef in self.linedefs.iter() {
-			let v1 = self.vertices[linedef.v1 as usize];
-			let v2 = self.vertices[linedef.v2 as usize];
+		for seg in self.segs.iter() {
+			if seg.linedef == -1 { continue; }
+			let v1 = self.vertices[seg.v1 as usize];
+			let v2 = self.vertices[seg.v2 as usize];
 
+			let linedef = self.linedefs[seg.linedef as usize];
 			let sidedef = self.sidedefs[linedef.sidenum[0] as usize];
 			let sector_id = sidedef.sector;
 			let sector = self.sectors[sector_id as usize];
 
 			let dx = (v2.x - v1.x) as f32;
-			let dy = (v2.y - v1.y) as f32;
-			let wall_length = (dx * dx + dy * dy).sqrt();
-			let wall_height = (sector.ceilingheight - sector.floorheight) as f32;
-			let u_max = wall_length / 64.0;
-			let v_max = wall_height / 64.0;
+        	let dy = (v2.y - v1.y) as f32;
+        	let wall_length = (dx * dx + dy * dy).sqrt();
+        	let wall_height = (sector.ceilingheight - sector.floorheight) as f32;
 
 			let tex_name = String::from_utf8_lossy(&sidedef.midtexture)
                 .trim_matches('\0')
@@ -200,7 +200,12 @@ impl DoomMap {
     		    continue;
     		}
 
-            let texture_id = *texture_ids.get(&tex_name).unwrap_or(&0);
+			let (tex_id, tex_width, tex_height) = *texture_ids.get(&tex_name).unwrap_or(&(0, 64, 64));
+			
+        	let tex_offset = sidedef.textureoffset as f32;
+        	let u_start = (seg.offset as f32 + tex_offset) / tex_width as f32; 
+			let u_end = u_start + (wall_length / tex_width as f32);
+			let v_max = wall_height / tex_height as f32;
 
 			let start_idx = vertices.len() as u16;
 
@@ -214,8 +219,8 @@ impl DoomMap {
 			vertices.push(Vertex { 
 				pos: [-(v1.x as f32), sector.floorheight.into(), v1.y.into()],
     			light_level: normalized_light_level,
-    			texture_pos: [0.0, 0.5],
-    			texture_id: texture_id,
+    			texture_pos: [u_start, v_max],
+    			texture_id: tex_id,
     			sector_id: sector_id as u32,
 				colormap_idx: colormap_idx,
 			});
@@ -223,8 +228,8 @@ impl DoomMap {
 			vertices.push(Vertex { 
 				pos: [-(v2.x as f32), sector.floorheight.into(), v2.y.into()],
     			light_level: normalized_light_level,
-    			texture_pos: [0.5, 0.5],
-    			texture_id: texture_id,
+    			texture_pos: [u_end, v_max],
+    			texture_id: tex_id,
     			sector_id: sector_id as u32,
 				colormap_idx: colormap_idx,
 			});
@@ -232,8 +237,8 @@ impl DoomMap {
 			vertices.push(Vertex { 
 				pos: [-(v1.x as f32), sector.ceilingheight.into(), v1.y.into()],
     			light_level: normalized_light_level,
-    			texture_pos: [0.0, 0.0],
-    			texture_id: texture_id,
+    			texture_pos: [u_start, 0.0],
+    			texture_id: tex_id,
     			sector_id: sector_id as u32,
 				colormap_idx: colormap_idx,
 			});
@@ -241,8 +246,8 @@ impl DoomMap {
 			vertices.push(Vertex { 
 				pos: [-(v2.x as f32), sector.ceilingheight.into(), v2.y.into()],
     			light_level: normalized_light_level,
-    			texture_pos: [0.5, 0.0],
-    			texture_id: texture_id,
+    			texture_pos: [u_end, 0.0],
+    			texture_id: tex_id,
     			sector_id: sector_id as u32,
 				colormap_idx: colormap_idx,
 			});
@@ -258,7 +263,7 @@ impl DoomMap {
 		(vertices, indices)
 	}
 
-	pub fn get_flats_vertices(&self, texture_ids: &HashMap<String, u32>) -> (Vec<Vertex>, Vec<u16>) {
+	pub fn get_flats_vertices(&self, texture_ids: &HashMap<String, (u32, u32, u32)>) -> (Vec<Vertex>, Vec<u16>) {
 		let mut vertices: Vec<Vertex> = Vec::new();
     	let mut indices: Vec<u16> = Vec::new();
 
@@ -324,8 +329,8 @@ impl DoomMap {
                 .trim_matches('\0')
                 .trim()
                 .to_uppercase();
-			let floor_texture_id = texture_ids[&floor_texture_name];
-			let ceil_texture_id = texture_ids[&ceil_texture_name];
+			let floor_texture_id = texture_ids[&floor_texture_name].0;
+			let ceil_texture_id = texture_ids[&ceil_texture_name].0;
 
 			let clamped_light = sector.lightlevel.clamp(0, 255) as f32;
 			let light_f32 = clamped_light / 255.0;

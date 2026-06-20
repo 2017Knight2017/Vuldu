@@ -123,7 +123,7 @@ impl Wad {
     		let width = map_texture.width as usize;
     		let height = map_texture.height as usize;
 
-	        let mut final_wall_pixels = vec![0xFFu8; width * height];
+	        let mut final_wall_pixels = vec![0xFFu8; width * height * 4];
 
 	        for wad_patch in &map_texture.patches {
 	            let patch_idx = wad_patch.patch as usize;
@@ -145,7 +145,10 @@ impl Wad {
 
 	                                if color_idx != 0xFF {
 	                                    let dest_idx = dest_y * width + dest_x;
-	                                    final_wall_pixels[dest_idx] = color_idx;
+	                                    final_wall_pixels[dest_idx * 4 + 0] = color_idx;
+										final_wall_pixels[dest_idx * 4 + 1] = color_idx;
+										final_wall_pixels[dest_idx * 4 + 2] = color_idx;
+										final_wall_pixels[dest_idx * 4 + 3] = 255;
 	                                }
 	                            }
 	                        }

@@ -57,7 +57,7 @@ impl ApplicationHandler for App {
                     let mut all_pixels = Vec::new();
                     let mut descriptors = Vec::with_capacity(total_textures_count);
 
-                    let mut texture_ids = HashMap::new();
+                    let mut texture_data = HashMap::new();
                     let mut current_gpu_id = 0;
 
                     for (idx, pic) in wall_pics.iter().enumerate() {
@@ -70,7 +70,7 @@ impl ApplicationHandler for App {
                         });
                         all_pixels.extend_from_slice(&pic.raw_pixels);
                     
-                        texture_ids.insert(name.clone(), current_gpu_id);
+                        texture_data.insert(name.clone(), (current_gpu_id, pic.width, pic.height));
                         current_gpu_id += 1;
                     }
                 
@@ -90,7 +90,7 @@ impl ApplicationHandler for App {
                             all_pixels.push(255);
                         }
                     
-                        texture_ids.insert(name.clone(), current_gpu_id);
+                        texture_data.insert(name.clone(), (current_gpu_id, pic.width, pic.height));
                         current_gpu_id += 1;
                     }
 
@@ -106,14 +106,11 @@ impl ApplicationHandler for App {
                         .expect("No COLORMAP in the wad!")
                     );
 
-                    let (wall_vertices, wall_indices) = self.map.get_walls_vertices(&texture_ids);
-                    let (flat_vertices, flat_indices) = self.map.get_flats_vertices(&texture_ids);
+                    let (wall_vertices, wall_indices) = self.map.get_walls_vertices(&texture_data);
+                    let (flat_vertices, flat_indices) = self.map.get_flats_vertices(&texture_data);
 
                     let mut all_vertices = wall_vertices;
                     let mut all_indices = wall_indices;
-
-                    println!("Итого вершин стен: {}", all_vertices.len());
-                    println!("Итого индексов стен: {}", all_indices.len());
 
                     let vertex_offset = all_vertices.len() as u32; 
 
@@ -122,8 +119,6 @@ impl ApplicationHandler for App {
                     for index in flat_indices {
                         all_indices.push((vertex_offset + index as u32) as u16);
                     }
-                    println!("Итого вершин для уровня: {}", all_vertices.len());
-                    println!("Итого индексов для уровня: {}", all_indices.len());
 
                     renderer.update_geometry(&all_vertices, &all_indices);
                 }
@@ -169,7 +164,7 @@ impl ApplicationHandler for App {
                 
                     let view = Mat4::look_at_rh(camera_pos, camera_target, camera_up);
                 
-                    let mut proj = Mat4::perspective_rh(90.0f32.to_radians(), aspect_ratio, 1.0, 10000.0);
+                    let proj = Mat4::perspective_rh(90.0f32.to_radians(), aspect_ratio, 1.0, 10000.0);
                     //proj.col_mut(1)[1] *= -1.0;
                 
                     let ubo = UniformBufferObject {
