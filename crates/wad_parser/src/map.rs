@@ -1,8 +1,9 @@
 use crate::*;
 use bytemuck::{Pod, Zeroable};
 use renderer::Vertex;
+use earcut::Earcut;
 
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
 pub struct MapVertex
 {
@@ -10,7 +11,7 @@ pub struct MapVertex
   y: i16,
 }
 
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
 pub struct MapSidedef
 {
@@ -22,7 +23,7 @@ pub struct MapSidedef
 	sector: i16,
 }
 
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
 pub struct MapLinedef
 {
@@ -46,7 +47,7 @@ pub struct MapLinedef
 //	const ML_MAPPED: i16 = 256;
 //}
 
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
 pub struct MapSector
 {
@@ -59,7 +60,7 @@ pub struct MapSector
 	tag: i16,
 }
 
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
 pub struct MapSubsector
 {
@@ -67,7 +68,7 @@ pub struct MapSubsector
 	firstseg: i16	
 }
 
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
 pub struct MapSegment
 {
@@ -264,121 +265,177 @@ impl DoomMap {
 	}
 
 	pub fn get_flats_vertices(&self, texture_ids: &HashMap<String, (u32, u32, u32)>) -> (Vec<Vertex>, Vec<u16>) {
-		let mut vertices: Vec<Vertex> = Vec::new();
-    	let mut indices: Vec<u16> = Vec::new();
+	    let mut vertices: Vec<Vertex> = Vec::new();
+	    let mut indices: Vec<u16> = Vec::new();
 
-    	for ssector in self.subsectors.iter() {
-    	    let mut current_sector_id = 0;
+	    for (sector_id, sector) in self.sectors.iter().enumerate() {
+	        let current_sector_id = sector_id as i16;
+	        let mut edges: Vec<([f32; 2], [f32; 2])> = Vec::new();
 
-			let mut unique_points: Vec<[f32; 2]> = Vec::new();
-        	let mut sum_x = 0.0;
-        	let mut sum_y = 0.0;
+	        for linedef in self.linedefs.iter() {
+	            let mut belongs_to_sector = false;
+	            let mut is_reverse = false;
 
-        	let mut add_unique_point = |pt: [f32; 2]| {
-        	    if !unique_points.iter().any(|p| (p[0] - pt[0]).abs() < 0.1 && (p[1] - pt[1]).abs() < 0.1) {
-        	        unique_points.push(pt);
-        	    }
-        	};
+	            if linedef.sidenum[0] != -1 {
+	                if let Some(side) = self.sidedefs.get(linedef.sidenum[0] as usize) {
+	                    if side.sector == current_sector_id {
+	                        belongs_to_sector = true;
+	                    }
+	                }
+	            }
+			
+	            if linedef.sidenum[1] != -1 {
+	                if let Some(side) = self.sidedefs.get(linedef.sidenum[1] as usize) {
+	                    if side.sector == current_sector_id {
+	                        belongs_to_sector = true;
+	                        if linedef.sidenum[0] != -1 {
+	                            if let Some(front_side) = self.sidedefs.get(linedef.sidenum[0] as usize) {
+	                                if front_side.sector != current_sector_id {
+	                                    is_reverse = true;
+	                                }
+	                            }
+	                        } else {
+	                            is_reverse = true;
+	                        }
+	                    }
+	                }
+	            }
 
-            for i in 0..ssector.numsegs {
-                let seg_idx = (ssector.firstseg + i) as usize;
-                let seg = self.segs[seg_idx];
-                
-                let v1 = self.vertices[seg.v1 as usize];
-                let v2 = self.vertices[seg.v2 as usize];
+	            if belongs_to_sector {
+	                let v1 = self.vertices[linedef.v1 as usize];
+	                let v2 = self.vertices[linedef.v2 as usize];
+	                let p1 = [v1.x as f32, v1.y as f32];
+	                let p2 = [v2.x as f32, v2.y as f32];
 
-                let p1 = [v1.x as f32, v1.y as f32];
-                let p2 = [v2.x as f32, v2.y as f32];
+	                if is_reverse {
+	                    edges.push((p2, p1));
+	                } else {
+	                    edges.push((p1, p2));
+	                }
+	            }
+	        }
 
-                add_unique_point(p1);
-            	add_unique_point(p2);
+	        if edges.is_empty() { continue; }
 
-                if seg.linedef != -1 {
-            	    if let Some(line) = self.linedefs.get(seg.linedef as usize) {
-            	        let side_idx = if seg.side == 0 { line.sidenum[0] } else { line.sidenum[1] };
-            	        if side_idx != -1 {
-            	            if let Some(side) = self.sidedefs.get(side_idx as usize) {
-            	                current_sector_id = side.sector;
-            	            }
-            	        }
-            	    }
-            	}
-            }
+	        let mut polygon_loops: Vec<Vec<[f32; 2]>> = Vec::new();
 
-			if unique_points.len() < 3 { continue; }
+	        while !edges.is_empty() {
+	            let mut current_loop = Vec::new();
+	            let (p1, p2) = edges.remove(0);
+	            current_loop.push(p1);
+	            let mut current_tip = p2;
 
-			for pt in &unique_points {
-        	    sum_x += pt[0];
-        	    sum_y += pt[1];
-        	}
-        	let center_pt = [sum_x / unique_points.len() as f32, sum_y / unique_points.len() as f32];
+	            let mut stuck = false;
+	            while !stuck && !edges.is_empty() {
+	                let mut found_idx = None;
+	                for (idx, edge) in edges.iter().enumerate() {
+	                    if (edge.0[0] - current_tip[0]).abs() < 0.5 && (edge.0[1] - current_tip[1]).abs() < 0.5 {
+	                        found_idx = Some(idx);
+	                        break;
+	                    }
+	                }
 
-        	unique_points.sort_by(|a, b| {
-        	    let angle_a = (a[1] - center_pt[1]).atan2(a[0] - center_pt[0]);
-        	    let angle_b = (b[1] - center_pt[1]).atan2(b[0] - center_pt[0]);
-        	    angle_a.partial_cmp(&angle_b).unwrap_or(std::cmp::Ordering::Equal)
-        	});
+	                if let Some(idx) = found_idx {
+	                    let next_edge = edges.remove(idx);
+	                    current_loop.push(current_tip);
+	                    current_tip = next_edge.1;
+	                } else {
+	                    stuck = true;
+	                }
+	            }
+	            current_loop.push(current_tip);
 
-    	    let sector = self.sectors[current_sector_id as usize];
+	            current_loop.dedup_by(|a, b| (a[0] - b[0]).abs() < 0.2 && (a[1] - b[1]).abs() < 0.2);
+			
+	            if current_loop.len() >= 3 {
+	                if (current_loop.first().unwrap()[0] - current_loop.last().unwrap()[0]).abs() < 0.5 &&
+	                   (current_loop.first().unwrap()[1] - current_loop.last().unwrap()[1]).abs() < 0.5 {
+	                    current_loop.pop();
+	                }
+	                if current_loop.len() >= 3 {
+	                    polygon_loops.push(current_loop);
+	                }
+	            }
+	        }
 
-			let floor_texture_name = String::from_utf8_lossy(&sector.floorpic)
-                .trim_matches('\0')
-                .trim()
-                .to_uppercase();
-			let ceil_texture_name = String::from_utf8_lossy(&sector.ceilingpic)
-                .trim_matches('\0')
-                .trim()
-                .to_uppercase();
-			let floor_texture_id = texture_ids[&floor_texture_name].0;
-			let ceil_texture_id = texture_ids[&ceil_texture_name].0;
+	        if polygon_loops.is_empty() { continue; }
 
-			let clamped_light = sector.lightlevel.clamp(0, 255) as f32;
-			let light_f32 = clamped_light / 255.0;
-			let normalized_light_level = [light_f32, light_f32, light_f32];
+	        polygon_loops.sort_by(|a, b| b.len().cmp(&a.len()));
 
-			let raw_map_idx = (clamped_light / 8.0).floor() as u32;
-			let colormap_idx = 31 - raw_map_idx.clamp(0, 31);
+	        let mut flat_points = Vec::new();
+	        let mut hole_indices = Vec::new();
+		
+	        for (loop_idx, poly_loop) in polygon_loops.iter().enumerate() {
+	            if loop_idx > 0 {
+	                hole_indices.push(flat_points.len());
+	            }
+	            for pt in poly_loop {
+	                flat_points.push(*pt);
+	            }
+	        }
 
-    	    let floor_start_idx = vertices.len() as u16;
-        
-        	for pt in &unique_points {
-        	    vertices.push(Vertex { 
-        	        pos: [-(pt[0]), sector.floorheight.into(), pt[1]],
-        	        light_level: normalized_light_level,
-        	        texture_pos: [pt[0] / 64.0, pt[1] / 64.0],
-        	        texture_id: floor_texture_id,
-        	        sector_id: current_sector_id as u32,
-        	        colormap_idx,
-        	    });
-        	}
+	        let mut area = 0.0;
+	        let base_len = polygon_loops[0].len();
+	        for i in 0..base_len {
+	            let a = polygon_loops[0][i];
+	            let b = polygon_loops[0][(i + 1) % base_len];
+	            area += (b[0] - a[0]) * (b[1] + a[1]);
+	        }
+	        if area > 0.0 {
+	            flat_points[0..base_len].reverse();
+	        }
 
-        	let num_pts = unique_points.len() as u16;
-        	for i in 1..(num_pts - 1) {
-        	    indices.push(floor_start_idx + 0);
-        	    indices.push(floor_start_idx + i);
-        	    indices.push(floor_start_idx + i + 1);
-        	}
+	        let mut sector_indices = Vec::new();
+	        let mut earcut = Earcut::new();
+	        earcut.earcut(flat_points.iter().copied(), &hole_indices, &mut sector_indices);
 
-    	    let ceil_start_idx = vertices.len() as u16;
-        
-        	for pt in &unique_points {
-        	    vertices.push(Vertex { 
-        	        pos: [-(pt[0]), sector.ceilingheight.into(), pt[1]],
-        	        light_level: normalized_light_level,
-        	        texture_pos: [pt[0] / 64.0, pt[1] / 64.0],
-        	        texture_id: ceil_texture_id,
-        	        sector_id: current_sector_id as u32,
-        	        colormap_idx,
-        	    });
-        	}
+	        if sector_indices.is_empty() { continue; }
 
-        	for i in 1..(num_pts - 1) {
-        	    indices.push(ceil_start_idx + 0);
-        	    indices.push(ceil_start_idx + i + 1);
-        	    indices.push(ceil_start_idx + i);
-        	}
-    	}
+	        let floor_texture_name = String::from_utf8_lossy(&sector.floorpic).trim_matches('\0').trim().to_uppercase();
+	        let ceil_texture_name = String::from_utf8_lossy(&sector.ceilingpic).trim_matches('\0').trim().to_uppercase();
+	        let floor_texture_id = texture_ids[&floor_texture_name].0;
+	        let ceil_texture_id = texture_ids[&ceil_texture_name].0;
 
-    	(vertices, indices)
+	        let clamped_light = sector.lightlevel.clamp(0, 255) as f32;
+	        let light_f32 = clamped_light / 255.0;
+	        let normalized_light_level = [light_f32, light_f32, light_f32];
+	        let colormap_idx = 31 - ((clamped_light / 8.0).floor() as u32).clamp(0, 31);
+
+	        let floor_start_idx = vertices.len() as u16;
+	        for pt in &flat_points {
+	            vertices.push(Vertex { 
+	                pos: [-(pt[0]), sector.floorheight.into(), pt[1]],
+	                light_level: normalized_light_level,
+	                texture_pos: [pt[0] / 64.0, pt[1] / 64.0],
+	                texture_id: floor_texture_id,
+	                sector_id: sector_id as u32,
+	                colormap_idx,
+	            });
+	        }
+	        for chunk in sector_indices.chunks_exact(3) {
+	            indices.push(floor_start_idx + chunk[0] as u16);
+	            indices.push(floor_start_idx + chunk[1] as u16);
+	            indices.push(floor_start_idx + chunk[2] as u16);
+	        }
+
+	        let ceil_start_idx = vertices.len() as u16;
+	        for pt in &flat_points {
+	            vertices.push(Vertex { 
+	                pos: [-(pt[0]), sector.ceilingheight.into(), pt[1]],
+	                light_level: normalized_light_level,
+	                texture_pos: [pt[0] / 64.0, pt[1] / 64.0],
+	                texture_id: ceil_texture_id,
+	                sector_id: sector_id as u32,
+	                colormap_idx,
+	            });
+	        }
+	        for chunk in sector_indices.chunks_exact(3) {
+	            indices.push(ceil_start_idx + chunk[0] as u16);
+	            indices.push(ceil_start_idx + chunk[2] as u16);
+	            indices.push(ceil_start_idx + chunk[1] as u16);
+	        }
+	    }
+
+	    (vertices, indices)
 	}
 }

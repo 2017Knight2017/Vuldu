@@ -68,7 +68,13 @@ impl ApplicationHandler for App {
                             height: pic.height,
                             pixel_offset: all_pixels.len(),
                         });
-                        all_pixels.extend_from_slice(&pic.raw_pixels);
+
+                        for &lump_pixel in &pic.raw_pixels {
+                            all_pixels.push(lump_pixel);
+                            all_pixels.push(0);
+                            all_pixels.push(0);
+                            all_pixels.push(255);
+                        }
                     
                         texture_data.insert(name.clone(), (current_gpu_id, pic.width, pic.height));
                         current_gpu_id += 1;
