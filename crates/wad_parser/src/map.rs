@@ -308,50 +308,30 @@ impl DoomMap {
 
 	    for (sector_id, sector) in self.sectors.iter().enumerate() {
 	        let current_sector_id = sector_id as i16;
-	        let mut edges: Vec<([f32; 2], [f32; 2])> = Vec::new();
+        	let mut edges: Vec<([f32; 2], [f32; 2])> = Vec::new();
 
-	        for linedef in self.linedefs.iter() {
-	            let mut belongs_to_sector = false;
-	            let mut is_reverse = false;
+        	for linedef in self.linedefs.iter() {
+        	    let v1 = self.vertices[linedef.v1 as usize];
+        	    let v2 = self.vertices[linedef.v2 as usize];
+        	    let p1 = [v1.x as f32, v1.y as f32];
+        	    let p2 = [v2.x as f32, v2.y as f32];
 
-	            if linedef.sidenum[0] != -1 {
-	                if let Some(side) = self.sidedefs.get(linedef.sidenum[0] as usize) {
-	                    if side.sector == current_sector_id {
-	                        belongs_to_sector = true;
-	                    }
-	                }
-	            }
+        	    if linedef.sidenum[0] != -1 {
+        	        if let Some(side) = self.sidedefs.get(linedef.sidenum[0] as usize) {
+        	            if side.sector == current_sector_id {
+        	                edges.push((p1, p2));
+        	            }
+        	        }
+        	    }
 			
-	            if linedef.sidenum[1] != -1 {
-	                if let Some(side) = self.sidedefs.get(linedef.sidenum[1] as usize) {
-	                    if side.sector == current_sector_id {
-	                        belongs_to_sector = true;
-	                        if linedef.sidenum[0] != -1 {
-	                            if let Some(front_side) = self.sidedefs.get(linedef.sidenum[0] as usize) {
-	                                if front_side.sector != current_sector_id {
-	                                    is_reverse = true;
-	                                }
-	                            }
-	                        } else {
-	                            is_reverse = true;
-	                        }
-	                    }
-	                }
-	            }
-
-	            if belongs_to_sector {
-	                let v1 = self.vertices[linedef.v1 as usize];
-	                let v2 = self.vertices[linedef.v2 as usize];
-	                let p1 = [v1.x as f32, v1.y as f32];
-	                let p2 = [v2.x as f32, v2.y as f32];
-
-	                if is_reverse {
-	                    edges.push((p2, p1));
-	                } else {
-	                    edges.push((p1, p2));
-	                }
-	            }
-	        }
+        	    if linedef.sidenum[1] != -1 {
+        	        if let Some(side) = self.sidedefs.get(linedef.sidenum[1] as usize) {
+        	            if side.sector == current_sector_id {
+        	                edges.push((p2, p1));
+        	            }
+        	        }
+        	    }
+        	}
 
 	        if edges.is_empty() { continue; }
 
@@ -366,17 +346,28 @@ impl DoomMap {
 	            let mut stuck = false;
 	            while !stuck && !edges.is_empty() {
 	                let mut found_idx = None;
+					let mut reverse_next_edge = false;
 	                for (idx, edge) in edges.iter().enumerate() {
 	                    if (edge.0[0] - current_tip[0]).abs() < 0.5 && (edge.0[1] - current_tip[1]).abs() < 0.5 {
-	                        found_idx = Some(idx);
-	                        break;
-	                    }
+                            found_idx = Some(idx);
+                            reverse_next_edge = false;
+                            break;
+                        }
+                        if (edge.1[0] - current_tip[0]).abs() < 0.5 && (edge.1[1] - current_tip[1]).abs() < 0.5 {
+                            found_idx = Some(idx);
+                            reverse_next_edge = true;
+                            break;
+                        }
 	                }
 
 	                if let Some(idx) = found_idx {
 	                    let next_edge = edges.remove(idx);
 	                    current_loop.push(current_tip);
-	                    current_tip = next_edge.1;
+						if reverse_next_edge {
+                            current_tip = next_edge.0;
+                        } else {
+                            current_tip = next_edge.1;
+                        }
 	                } else {
 	                    stuck = true;
 	                }
@@ -386,94 +377,167 @@ impl DoomMap {
 	            current_loop.dedup_by(|a, b| (a[0] - b[0]).abs() < 0.2 && (a[1] - b[1]).abs() < 0.2);
 			
 	            if current_loop.len() >= 3 {
-	                if (current_loop.first().unwrap()[0] - current_loop.last().unwrap()[0]).abs() < 0.5 &&
-	                   (current_loop.first().unwrap()[1] - current_loop.last().unwrap()[1]).abs() < 0.5 {
-	                    current_loop.pop();
-	                }
-	                if current_loop.len() >= 3 {
-	                    polygon_loops.push(current_loop);
-	                }
-	            }
+                    let first = current_loop.first().unwrap();
+                    let last = current_loop.last().unwrap();
+                    if (first[0] - last[0]).abs() < 0.8 && (first[1] - last[1]).abs() < 0.8 {
+                        current_loop.pop();
+                        if current_loop.len() >= 3 {
+                            polygon_loops.push(current_loop);
+                        }
+                    } else {
+                        if current_loop.len() >= 3 {
+                            polygon_loops.push(current_loop);
+                        }
+                    }
+                }
 	        }
 
 	        if polygon_loops.is_empty() { continue; }
 
-	        polygon_loops.sort_by(|a, b| b.len().cmp(&a.len()));
+			polygon_loops.sort_by(|a, b| {
+        	    let area_a = a.windows(2).fold(0.0, |acc, w| acc + (w[1][0] - w[0][0]) * (w[1][1] + w[0][1])).abs();
+        	    let area_b = b.windows(2).fold(0.0, |acc, w| acc + (w[1][0] - w[0][0]) * (w[1][1] + w[0][1])).abs();
+        	    area_b.partial_cmp(&area_a).unwrap_or(std::cmp::Ordering::Equal)
+        	});
 
-	        let mut flat_points = Vec::new();
-	        let mut hole_indices = Vec::new();
-		
-	        for (loop_idx, poly_loop) in polygon_loops.iter().enumerate() {
-	            if loop_idx > 0 {
-	                hole_indices.push(flat_points.len());
-	            }
-	            for pt in poly_loop {
-	                flat_points.push(*pt);
-	            }
-	        }
+        	let mut outer_sectors = vec![polygon_loops.remove(0)];
+        	let mut hole_loops = Vec::new();
+        	let mut island_sectors = Vec::new();
 
-	        let mut area = 0.0;
-	        let base_len = polygon_loops[0].len();
-	        for i in 0..base_len {
-	            let a = polygon_loops[0][i];
-	            let b = polygon_loops[0][(i + 1) % base_len];
-	            area += (b[0] - a[0]) * (b[1] + a[1]);
-	        }
-	        if area > 0.0 {
-	            flat_points[0..base_len].reverse();
-	        }
+        	let main_area = {
+        	    let mut area = 0.0;
+        	    let len = outer_sectors[0].len();
+        	    for i in 0..len {
+        	        area += (outer_sectors[0][i][0] - outer_sectors[0][(i + 1) % len][0]) * (outer_sectors[0][i][1] + outer_sectors[0][(i + 1) % len][1]);
+        	    }
+        	    area
+        	};
+			if main_area.abs() < 0.1 { continue; }
+        	let main_clockwise = main_area > 0.0;
 
-	        let mut sector_indices = Vec::new();
-	        let mut earcut = Earcut::new();
-	        earcut.earcut(flat_points.iter().copied(), &hole_indices, &mut sector_indices);
+        	for poly_loop in polygon_loops {
+        	    let mut area = 0.0;
+        	    let len = poly_loop.len();
+        	    for i in 0..len {
+        	        area += (poly_loop[i][0] - poly_loop[(i + 1) % len][0]) * (poly_loop[i][1] + poly_loop[(i + 1) % len][1]);
+        	    }
 
-	        if sector_indices.is_empty() { continue; }
+				if area.abs() < 0.1 { 
+            	    continue; 
+            	}
 
-	        let floor_texture_name = String::from_utf8_lossy(&sector.floorpic).trim_matches('\0').trim().to_uppercase();
-	        let ceil_texture_name = String::from_utf8_lossy(&sector.ceilingpic).trim_matches('\0').trim().to_uppercase();
-	        let floor_texture_id = texture_ids[&floor_texture_name].0;
-	        let ceil_texture_id = texture_ids[&ceil_texture_name].0;
+        	    let is_clockwise = area > 0.0;
 
-	        let clamped_light = sector.lightlevel.clamp(0, 255) as f32;
-	        let light_f32 = clamped_light / 255.0;
-	        let normalized_light_level = [light_f32, light_f32, light_f32];
-	        let colormap_idx = 31 - ((clamped_light / 8.0).floor() as u32).clamp(0, 31);
+        	    if is_clockwise == main_clockwise {
+        	        island_sectors.push(poly_loop);
+        	    } else {
+        	        hole_loops.push(poly_loop);
+        	    }
+        	}
 
-	        let floor_start_idx = vertices.len() as u16;
-	        for pt in &flat_points {
-	            vertices.push(Vertex { 
-	                pos: [-(pt[0]), sector.floorheight.into(), pt[1]],
-	                light_level: normalized_light_level,
-	                texture_pos: [pt[0] / 64.0, pt[1] / 64.0],
-	                texture_id: floor_texture_id,
-	                sector_id: sector_id as u32,
-	                colormap_idx,
-	            });
-	        }
-	        for chunk in sector_indices.chunks_exact(3) {
-	            indices.push(floor_start_idx + chunk[0] as u16);
-	            indices.push(floor_start_idx + chunk[1] as u16);
-	            indices.push(floor_start_idx + chunk[2] as u16);
-	        }
+        	outer_sectors.extend(island_sectors);
 
-	        let ceil_start_idx = vertices.len() as u16;
-	        for pt in &flat_points {
-	            vertices.push(Vertex { 
-	                pos: [-(pt[0]), sector.ceilingheight.into(), pt[1]],
-	                light_level: normalized_light_level,
-	                texture_pos: [pt[0] / 64.0, pt[1] / 64.0],
-	                texture_id: ceil_texture_id,
-	                sector_id: sector_id as u32,
-	                colormap_idx,
-	            });
-	        }
-	        for chunk in sector_indices.chunks_exact(3) {
-	            indices.push(ceil_start_idx + chunk[0] as u16);
-	            indices.push(ceil_start_idx + chunk[2] as u16);
-	            indices.push(ceil_start_idx + chunk[1] as u16);
-	        }
-	    }
+        	for mut outer_loop in outer_sectors {
+        	    let mut flat_points = Vec::new();
+        	    let mut hole_indices = Vec::new();
 
+        	    let mut area = 0.0;
+        	    let len = outer_loop.len();
+        	    for i in 0..len {
+        	        area += (outer_loop[(i + 1) % len][0] - outer_loop[i][0]) * (outer_loop[(i + 1) % len][1] + outer_loop[i][1]);
+        	    }
+        	    if area > 0.0 {
+        	        outer_loop.reverse();
+        	    }
+
+        	    for pt in &outer_loop {
+        	        flat_points.push(*pt);
+        	    }
+
+        	    for hole in &hole_loops {
+        	        if point_in_polygon(hole[0], &outer_loop) {
+        	            hole_indices.push(flat_points.len() as u16);
+					
+        	            let mut hole_copy = hole.clone();
+        	            let mut h_area = 0.0;
+        	            let h_len = hole_copy.len();
+        	            for i in 0..h_len {
+        	                h_area += (hole_copy[(i + 1) % h_len][0] - hole_copy[i][0]) * (hole_copy[(i + 1) % h_len][1] + hole_copy[i][1]);
+        	            }
+        	            if h_area < 0.0 {
+        	                hole_copy.reverse();
+        	            }
+
+        	            for pt in hole_copy {
+        	                flat_points.push(pt);
+        	            }
+        	        }
+        	    }
+
+        	    let mut sector_indices: Vec<u16> = Vec::new();
+        	    let mut earcut = Earcut::new();
+        	    earcut.earcut(flat_points.iter().copied(), &hole_indices, &mut sector_indices);
+
+				if sector_indices.is_empty() { continue; }
+
+        	    let floor_texture_name = String::from_utf8_lossy(&sector.floorpic).trim_matches('\0').trim().to_uppercase();
+        	    let ceil_texture_name = String::from_utf8_lossy(&sector.ceilingpic).trim_matches('\0').trim().to_uppercase();
+        	    let floor_texture_id = texture_ids[&floor_texture_name].0;
+        	    let ceil_texture_id = texture_ids[&ceil_texture_name].0;
+
+        	    let clamped_light = sector.lightlevel.clamp(0, 255) as f32;
+        	    let light_f32 = clamped_light / 255.0;
+        	    let normalized_light_level = [light_f32, light_f32, light_f32];
+        	    let colormap_idx = 31 - ((clamped_light / 8.0).floor() as u32).clamp(0, 31);
+
+        	    let floor_start_idx = vertices.len() as u16;
+        	    for pt in &flat_points {
+        	        vertices.push(Vertex { 
+        	            pos: [-(pt[0]), sector.floorheight.into(), pt[1]],
+        	            light_level: normalized_light_level,
+        	            texture_pos: [pt[0] / 64.0, pt[1] / 64.0],
+        	            texture_id: floor_texture_id,
+        	            sector_id: sector_id as u32,
+        	            colormap_idx,
+        	        });
+        	    }
+        	    for chunk in sector_indices.chunks_exact(3) {
+        	        indices.push(floor_start_idx + chunk[0]);
+        	        indices.push(floor_start_idx + chunk[1]);
+        	        indices.push(floor_start_idx + chunk[2]);
+        	    }
+
+        	    let ceil_start_idx = vertices.len() as u16;
+        	    for pt in &flat_points {
+        	        vertices.push(Vertex { 
+        	            pos: [-(pt[0]), sector.ceilingheight.into(), pt[1]],
+        	            light_level: normalized_light_level,
+        	            texture_pos: [pt[0] / 64.0, pt[1] / 64.0],
+        	            texture_id: ceil_texture_id,
+        	            sector_id: sector_id as u32,
+        	            colormap_idx,
+        	        });
+        	    }
+        	    for chunk in sector_indices.chunks_exact(3) {
+        	        indices.push(ceil_start_idx + chunk[0]);
+        	        indices.push(ceil_start_idx + chunk[2]);
+        	        indices.push(ceil_start_idx + chunk[1]);
+        	    }
+        	}
+		}
 	    (vertices, indices)
 	}
+}
+
+fn point_in_polygon(point: [f32; 2], poly: &[[f32; 2]]) -> bool {
+    let mut inside = false;
+    let mut j = poly.len() - 1;
+    for i in 0..poly.len() {
+        if (poly[i][1] > point[1]) != (poly[j][1] > point[1]) &&
+           (point[0] < (poly[j][0] - poly[i][0]) * (point[1] - poly[i][1]) / (poly[j][1] - poly[i][1]) + poly[i][0]) {
+            inside = !inside;
+        }
+        j = i;
+    }
+    inside
 }

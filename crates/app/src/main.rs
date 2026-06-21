@@ -160,12 +160,12 @@ impl ApplicationHandler for App {
                         .iter().find(|thing| thing.type_ == 1)
                         .unwrap();
 
-                    let player_x = -player1_spawner.x as f32;
+                    let player_x = -player1_spawner.x as f32 - 250.0;
                     let player_y = 90.0;
-                    let player_z = player1_spawner.y as f32 - 30.0;
+                    let player_z = player1_spawner.y as f32 + 1800.0;
                     
-                    let camera_pos = glam::vec3(player_x - time*10.0, player_y, player_z + time*50.0);
-                    let camera_target = glam::vec3(player_x - time*20.0, player_y, player_z+100.0 + time*50.0);
+                    let camera_pos = glam::vec3(player_x - time*10.0, player_y+time*6.0, player_z - time*60.0);
+                    let camera_target = glam::vec3(player_x - time*10.1 + f32::sin(time/3.0)*10.0, player_y+time*5.8, player_z-10.0 - time*60.0);
                     let camera_up = glam::vec3(0.0, 1.0, 0.0);
                 
                     let view = Mat4::look_at_rh(camera_pos, camera_target, camera_up);
