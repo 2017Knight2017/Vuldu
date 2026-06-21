@@ -175,93 +175,131 @@ impl DoomMap {
     }
 
 	pub fn get_walls_vertices(&self, texture_ids: &HashMap<String, (u32, u32, u32)>) -> (Vec<Vertex>, Vec<u16>) {
-		let mut vertices = Vec::new();
-		let mut indices = Vec::new();
-		for seg in self.segs.iter() {
-			if seg.linedef == -1 { continue; }
-			let v1 = self.vertices[seg.v1 as usize];
-			let v2 = self.vertices[seg.v2 as usize];
+	    let mut vertices = Vec::new();
+	    let mut indices = Vec::new();
 
-			let linedef = self.linedefs[seg.linedef as usize];
-			let sidedef = self.sidedefs[linedef.sidenum[0] as usize];
-			let sector_id = sidedef.sector;
-			let sector = self.sectors[sector_id as usize];
+	    for seg in self.segs.iter() {
+	        if seg.linedef == -1 { continue; }
 
-			let dx = (v2.x - v1.x) as f32;
-        	let dy = (v2.y - v1.y) as f32;
-        	let wall_length = (dx * dx + dy * dy).sqrt();
-        	let wall_height = (sector.ceilingheight - sector.floorheight) as f32;
+	        let v1 = self.vertices[seg.v1 as usize];
+	        let v2 = self.vertices[seg.v2 as usize];
+	        let linedef = self.linedefs[seg.linedef as usize];
 
-			let tex_name = String::from_utf8_lossy(&sidedef.midtexture)
-                .trim_matches('\0')
-                .trim()
-                .to_uppercase();
+	        let front_side_idx = if seg.side == 0 { linedef.sidenum[0] } else { linedef.sidenum[1] };
+	        let back_side_idx = if seg.side == 0 { linedef.sidenum[1] } else { linedef.sidenum[0] };
 
-			if tex_name == "-" || tex_name.is_empty() || linedef.sidenum[1] != -1 {
-    		    continue;
-    		}
+	        if front_side_idx == -1 { continue; }
+	        let front_sidedef = self.sidedefs[front_side_idx as usize];
+	        let front_sector_id = front_sidedef.sector;
+	        let front_sector = self.sectors[front_sector_id as usize];
 
-			let (tex_id, tex_width, tex_height) = *texture_ids.get(&tex_name).unwrap_or(&(0, 64, 64));
+	        let back_sector = if back_side_idx != -1 {
+	            let back_sidedef = self.sidedefs[back_side_idx as usize];
+	            Some((back_sidedef, self.sectors[back_sidedef.sector as usize]))
+	        } else {
+	            None
+	        };
+
+	        let dx = (v2.x - v1.x) as f32;
+	        let dy = (v2.y - v1.y) as f32;
+	        let wall_length = (dx * dx + dy * dy).sqrt();
+	        let tex_offset = front_sidedef.textureoffset as f32;
+
+	        let mut add_wall_quad = |y_low: f32, y_high: f32, tex_name: &str, v_top_align: bool| {
+	            if tex_name == "-" || tex_name.is_empty() { return; }
 			
-        	let tex_offset = sidedef.textureoffset as f32;
-        	let u_start = (seg.offset as f32 + tex_offset) / tex_width as f32; 
-			let u_end = u_start + (wall_length / tex_width as f32);
-			let v_max = wall_height / tex_height as f32;
+	            let (tex_id, tex_width, tex_height) = *texture_ids.get(tex_name).unwrap_or(&(0, 64, 64));
+	            let wall_height = y_high - y_low;
+	            if wall_height <= 0.0 { return; }
 
-			let start_idx = vertices.len() as u16;
+	            let u_start = (seg.offset as f32 + tex_offset) / tex_width as f32;
+	            let u_end = u_start + (wall_length / tex_width as f32);
 
-			let clamped_light = sector.lightlevel.clamp(0, 255) as f32;
-			let light_f32 = clamped_light / 255.0;
-			let normalized_light_level = [light_f32, light_f32, light_f32];
+	            let (v_start, v_end) = if v_top_align {
+	                (0.0, wall_height / tex_height as f32)
+	            } else {
+	                (-(wall_height / tex_height as f32), 0.0)
+	            };
 
-			let raw_map_idx = (clamped_light / 8.0).floor() as u32;
-			let colormap_idx = 31 - raw_map_idx.clamp(0, 31);
+	            let start_idx = vertices.len() as u16;
 
-			vertices.push(Vertex { 
-				pos: [-(v1.x as f32), sector.floorheight.into(), v1.y.into()],
-    			light_level: normalized_light_level,
-    			texture_pos: [u_start, v_max],
-    			texture_id: tex_id,
-    			sector_id: sector_id as u32,
-				colormap_idx: colormap_idx,
-			});
+	            let clamped_light = front_sector.lightlevel.clamp(0, 255) as f32;
+	            let light_f32 = clamped_light / 255.0;
+	            let normalized_light_level = [light_f32, light_f32, light_f32];
+	            let colormap_idx = 31 - ((clamped_light / 8.0).floor() as u32).clamp(0, 31);
 
-			vertices.push(Vertex { 
-				pos: [-(v2.x as f32), sector.floorheight.into(), v2.y.into()],
-    			light_level: normalized_light_level,
-    			texture_pos: [u_end, v_max],
-    			texture_id: tex_id,
-    			sector_id: sector_id as u32,
-				colormap_idx: colormap_idx,
-			});
+	            vertices.push(Vertex { 
+	                pos: [-(v1.x as f32), y_low, v1.y as f32],
+	                light_level: normalized_light_level,
+	                texture_pos: [u_start, v_end],
+	                texture_id: tex_id,
+	                sector_id: front_sector_id as u32,
+	                colormap_idx,
+	            });
 
-			vertices.push(Vertex { 
-				pos: [-(v1.x as f32), sector.ceilingheight.into(), v1.y.into()],
-    			light_level: normalized_light_level,
-    			texture_pos: [u_start, 0.0],
-    			texture_id: tex_id,
-    			sector_id: sector_id as u32,
-				colormap_idx: colormap_idx,
-			});
+	            vertices.push(Vertex { 
+	                pos: [-(v2.x as f32), y_low, v2.y as f32],
+	                light_level: normalized_light_level,
+	                texture_pos: [u_end, v_end],
+	                texture_id: tex_id,
+	                sector_id: front_sector_id as u32,
+	                colormap_idx,
+	            });
 
-			vertices.push(Vertex { 
-				pos: [-(v2.x as f32), sector.ceilingheight.into(), v2.y.into()],
-    			light_level: normalized_light_level,
-    			texture_pos: [u_end, 0.0],
-    			texture_id: tex_id,
-    			sector_id: sector_id as u32,
-				colormap_idx: colormap_idx,
-			});
-    		
-			indices.push(start_idx + 0);
-			indices.push(start_idx + 1);
-			indices.push(start_idx + 2);
+	            vertices.push(Vertex { 
+	                pos: [-(v1.x as f32), y_high, v1.y as f32],
+	                light_level: normalized_light_level,
+	                texture_pos: [u_start, v_start],
+	                texture_id: tex_id,
+	                sector_id: front_sector_id as u32,
+	                colormap_idx,
+	            });
 
-			indices.push(start_idx + 2);
-			indices.push(start_idx + 1);
-			indices.push(start_idx + 3);
-		}
-		(vertices, indices)
+	            vertices.push(Vertex { 
+	                pos: [-(v2.x as f32), y_high, v2.y as f32],
+	                light_level: normalized_light_level,
+	                texture_pos: [u_end, v_start],
+	                texture_id: tex_id,
+	                sector_id: front_sector_id as u32,
+	                colormap_idx,
+	            });
+			
+	            indices.push(start_idx + 0);
+	            indices.push(start_idx + 1);
+	            indices.push(start_idx + 2);
+
+	            indices.push(start_idx + 2);
+	            indices.push(start_idx + 1);
+	            indices.push(start_idx + 3);
+	        };
+
+	        let mid_tex = String::from_utf8_lossy(&front_sidedef.midtexture).trim_matches('\0').trim().to_uppercase();
+	        let top_tex = String::from_utf8_lossy(&front_sidedef.toptexture).trim_matches('\0').trim().to_uppercase();
+	        let bottom_tex = String::from_utf8_lossy(&front_sidedef.bottomtexture).trim_matches('\0').trim().to_uppercase();
+
+	        match back_sector {
+	            None => {
+	                add_wall_quad(front_sector.floorheight as f32, front_sector.ceilingheight as f32, &mid_tex, true);
+	            },
+	            Some((_, b_sector)) => {
+	                if front_sector.ceilingheight > b_sector.ceilingheight {
+	                    add_wall_quad(b_sector.ceilingheight as f32, front_sector.ceilingheight as f32, &top_tex, true);
+	                }
+
+	                if front_sector.floorheight < b_sector.floorheight {
+	                    add_wall_quad(front_sector.floorheight as f32, b_sector.floorheight as f32, &bottom_tex, false);
+	                }
+
+	                if mid_tex != "-" && !mid_tex.is_empty() {
+	                    let mid_low = f32::max(front_sector.floorheight as f32, b_sector.floorheight as f32);
+	                    let mid_high = f32::min(front_sector.ceilingheight as f32, b_sector.ceilingheight as f32);
+	                    add_wall_quad(mid_low, mid_high, &mid_tex, true);
+	                }
+	            }
+	        }
+	    }
+
+	    (vertices, indices)
 	}
 
 	pub fn get_flats_vertices(&self, texture_ids: &HashMap<String, (u32, u32, u32)>) -> (Vec<Vertex>, Vec<u16>) {
