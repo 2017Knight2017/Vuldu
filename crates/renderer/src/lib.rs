@@ -44,15 +44,20 @@ impl SafeRenderer {
         self.pin_mut().setPaletteIndex(idx);
     }
 
-    pub fn add_texture(&mut self, pixels: &[u8], width: u32, height: u32) -> u32 {
+    pub fn update_level_geometry(&mut self, vertices: &[Vertex], indices: &[u16]) {
         unsafe {
-            self.pin_mut().addTexture(pixels.as_ptr(), width, height)
+            self.pin_mut().updateLevelGeometry(
+                vertices.as_ptr(),
+                vertices.len(),
+                indices.as_ptr(),
+                indices.len(),
+            );
         }
     }
 
-    pub fn update_geometry(&mut self, vertices: &[Vertex], indices: &[u16]) {
+    pub fn update_object_geometry(&mut self, vertices: &[Vertex], indices: &[u16]) {
         unsafe {
-            self.pin_mut().updateGeometry(
+            self.pin_mut().updateObjectGeometry(
                 vertices.as_ptr(),
                 vertices.len(),
                 indices.as_ptr(),
@@ -75,17 +80,8 @@ impl SafeRenderer {
         self.pin_mut().drawLevel();
     }
 
-    pub fn draw_sprite(
-        &mut self, 
-        texture_id: u32, width: u32, height: u32, 
-        light_level: u32, left_offset: i16, top_offset: i16, 
-        x: f32, y: f32, z: f32
-    ) {
-        self.pin_mut().drawSprite(
-            texture_id, width, height, 
-            light_level, left_offset, top_offset, 
-            x, y, z
-        );
+    pub fn draw_objects(&mut self) {
+        self.pin_mut().drawObjects();
     }
 
     pub fn upload_texture_array(

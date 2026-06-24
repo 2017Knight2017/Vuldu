@@ -10,20 +10,11 @@ use raw_window_handle::{HasDisplayHandle, HasWindowHandle, RawDisplayHandle, Raw
 use std::time::Instant;
 use std::collections::HashMap;
 
-struct SpriteFrame {
-    texture_id: u32,
-    width: u32,
-    height: u32,
-    left_offset: i16,
-    top_offset: i16,
-}
-
 struct App {
     window: Option<Window>,
     renderer: Option<SafeRenderer>,
     wad: Wad,
     map: DoomMap,
-    textures: Vec<SpriteFrame>,
     start_time: Instant,
     is_shutting_down: bool
 }
@@ -52,52 +43,47 @@ impl ApplicationHandler for App {
 
                     let (wall_texture_names, wall_pics) = self.wad.bake_walls().unwrap();
                     let (flat_texture_names, flat_pics) = self.wad.bake_flats().unwrap(); 
+                    let (obj_texture_names, obj_pics) = self.wad.bake_objects().unwrap(); 
 
-                    let total_textures_count = wall_pics.len() + flat_pics.len();
+                    let total_textures_count = wall_pics.len() + flat_pics.len() + obj_pics.len();
                     let mut all_pixels = Vec::new();
                     let mut descriptors = Vec::with_capacity(total_textures_count);
 
                     let mut texture_data = HashMap::new();
                     let mut current_gpu_id = 0;
 
-                    for (idx, pic) in wall_pics.iter().enumerate() {
-                        let name = &wall_texture_names[idx];
-                    
-                        descriptors.push(TextureDescriptor {
-                            width: pic.width,
-                            height: pic.height,
-                            pixel_offset: all_pixels.len(),
-                        });
+                    let mut sprite_offsets = Vec::new();
+                    let mut are_objects_recording = true;
 
-                        for &lump_pixel in &pic.raw_pixels {
-                            all_pixels.push(lump_pixel);
-                            all_pixels.push(0);
-                            all_pixels.push(0);
-                            all_pixels.push(255);
-                        }
-                    
-                        texture_data.insert(name.clone(), (current_gpu_id, pic.width, pic.height));
-                        current_gpu_id += 1;
-                    }
-                
-                    for (idx, pic) in flat_pics.iter().enumerate() {
-                        let name = &flat_texture_names[idx];
+                    for (tex_names, pics) in [
+                        (obj_texture_names, obj_pics),
+                        (wall_texture_names, wall_pics),
+                        (flat_texture_names, flat_pics)].iter() 
+                    {
+                        for (idx, pic) in pics.iter().enumerate() {
+                            let name = &tex_names[idx];
+                        
+                            descriptors.push(TextureDescriptor {
+                                width: pic.width,
+                                height: pic.height,
+                                pixel_offset: all_pixels.len(),
+                            });
 
-                        descriptors.push(TextureDescriptor {
-                            width: pic.width,
-                            height: pic.height,
-                            pixel_offset: all_pixels.len(), 
-                        });
-                    
-                        for &lump_pixel in &pic.raw_pixels {
-                            all_pixels.push(lump_pixel);
-                            all_pixels.push(0);
-                            all_pixels.push(0);
-                            all_pixels.push(255);
+                            for &lump_pixel in &pic.raw_pixels {
+                                all_pixels.push(lump_pixel);
+                                all_pixels.push(0);
+                                all_pixels.push(0);
+                                all_pixels.push(255);
+                            }
+                        
+                            texture_data.insert(name.clone(), (current_gpu_id, pic.width, pic.height));
+                            current_gpu_id += 1;
+
+                            if are_objects_recording {
+                                sprite_offsets.push((pic.left_offset, pic.top_offset));
+                            }
                         }
-                    
-                        texture_data.insert(name.clone(), (current_gpu_id, pic.width, pic.height));
-                        current_gpu_id += 1;
+                        are_objects_recording = false;
                     }
 
                     renderer.upload_texture_array(descriptors.as_slice(), descriptors.len(), all_pixels.as_slice(), all_pixels.len());
@@ -114,19 +100,20 @@ impl ApplicationHandler for App {
 
                     let (wall_vertices, wall_indices) = self.map.get_walls_vertices(&texture_data);
                     let (flat_vertices, flat_indices) = self.map.get_flats_vertices(&texture_data);
+                    let (obj_vertices, obj_indices) = self.map.get_objects_vertices(&texture_data, sprite_offsets);
 
-                    let mut all_vertices = wall_vertices;
-                    let mut all_indices = wall_indices;
+                    let mut level_vertices = wall_vertices;
+                    let mut level_indices = wall_indices;
 
-                    let vertex_offset = all_vertices.len() as u32; 
+                    let vertex_offset = level_vertices.len() as u16; 
+                    level_vertices.extend(flat_vertices);
 
-                    all_vertices.extend(flat_vertices);
-
-                    for index in flat_indices {
-                        all_indices.push((vertex_offset + index as u32) as u16);
+                    for idx in flat_indices {
+                        level_indices.push(vertex_offset + idx);
                     }
 
-                    renderer.update_geometry(&all_vertices, &all_indices);
+                    renderer.update_level_geometry(&level_vertices, &level_indices);
+                    renderer.update_object_geometry(&obj_vertices, &obj_indices);
                 }
             }
         }
@@ -181,6 +168,7 @@ impl ApplicationHandler for App {
                 
                     renderer.start_frame(&ubo); 
                     renderer.draw_level();
+                    renderer.draw_objects();
                     renderer.end_frame();
                 
                     renderer.set_palette_index(0);
@@ -215,7 +203,6 @@ fn main() -> Result<(), String> {
         renderer: None,
         wad: wad,
         map: map,
-        textures: Vec::new(),
         start_time: Instant::now(),
         is_shutting_down: false
     };

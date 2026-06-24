@@ -16,6 +16,7 @@ pub struct Lump {
 pub struct Wad {
     data: Vec<u8>,
     pub directory: HashMap<String, Lump>,
+    pub dir_offset: usize
 }
 
 impl Wad {
@@ -80,7 +81,7 @@ impl Wad {
 
         }
 
-        Ok(Wad { data, directory })
+        Ok(Wad { data, directory, dir_offset })
     }
 
     pub fn get_data_by_lumpname(&self, name: &str) -> Option<&[u8]> {

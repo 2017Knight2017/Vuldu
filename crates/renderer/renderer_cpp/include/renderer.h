@@ -55,20 +55,8 @@ struct Texture {
     VkImageView view;
 };
 
-struct LevelPushConstants {
+struct PushConstants {
     uint32_t paletteIndex;   
-};
-
-struct SpritePushConstants {
-    uint32_t paletteIndex;
-    uint32_t lightLevel;      
-    uint32_t textureId;         
-    float spriteWidth;         
-    float spriteHeight;        
-    float leftOffset;          
-    float topOffset;           
-    float padding;    
-    float worldPos[4];         
 };
 
 class VulkanRenderer {
@@ -78,16 +66,15 @@ public:
     void initVulkan(const WindowHandles& handles, size_t window_raw_ptr);
     void cleanup();
     uint32_t addTexture(const uint8_t* pixels_ptr, uint32_t width, uint32_t height);
-    void updateGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint16_t* indices_ptr, size_t index_count);
+    void updateLevelGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint16_t* indices_ptr, size_t index_count);
+    void updateObjectGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint16_t* indices_ptr, size_t index_count);
     void uploadPalettes(const float* palettes_ptr);
     void uploadColormap(const uint8_t* colormap_ptr);
     void uploadTextureArray(const TextureDescriptor* descriptors_ptr, size_t descriptor_count, const uint8_t* all_pixels_ptr, size_t all_pixels_count);
     void setPaletteIndex(uint32_t idx);
     void startFrame(const UniformBufferObject* ubo_ptr);
     void endFrame();
-    void drawSprite(uint32_t textureId, uint32_t width, uint32_t height, 
-                    uint32_t lightLevel, int16_t leftOffset, int16_t topOffset, 
-                    float x, float y, float z);
+    void drawObjects();
     void drawLevel();
     
 private:
@@ -124,13 +111,19 @@ private:
     std::vector<VkDeviceMemory> uniformBuffersMemory;
     std::vector<void*> uniformBuffersMapped;
 
-    VkBuffer vertexBuffer = VK_NULL_HANDLE;
-    VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
-    uint32_t vertexCount = 0;
+    VkBuffer levelVertexBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory levelVertexBufferMemory = VK_NULL_HANDLE;
+    VkBuffer levelIndexBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory levelIndexBufferMemory = VK_NULL_HANDLE;
+    uint32_t levelVertexCount = 0;
+    uint32_t levelIndexCount = 0;
 
-    VkBuffer indexBuffer = VK_NULL_HANDLE;
-    VkDeviceMemory indexBufferMemory = VK_NULL_HANDLE;
-    uint32_t indexCount = 0;
+    VkBuffer objectVertexBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory objectVertexBufferMemory = VK_NULL_HANDLE;
+    VkBuffer objectIndexBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory objectIndexBufferMemory = VK_NULL_HANDLE;
+    uint32_t objectVertexCount = 0;
+    uint32_t objectIndexCount = 0;
 
     std::vector<VkImage> textureImages;
     std::vector<VkDeviceMemory> textureImageMemories;

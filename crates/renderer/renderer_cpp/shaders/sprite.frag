@@ -13,19 +13,14 @@ layout(binding = 2) readonly buffer ColormapBuffer {
 layout(binding = 3) uniform sampler2D texSamplers[];
 
 layout(push_constant) uniform SpriteConstants {
-    uint paletteIndex;      // offset = 0
-    uint lightLevel;        // offset = 4
-    uint textureId;         // offset = 8
-    float spriteWidth;     // offset = 12
-    float spriteHeight;    // offset = 16
-    float leftOffset;      // offset = 20
-    float topOffset;       // offset = 24
-    float padding;         // offset = 28
-    vec4 spriteWorldPos;   // offset = 32
+    uint paletteIndex;
 } sc;
 
-layout(location = 0) in vec2 fragTexCoord;
-layout(location = 1) flat in uint fragTexId;
+layout(location = 0) in vec3 fragLightLevel;      
+layout(location = 1) in vec2 fragTexCoord;
+layout(location = 2) flat in uint fragTexId;
+layout(location = 3) flat in uint fragSectorId;
+layout(location = 4) flat in uint fragColormapIdx;
 
 layout(location = 0) out vec4 outColor;
 
@@ -37,12 +32,14 @@ void main() {
         discard;
     }
 
-    uint colormapOffset = (sc.lightLevel * 256) | colorIndex;
+    uint colormapOffset = (fragColormapIdx * 256) | colorIndex;
     uint shadedIndex = uint(colormap.colors[colormapOffset]);
     
     uint colorPosition = (sc.paletteIndex * 256) | shadedIndex;
     vec4 finalColor = pal.colors[colorPosition];
 
-    outColor = vec4(finalColor.rgb, 1.0);
-}
+    vec3 modernColor = pal.colors[(sc.paletteIndex * 256) | colorIndex].rgb * fragLightLevel;
 
+    outColor = vec4(finalColor.rgb, 1.0);
+    //outColor = vec4(modernColor.rgb, 1.0);
+}

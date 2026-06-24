@@ -1,4 +1,4 @@
-use crate::*;
+use crate::{*, textures::SPRITE_NAMES};
 use bytemuck::{Pod, Zeroable};
 use renderer::Vertex;
 use earcut::Earcut;
@@ -82,7 +82,7 @@ pub struct MapSegment
 
 pub const NF_SUBSECTOR: u16 = 0x8000;
 
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
 pub struct MapNode
 {
@@ -94,7 +94,7 @@ pub struct MapNode
 	children: [u16; 2],
 }
 
-#[repr(C, packed)] 
+#[repr(C)] 
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
 pub struct MapThing
 {
@@ -113,10 +113,9 @@ pub struct DoomMap {
     sectors: Vec<MapSector>,
     pub things: Vec<MapThing>,
 	subsectors: Vec<MapSubsector>,
-	segs: Vec<MapSegment>
+	segs: Vec<MapSegment>,
+	nodes: Vec<MapNode>
 }
-
-
 
 impl DoomMap {
     pub fn from_wad(wad: &Wad, map_name: &str) -> Result<Self, String> {
@@ -169,6 +168,13 @@ impl DoomMap {
                 .ok_or("Failed to get SEGS bytes")?;
             let typed_slice: &[MapSegment] = bytemuck::cast_slice(bytes);
             map.segs = typed_slice.to_vec();
+        }
+
+		if let Some(lump) = wad.directory.get(&format!("NODES_{}", map_name)) {
+            let bytes = wad.data.get(lump.offset..lump.offset + lump.size)
+                .ok_or("Failed to get NODES bytes")?;
+            let typed_slice: &[MapNode] = bytemuck::cast_slice(bytes);
+            map.nodes = typed_slice.to_vec();
         }
 
         Ok(map)
@@ -526,6 +532,124 @@ impl DoomMap {
         	}
 		}
 	    (vertices, indices)
+	}
+
+	pub fn find_sector_at(&self, x: i16, y: i16) -> usize {
+        let mut current_node_idx = (self.nodes.len() - 1) as u16;
+
+        loop {
+            let node = &self.nodes[current_node_idx as usize];
+
+            let dx = x as i32 - node.x as i32;
+            let dy = y as i32 - node.y as i32;
+            
+            let is_left = (dx * node.dy as i32) - (dy * node.dx as i32) > 0;
+            let child_indicator = if is_left { 1 } else { 0 };
+            let child_id = node.children[child_indicator];
+
+            if (child_id & NF_SUBSECTOR) != 0 {
+			    let subsector_idx = (child_id & !NF_SUBSECTOR) as usize;
+			    let subsector = &self.subsectors[subsector_idx];
+
+			    let first_seg_idx = subsector.firstseg as usize;
+			    let seg = &self.segs[first_seg_idx];
+
+			    let linedef_idx = seg.linedef as usize;
+			    let linedef = &self.linedefs[linedef_idx];
+
+			    let sidedef_idx = linedef.sidenum[seg.side as usize];
+			    let sidedef = &self.sidedefs[sidedef_idx as usize];
+
+			    return sidedef.sector as usize;
+			}
+
+            current_node_idx = child_id;
+        }
+    }
+
+	pub fn get_objects_vertices(
+		&self, 
+		texture_ids: &HashMap<String, (u32, u32, u32)>, 
+		sprite_offsets: Vec<(i16, i16)>) -> (Vec<Vertex>, Vec<u16>) 
+	{
+		let mut vertices = Vec::new();
+		let mut indices = Vec::new();
+
+		for thing in self.things.iter() {
+			let mut sector_id = 0;
+			let mut min_dist = f32::MAX;
+
+			for seg in self.segs.iter() {
+			    if seg.v1 >= self.vertices.len() as i16 { continue; }
+			    let v = self.vertices[seg.v1 as usize];
+			    let dx = (thing.x - v.x) as f32;
+			    let dy = (thing.y - v.y) as f32;
+			    let dist = dx*dx + dy*dy;
+			    if dist < min_dist {
+			        min_dist = dist;
+			        if seg.linedef != -1 {
+			            let linedef = self.linedefs[seg.linedef as usize];
+			            let side = linedef.sidenum[seg.side as usize];
+			            if side != -1 {
+			                sector_id = self.sidedefs[side as usize].sector as usize;
+			            }
+			        }
+			    }
+			}
+
+			let sector = self.sectors[sector_id];
+
+			let clamped_light = sector.lightlevel.clamp(0, 255) as f32;
+        	let light_f32 = clamped_light / 255.0;
+        	let colormap_idx = 31 - ((clamped_light / 8.0).floor() as u32).clamp(0, 31);
+
+			let tex_prefix = match SPRITE_NAMES[&thing.type_] {
+				Some(name) => name,
+				None => continue
+			};
+
+			let mut final_tex_name = format!("{}A1", tex_prefix);
+			if !texture_ids.contains_key(&final_tex_name) {
+			    final_tex_name = format!("{}A0", tex_prefix);
+			}
+
+			let (tex_id, tex_width, tex_height) = texture_ids.get(&final_tex_name).unwrap_or(&(0,64,64));
+
+			let start_index = vertices.len() as u16;
+
+			let corners = [
+			    (0.0, 0.0),
+			    (1.0, 0.0),
+			    (1.0, 1.0),
+			    (0.0, 1.0),
+			];
+
+			for &(uv_x, uv_y) in &corners {
+				// since texture_ids is filled at the same time as sprite_offsets, 
+				// we can get the offsets by tex_id
+    			let x_offset = uv_x * *tex_width as f32 - sprite_offsets[*tex_id as usize].0 as f32;
+    			let y_offset = (1.0 - uv_y) * *tex_height as f32 - sprite_offsets[*tex_id as usize].1 as f32;
+			
+				vertices.push(Vertex { 
+					pos: [-(thing.x as f32), sector.floorheight as f32 + *tex_height as f32, thing.y as f32],
+					light_level: [light_f32, x_offset, y_offset],
+					texture_pos: [uv_x, uv_y],
+					texture_id: *tex_id,
+					sector_id: sector_id as u32,
+					colormap_idx: colormap_idx 
+				});
+			}
+
+			indices.push(start_index + 0);
+			indices.push(start_index + 2);
+			indices.push(start_index + 1);
+
+			indices.push(start_index + 2);
+			indices.push(start_index + 0);
+			indices.push(start_index + 3);
+		}
+
+		(vertices, indices)
 	}
 }
 

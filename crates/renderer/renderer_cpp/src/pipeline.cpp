@@ -78,18 +78,18 @@ void VulkanRenderer::createDepthResources() {
 	this->depthImageView = createImageView(this->device, this->depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
-void VulkanRenderer::updateGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint16_t* indices_ptr, size_t index_count) {
+void VulkanRenderer::updateLevelGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint16_t* indices_ptr, size_t index_count) {
     if (vertex_count == 0 || vertices_ptr == nullptr || index_count == 0 || indices_ptr == nullptr) return;
 
     vkDeviceWaitIdle(this->device);
 
-    destroyResource(this->device, this->vertexBuffer, vkDestroyBuffer);
-    destroyResource(this->device, this->vertexBufferMemory, vkFreeMemory);
-    destroyResource(this->device, this->indexBuffer, vkDestroyBuffer);
-    destroyResource(this->device, this->indexBufferMemory, vkFreeMemory);
+    destroyResource(this->device, this->levelVertexBuffer, vkDestroyBuffer);
+    destroyResource(this->device, this->levelVertexBufferMemory, vkFreeMemory);
+    destroyResource(this->device, this->levelIndexBuffer, vkDestroyBuffer);
+    destroyResource(this->device, this->levelIndexBufferMemory, vkFreeMemory);
 
-    this->vertexCount = static_cast<uint32_t>(vertex_count);
-    this->indexCount = static_cast<uint32_t>(index_count);
+    this->levelVertexCount = static_cast<uint32_t>(vertex_count);
+    this->levelIndexCount = static_cast<uint32_t>(index_count);
 
     VkDeviceSize vertexBufferSize = sizeof(Vertex) * vertex_count;
     VkDeviceSize indexBufferSize = sizeof(uint16_t) * index_count;
@@ -105,8 +105,8 @@ void VulkanRenderer::updateGeometry(const Vertex* vertices_ptr, size_t vertex_co
     memcpy(vertexData, vertices_ptr, static_cast<size_t>(vertexBufferSize));
     vkUnmapMemory(this->device, vertexStagingBufferMemory);
 
-    createBuffer(vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, this->vertexBuffer, this->vertexBufferMemory);
-    copyBuffer(vertexStagingBuffer, this->vertexBuffer, vertexBufferSize);
+    createBuffer(vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, this->levelVertexBuffer, this->levelVertexBufferMemory);
+    copyBuffer(vertexStagingBuffer, this->levelVertexBuffer, vertexBufferSize);
 
     vkDestroyBuffer(this->device, vertexStagingBuffer, nullptr);
     vkFreeMemory(this->device, vertexStagingBufferMemory, nullptr);
@@ -123,12 +123,59 @@ void VulkanRenderer::updateGeometry(const Vertex* vertices_ptr, size_t vertex_co
     memcpy(indexData, indices_ptr, static_cast<size_t>(indexBufferSize));
     vkUnmapMemory(this->device, indexStagingBufferMemory);
 
-    createBuffer(indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, this->indexBuffer, this->indexBufferMemory);
-    copyBuffer(indexStagingBuffer, this->indexBuffer, indexBufferSize);
+    createBuffer(indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, this->levelIndexBuffer, this->levelIndexBufferMemory);
+    copyBuffer(indexStagingBuffer, this->levelIndexBuffer, indexBufferSize);
 
     vkDestroyBuffer(this->device, indexStagingBuffer, nullptr);
     vkFreeMemory(this->device, indexStagingBufferMemory, nullptr);
+}
+
+void VulkanRenderer::updateObjectGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint16_t* indices_ptr, size_t index_count) {
+    if (vertex_count == 0 || vertices_ptr == nullptr || index_count == 0 || indices_ptr == nullptr) return;
+
+    vkDeviceWaitIdle(this->device);
+
+    destroyResource(this->device, this->objectVertexBuffer, vkDestroyBuffer);
+    destroyResource(this->device, this->objectVertexBufferMemory, vkFreeMemory);
+    destroyResource(this->device, this->objectIndexBuffer, vkDestroyBuffer);
+    destroyResource(this->device, this->objectIndexBufferMemory, vkFreeMemory);
+
+    this->objectVertexCount = static_cast<uint32_t>(vertex_count);
+    this->objectIndexCount = static_cast<uint32_t>(index_count);
+
+    VkDeviceSize vertexBufferSize = sizeof(Vertex) * vertex_count;
+    VkDeviceSize indexBufferSize = sizeof(uint16_t) * index_count;
+
+    VkBuffer vertexStagingBuffer;
+    VkDeviceMemory vertexStagingBufferMemory;
+    createBuffer(vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertexStagingBuffer, vertexStagingBufferMemory);
+
+    void* vertexData;
+    vkMapMemory(this->device, vertexStagingBufferMemory, 0, vertexBufferSize, 0, &vertexData);
+    memcpy(vertexData, vertices_ptr, static_cast<size_t>(vertexBufferSize));
+    vkUnmapMemory(this->device, vertexStagingBufferMemory);
+
+    createBuffer(vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, this->objectVertexBuffer, this->objectVertexBufferMemory);
+    copyBuffer(vertexStagingBuffer, this->objectVertexBuffer, vertexBufferSize);
+
+    vkDestroyBuffer(this->device, vertexStagingBuffer, nullptr);
+    vkFreeMemory(this->device, vertexStagingBufferMemory, nullptr);
+
     
+    VkBuffer indexStagingBuffer;
+    VkDeviceMemory indexStagingBufferMemory;
+    createBuffer(indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, indexStagingBuffer, indexStagingBufferMemory);
+	
+    void* indexData;
+   	vkMapMemory(this->device, indexStagingBufferMemory, 0, indexBufferSize, 0, &indexData);
+    memcpy(indexData, indices_ptr, static_cast<size_t>(indexBufferSize));
+    vkUnmapMemory(this->device, indexStagingBufferMemory);
+
+    createBuffer(indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, this->objectIndexBuffer, this->objectIndexBufferMemory);
+    copyBuffer(indexStagingBuffer, this->objectIndexBuffer, indexBufferSize);
+
+    vkDestroyBuffer(this->device, indexStagingBuffer, nullptr);
+    vkFreeMemory(this->device, indexStagingBufferMemory, nullptr);
 }
 
 void VulkanRenderer::createGraphicsPipeline() {
@@ -257,15 +304,15 @@ void VulkanRenderer::createGraphicsPipeline() {
 
 	VkPipelineVertexInputStateCreateInfo spriteVertexInputInfo{};
 	spriteVertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	spriteVertexInputInfo.vertexBindingDescriptionCount = 0;
-	spriteVertexInputInfo.vertexAttributeDescriptionCount = 0;
-	spriteVertexInputInfo.pVertexBindingDescriptions = nullptr;
-	spriteVertexInputInfo.pVertexAttributeDescriptions = nullptr;
+	spriteVertexInputInfo.vertexBindingDescriptionCount = 1;
+	spriteVertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+	spriteVertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+	spriteVertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
 	VkPushConstantRange spritePushConstantRange{};
-	spritePushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT; 
+	spritePushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; 
 	spritePushConstantRange.offset = 0;
-	spritePushConstantRange.size = sizeof(SpritePushConstants);
+	spritePushConstantRange.size = sizeof(PushConstants);
 
 	VkPipelineLayoutCreateInfo spritePipelineLayoutInfo{};
 	spritePipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -315,7 +362,7 @@ void VulkanRenderer::createGraphicsPipeline() {
 	VkPushConstantRange levelPushConstantRange{};
 	levelPushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; 
 	levelPushConstantRange.offset = 0;
-	levelPushConstantRange.size = sizeof(LevelPushConstants);
+	levelPushConstantRange.size = sizeof(PushConstants);
 
 	VkPipelineLayoutCreateInfo levelPipelineLayoutInfo{};
 	levelPipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;

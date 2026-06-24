@@ -161,47 +161,6 @@ void VulkanRenderer::endSingleTimeCommands(VkCommandBuffer commandBuffer) {
     vkFreeCommandBuffers(this->device, this->commandPool, 1, &commandBuffer);
 }
 
-uint32_t VulkanRenderer::addTexture(const uint8_t* pixels_ptr, uint32_t width, uint32_t height) {
-	VkImage newImage;
-    VkDeviceMemory newMemory;
-    VkImageView newView;
-
-	VkDeviceSize imageSize = width * height * 1;
-
-	if (pixels_ptr == nullptr) {
-        throw std::runtime_error("pixels_ptr is empty!");
-    }
-
-	VkBuffer stagingBuffer;
-	VkDeviceMemory stagingBufferMemory;
-	createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-	
-	void* data;
-	vkMapMemory(this->device, stagingBufferMemory, 0, imageSize, 0, &data);
-		memcpy(data, pixels_ptr, static_cast<size_t>(imageSize));
-	vkUnmapMemory(this->device, stagingBufferMemory);
-
-	createImage(width, height, VK_FORMAT_R8_UINT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, newImage, newMemory);
-	
-	transitionImageLayout(newImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	copyBufferToImage(stagingBuffer, newImage, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
-	transitionImageLayout(newImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-    vkDestroyBuffer(this->device, stagingBuffer, nullptr);
-    vkFreeMemory(this->device, stagingBufferMemory, nullptr);
-
-	newView = createImageView(this->device, newImage, VK_FORMAT_R8_UINT, VK_IMAGE_ASPECT_COLOR_BIT);
-
-	textureImages.push_back(newImage);
-    textureImageMemories.push_back(newMemory);
-    textureImageViews.push_back(newView);
-
-	uint32_t textureId = static_cast<uint32_t>(textureImageViews.size() - 1);
-
-	updateDescriptorSetWithTexture(textureId, newView);
-	return textureId;
-}
-
 void VulkanRenderer::uploadTextureArray(const TextureDescriptor* descriptors_ptr, size_t descriptor_count, const uint8_t* all_pixels_ptr, size_t all_pixels_count) {
     if (descriptors_ptr == nullptr) {
         throw std::runtime_error("descriptors_ptr is empty!");

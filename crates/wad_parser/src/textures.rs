@@ -1,4 +1,5 @@
 use crate::*;
+use phf::{Map, phf_map};
 
 #[repr(C, packed)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -28,6 +29,132 @@ pub struct DoomPicture {
 	pub left_offset: i16,
 	pub top_offset: i16,
 } 
+
+pub static SPRITE_NAMES: Map<i16, Option<&'static str>> = phf_map! {
+	1i16 => Some("PLAY"),
+	2i16 => Some("PLAY"),
+	3i16 => Some("PLAY"),
+	4i16 => Some("PLAY"),
+	5i16 => Some("BKEY"),
+	6i16 => Some("YKEY"),
+	7i16 => Some("SPID"),
+	8i16 => Some("BPAK"),
+	9i16 => Some("SPOS"),
+	10i16 => Some("PLAY"),
+	11i16 => None,
+	12i16 => Some("PLAY"),
+	13i16 => Some("RKEY"),
+	14i16 => None,
+	15i16 => Some("PLAY"),
+	16i16 => Some("CYBR"),
+	17i16 => Some("CELP"),
+	18i16 => Some("POSS"),
+	19i16 => Some("SPOS"),
+	20i16 => Some("TROO"),
+	21i16 => Some("SARG"),
+	22i16 => Some("HEAD"),
+	23i16 => Some("SKUL"),
+	24i16 => Some("POL5"),
+	25i16 => Some("POL1"),
+	26i16 => Some("POL6"),
+	27i16 => Some("POL4"),
+	28i16 => Some("POL2"),
+	29i16 => Some("POL3"),
+	30i16 => Some("COL1"),
+	31i16 => Some("COL2"),
+	32i16 => Some("COL3"),
+	33i16 => Some("COL4"),
+	34i16 => Some("CAND"),
+	35i16 => Some("CBRA"),
+	36i16 => Some("COL5"),
+	37i16 => Some("COL6"),
+	38i16 => Some("RSKU"),
+	39i16 => Some("YSKU"),
+	40i16 => Some("BSKU"),
+	41i16 => Some("CEYE"),
+	42i16 => Some("FSKU"),
+	43i16 => Some("TRE1"),
+	44i16 => Some("TBLU"),
+	45i16 => Some("TGRN"),
+	46i16 => Some("TRED"),
+	47i16 => Some("SMIT"),
+	48i16 => Some("ELEC"),
+	49i16 => Some("GOR1"),
+	50i16 => Some("GOR2"),
+	51i16 => Some("GOR3"),
+	52i16 => Some("GOR4"),
+	53i16 => Some("GOR5"),
+	54i16 => Some("TRE2"),
+	55i16 => Some("SMBT"),
+	56i16 => Some("SMGT"),
+	57i16 => Some("SMRT"),
+	58i16 => Some("SARG"),
+	59i16 => Some("GOR2"),
+	60i16 => Some("GOR4"),
+	61i16 => Some("GOR3"),
+	62i16 => Some("GOR5"),
+	63i16 => Some("GOR1"),
+	64i16 => Some("VILE"),
+	65i16 => Some("CPOS"),
+	66i16 => Some("SKEL"),
+	67i16 => Some("FATT"),
+	68i16 => Some("BSPI"),
+	69i16 => Some("BOS2"),
+	70i16 => Some("FCAN"),
+	71i16 => Some("PAIN"),
+	72i16 => Some("KEEN"),
+	73i16 => Some("HDB1"),
+	74i16 => Some("HDB2"),
+	75i16 => Some("HDB3"),
+	76i16 => Some("HDB4"),
+	77i16 => Some("HDB5"),
+	78i16 => Some("HDB6"),
+	79i16 => Some("POB1"),
+	80i16 => Some("POB2"),
+	81i16 => Some("BRS1"),
+	82i16 => Some("SGN2"),
+	83i16 => Some("MEGA"),
+	84i16 => Some("SSWV"),
+	85i16 => Some("TLMP"),
+	86i16 => Some("TLP2"),
+	87i16 => None,
+	88i16 => Some("BBRN"),
+	89i16 => None,
+	2001i16 => Some("SHOT"),
+	2002i16 => Some("MGUN"),
+	2003i16 => Some("LAUN"),
+	2004i16 => Some("PLAS"),
+	2005i16 => Some("CSAW"),
+	2006i16 => Some("BFUG"),
+	2007i16 => Some("CLIP"),
+	2008i16 => Some("SHEL"),
+	2010i16 => Some("ROCK"),
+	2011i16 => Some("STIM"),
+	2012i16 => Some("MEDI"),
+	2013i16 => Some("SOUL"),
+	2014i16 => Some("BON1"),
+	2015i16 => Some("BON2"),
+	2018i16 => Some("ARM1"),
+	2019i16 => Some("ARM2"),
+	2022i16 => Some("PINV"),
+	2023i16 => Some("PSTR"),
+	2024i16 => Some("PINS"),
+	2025i16 => Some("SUIT"),
+	2026i16 => Some("PMAP"),
+	2028i16 => Some("COLU"),
+	2035i16 => Some("BAR1"),
+	2045i16 => Some("PVIS"),
+	2046i16 => Some("BROK"),
+	2047i16 => Some("CELL"),
+	2048i16 => Some("AMMO"),
+	2049i16 => Some("SBOX"),
+	3001i16 => Some("TROO"),
+	3002i16 => Some("SARG"),
+	3003i16 => Some("BOSS"),
+	3004i16 => Some("POSS"),
+	3005i16 => Some("HEAD"),
+	3006i16 => Some("SKUL"),
+};
 
 impl Wad {
 	pub fn decode_column_picture(&self, sprite_lump: Lump) -> Option<DoomPicture> {
@@ -176,10 +303,10 @@ impl Wad {
 	    let width = i16::from_le_bytes(data.get(12..14)?.try_into().ok()?);
 	    let height = i16::from_le_bytes(data.get(14..16)?.try_into().ok()?);
 	    // columndirectory, which is on 16..20, is obsolete
-	    let patch_count = i16::from_le_bytes(data.get(20..22)?.try_into().ok()?);
+	    let patchcount = i16::from_le_bytes(data.get(20..22)?.try_into().ok()?);
 
 	    let start_bytes: usize = 22;
-	    let end_bytes = start_bytes + (patch_count as usize * 10);
+	    let end_bytes = start_bytes + (patchcount as usize * 10);
 	    let patches_bytes = data.get(start_bytes..end_bytes)?;
 
 	    let wad_patches: &[MapPatch] = bytemuck::cast_slice(patches_bytes);
@@ -200,7 +327,7 @@ impl Wad {
 	        masked,
 	        width,
 	        height,
-	        patchcount: patch_count as i16,
+	        patchcount,
 	        patches,
 	    })
 	}
@@ -209,20 +336,98 @@ impl Wad {
 	    let mut flats_names = Vec::new();
 	    let mut baked_flats = Vec::new();
 
-	    for (name, &lump) in self.directory.iter() {
-	        if let Some(flat_pic) = self.decode_flat_picture(lump) {
-	            if name.starts_with("E") && name.contains("M") { continue; }
-	            if name.starts_with("MAP") { continue; }
+		let f_start_pos = self.data[self.dir_offset..]
+			.chunks_exact(16).enumerate()
+			.find_map(|(idx, chunk)| {
+				if chunk[8..].starts_with(b"F_START") || chunk[8..].starts_with(b"FF_START") { 
+					Some(self.dir_offset + idx*16) 
+				} else { None }
+			})?;
+		let f_end_pos = self.data[self.dir_offset..]
+			.chunks_exact(16).enumerate()
+			.find_map(|(idx, chunk)| {
+				if chunk[8..].starts_with(b"F_END") || chunk[8..].starts_with(b"FF_END") { 
+					Some(self.dir_offset + idx*16) 
+				} else { None }
+			})?;
 
-	            flats_names.push(name.clone());
-	            baked_flats.push(flat_pic);
-	        }
-	    }
+		let mut current_dir_pos = f_start_pos + 16;
 
-	    if baked_flats.is_empty() {
-	        return None;
-	    }
+		while current_dir_pos < f_end_pos {
+			let lump_offset = u32::from_le_bytes(self.data[current_dir_pos..current_dir_pos+4]
+                .try_into()
+				.ok()?) as usize;
+            let lump_size = u32::from_le_bytes(self.data[current_dir_pos+4..current_dir_pos+8]
+                .try_into()
+				.ok()?) as usize;
+            
+            let name_bytes = &self.data[current_dir_pos+8..current_dir_pos+16];
+            let name = String::from_utf8_lossy(name_bytes)
+                .trim_matches('\0')
+                .to_uppercase();
+
+			if name.contains("START") || name.contains("END") || lump_size == 0 {
+        	    current_dir_pos += 16;
+        	    continue;
+        	}
+
+			if let Some(flat_pic) = self.decode_flat_picture(Lump { offset: lump_offset, size: lump_size }) {
+			    flats_names.push(name);
+			    baked_flats.push(flat_pic);
+			} else {
+			    println!("Flat {} is broken!", name);
+			}
+
+			current_dir_pos += 16;
+		}
 
 	    Some((flats_names, baked_flats))
+	}
+
+	pub fn bake_objects(&self) -> Option<(Vec<String>, Vec<DoomPicture>)> {
+		let mut objects_names = Vec::new();
+	    let mut baked_objects = Vec::new();
+
+		let s_start_pos = self.data[self.dir_offset..]
+			.chunks_exact(16).enumerate()
+			.find_map(|(idx, chunk)| {
+				if chunk[8..].starts_with(b"S_START") || chunk[8..].starts_with(b"SS_START") { 
+					Some(self.dir_offset + idx*16) 
+				} else { None }
+			})?;
+		let s_end_pos = self.data[self.dir_offset..]
+			.chunks_exact(16).enumerate()
+			.find_map(|(idx, chunk)| {
+				if chunk[8..].starts_with(b"S_END") || chunk[8..].starts_with(b"SS_END") { 
+					Some(self.dir_offset + idx*16) 
+				} else { None }
+			})?;
+		
+		let mut current_dir_pos = s_start_pos + 16;
+
+		while current_dir_pos < s_end_pos {
+			let lump_offset = u32::from_le_bytes(self.data[current_dir_pos..current_dir_pos+4]
+                .try_into()
+				.ok()?) as usize;
+            let lump_size = u32::from_le_bytes(self.data[current_dir_pos+4..current_dir_pos+8]
+                .try_into()
+				.ok()?) as usize;
+            
+            let name_bytes = &self.data[current_dir_pos+8..current_dir_pos+16];
+            let name = String::from_utf8_lossy(name_bytes)
+                .trim_matches('\0')
+                .to_uppercase();
+
+			if let Some(pic) = self.decode_column_picture(Lump { offset: lump_offset, size: lump_size }) {
+			    objects_names.push(name);
+			    baked_objects.push(pic);
+			} else {
+			    println!("Sprite {} is broken!", name);
+			}
+
+			current_dir_pos += 16;
+		}
+
+		Some((objects_names, baked_objects))
 	}
 }
