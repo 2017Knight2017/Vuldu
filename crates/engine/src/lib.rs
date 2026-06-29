@@ -1,11 +1,18 @@
-use hecs;
+use hecs::{World, Bundle};
+use std::f64::consts::TAU;
 
-const TICKRATE: u32 = 35;
 const NUMAMMO: usize = 4;
 const NUMPOWERS: usize = 6;
 const NUMWEAPONS: usize = 9;
 const NUMCARDS: usize = 6;
 const NUMSPRITES: usize = 138;
+
+const EAST: u32 = 0x00000000;
+const NORTH: u32 = 0x40000000;
+const WEST: u32 = 0x80000000;
+const SOUTH: u32 = 0xc0000000;
+
+const FRICTION: f32 = 0.9375;
 
 #[derive(Clone, Copy, Default)]
 pub struct PlayerInput {
@@ -13,6 +20,8 @@ pub struct PlayerInput {
     pub move_backward: bool,
     pub move_left: bool,
     pub move_right: bool,
+    pub move_up: bool,
+    pub move_down: bool,
     pub shoot: bool,
     pub mouse_delta_x: f32,
 }
@@ -251,18 +260,21 @@ pub enum MobjType {
     Misc86
 }
 
-pub enum PlayerState
-{
-    PSTLive,
-    PSTDead,
-    PSTReborn		
+pub enum PlayerState {
+    Live,
+    Dead,
+    Reborn		
 }
 
 pub struct Transform {
 	pub x: f32,
 	pub y: f32,
 	pub z: f32,
-	pub angle: u32
+	pub prev_x: f32,
+	pub prev_y: f32,
+	pub prev_z: f32,
+	pub angle: u32,
+    pub prev_angle: u32,
 }
 
 pub struct Velocity {
@@ -336,24 +348,105 @@ pub struct WeaponOverlay {
     pub sy: f32,
 }
 
-pub fn update_physics(world: &mut hecs::World, input: &PlayerInput) {
-    for (vel, _pos, _player) in world.query_mut::<(&mut Velocity, &mut Transform, &PlayerMarker)>() {
-        
-        let mut move_vec_x = 0.0;
-        let mut move_vec_z = 0.0;
+#[derive(Bundle)]
+pub struct MobjBundle {
+    pub transform: Transform,
+    pub velocity: Velocity,
+    pub bbox: BoundingBox,
+    pub env: PhysicsEnvironment,
+    pub health: Health,
+    pub state: ActorState,
+}
 
-        if input.move_forward  { move_vec_z -= 1.0; }
-        if input.move_backward { move_vec_z += 1.0; }
-        if input.move_left     { move_vec_x -= 1.0; }
-        if input.move_right    { move_vec_x += 1.0; }
+#[derive(Bundle)]
+pub struct PlayerBundle {
+    pub transform: Transform,
+    pub velocity: Velocity,
+    pub bbox: BoundingBox,
+    pub env: PhysicsEnvironment,
+    pub health: Health,
+    pub state: ActorState,
+
+    pub marker: PlayerMarker,
+    pub camera: PlayerCamera,
+    pub stats: PlayerStats,
+    pub inventory: PlayerInventory,
+    pub weapon_overlay: WeaponOverlay,
+}
+
+pub fn spawn_player(world: &mut World, x_raw: i16, y_raw: i16, z_raw: i16, angle_raw: i16) {
+	let x = x_raw as f32;
+	let y = y_raw as f32;
+	let z = z_raw as f32;
+
+    let angle = angle_raw as u32 / 45 * 0x20000000;
+
+	let _ = world.spawn(PlayerBundle {
+	    transform: Transform { x, y, z, prev_x: x, prev_y: y, prev_z: z, angle, prev_angle: angle },
+	    velocity: Velocity { x: 0.0, y: 0.0, z: 0.0 },
+	    bbox: BoundingBox { radius: 16.0, height: 56.0 },
+	    env: PhysicsEnvironment { floor_z: y, ceiling_z: 128.0 },
+	    health: Health(100),
+	    state: ActorState { mobj_type: MobjType::Player, current_state_idx: 1, tics: 0, flags: 0 },
+		
+	    marker: PlayerMarker,
+	    camera: PlayerCamera { view_z: 41.0, view_height: 41.0, delta_view_height: 0.0, bob: 0.0 },
+	    stats: PlayerStats { state: PlayerState::Live, armor_points: 0, armor_type: 0, kill_count: 0, item_count: 0, secret_count: 0 },
+	    inventory: PlayerInventory { ready_weapon: 1, pending_weapon: 1, backpack: false, cards: [false; NUMCARDS], weapon_owned: [false; NUMWEAPONS], ammo: [50, 0, 0, 0], max_ammo: [200, 50, 50, 300] },
+	    weapon_overlay: WeaponOverlay { state_idx: 0, tics: 0, sx: 0.0, sy: 0.0 },
+	});
+}
+
+pub fn update_physics(world: &mut World, input: &PlayerInput) {
+    for (velocity, transform, _player) in world.query_mut::<(&mut Velocity, &mut Transform, &PlayerMarker)>() {
+        
+        let mut move_forward = 0.0;
+        let mut move_sideways = 0.0;
+        let mut move_vertically = 0.0;
+
+        if input.move_forward  { move_forward += 1.0; }
+        if input.move_backward { move_forward -= 1.0; }
+        if input.move_left     { move_sideways += 1.0; }
+        if input.move_right    { move_sideways -= 1.0; }
+        if input.move_up       { move_vertically += 1.0; }
+        if input.move_down     { move_vertically -= 1.0; }
+
+        let current_angle_rad = (transform.angle as f64 / u32::MAX as f64) * TAU;
+
+        let sin = f64::sin(current_angle_rad);
+        let cos = f64::cos(current_angle_rad);
 
         let speed = 8.0;
-        vel.x = move_vec_x * speed;
-        vel.z = move_vec_z * speed;
-    }
 
-    for (pos, vel) in world.query_mut::<(&mut Transform, &Velocity)>() {
-        pos.x += vel.x;
-        pos.z += vel.z;
+        let thrust_x = (cos * move_sideways + sin * move_forward) * speed;
+        let thrust_z = (-sin * move_sideways + cos * move_forward) * speed;
+
+        velocity.x += thrust_x as f32 * 0.2; 
+        velocity.z += thrust_z as f32 * 0.2;
+        velocity.y += move_vertically * 4.0;
+
+		let sensitivity = 0.008; 
+        let angle_delta_rad = -input.mouse_delta_x * sensitivity;
+        let factor = (angle_delta_rad as f64) / TAU;
+
+        let angle_delta = (factor * u32::MAX as f64) as i32;
+
+        transform.prev_angle = transform.angle;
+        transform.angle = transform.angle.wrapping_add_signed(angle_delta);
+    }
+}
+
+pub fn system_movement_and_friction(world: &mut World) {
+	for (transform, velocity) in world.query_mut::<(&mut Transform, &mut Velocity)>() {
+		velocity.x *= FRICTION;
+		velocity.y *= 0.7;
+		velocity.z *= FRICTION;
+
+		transform.prev_x = transform.x;
+        transform.prev_y = transform.y;
+		transform.prev_z = transform.z;
+        transform.x += velocity.x;
+        transform.y += velocity.y;
+        transform.z += velocity.z;
     }
 }

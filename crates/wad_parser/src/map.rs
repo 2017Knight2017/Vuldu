@@ -51,13 +51,13 @@ pub struct MapLinedef
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
 pub struct MapSector
 {
-	floorheight: i16,
-	ceilingheight: i16,
-  	floorpic: [u8; 8],
-  	ceilingpic:[u8; 8],
-	lightlevel: i16,
-	special: i16,
-	tag: i16,
+	pub floorheight: i16,
+	pub ceilingheight: i16,
+  	pub floorpic: [u8; 8],
+  	pub ceilingpic:[u8; 8],
+	pub lightlevel: i16,
+	pub special: i16,
+	pub tag: i16,
 }
 
 #[repr(C)]
@@ -110,7 +110,7 @@ pub struct DoomMap {
     vertices: Vec<MapVertex>,
     linedefs: Vec<MapLinedef>,
     sidedefs: Vec<MapSidedef>,
-    sectors: Vec<MapSector>,
+    pub sectors: Vec<MapSector>,
     pub things: Vec<MapThing>,
 	subsectors: Vec<MapSubsector>,
 	segs: Vec<MapSegment>,
@@ -534,38 +534,28 @@ impl DoomMap {
 	    (vertices, indices)
 	}
 
-	pub fn find_sector_at(&self, x: i16, y: i16) -> usize {
-        let mut current_node_idx = (self.nodes.len() - 1) as u16;
-
-        loop {
-            let node = &self.nodes[current_node_idx as usize];
-
-            let dx = x as i32 - node.x as i32;
-            let dy = y as i32 - node.y as i32;
-            
-            let is_left = (dx * node.dy as i32) - (dy * node.dx as i32) > 0;
-            let child_indicator = if is_left { 1 } else { 0 };
-            let child_id = node.children[child_indicator];
-
-            if (child_id & NF_SUBSECTOR) != 0 {
-			    let subsector_idx = (child_id & !NF_SUBSECTOR) as usize;
-			    let subsector = &self.subsectors[subsector_idx];
-
-			    let first_seg_idx = subsector.firstseg as usize;
-			    let seg = &self.segs[first_seg_idx];
-
-			    let linedef_idx = seg.linedef as usize;
-			    let linedef = &self.linedefs[linedef_idx];
-
-			    let sidedef_idx = linedef.sidenum[seg.side as usize];
-			    let sidedef = &self.sidedefs[sidedef_idx as usize];
-
-			    return sidedef.sector as usize;
-			}
-
-            current_node_idx = child_id;
-        }
-    }
+	pub fn get_sector_by_thing(&self, thing: &MapThing) -> usize {
+		let mut sector_idx = 0;
+		let mut min_dist = f32::MAX;
+		for seg in self.segs.iter() {
+		    if seg.v1 >= self.vertices.len() as i16 { continue; }
+		    let v = self.vertices[seg.v1 as usize];
+		    let dx = (thing.x - v.x) as f32;
+		    let dy = (thing.y - v.y) as f32;
+		    let dist = dx*dx + dy*dy;
+		    if dist < min_dist {
+		        min_dist = dist;
+		        if seg.linedef != -1 {
+		            let linedef = self.linedefs[seg.linedef as usize];
+		            let side = linedef.sidenum[seg.side as usize];
+		            if side != -1 {
+		                sector_idx = self.sidedefs[side as usize].sector as usize;
+		            }
+		        }
+		    }
+		}
+		sector_idx
+	}
 
 	pub fn get_objects_vertices(
 		&self, 
@@ -576,28 +566,9 @@ impl DoomMap {
 		let mut indices = Vec::new();
 
 		for thing in self.things.iter() {
-			let mut sector_id = 0;
-			let mut min_dist = f32::MAX;
+			let sector_idx = self.get_sector_by_thing(thing);
 
-			for seg in self.segs.iter() {
-			    if seg.v1 >= self.vertices.len() as i16 { continue; }
-			    let v = self.vertices[seg.v1 as usize];
-			    let dx = (thing.x - v.x) as f32;
-			    let dy = (thing.y - v.y) as f32;
-			    let dist = dx*dx + dy*dy;
-			    if dist < min_dist {
-			        min_dist = dist;
-			        if seg.linedef != -1 {
-			            let linedef = self.linedefs[seg.linedef as usize];
-			            let side = linedef.sidenum[seg.side as usize];
-			            if side != -1 {
-			                sector_id = self.sidedefs[side as usize].sector as usize;
-			            }
-			        }
-			    }
-			}
-
-			let sector = self.sectors[sector_id];
+			let sector = self.sectors[sector_idx];
 
 			let clamped_light = sector.lightlevel.clamp(0, 255) as f32;
         	let light_f32 = clamped_light / 255.0;
@@ -612,6 +583,12 @@ impl DoomMap {
 			if !texture_ids.contains_key(&final_tex_name) {
 			    final_tex_name = format!("{}A0", tex_prefix);
 			}
+
+			final_tex_name = match tex_prefix {
+				"BSPI" | "VILE" | "SPID" | "SKEL" => format!("{}A1D1", tex_prefix),
+				"BOS2" => format!("{}A1C1", tex_prefix),
+				_ => final_tex_name
+			};
 
 			let (tex_id, tex_width, tex_height) = texture_ids.get(&final_tex_name).unwrap_or(&(0,64,64));
 
@@ -635,7 +612,7 @@ impl DoomMap {
 					light_level: [light_f32, x_offset, y_offset],
 					texture_pos: [uv_x, uv_y],
 					texture_id: *tex_id,
-					sector_id: sector_id as u32,
+					sector_id: sector_idx as u32,
 					colormap_idx: colormap_idx 
 				});
 			}

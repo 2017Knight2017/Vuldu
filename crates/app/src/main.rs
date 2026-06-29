@@ -15,22 +15,68 @@ use raw_window_handle::{HasDisplayHandle, HasWindowHandle, RawDisplayHandle, Raw
 use std::time::Instant;
 use std::collections::HashMap;
 
+const EYE_HEIGHT: f32 = 41.0;
+const FOV_ANGLE: f32 = 90.0;
+const TICKRATE: u32 = 35;
+const TICK_TIME: f32 = 1.0 / TICKRATE as f32;
+
 struct App {
     window: Option<Window>,
     renderer: Option<SafeRenderer>,
     wad: Wad,
     world: World,
     map: DoomMap,
-    start_time: Instant,
     is_shutting_down: bool,
     current_input: PlayerInput,
+    view_matrix: Mat4,
+    last_frame_time: Instant,
+    time_accumulator: f32,
+}
+
+impl App {
+    fn update_camera_from_player(&mut self, alpha: f32) {
+        for (transform, _player) in self.world.query::<(&Transform, &PlayerMarker)>().iter() {
+
+            let prev_pos = glam::vec3(transform.prev_x, transform.prev_y + EYE_HEIGHT, transform.prev_z);
+            let current_pos = glam::vec3(transform.x, transform.y + EYE_HEIGHT, transform.z);
+            let interpolated_pos = prev_pos + (current_pos - prev_pos) * alpha;
+
+            let angle_diff = transform.angle.wrapping_sub(transform.prev_angle) as i32;
+            let interpolated_diff = (angle_diff as f64 * alpha as f64) as i32;
+            let interpolated_angle_u32 = transform.prev_angle.wrapping_add_signed(interpolated_diff);
+
+            let angle_normalized = interpolated_angle_u32 as f64 / u32::MAX as f64;
+            let angle_rad = (angle_normalized * (2.0 * std::f64::consts::PI)) as f32;
+
+            let target_dir = glam::vec3(f32::sin(angle_rad), 0.0, f32::cos(angle_rad));
+            let camera_target = interpolated_pos + target_dir;
+
+            let camera_up = glam::vec3(0.0, 1.0, 0.0);
+
+            self.view_matrix = glam::Mat4::look_at_rh(interpolated_pos, camera_target, camera_up);
+        }
+    }
 }
 
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if self.window.is_none() {
             let window = event_loop.create_window(Window::default_attributes()).unwrap();
+            
+            window.set_cursor_visible(false);
+
+            if let Err(err) = window.set_cursor_grab(winit::window::CursorGrabMode::Locked) {
+                let _ = window.set_cursor_grab(winit::window::CursorGrabMode::Confined);
+                println!("{:?}", err);
+            }
+
             self.window = Some(window);
+
+            let plr_spawn = self.map.things
+                .iter().find(|thing| thing.type_ == 1)
+                .unwrap();
+            let plr_floorheight = self.map.sectors[self.map.get_sector_by_thing(plr_spawn)].floorheight;
+            engine::spawn_player(&mut self.world, plr_spawn.x, plr_floorheight, plr_spawn.y, plr_spawn.angle);
             
             self.renderer = Some(SafeRenderer::new());
 
@@ -144,6 +190,8 @@ impl ApplicationHandler for App {
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
         match event {
             WindowEvent::KeyboardInput { event, .. } => {
+                if event.repeat { return; }
+
                 let is_pressed = event.state == ElementState::Pressed;
                 
                 match event.physical_key {
@@ -151,7 +199,8 @@ impl ApplicationHandler for App {
                     PhysicalKey::Code(KeyCode::KeyS) => self.current_input.move_backward = is_pressed,
                     PhysicalKey::Code(KeyCode::KeyA) => self.current_input.move_left = is_pressed,
                     PhysicalKey::Code(KeyCode::KeyD) => self.current_input.move_right = is_pressed,
-                    PhysicalKey::Code(KeyCode::KeyQ) => self.current_input.shoot = is_pressed,
+                    PhysicalKey::Code(KeyCode::Space) => self.current_input.move_up = is_pressed,
+                    PhysicalKey::Code(KeyCode::ShiftLeft) => self.current_input.move_down = is_pressed,
                     _ => {}
                 }
             }
@@ -168,8 +217,22 @@ impl ApplicationHandler for App {
             WindowEvent::RedrawRequested => {
                 if self.is_shutting_down { return; }
 
-                engine::update_physics(&mut self.world, &self.current_input);
-                self.current_input.mouse_delta_x = 0.0;
+                let current_time = std::time::Instant::now();
+                let delta_time = current_time.duration_since(self.last_frame_time).as_secs_f32();
+                self.last_frame_time = current_time;
+
+                let delta_time = delta_time.min(0.25); 
+                self.time_accumulator += delta_time;
+
+                while self.time_accumulator >= TICK_TIME {
+                    engine::update_physics(&mut self.world, &self.current_input);
+                    engine::system_movement_and_friction(&mut self.world);
+                    self.current_input.mouse_delta_x = 0.0;
+                    self.time_accumulator -= TICK_TIME;
+                }
+
+                let alpha = self.time_accumulator / TICK_TIME;
+                self.update_camera_from_player(alpha);
 
                 if let (Some(renderer), Some(window)) = (&mut self.renderer, &self.window) {
                     let size = window.inner_size();
@@ -178,30 +241,12 @@ impl ApplicationHandler for App {
                     }
 
                     let aspect_ratio = size.width as f32 / size.height as f32;
-                    let time = self.start_time.elapsed().as_secs_f32();
                 
-                    let model = Mat4::IDENTITY; 
-
-                    let player1_spawner = self.map.things
-                        .iter().find(|thing| thing.type_ == 1)
-                        .unwrap();
-
-                    let player_x = -player1_spawner.x as f32 - 250.0;
-                    let player_y = 90.0;
-                    let player_z = player1_spawner.y as f32 + 1900.0;
-                    
-                    let camera_pos = glam::vec3(player_x - time*10.0, player_y+time*6.0, player_z - time*60.0);
-                    let camera_target = glam::vec3(player_x - time*10.1 + f32::sin(time/3.0)*10.0, player_y+time*5.8, player_z-10.0 - time*60.0);
-                    let camera_up = glam::vec3(0.0, 1.0, 0.0);
-                
-                    let view = Mat4::look_at_rh(camera_pos, camera_target, camera_up);
-                
-                    let proj = Mat4::perspective_rh(90.0f32.to_radians(), aspect_ratio, 1.0, 10000.0);
-                    //proj.col_mut(1)[1] *= -1.0;
+                    let proj = Mat4::perspective_rh(FOV_ANGLE.to_radians(), aspect_ratio, 1.0, 10000.0);
                 
                     let ubo = UniformBufferObject {
-                        model: model.to_cols_array(),
-                        view: view.to_cols_array(),
+                        model: Mat4::IDENTITY.to_cols_array(),
+                        view: self.view_matrix.to_cols_array(),
                         proj: proj.to_cols_array(),
                     };
                 
@@ -231,7 +276,7 @@ impl ApplicationHandler for App {
 
 fn main() -> Result<(), String> {
     let wad = Wad::open("assets/DOOM2.WAD")?;
-    let map = DoomMap::from_wad(&wad, "MAP01")?;
+    let map = DoomMap::from_wad(&wad, "MAP10")?;
 
     let event_loop = EventLoop::new().unwrap();
 
@@ -243,9 +288,11 @@ fn main() -> Result<(), String> {
         wad: wad,
         world: World::new(),
         map: map,
-        start_time: Instant::now(),
         is_shutting_down: false,
-        current_input: PlayerInput::default()
+        current_input: PlayerInput::default(),
+        view_matrix: Mat4::default(),
+        last_frame_time: Instant::now(),
+        time_accumulator: 0.0,
     };
     event_loop.run_app(&mut app).unwrap();
 
