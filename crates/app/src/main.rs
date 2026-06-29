@@ -1,11 +1,16 @@
 use renderer::*;
 use wad_parser::map::DoomMap;
 use wad_parser::*;
+use engine::*;
 use glam::Mat4;
-use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
-use winit::application::ApplicationHandler;
-use winit::event::WindowEvent;
-use winit::window::{Window, WindowId};
+use hecs::World;
+use winit::{
+    event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
+    application::ApplicationHandler,
+    event::{WindowEvent, ElementState, DeviceEvent, DeviceId},
+    window::{Window, WindowId},
+    keyboard::{PhysicalKey, KeyCode}
+};
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle, RawDisplayHandle, RawWindowHandle};
 use std::time::Instant;
 use std::collections::HashMap;
@@ -14,9 +19,11 @@ struct App {
     window: Option<Window>,
     renderer: Option<SafeRenderer>,
     wad: Wad,
+    world: World,
     map: DoomMap,
     start_time: Instant,
-    is_shutting_down: bool
+    is_shutting_down: bool,
+    current_input: PlayerInput,
 }
 
 impl ApplicationHandler for App {
@@ -119,8 +126,36 @@ impl ApplicationHandler for App {
         }
     }
 
+    fn device_event(
+        &mut self,
+        _event_loop: &ActiveEventLoop,
+        _device_id: DeviceId,
+        event: DeviceEvent,
+    ) {
+        match event {
+            DeviceEvent::MouseMotion { delta } => {
+                self.current_input.mouse_delta_x += delta.0 as f32;
+            }
+
+            _ => {}
+        }
+    }
+
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
         match event {
+            WindowEvent::KeyboardInput { event, .. } => {
+                let is_pressed = event.state == ElementState::Pressed;
+                
+                match event.physical_key {
+                    PhysicalKey::Code(KeyCode::KeyW) => self.current_input.move_forward = is_pressed,
+                    PhysicalKey::Code(KeyCode::KeyS) => self.current_input.move_backward = is_pressed,
+                    PhysicalKey::Code(KeyCode::KeyA) => self.current_input.move_left = is_pressed,
+                    PhysicalKey::Code(KeyCode::KeyD) => self.current_input.move_right = is_pressed,
+                    PhysicalKey::Code(KeyCode::KeyQ) => self.current_input.shoot = is_pressed,
+                    _ => {}
+                }
+            }
+
             WindowEvent::CloseRequested => {
                 println!("The close button was pressed; stopping");
                 self.is_shutting_down = true;
@@ -128,10 +163,14 @@ impl ApplicationHandler for App {
                     renderer.shutdown();
                 }
                 event_loop.exit();
-            },
+            }
 
             WindowEvent::RedrawRequested => {
                 if self.is_shutting_down { return; }
+
+                engine::update_physics(&mut self.world, &self.current_input);
+                self.current_input.mouse_delta_x = 0.0;
+
                 if let (Some(renderer), Some(window)) = (&mut self.renderer, &self.window) {
                     let size = window.inner_size();
                     if size.width == 0 || size.height == 0 {
@@ -202,9 +241,11 @@ fn main() -> Result<(), String> {
         window: None,
         renderer: None,
         wad: wad,
+        world: World::new(),
         map: map,
         start_time: Instant::now(),
-        is_shutting_down: false
+        is_shutting_down: false,
+        current_input: PlayerInput::default()
     };
     event_loop.run_app(&mut app).unwrap();
 
