@@ -188,7 +188,7 @@ impl ApplicationHandler for App {
 
                     let player_x = -player1_spawner.x as f32 - 250.0;
                     let player_y = 90.0;
-                    let player_z = player1_spawner.y as f32 + 1800.0;
+                    let player_z = player1_spawner.y as f32 + 1900.0;
                     
                     let camera_pos = glam::vec3(player_x - time*10.0, player_y+time*6.0, player_z - time*60.0);
                     let camera_target = glam::vec3(player_x - time*10.1 + f32::sin(time/3.0)*10.0, player_y+time*5.8, player_z-10.0 - time*60.0);
