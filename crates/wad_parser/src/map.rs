@@ -574,8 +574,11 @@ impl DoomMap {
         	let light_f32 = clamped_light / 255.0;
         	let colormap_idx = 31 - ((clamped_light / 8.0).floor() as u32).clamp(0, 31);
 
-			let tex_prefix = match SPRITE_NAMES[&thing.type_] {
-				Some(name) => name,
+			let tex_prefix = match SPRITE_NAMES.get(&thing.type_) {
+				Some(name_raw) => match name_raw {
+					Some(name) => *name,
+					None => continue
+				},
 				None => continue
 			};
 
