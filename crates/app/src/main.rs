@@ -124,9 +124,6 @@ impl ApplicationHandler for App {
 
                             for &lump_pixel in &pic.raw_pixels {
                                 all_pixels.push(lump_pixel);
-                                all_pixels.push(0);
-                                all_pixels.push(0);
-                                all_pixels.push(255);
                             }
                         
                             texture_data.insert(name.clone(), (current_gpu_id, pic.width, pic.height));

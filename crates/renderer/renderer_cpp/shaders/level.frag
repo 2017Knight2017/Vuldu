@@ -40,6 +40,6 @@ void main() {
 
     vec3 modernColor = pal.colors[(lc.paletteIndex * 256) | colorIndex].rgb * fragLightLevel;
 
-    //outColor = vec4(finalColor.rgb, 1.0);
-    outColor = vec4(modernColor.rgb, 1.0);
+    outColor = vec4(finalColor.rgb, 1.0);
+    //outColor = vec4(modernColor.rgb, 1.0);
 }

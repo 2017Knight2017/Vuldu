@@ -626,17 +626,17 @@ impl DoomMap {
 			for &(uv_x, uv_y) in &corners {
 				// since texture_ids is filled at the same time as sprite_offsets, 
 				// we can get the offsets by tex_id
-    			let x_offset = uv_x * *tex_width as f32 - sprite_offsets[*tex_id as usize].0 as f32;
-    			let y_offset = (1.0 - uv_y) * *tex_height as f32 - sprite_offsets[*tex_id as usize].1 as f32;
-			
-				vertices.push(Vertex { 
-					pos: [-(thing.x as f32), sector.floorheight as f32 + *tex_height as f32, thing.y as f32],
-					light_level: [light_f32, x_offset, y_offset],
-					texture_pos: [uv_x, uv_y],
-					texture_id: *tex_id,
-					sector_id: sector_idx as u32,
-					colormap_idx: colormap_idx 
-				});
+			    let x_offset = uv_x * *tex_width as f32 - sprite_offsets[*tex_id as usize].0 as f32;
+			    let y_offset = (1.0 - uv_y) * *tex_height as f32;
+
+			    vertices.push(Vertex { 
+			        pos: [-(thing.x as f32), sector.floorheight as f32, thing.y as f32], 
+			        light_level: [light_f32, x_offset, y_offset],
+			        texture_pos: [uv_x, uv_y],
+			        texture_id: *tex_id,
+			        sector_id: sector_idx as u32,
+			        colormap_idx: colormap_idx 
+			    });
 			}
 
 			indices.push(start_index + 0);

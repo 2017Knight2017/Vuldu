@@ -188,7 +188,7 @@ void VulkanRenderer::uploadTextureArray(const TextureDescriptor* descriptors_ptr
     for (size_t i = 0; i < descriptor_count; i++) {
         const auto& desc = descriptors[i];
         
-        createImage(desc.width, desc.height, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
+        createImage(desc.width, desc.height, VK_FORMAT_R8_UNORM, VK_IMAGE_TILING_OPTIMAL,
                     VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
                     this->textureImages[i], this->textureImageMemories[i]);
@@ -219,7 +219,7 @@ void VulkanRenderer::uploadTextureArray(const TextureDescriptor* descriptors_ptr
         viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         viewInfo.image = this->textureImages[i];
         viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        viewInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+        viewInfo.format = VK_FORMAT_R8_UNORM;
         viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         viewInfo.subresourceRange.baseMipLevel = 0;
         viewInfo.subresourceRange.levelCount = 1;
