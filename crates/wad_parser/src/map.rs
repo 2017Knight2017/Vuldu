@@ -80,7 +80,7 @@ pub struct MapSegment
 	offset: i16,
 }
 
-pub const NF_SUBSECTOR: u16 = 0x8000;
+pub const NF_SUBSECTOR: usize = 0x8000;
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
@@ -535,27 +535,46 @@ impl DoomMap {
 	}
 
 	pub fn get_sector_by_thing(&self, thing: &MapThing) -> usize {
-		let mut sector_idx = 0;
-		let mut min_dist = f32::MAX;
-		for seg in self.segs.iter() {
-		    if seg.v1 >= self.vertices.len() as i16 { continue; }
-		    let v = self.vertices[seg.v1 as usize];
-		    let dx = (thing.x - v.x) as f32;
-		    let dy = (thing.y - v.y) as f32;
-		    let dist = dx*dx + dy*dy;
-		    if dist < min_dist {
-		        min_dist = dist;
-		        if seg.linedef != -1 {
-		            let linedef = self.linedefs[seg.linedef as usize];
-		            let side = linedef.sidenum[seg.side as usize];
-		            if side != -1 {
-		                sector_idx = self.sidedefs[side as usize].sector as usize;
-		            }
-		        }
-		    }
-		}
-		sector_idx
-	}
+        if self.nodes.is_empty() {
+            return 0;
+        }
+        
+        let root_node_idx = self.nodes.len() - 1;
+        let subsector_idx = self.find_subsector_by_pos(root_node_idx, thing.x as f32, thing.y as f32);
+        let subsector = &self.subsectors[subsector_idx];
+        
+        let first_seg_idx = subsector.firstseg as usize;
+        let seg = &self.segs[first_seg_idx];
+        
+        if seg.linedef != -1 {
+            let linedef = &self.linedefs[seg.linedef as usize];
+            let side = linedef.sidenum[seg.side as usize];
+            if side != -1 {
+                return self.sidedefs[side as usize].sector as usize;
+            }
+        }
+
+        0
+    }
+
+    fn find_subsector_by_pos(&self, node_idx: usize, x: f32, y: f32) -> usize {
+        if (node_idx & NF_SUBSECTOR) != 0 {
+            return node_idx & !NF_SUBSECTOR;
+        }
+
+        let node = &self.nodes[node_idx];
+
+        let dx = x - node.x as f32;
+        let dy = y - node.y as f32;
+
+        let is_left = (dx * node.dy as f32) - (dy * node.dx as f32) <= 0.0;
+
+        if is_left {
+            self.find_subsector_by_pos(node.children[1] as usize, x, y)
+        } else {
+            self.find_subsector_by_pos(node.children[0] as usize, x, y)
+        }
+    }
 
 	pub fn get_objects_vertices(
 		&self, 

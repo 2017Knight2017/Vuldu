@@ -8,7 +8,7 @@ use winit::{
     event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
     application::ApplicationHandler,
     event::{WindowEvent, ElementState, DeviceEvent, DeviceId},
-    window::{Window, WindowId},
+    window::{Window, WindowId, CursorGrabMode},
     keyboard::{PhysicalKey, KeyCode}
 };
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle, RawDisplayHandle, RawWindowHandle};
@@ -65,8 +65,8 @@ impl ApplicationHandler for App {
             
             window.set_cursor_visible(false);
 
-            if let Err(err) = window.set_cursor_grab(winit::window::CursorGrabMode::Locked) {
-                let _ = window.set_cursor_grab(winit::window::CursorGrabMode::Confined);
+            if let Err(err) = window.set_cursor_grab(CursorGrabMode::Locked) {
+                let _ = window.set_cursor_grab(CursorGrabMode::Confined);
                 println!("{:?}", err);
             }
 
@@ -76,7 +76,7 @@ impl ApplicationHandler for App {
                 .iter().find(|thing| thing.type_ == 1)
                 .unwrap();
             let plr_floorheight = self.map.sectors[self.map.get_sector_by_thing(plr_spawn)].floorheight;
-            engine::spawn_player(&mut self.world, plr_spawn.x, plr_floorheight, plr_spawn.y, plr_spawn.angle);
+            engine::spawn_player(&mut self.world, -plr_spawn.x, plr_floorheight, plr_spawn.y, plr_spawn.angle);
             
             self.renderer = Some(SafeRenderer::new());
 
@@ -90,7 +90,7 @@ impl ApplicationHandler for App {
                 };
 
                 if let Some(renderer) = &mut self.renderer {
-                    let window_raw_ptr = self.window.as_ref().unwrap() as *const winit::window::Window as usize;
+                    let window_raw_ptr = self.window.as_ref().unwrap() as *const Window as usize;
 
                     renderer.init(&handles, window_raw_ptr);
 
