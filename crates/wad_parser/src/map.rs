@@ -314,30 +314,26 @@ impl DoomMap {
 
 	    for (sector_id, sector) in self.sectors.iter().enumerate() {
 	        let current_sector_id = sector_id as i16;
-        	let mut edges: Vec<([f32; 2], [f32; 2])> = Vec::new();
+	        let mut edges: Vec<([f32; 2], [f32; 2])> = Vec::new();
 
-        	for linedef in self.linedefs.iter() {
-        	    let v1 = self.vertices[linedef.v1 as usize];
-        	    let v2 = self.vertices[linedef.v2 as usize];
-        	    let p1 = [v1.x as f32, v1.y as f32];
-        	    let p2 = [v2.x as f32, v2.y as f32];
+	        for linedef in self.linedefs.iter() {
+	            let v1 = self.vertices[linedef.v1 as usize];
+	            let v2 = self.vertices[linedef.v2 as usize];
+	            let p1 = [v1.x as f32, v1.y as f32];
+	            let p2 = [v2.x as f32, v2.y as f32];
 
-        	    if linedef.sidenum[0] != -1 {
-        	        if let Some(side) = self.sidedefs.get(linedef.sidenum[0] as usize) {
-        	            if side.sector == current_sector_id {
-        	                edges.push((p1, p2));
-        	            }
-        	        }
-        	    }
+	            if linedef.sidenum[0] != -1 {
+	                if let Some(side) = self.sidedefs.get(linedef.sidenum[0] as usize) {
+	                    if side.sector == current_sector_id { edges.push((p1, p2)); }
+	                }
+	            }
 			
-        	    if linedef.sidenum[1] != -1 {
-        	        if let Some(side) = self.sidedefs.get(linedef.sidenum[1] as usize) {
-        	            if side.sector == current_sector_id {
-        	                edges.push((p2, p1));
-        	            }
-        	        }
-        	    }
-        	}
+	            if linedef.sidenum[1] != -1 {
+	                if let Some(side) = self.sidedefs.get(linedef.sidenum[1] as usize) {
+	                    if side.sector == current_sector_id { edges.push((p2, p1)); }
+	                }
+	            }
+	        }
 
 	        if edges.is_empty() { continue; }
 
@@ -352,185 +348,169 @@ impl DoomMap {
 	            let mut stuck = false;
 	            while !stuck && !edges.is_empty() {
 	                let mut found_idx = None;
-					let mut reverse_next_edge = false;
 	                for (idx, edge) in edges.iter().enumerate() {
-	                    if (edge.0[0] - current_tip[0]).abs() < 0.5 && (edge.0[1] - current_tip[1]).abs() < 0.5 {
-                            found_idx = Some(idx);
-                            reverse_next_edge = false;
-                            break;
-                        }
-                        if (edge.1[0] - current_tip[0]).abs() < 0.5 && (edge.1[1] - current_tip[1]).abs() < 0.5 {
-                            found_idx = Some(idx);
-                            reverse_next_edge = true;
-                            break;
-                        }
+	                    if (edge.0[0] - current_tip[0]).abs() < 0.1 && (edge.0[1] - current_tip[1]).abs() < 0.1 {
+	                        found_idx = Some(idx); 
+	                        break;
+	                    }
 	                }
 
 	                if let Some(idx) = found_idx {
 	                    let next_edge = edges.remove(idx);
 	                    current_loop.push(current_tip);
-						if reverse_next_edge {
-                            current_tip = next_edge.0;
-                        } else {
-                            current_tip = next_edge.1;
-                        }
+	                    current_tip = next_edge.1;
 	                } else {
 	                    stuck = true;
 	                }
 	            }
 	            current_loop.push(current_tip);
-
-	            current_loop.dedup_by(|a, b| (a[0] - b[0]).abs() < 0.2 && (a[1] - b[1]).abs() < 0.2);
+	            current_loop.dedup_by(|a, b| (a[0] - b[0]).abs() < 0.1 && (a[1] - b[1]).abs() < 0.1);
 			
 	            if current_loop.len() >= 3 {
-                    let first = current_loop.first().unwrap();
-                    let last = current_loop.last().unwrap();
-                    if (first[0] - last[0]).abs() < 0.8 && (first[1] - last[1]).abs() < 0.8 {
-                        current_loop.pop();
-                        if current_loop.len() >= 3 {
-                            polygon_loops.push(current_loop);
-                        }
-                    } else {
-                        if current_loop.len() >= 3 {
-                            polygon_loops.push(current_loop);
-                        }
-                    }
-                }
+	                let first = current_loop.first().unwrap();
+	                let last = current_loop.last().unwrap();
+	                if (first[0] - last[0]).abs() < 0.5 && (first[1] - last[1]).abs() < 0.5 {
+	                    current_loop.pop();
+	                }
+	                if current_loop.len() >= 3 {
+	                    let cleaned = clean_polygon(&current_loop);
+	                    if cleaned.len() >= 3 {
+	                        polygon_loops.push(cleaned);
+	                    }
+	                }
+	            }
 	        }
 
 	        if polygon_loops.is_empty() { continue; }
 
-			polygon_loops.sort_by(|a, b| {
-        	    let area_a = a.windows(2).fold(0.0, |acc, w| acc + (w[1][0] - w[0][0]) * (w[1][1] + w[0][1])).abs();
-        	    let area_b = b.windows(2).fold(0.0, |acc, w| acc + (w[1][0] - w[0][0]) * (w[1][1] + w[0][1])).abs();
-        	    area_b.partial_cmp(&area_a).unwrap_or(std::cmp::Ordering::Equal)
-        	});
+	        let calc_true_area = |poly: &Vec<[f32; 2]>| -> f32 {
+	            let len = poly.len();
+	            if len < 3 { return 0.0; }
+	            let mut area = 0.0;
+	            for i in 0..len {
+	                let next = (i + 1) % len;
+	                area += poly[i][0] * poly[next][1] - poly[next][0] * poly[i][1];
+	            }
+	            area.abs()
+	        };
 
-        	let mut outer_sectors = vec![polygon_loops.remove(0)];
-        	let mut hole_loops = Vec::new();
-        	let mut island_sectors = Vec::new();
+	        polygon_loops.sort_by(|a, b| {
+	            let area_a = calc_true_area(a);
+	            let area_b = calc_true_area(b);
+	            area_b.partial_cmp(&area_a).unwrap_or(std::cmp::Ordering::Equal)
+	        });
 
-        	let main_area = {
-        	    let mut area = 0.0;
-        	    let len = outer_sectors[0].len();
-        	    for i in 0..len {
-        	        area += (outer_sectors[0][i][0] - outer_sectors[0][(i + 1) % len][0]) * (outer_sectors[0][i][1] + outer_sectors[0][(i + 1) % len][1]);
-        	    }
-        	    area
-        	};
-			if main_area.abs() < 0.1 { continue; }
-        	let main_clockwise = main_area > 0.0;
+	        let mut outer_sectors: Vec<Vec<[f32; 2]>> = Vec::new();
+	        let mut hole_loops: Vec<Vec<[f32; 2]>> = Vec::new();
 
-        	for poly_loop in polygon_loops {
-        	    let mut area = 0.0;
-        	    let len = poly_loop.len();
-        	    for i in 0..len {
-        	        area += (poly_loop[i][0] - poly_loop[(i + 1) % len][0]) * (poly_loop[i][1] + poly_loop[(i + 1) % len][1]);
-        	    }
+	        for poly_loop in polygon_loops.iter().cloned() {
+	            let mut is_hole = false;
+	            for outer in &outer_sectors {
+	                if poly_loop.iter().any(|&pt| point_in_polygon(pt, outer)) {
+	                    is_hole = true;
+	                    break;
+	                }
+	            }
 
-				if area.abs() < 0.1 { 
-            	    continue; 
-            	}
+	            if is_hole {
+	                hole_loops.push(poly_loop);
+	            } else {
+	                outer_sectors.push(poly_loop);
+	            }
+	        }
 
-        	    let is_clockwise = area > 0.0;
+	        for mut outer_loop in outer_sectors {
+	            if outer_loop.len() < 3 { continue; }
 
-        	    if is_clockwise == main_clockwise {
-        	        island_sectors.push(poly_loop);
-        	    } else {
-        	        hole_loops.push(poly_loop);
-        	    }
-        	}
+	            let mut flat_points = Vec::new();
+	            let mut hole_indices = Vec::new();
 
-        	outer_sectors.extend(island_sectors);
+	            let mut outer_area = 0.0;
+	            let o_len = outer_loop.len();
+	            for i in 0..o_len {
+	                let next = (i + 1) % o_len;
+	                outer_area += outer_loop[i][0] * outer_loop[next][1] - outer_loop[next][0] * outer_loop[i][1];
+	            }
+	            if outer_area < 0.0 { outer_loop.reverse(); }
 
-        	for mut outer_loop in outer_sectors {
-        	    let mut flat_points = Vec::new();
-        	    let mut hole_indices = Vec::new();
+	            for pt in &outer_loop { flat_points.push(*pt); }
 
-        	    let mut area = 0.0;
-        	    let len = outer_loop.len();
-        	    for i in 0..len {
-        	        area += (outer_loop[(i + 1) % len][0] - outer_loop[i][0]) * (outer_loop[(i + 1) % len][1] + outer_loop[i][1]);
-        	    }
-        	    if area > 0.0 {
-        	        outer_loop.reverse();
-        	    }
+	            let mut diagnostic_holes = Vec::new();
+	            for hole in &hole_loops {
+	                if hole.iter().any(|&pt| point_in_polygon(pt, &outer_loop)) {
+	                    diagnostic_holes.push(hole.clone());
 
-        	    for pt in &outer_loop {
-        	        flat_points.push(*pt);
-        	    }
-
-        	    for hole in &hole_loops {
-        	        if point_in_polygon(hole[0], &outer_loop) {
-        	            hole_indices.push(flat_points.len() as u16);
+	                    let mut hole_copy = hole.clone();
+	                    if hole_copy.len() < 3 { continue; }
 					
-        	            let mut hole_copy = hole.clone();
-        	            let mut h_area = 0.0;
-        	            let h_len = hole_copy.len();
-        	            for i in 0..h_len {
-        	                h_area += (hole_copy[(i + 1) % h_len][0] - hole_copy[i][0]) * (hole_copy[(i + 1) % h_len][1] + hole_copy[i][1]);
-        	            }
-        	            if h_area < 0.0 {
-        	                hole_copy.reverse();
-        	            }
+	                    let current_hole_start = flat_points.len() as u16;
+	                    hole_indices.push(current_hole_start);
+					
+	                    let mut h_area = 0.0;
+	                    let h_len = hole_copy.len();
+	                    for i in 0..h_len {
+	                        let next = (i + 1) % h_len;
+	                        h_area += hole_copy[i][0] * hole_copy[next][1] - hole_copy[next][0] * hole_copy[i][1];
+	                    }
+	                    if h_area > 0.0 { hole_copy.reverse(); }
+	                    for pt in hole_copy { flat_points.push(pt); }
+	                }
+	            }
+			
+	            let mut sector_indices: Vec<u16> = Vec::new();
+	            let mut earcut = Earcut::new();
+	            earcut.earcut(flat_points.iter().copied(), &hole_indices, &mut sector_indices);
+			
+	            if sector_indices.is_empty() { 
+	                println!("[WARN] Sector {}: Earcut failed to triangulate polygon!", sector_id);
+	                continue; 
+	            }
 
-        	            for pt in hole_copy {
-        	                flat_points.push(pt);
-        	            }
-        	        }
-        	    }
+	            let floor_texture_name = String::from_utf8_lossy(&sector.floorpic).trim_matches('\0').trim().to_uppercase();
+	            let ceil_texture_name = String::from_utf8_lossy(&sector.ceilingpic).trim_matches('\0').trim().to_uppercase();
+	            let floor_texture_id = texture_ids.get(&floor_texture_name).unwrap_or(&(0,0,0)).0;
+	            let ceil_texture_id = texture_ids.get(&ceil_texture_name).unwrap_or(&(0,0,0)).0;
 
-        	    let mut sector_indices: Vec<u16> = Vec::new();
-        	    let mut earcut = Earcut::new();
-        	    earcut.earcut(flat_points.iter().copied(), &hole_indices, &mut sector_indices);
+	            let clamped_light = sector.lightlevel.clamp(0, 255) as f32;
+	            let light_f32 = clamped_light / 255.0;
+	            let normalized_light_level = [light_f32, light_f32, light_f32];
+	            let colormap_idx = 31 - ((clamped_light / 8.0).floor() as u32).clamp(0, 31);
 
-				if sector_indices.is_empty() { continue; }
+	            let floor_start_idx = vertices.len() as u16;
+	            for pt in &flat_points {
+	                vertices.push(Vertex { 
+	                    pos: [-(pt[0]), sector.floorheight.into(), pt[1]],
+	                    light_level: normalized_light_level,
+	                    texture_pos: [pt[0] / 64.0, pt[1] / 64.0],
+	                    texture_id: floor_texture_id,
+	                    sector_id: sector_id as u32,
+	                    colormap_idx,
+	                });
+	            }
+	            for chunk in sector_indices.chunks_exact(3) {
+	                indices.push(floor_start_idx + chunk[0]);
+	                indices.push(floor_start_idx + chunk[1]);
+	                indices.push(floor_start_idx + chunk[2]);
+	            }
 
-        	    let floor_texture_name = String::from_utf8_lossy(&sector.floorpic).trim_matches('\0').trim().to_uppercase();
-        	    let ceil_texture_name = String::from_utf8_lossy(&sector.ceilingpic).trim_matches('\0').trim().to_uppercase();
-        	    let floor_texture_id = texture_ids[&floor_texture_name].0;
-        	    let ceil_texture_id = texture_ids[&ceil_texture_name].0;
-
-        	    let clamped_light = sector.lightlevel.clamp(0, 255) as f32;
-        	    let light_f32 = clamped_light / 255.0;
-        	    let normalized_light_level = [light_f32, light_f32, light_f32];
-        	    let colormap_idx = 31 - ((clamped_light / 8.0).floor() as u32).clamp(0, 31);
-
-        	    let floor_start_idx = vertices.len() as u16;
-        	    for pt in &flat_points {
-        	        vertices.push(Vertex { 
-        	            pos: [-(pt[0]), sector.floorheight.into(), pt[1]],
-        	            light_level: normalized_light_level,
-        	            texture_pos: [pt[0] / 64.0, pt[1] / 64.0],
-        	            texture_id: floor_texture_id,
-        	            sector_id: sector_id as u32,
-        	            colormap_idx,
-        	        });
-        	    }
-        	    for chunk in sector_indices.chunks_exact(3) {
-        	        indices.push(floor_start_idx + chunk[0]);
-        	        indices.push(floor_start_idx + chunk[1]);
-        	        indices.push(floor_start_idx + chunk[2]);
-        	    }
-
-        	    let ceil_start_idx = vertices.len() as u16;
-        	    for pt in &flat_points {
-        	        vertices.push(Vertex { 
-        	            pos: [-(pt[0]), sector.ceilingheight.into(), pt[1]],
-        	            light_level: normalized_light_level,
-        	            texture_pos: [pt[0] / 64.0, pt[1] / 64.0],
-        	            texture_id: ceil_texture_id,
-        	            sector_id: sector_id as u32,
-        	            colormap_idx,
-        	        });
-        	    }
-        	    for chunk in sector_indices.chunks_exact(3) {
-        	        indices.push(ceil_start_idx + chunk[0]);
-        	        indices.push(ceil_start_idx + chunk[2]);
-        	        indices.push(ceil_start_idx + chunk[1]);
-        	    }
-        	}
-		}
+	            let ceil_start_idx = vertices.len() as u16;
+	            for pt in &flat_points {
+	                vertices.push(Vertex { 
+	                    pos: [-(pt[0]), sector.ceilingheight.into(), pt[1]],
+	                    light_level: normalized_light_level,
+	                    texture_pos: [pt[0] / 64.0, pt[1] / 64.0],
+	                    texture_id: ceil_texture_id,
+	                    sector_id: sector_id as u32,
+	                    colormap_idx,
+	                });
+	            }
+	            for chunk in sector_indices.chunks_exact(3) {
+	                indices.push(ceil_start_idx + chunk[0]);
+	                indices.push(ceil_start_idx + chunk[2]);
+	                indices.push(ceil_start_idx + chunk[1]);
+	            }
+	        }
+	    }
 	    (vertices, indices)
 	}
 
@@ -663,4 +643,20 @@ fn point_in_polygon(point: [f32; 2], poly: &[[f32; 2]]) -> bool {
         j = i;
     }
     inside
+}
+
+fn clean_polygon(poly: &[[f32; 2]]) -> Vec<[f32; 2]> {
+    if poly.len() < 3 { return poly.to_vec(); }
+    let mut cleaned = Vec::new();
+    for i in 0..poly.len() {
+        let prev = poly[(i + poly.len() - 1) % poly.len()];
+        let curr = poly[i];
+        let next = poly[(i + 1) % poly.len()];
+
+        let area = (curr[0] - prev[0]) * (next[1] - prev[1]) - (next[0] - prev[0]) * (curr[1] - prev[1]);
+        if area.abs() > 0.1 { 
+            cleaned.push(curr);
+        }
+    }
+    cleaned
 }
