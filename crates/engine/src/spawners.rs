@@ -1,29 +1,79 @@
 use crate::{
 	constants::{NUMCARDS, NUMWEAPONS},
+	data_tables::DB,
 	components::*,
 	enums::*
 };
 use hecs::World;
 
-pub fn spawn_player(world: &mut World, x_raw: i16, y_raw: i16, z_raw: i16, angle_raw: i16) {
+pub fn spawn_mobj(
+	world: &mut World, 
+	mobj_type: MobjType, 
+	x_raw: i16, 
+	y_raw: i16, 
+	z_raw: i16, 
+	angle_raw: i16
+) {
 	let x = x_raw as f32;
 	let y = y_raw as f32;
 	let z = z_raw as f32;
 
     let angle = angle_raw as u32 / 45 * 0x20000000;
 
-	let _ = world.spawn(PlayerBundle {
-	    transform: Transform { x, y, z, prev_x: x, prev_y: y, prev_z: z, angle, prev_angle: angle },
-	    velocity: Velocity { x: 0.0, y: 0.0, z: 0.0 },
-	    bbox: BoundingBox { radius: 16.0, height: 56.0 },
-	    env: PhysicsEnvironment { floor_z: y, ceiling_z: 128.0 },
-	    health: Health(100),
-	    state: ActorState { mobj_type: MobjType::Player, current_state_idx: 1, tics: 0, flags: 0 },
-		
-	    marker: PlayerMarker,
-	    camera: PlayerCamera { view_z: 41.0, view_height: 41.0, delta_view_height: 0.0, bob: 0.0 },
-	    stats: PlayerStats { state: PlayerState::Live, armor_points: 0, armor_type: 0, kill_count: 0, item_count: 0, secret_count: 0 },
-	    inventory: PlayerInventory { ready_weapon: 1, pending_weapon: 1, backpack: false, cards: [false; NUMCARDS], weapon_owned: [false; NUMWEAPONS], ammo: [50, 0, 0, 0], max_ammo: [200, 50, 50, 300] },
-	    weapon_overlay: WeaponOverlay { state_idx: 0, tics: 0, sx: 0.0, sy: 0.0 },
-	});
+	let mobj_info = DB.get().expect("DB has not been initialized!").mobjinfo.get(&mobj_type).unwrap();
+
+	let mut entity_builder = hecs::EntityBuilder::new();
+    
+    entity_builder
+		.add(Transform { x, y, z, prev_x: x, prev_y: y, prev_z: z, angle, prev_angle: angle })
+		.add(Velocity::default())
+		.add(BoundingBox { radius: mobj_info.radius, height: mobj_info.height });
+
+	for flag in &mobj_info.flags {
+		match flag {
+			MobjFlag::Solid => entity_builder.add(Solid),
+			MobjFlag::CountKill => entity_builder.add(CountKill),
+			MobjFlag::Shootable => {
+				entity_builder.add(Health { current: mobj_info.spawn_health, max: mobj_info.spawn_health })
+					.add(PainReaction { chance: mobj_info.pain_chance, sound: mobj_info.pain_sound })
+					.add(MonsterBrainConfig {
+                	    spawn_state: mobj_info.spawn_state,
+                	    see_state: mobj_info.see_state,
+                	    death_state: mobj_info.death_state,
+                	    death_sound: mobj_info.death_sound,
+                	    missile_state: mobj_info.missile_state,
+                	    pain_state: mobj_info.pain_state,
+                	    xdeath_state: mobj_info.xdeath_state,
+                	    raise_state: mobj_info.raise_state
+                	}
+				)
+			},
+			_ => {continue;}
+		};
+	}
+
+    if mobj_info.speed > 0.0 {
+        entity_builder.add(Physics {
+            speed: mobj_info.speed,
+            mass: mobj_info.mass,
+        });
+    }
+
+	if mobj_type == MobjType::Player {
+		entity_builder.add(PlayerMarker)
+        	.add(PlayerCamera { view_z: 41.0, view_height: 41.0, delta_view_height: 0.0, bob: 0.0 })
+        	.add(PlayerStats::default())
+        	.add(PlayerInventory { 
+        	    ready_weapon: 1, 
+        	    pending_weapon: 1, 
+        	    backpack: false, 
+        	    cards: [false; NUMCARDS], 
+        	    weapon_owned: [false; NUMWEAPONS], 
+        	    ammo: [50, 0, 0, 0], 
+        	    max_ammo: [200, 50, 50, 300] 
+        	})
+        	.add(WeaponOverlay { state_idx: 0, tics: 0, sx: 0.0, sy: 0.0 });
+	};
+
+    world.spawn(entity_builder.build());
 }

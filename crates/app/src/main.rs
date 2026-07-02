@@ -72,11 +72,13 @@ impl ApplicationHandler for App {
 
             self.window = Some(window);
 
+            let _ = engine::populate_database().map_err(|err| println!("{}", err));
+
             let plr_spawn = self.map.things
                 .iter().find(|thing| thing.type_ == 1)
                 .unwrap();
             let plr_floorheight = self.map.sectors[self.map.get_sector_by_thing(plr_spawn)].floorheight;
-            engine::spawn_player(&mut self.world, -plr_spawn.x, plr_floorheight, plr_spawn.y, plr_spawn.angle);
+            engine::spawn_mobj(&mut self.world, MobjType::Player, -plr_spawn.x, plr_floorheight, plr_spawn.y, plr_spawn.angle);
             
             self.renderer = Some(SafeRenderer::new());
 
@@ -273,7 +275,7 @@ impl ApplicationHandler for App {
 
 fn main() -> Result<(), String> {
     let wad = Wad::open("assets/DOOM2.WAD")?;
-    let map = DoomMap::from_wad(&wad, "MAP27")?;
+    let map = DoomMap::from_wad(&wad, "MAP24")?;
 
     let event_loop = EventLoop::new().unwrap();
 

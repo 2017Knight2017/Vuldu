@@ -1,9 +1,19 @@
 use crate::{
-	enums::{MobjType, PlayerState},
+	enums::{PlayerState, SFX, StateNum},
 	constants::{NUMCARDS, NUMWEAPONS, NUMAMMO}
 };
 use hecs::Bundle;
 
+macro_rules! define_markers {
+    ($($name:ident);* $(;)?) => {
+        $(
+            #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+            pub struct $name;
+        )*
+    };
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Transform {
 	pub x: f32,
 	pub y: f32,
@@ -15,44 +25,101 @@ pub struct Transform {
     pub prev_angle: u32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Velocity {
 	pub x: f32,
 	pub y: f32,
 	pub z: f32,
 }
 
-pub struct Health(pub i32);
-
-pub struct ActorState {
-    pub mobj_type: MobjType,
-    pub current_state_idx: usize,
-    pub tics: i32,
-    pub flags: i32,
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Physics {
+    pub speed: f32,
+    pub mass: u32,
 }
 
-pub struct Speed {
-	pub default: u32,
-	pub nightmare: Option<u32>
-}
-
-pub struct Damage {
-	pub melee: Option<u32>,
-	pub far: Option<u32>,
-	pub nightmare: Option<u32>
-}
-
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BoundingBox {
     pub radius: f32,
     pub height: f32,
 }
 
-pub struct PhysicsEnvironment {
-    pub floor_z: f32,
-    pub ceiling_z: f32,
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Health {
+    pub current: i32,
+    pub max: i32,
 }
 
-pub struct PlayerMarker;
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PainReaction {
+    pub chance: u8,
+    pub sound: Option<SFX>,
+}
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AiAgent {
+    pub reaction_time: u32,
+    pub active_sound: Option<SFX>,
+    pub see_sound: Option<SFX>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SpriteAnimation {
+    pub current_state: StateNum, 
+    pub tics_left: u32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MonsterBrainConfig {
+    pub spawn_state: Option<StateNum>,
+    pub see_state: Option<StateNum>,
+    pub missile_state: Option<StateNum>,
+    pub pain_state: Option<StateNum>,
+    pub death_state: Option<StateNum>,
+    pub xdeath_state: Option<StateNum>,
+    pub raise_state: Option<StateNum>,
+    pub death_sound: Option<SFX>,
+}
+
+define_markers! {
+    PlayerMarker;
+    Special;
+    Solid;
+    Shootable;
+    NoSector;
+    NoBlockmap;
+    Ambush;
+    JustHit;
+    JustAttacked;
+    SpawnCeiling;
+    NoGravity;
+    DropOff;
+    Pickup;
+    NoClip;
+    Slide;
+    Float;
+    Teleport;
+    Missile;
+    Dropped;
+    Shadow;
+    NoBlood;
+    Corpse;
+    InFloat;
+    CountKill;
+    CountItem;
+    SkullFly;
+    NotDMatch;
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct WeaponOverlay {
+    pub state_idx: u32,
+    pub tics: i32,
+    pub sx: f32,
+    pub sy: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PlayerCamera {
     pub view_z: f32,
     pub view_height: f32,
@@ -60,6 +127,7 @@ pub struct PlayerCamera {
     pub bob: f32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct PlayerStats {
     pub state: PlayerState,
     pub armor_points: i32,
@@ -69,6 +137,7 @@ pub struct PlayerStats {
     pub secret_count: i32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PlayerInventory {
     pub ready_weapon: u32,
     pub pending_weapon: u32,
@@ -79,35 +148,10 @@ pub struct PlayerInventory {
     pub max_ammo: [i32; NUMAMMO],
 }
 
-pub struct WeaponOverlay {
-    pub state_idx: u32,
-    pub tics: i32,
-    pub sx: f32,
-    pub sy: f32,
-}
-
 #[derive(Bundle)]
 pub struct MobjBundle {
     pub transform: Transform,
     pub velocity: Velocity,
     pub bbox: BoundingBox,
-    pub env: PhysicsEnvironment,
-    pub health: Health,
-    pub state: ActorState,
-}
-
-#[derive(Bundle)]
-pub struct PlayerBundle {
-    pub transform: Transform,
-    pub velocity: Velocity,
-    pub bbox: BoundingBox,
-    pub env: PhysicsEnvironment,
-    pub health: Health,
-    pub state: ActorState,
-
-    pub marker: PlayerMarker,
-    pub camera: PlayerCamera,
-    pub stats: PlayerStats,
-    pub inventory: PlayerInventory,
-    pub weapon_overlay: WeaponOverlay,
+    pub sprite_anim: SpriteAnimation,
 }

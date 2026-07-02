@@ -1,0 +1,7108 @@
+[[states]]		# LightDone
+sprite = "SHTG"
+frame = 4
+tics = 0
+action = "Light0"
+
+
+[[states]]		# Punch
+sprite = "PUNG"
+frame = 0
+tics = 1
+action = "WeaponReady"
+next_state = "Punch"
+
+
+[[states]]		# PunchDown
+sprite = "PUNG"
+frame = 0
+tics = 1
+action = "Lower"
+next_state = "PunchDown"
+
+
+[[states]]		# PunchUp
+sprite = "PUNG"
+frame = 0
+tics = 1
+action = "Raise"
+next_state = "PunchUp"
+
+
+[[states]]			# Punch1
+sprite = "PUNG"
+frame = 1
+tics = 4
+next_state = "Punch2"
+
+
+[[states]]		# Punch2
+sprite = "PUNG"
+frame = 2
+tics = 4
+action = "Punch"
+next_state = "Punch3"
+
+
+[[states]]			# Punch3
+sprite = "PUNG"
+frame = 3
+tics = 5
+next_state = "Punch4"
+
+
+[[states]]			# Punch4
+sprite = "PUNG"
+frame = 2
+tics = 4
+next_state = "Punch5"
+
+
+[[states]]		# Punch5
+sprite = "PUNG"
+frame = 1
+tics = 5
+action = "ReFire"
+next_state = "Punch"
+
+
+[[states]]	# Pistol
+sprite = "PISG"
+frame = 0
+tics = 1
+action = "WeaponReady"
+next_state = "Pistol"
+
+
+[[states]]		# PistolDown
+sprite = "PISG"
+frame = 0
+tics = 1
+action = "Lower"
+next_state = "PistolDown"
+
+
+[[states]]		# PistolUp
+sprite = "PISG"
+frame = 0
+tics = 1
+action = "Raise"
+next_state = "PistolUp"
+
+
+[[states]]		# Pistol1
+sprite = "PISG"
+frame = 0
+tics = 4
+next_state = "Pistol2"
+
+
+[[states]]	# Pistol2
+sprite = "PISG"
+frame = 1
+tics = 6
+action = "FirePistol"
+next_state = "Pistol3"
+
+
+[[states]]		# Pistol3
+sprite = "PISG"
+frame = 2
+tics = 4
+next_state = "Pistol4"
+
+
+[[states]]		# Pistol4
+sprite = "PISG"
+frame = 1
+tics = 5
+action = "ReFire"
+next_state = "Pistol"
+
+
+[[states]]		# PistolFlash
+sprite = "PISF"
+frame = 32768
+tics = 7
+action = "Light1"
+next_state = "LightDone"
+
+
+[[states]]		# Sgun
+sprite = "SHTG"
+frame = 0
+tics = 1
+action = "WeaponReady"
+next_state = "Sgun"
+
+
+[[states]]		# SgunDown
+sprite = "SHTG"
+frame = 0
+tics = 1
+action = "Lower"
+next_state = "SgunDown"
+
+
+[[states]]		# SgunUp
+sprite = "SHTG"
+frame = 0
+tics = 1
+action = "Raise"
+next_state = "SgunUp"
+
+
+[[states]]		# Sgun1
+sprite = "SHTG"
+frame = 0
+tics = 3
+next_state = "Sgun2"
+
+
+[[states]]		# Sgun2
+sprite = "SHTG"
+frame = 0
+tics = 7
+action = "FireShotgun"
+next_state = "Sgun3"
+
+
+[[states]]		# Sgun3
+sprite = "SHTG"
+frame = 1
+tics = 5
+next_state = "Sgun4"
+
+
+[[states]]		# Sgun4
+sprite = "SHTG"
+frame = 2
+tics = 5
+next_state = "Sgun5"
+
+
+[[states]]		# Sgun5
+sprite = "SHTG"
+frame = 3
+tics = 4
+next_state = "Sgun6"
+
+
+[[states]]		# Sgun6
+sprite = "SHTG"
+frame = 2
+tics = 5
+next_state = "Sgun7"
+
+
+[[states]]		# Sgun7
+sprite = "SHTG"
+frame = 1
+tics = 5
+next_state = "Sgun8"
+
+
+[[states]]		# Sgun8
+sprite = "SHTG"
+frame = 0
+tics = 3
+next_state = "Sgun9"
+
+
+[[states]]		# Sgun9
+sprite = "SHTG"
+frame = 0
+tics = 7
+action = "ReFire"
+next_state = "Sgun"
+
+
+[[states]]		# SgunFlash1
+sprite = "SHTF"
+frame = 32768
+tics = 4
+action = "Light1"
+next_state = "SgunFlash2"
+
+
+[[states]]		# SgunFlash2
+sprite = "SHTF"
+frame = 32769
+tics = 3
+action = "Light2"
+next_state = "LightDone"
+
+
+[[states]]		# DSgun
+sprite = "SHT2"
+frame = 0
+tics = 1
+action = "WeaponReady"
+next_state = "DSgun"
+
+
+[[states]]		# DSgunDown
+sprite = "SHT2"
+frame = 0
+tics = 1
+action = "Lower"
+next_state = "DSgunDown"
+
+
+[[states]]		# DSgunUp
+sprite = "SHT2"
+frame = 0
+tics = 1
+action = "Raise"
+next_state = "DSgunUp"
+
+
+[[states]]		# DSgun1
+sprite = "SHT2"
+frame = 0
+tics = 3
+next_state = "DSgun2"
+
+
+[[states]]		# DSgun2
+sprite = "SHT2"
+frame = 0
+tics = 7
+action = "FireShotgun2"
+next_state = "DSgun3"
+
+
+[[states]]		# DSgun3
+sprite = "SHT2"
+frame = 1
+tics = 7
+next_state = "DSgun4"
+
+
+[[states]]		# DSgun4
+sprite = "SHT2"
+frame = 2
+tics = 7
+action = "CheckReload"
+next_state = "DSgun5"
+
+
+[[states]]		# DSgun5
+sprite = "SHT2"
+frame = 3
+tics = 7
+action = "OpenShotgun2"
+next_state = "DSgun6"
+
+
+[[states]]		# DSgun6
+sprite = "SHT2"
+frame = 4
+tics = 7
+next_state = "DSgun7"
+
+
+[[states]]		# DSgun7
+sprite = "SHT2"
+frame = 5
+tics = 7
+action = "LoadShotgun2"
+next_state = "DSgun8"
+
+
+[[states]]		# DSgun8
+sprite = "SHT2"
+frame = 6
+tics = 6
+next_state = "DSgun9"
+
+
+[[states]]		# DSgun9
+sprite = "SHT2"
+frame = 7
+tics = 6
+action = "CloseShotgun2"
+next_state = "DSgun10"
+
+
+[[states]]		# DSgun10
+sprite = "SHT2"
+frame = 0
+tics = 5
+action = "ReFire"
+next_state = "DSgun"
+
+
+[[states]]		# DSNR1
+sprite = "SHT2"
+frame = 1
+tics = 7
+next_state = "DSNR2"
+
+
+[[states]]		# DSNR2
+sprite = "SHT2"
+frame = 0
+tics = 3
+next_state = "DSgunDown"
+
+
+[[states]]		# DSgunFlash1
+sprite = "SHT2"
+frame = 32776
+tics = 5
+action = "Light1"
+next_state = "DSgunFlash2"
+
+
+[[states]]		# DSgunFlash2
+sprite = "SHT2"
+frame = 32777
+tics = 4
+action = "Light2"
+next_state = "LightDone"
+
+
+[[states]]		# Chain
+sprite = "CHGG"
+frame = 0
+tics = 1
+action = "WeaponReady"
+next_state = "Chain"
+
+
+[[states]]		# ChainDown
+sprite = "CHGG"
+frame = 0
+tics = 1
+action = "Lower"
+next_state = "ChainDown"
+
+
+[[states]]		# ChainUp
+sprite = "CHGG"
+frame = 0
+tics = 1
+action = "Raise"
+next_state = "ChainUp"
+
+
+[[states]]		# Chain1
+sprite = "CHGG"
+frame = 0
+tics = 4
+action = "FireCGun"
+next_state = "Chain2"
+
+
+[[states]]		# Chain2
+sprite = "CHGG"
+frame = 1
+tics = 4
+action = "FireCGun"
+next_state = "Chain3"
+
+
+[[states]]		# Chain3
+sprite = "CHGG"
+frame = 1
+tics = 0
+action = "ReFire"
+next_state = "Chain"
+
+
+[[states]]		# ChainFlash1
+sprite = "CHGF"
+frame = 32768
+tics = 5
+action = "Light1"
+next_state = "LightDone"
+
+
+[[states]]		# ChainFlash2
+sprite = "CHGF"
+frame = 32769
+tics = 5
+action = "Light2"
+next_state = "LightDone"
+
+
+[[states]]		# Missile
+sprite = "MISG"
+frame = 0
+tics = 1
+action = "WeaponReady"
+next_state = "Missile"
+
+
+[[states]]		# MissileDown
+sprite = "MISG"
+frame = 0
+tics = 1
+action = "Lower"
+next_state = "MissileDown"
+
+
+[[states]]		# MissileUp
+sprite = "MISG"
+frame = 0
+tics = 1
+action = "Raise"
+next_state = "MissileUp"
+
+
+[[states]]		# Missile1
+sprite = "MISG"
+frame = 1
+tics = 8
+action = "GunFlash"
+next_state = "Missile2"
+
+
+[[states]]		# Missile2
+sprite = "MISG"
+frame = 1
+tics = 12
+action = "FireMissile"
+next_state = "Missile3"
+
+
+[[states]]		# Missile3
+sprite = "MISG"
+frame = 1
+tics = 0
+action = "ReFire"
+next_state = "Missile"
+
+
+[[states]]		# MissileFlash1
+sprite = "MISF"
+frame = 32768
+tics = 3
+action = "Light1"
+next_state = "MissileFlash2"
+
+
+[[states]]		# MissileFlash2
+sprite = "MISF"
+frame = 32769
+tics = 4
+next_state = "MissileFlash3"
+
+
+[[states]]		# MissileFlash3
+sprite = "MISF"
+frame = 32770
+tics = 4
+action = "Light2"
+next_state = "MissileFlash4"
+
+
+[[states]]		# MissileFlash4
+sprite = "MISF"
+frame = 32771
+tics = 4
+action = "Light2"
+next_state = "LightDone"
+
+
+[[states]]		# Saw
+sprite = "SAWG"
+frame = 2
+tics = 4
+action = "WeaponReady"
+next_state = "SawB"
+
+
+[[states]]		# SawB
+sprite = "SAWG"
+frame = 3
+tics = 4
+action = "WeaponReady"
+next_state = "Saw"
+
+
+[[states]]		# SawDown
+sprite = "SAWG"
+frame = 2
+tics = 1
+action = "Lower"
+next_state = "SawDown"
+
+
+[[states]]		# SawUp
+sprite = "SAWG"
+frame = 2
+tics = 1
+action = "Raise"
+next_state = "SawUp"
+
+
+[[states]]		# Saw1
+sprite = "SAWG"
+frame = 0
+tics = 4
+action = "Saw"
+next_state = "Saw2"
+
+
+[[states]]		# Saw2
+sprite = "SAWG"
+frame = 1
+tics = 4
+action = "Saw"
+next_state = "Saw3"
+
+
+[[states]]		# Saw3
+sprite = "SAWG"
+frame = 1
+tics = 0
+action = "ReFire"
+next_state = "Saw"
+
+
+[[states]]		# Plasma
+sprite = "PLSG"
+frame = 0
+tics = 1
+action = "WeaponReady"
+next_state = "Plasma"
+
+
+[[states]]		# PlasmaDown
+sprite = "PLSG"
+frame = 0
+tics = 1
+action = "Lower"
+next_state = "PlasmaDown"
+
+
+[[states]]		# PlasmaUp
+sprite = "PLSG"
+frame = 0
+tics = 1
+action = "Raise"
+next_state = "PlasmaUp"
+
+
+[[states]]		# Plasma1
+sprite = "PLSG"
+frame = 0
+tics = 3
+action = "FirePlasma"
+next_state = "Plasma2"
+
+
+[[states]]		# Plasma2
+sprite = "PLSG"
+frame = 1
+tics = 20
+action = "ReFire"
+next_state = "Plasma"
+
+
+[[states]]		# PlasmaFlash1
+sprite = "PLSF"
+frame = 32768
+tics = 4
+action = "Light1"
+next_state = "LightDone"
+
+
+[[states]]		# PlasmaFlash2
+sprite = "PLSF"
+frame = 32769
+tics = 4
+action = "Light1"
+next_state = "LightDone"
+
+
+[[states]]		# BFG
+sprite = "BFGG"
+frame = 0
+tics = 1
+action = "WeaponReady"
+next_state = "BFG"
+
+
+[[states]]		# BFGDown
+sprite = "BFGG"
+frame = 0
+tics = 1
+action = "Lower"
+next_state = "BFGDown"
+
+
+[[states]]		# BFGUp
+sprite = "BFGG"
+frame = 0
+tics = 1
+action = "Raise"
+next_state = "BFGUp"
+
+
+[[states]]		# BFG1
+sprite = "BFGG"
+frame = 0
+tics = 20
+action = "BFGSound"
+next_state = "BFG2"
+
+
+[[states]]		# BFG2
+sprite = "BFGG"
+frame = 1
+tics = 10
+action = "GunFlash"
+next_state = "BFG3"
+
+
+[[states]]		# BFG3
+sprite = "BFGG"
+frame = 1
+tics = 10
+action = "FireBFG"
+next_state = "BFG4"
+
+
+[[states]]		# BFG4
+sprite = "BFGG"
+frame = 1
+tics = 20
+action = "ReFire"
+next_state = "BFG"
+
+
+[[states]]		# BFGFlash1
+sprite = "BFGF"
+frame = 32768
+tics = 11
+action = "Light1"
+next_state = "BFGFlash2"
+
+
+[[states]]		# BFGFlash2
+sprite = "BFGF"
+frame = 32769
+tics = 6
+action = "Light2"
+next_state = "LightDone"
+
+
+[[states]]		# Blood1
+sprite = "BLUD"
+frame = 2
+tics = 8
+next_state = "Blood2"
+
+
+[[states]]		# Blood2
+sprite = "BLUD"
+frame = 1
+tics = 8
+next_state = "Blood3"
+
+
+[[states]]		# Blood3
+sprite = "BLUD"
+frame = 0
+tics = 8
+
+
+[[states]]		# PUFF1
+sprite = "PUFF"
+frame = 32768
+tics = 4
+next_state = "PUFF2"
+
+
+[[states]]		# PUFF2
+sprite = "PUFF"
+frame = 1
+tics = 4
+next_state = "PUFF3"
+
+
+[[states]]		# PUFF3
+sprite = "PUFF"
+frame = 2
+tics = 4
+next_state = "PUFF4"
+
+
+[[states]]		# PUFF4
+sprite = "PUFF"
+frame = 3
+tics = 4
+
+
+[[states]]		# TBall1
+sprite = "BAL1"
+frame = 32768
+tics = 4
+next_state = "TBall2"
+
+
+[[states]]		# TBall2
+sprite = "BAL1"
+frame = 32769
+tics = 4
+next_state = "TBall1"
+
+
+[[states]]		# TBallX1
+sprite = "BAL1"
+frame = 32770
+tics = 6
+next_state = "TBallX2"
+
+
+[[states]]		# TBallX2
+sprite = "BAL1"
+frame = 32771
+tics = 6
+next_state = "TBallX3"
+
+
+[[states]]		# TBallX3
+sprite = "BAL1"
+frame = 32772
+tics = 6
+
+
+[[states]]		# RBall1
+sprite = "BAL2"
+frame = 32768
+tics = 4
+next_state = "RBall2"
+
+
+[[states]]		# RBall2
+sprite = "BAL2"
+frame = 32769
+tics = 4
+next_state = "RBall1"
+
+
+[[states]]		# RBallX1
+sprite = "BAL2"
+frame = 32770
+tics = 6
+next_state = "RBallX2"
+
+
+[[states]]		# RBallX2
+sprite = "BAL2"
+frame = 32771
+tics = 6
+next_state = "RBallX3"
+
+
+[[states]]		# RBallX3
+sprite = "BAL2"
+frame = 32772
+tics = 6
+
+
+[[states]]		# PLASBall
+sprite = "PLSS"
+frame = 32768
+tics = 6
+next_state = "PLASBall2"
+
+
+[[states]]		# PLASBall2
+sprite = "PLSS"
+frame = 32769
+tics = 6
+next_state = "PLASBall"
+
+
+[[states]]		# PLASExp
+sprite = "PLSE"
+frame = 32768
+tics = 4
+next_state = "PLASExp2"
+
+
+[[states]]		# PLASExp2
+sprite = "PLSE"
+frame = 32769
+tics = 4
+next_state = "PLASExp3"
+
+
+[[states]]		# PLASExp3
+sprite = "PLSE"
+frame = 32770
+tics = 4
+next_state = "PLASExp4"
+
+
+[[states]]		# PLASExp4
+sprite = "PLSE"
+frame = 32771
+tics = 4
+next_state = "PLASExp5"
+
+
+[[states]]		# PLASExp5
+sprite = "PLSE"
+frame = 32772
+tics = 4
+
+
+[[states]]		# Rocket
+sprite = "MISL"
+frame = 32768
+tics = 1
+next_state = "Rocket"
+
+
+[[states]]		# BFGShot
+sprite = "BFS1"
+frame = 32768
+tics = 4
+next_state = "BFGShot2"
+
+
+[[states]]		# BFGShot2
+sprite = "BFS1"
+frame = 32769
+tics = 4
+next_state = "BFGShot"
+
+
+[[states]]		# BFGLand
+sprite = "BFE1"
+frame = 32768
+tics = 8
+next_state = "BFGLand2"
+
+
+[[states]]		# BFGLand2
+sprite = "BFE1"
+frame = 32769
+tics = 8
+next_state = "BFGLand3"
+
+
+[[states]]		# BFGLand3
+sprite = "BFE1"
+frame = 32770
+tics = 8
+action = "BFGSpray"
+next_state = "BFGLand4"
+
+
+[[states]]		# BFGLand4
+sprite = "BFE1"
+frame = 32771
+tics = 8
+next_state = "BFGLand5"
+
+
+[[states]]		# BFGLand5
+sprite = "BFE1"
+frame = 32772
+tics = 8
+next_state = "BFGLand6"
+
+
+[[states]]		# BFGLand6
+sprite = "BFE1"
+frame = 32773
+tics = 8
+
+
+[[states]]		# BFGExp
+sprite = "BFE2"
+frame = 32768
+tics = 8
+next_state = "BFGExp2"
+
+
+[[states]]		# BFGExp2
+sprite = "BFE2"
+frame = 32769
+tics = 8
+next_state = "BFGExp3"
+
+
+[[states]]		# BFGExp3
+sprite = "BFE2"
+frame = 32770
+tics = 8
+next_state = "BFGExp4"
+
+
+[[states]]		# BFGExp4
+sprite = "BFE2"
+frame = 32771
+tics = 8
+
+
+[[states]]		# Explode1
+sprite = "MISL"
+frame = 32769
+tics = 8
+action = "Explode"
+next_state = "Explode2"
+
+
+[[states]]		# Explode2
+sprite = "MISL"
+frame = 32770
+tics = 6
+next_state = "Explode3"
+
+
+[[states]]		# Explode3
+sprite = "MISL"
+frame = 32771
+tics = 4
+
+
+[[states]]		# TFOG
+sprite = "TFOG"
+frame = 32768
+tics = 6
+next_state = "TFOG01"
+
+
+[[states]]		# TFOG01
+sprite = "TFOG"
+frame = 32769
+tics = 6
+next_state = "TFOG02"
+
+
+[[states]]		# TFOG02
+sprite = "TFOG"
+frame = 32768
+tics = 6
+next_state = "TFOG2"
+
+
+[[states]]		# TFOG2
+sprite = "TFOG"
+frame = 32769
+tics = 6
+next_state = "TFOG3"
+
+
+[[states]]		# TFOG3
+sprite = "TFOG"
+frame = 32770
+tics = 6
+next_state = "TFOG4"
+
+
+[[states]]		# TFOG4
+sprite = "TFOG"
+frame = 32771
+tics = 6
+next_state = "TFOG5"
+
+
+[[states]]		# TFOG5
+sprite = "TFOG"
+frame = 32772
+tics = 6
+next_state = "TFOG6"
+
+
+[[states]]		# TFOG6
+sprite = "TFOG"
+frame = 32773
+tics = 6
+next_state = "TFOG7"
+
+
+[[states]]		# TFOG7
+sprite = "TFOG"
+frame = 32774
+tics = 6
+next_state = "TFOG8"
+
+
+[[states]]		# TFOG8
+sprite = "TFOG"
+frame = 32775
+tics = 6
+next_state = "TFOG9"
+
+
+[[states]]		# TFOG9
+sprite = "TFOG"
+frame = 32776
+tics = 6
+next_state = "TFOG10"
+
+
+[[states]]		# TFOG10
+sprite = "TFOG"
+frame = 32777
+tics = 6
+
+
+[[states]]		# IFOG
+sprite = "IFOG"
+frame = 32768
+tics = 6
+next_state = "IFOG01"
+
+
+[[states]]		# IFOG01
+sprite = "IFOG"
+frame = 32769
+tics = 6
+next_state = "IFOG02"
+
+
+[[states]]		# IFOG02
+sprite = "IFOG"
+frame = 32768
+tics = 6
+next_state = "IFOG2"
+
+
+[[states]]		# IFOG2
+sprite = "IFOG"
+frame = 32769
+tics = 6
+next_state = "IFOG3"
+
+
+[[states]]		# IFOG3
+sprite = "IFOG"
+frame = 32770
+tics = 6
+next_state = "IFOG4"
+
+
+[[states]]		# IFOG4
+sprite = "IFOG"
+frame = 32771
+tics = 6
+next_state = "IFOG5"
+
+
+[[states]]		# IFOG5
+sprite = "IFOG"
+frame = 32772
+tics = 6
+
+
+[[states]]		# PLAY
+sprite = "PLAY"
+frame = 0
+tics = -1
+
+
+[[states]]		# PLAYRun1
+sprite = "PLAY"
+frame = 0
+tics = 4
+next_state = "PLAYRun2"
+
+
+[[states]]		# PLAYRun2
+sprite = "PLAY"
+frame = 1
+tics = 4
+next_state = "PLAYRun3"
+
+
+[[states]]		# PLAYRun3
+sprite = "PLAY"
+frame = 2
+tics = 4
+next_state = "PLAYRun4"
+
+
+[[states]]		# PLAYRun4
+sprite = "PLAY"
+frame = 3
+tics = 4
+next_state = "PLAYRun1"
+
+
+[[states]]		# PLAYAtk1
+sprite = "PLAY"
+frame = 4
+tics = 12
+next_state = "PLAY"
+
+
+[[states]]		# PLAYAtk2
+sprite = "PLAY"
+frame = 32773
+tics = 6
+next_state = "PLAYAtk1"
+
+
+[[states]]		# PLAYPain
+sprite = "PLAY"
+frame = 6
+tics = 4
+next_state = "PLAYPain2"
+
+
+[[states]]		# PLAYPain2
+sprite = "PLAY"
+frame = 6
+tics = 4
+action = "Pain"
+next_state = "PLAY"
+
+
+[[states]]		# PLAYDie1
+sprite = "PLAY"
+frame = 7
+tics = 10
+next_state = "PLAYDie2"
+
+
+[[states]]		# PLAYDie2
+sprite = "PLAY"
+frame = 8
+tics = 10
+action = "PlayerScream"
+next_state = "PLAYDie3"
+
+
+[[states]]		# PLAYDie3
+sprite = "PLAY"
+frame = 9
+tics = 10
+action = "Fall"
+next_state = "PLAYDie4"
+
+
+[[states]]		# PLAYDie4
+sprite = "PLAY"
+frame = 10
+tics = 10
+next_state = "PLAYDie5"
+
+
+[[states]]		# PLAYDie5
+sprite = "PLAY"
+frame = 11
+tics = 10
+next_state = "PLAYDie6"
+
+
+[[states]]		# PLAYDie6
+sprite = "PLAY"
+frame = 12
+tics = 10
+next_state = "PLAYDie7"
+
+
+[[states]]		# PLAYDie7
+sprite = "PLAY"
+frame = 13
+tics = -1
+
+
+[[states]]		# PLAYXDie1
+sprite = "PLAY"
+frame = 14
+tics = 5
+next_state = "PLAYXDie2"
+
+
+[[states]]		# PLAYXDie2
+sprite = "PLAY"
+frame = 15
+tics = 5
+action = "XScream"
+next_state = "PLAYXDie3"
+
+
+[[states]]		# PLAYXDie3
+sprite = "PLAY"
+frame = 16
+tics = 5
+action = "Fall"
+next_state = "PLAYXDie4"
+
+
+[[states]]		# PLAYXDie4
+sprite = "PLAY"
+frame = 17
+tics = 5
+next_state = "PLAYXDie5"
+
+
+[[states]]		# PLAYXDie5
+sprite = "PLAY"
+frame = 18
+tics = 5
+next_state = "PLAYXDie6"
+
+
+[[states]]		# PLAYXDie6
+sprite = "PLAY"
+frame = 19
+tics = 5
+next_state = "PLAYXDie7"
+
+
+[[states]]		# PLAYXDie7
+sprite = "PLAY"
+frame = 20
+tics = 5
+next_state = "PLAYXDie8"
+
+
+[[states]]		# PLAYXDie8
+sprite = "PLAY"
+frame = 21
+tics = 5
+next_state = "PLAYXDie9"
+
+
+[[states]]		# PLAYXDie9
+sprite = "PLAY"
+frame = 22
+tics = -1
+
+
+[[states]]		# POSStnd
+sprite = "POSS"
+frame = 0
+tics = 10
+action = "Look"
+next_state = "POSSStnd2"
+
+
+[[states]]		# POSStnd2
+sprite = "POSS"
+frame = 1
+tics = 10
+action = "Look"
+next_state = "POSSStnd"
+
+
+[[states]]		# POSRUN1
+sprite = "POSS"
+frame = 0
+tics = 4
+action = "Chase"
+next_state = "POSSRun2"
+
+
+[[states]]		# POSRUN2
+sprite = "POSS"
+frame = 0
+tics = 4
+action = "Chase"
+next_state = "POSSRun3"
+
+
+[[states]]		# POSRUN3
+sprite = "POSS"
+frame = 1
+tics = 4
+action = "Chase"
+next_state = "POSSRun4"
+
+
+[[states]]		# POSRUN4
+sprite = "POSS"
+frame = 1
+tics = 4
+action = "Chase"
+next_state = "POSSRun5"
+
+
+[[states]]		# POSRUN5
+sprite = "POSS"
+frame = 2
+tics = 4
+action = "Chase"
+next_state = "POSSRun6"
+
+
+[[states]]		# POSRUN6
+sprite = "POSS"
+frame = 2
+tics = 4
+action = "Chase"
+next_state = "POSSRun7"
+
+
+[[states]]		# POSRUN7
+sprite = "POSS"
+frame = 3
+tics = 4
+action = "Chase"
+next_state = "POSSRun8"
+
+
+[[states]]		# POSRUN8
+sprite = "POSS"
+frame = 3
+tics = 4
+action = "Chase"
+next_state = "POSSRun1"
+
+
+[[states]]		# POSATK1
+sprite = "POSS"
+frame = 4
+tics = 10
+action = "FaceTarget"
+next_state = "POSSAtk2"
+
+
+[[states]]		# POSATK2
+sprite = "POSS"
+frame = 5
+tics = 8
+action = "PosAttack"
+next_state = "POSSAtk3"
+
+
+[[states]]		# POSATK3
+sprite = "POSS"
+frame = 4
+tics = 8
+next_state = "POSSRun1"
+
+
+[[states]]		# POSPAIN
+sprite = "POSS"
+frame = 6
+tics = 3
+next_state = "POSSPain2"
+
+
+[[states]]		# POSPAIN2
+sprite = "POSS"
+frame = 6
+tics = 3
+action = "Pain"
+next_state = "POSSRun1"
+
+
+[[states]]		# POSDIE1
+sprite = "POSS"
+frame = 7
+tics = 5
+next_state = "POSSDie2"
+
+
+[[states]]		# POSDIE2
+sprite = "POSS"
+frame = 8
+tics = 5
+action = "Scream"
+next_state = "POSSDie3"
+
+
+[[states]]		# POSDIE3
+sprite = "POSS"
+frame = 9
+tics = 5
+action = "Fall"
+next_state = "POSSDie4"
+
+
+[[states]]		# POSDIE4
+sprite = "POSS"
+frame = 10
+tics = 5
+next_state = "POSSDie5"
+
+
+[[states]]		# POSDIE5
+sprite = "POSS"
+frame = 11
+tics = -1
+
+
+[[states]]		# POSXDIE1
+sprite = "POSS"
+frame = 12
+tics = 5
+next_state = "POSSXDie2"
+
+
+[[states]]		# POSXDIE2
+sprite = "POSS"
+frame = 13
+tics = 5
+action = "XScream"
+next_state = "POSSXDie3"
+
+
+[[states]]		# POSXDIE3
+sprite = "POSS"
+frame = 14
+tics = 5
+action = "Fall"
+next_state = "POSSXDie4"
+
+
+[[states]]		# POSXDIE4
+sprite = "POSS"
+frame = 15
+tics = 5
+next_state = "POSSXDie5"
+
+
+[[states]]		# POSXDIE5
+sprite = "POSS"
+frame = 16
+tics = 5
+next_state = "POSSXDie6"
+
+
+[[states]]		# POSXDIE6
+sprite = "POSS"
+frame = 17
+tics = 5
+next_state = "POSSXDie7"
+
+
+[[states]]		# POSXDIE7
+sprite = "POSS"
+frame = 18
+tics = 5
+next_state = "POSSXDie8"
+
+
+[[states]]		# POSXDIE8
+sprite = "POSS"
+frame = 19
+tics = 5
+next_state = "POSSXDie9"
+
+
+[[states]]		# POSXDIE9
+sprite = "POSS"
+frame = 20
+tics = -1
+
+
+[[states]]		# POSRAISE1
+sprite = "POSS"
+frame = 10
+tics = 5
+next_state = "POSSRaise2"
+
+
+[[states]]		# POSRAISE2
+sprite = "POSS"
+frame = 9
+tics = 5
+next_state = "POSSRaise3"
+
+
+[[states]]		# POSRAISE3
+sprite = "POSS"
+frame = 8
+tics = 5
+next_state = "POSSRaise4"
+
+
+[[states]]		# POSRAISE4
+sprite = "POSS"
+frame = 7
+tics = 5
+next_state = "POSSRun1"
+
+
+[[states]]		# SPOStnd
+sprite = "SPOS"
+frame = 0
+tics = 10
+action = "Look"
+next_state = "SPOSStnd2"
+
+
+[[states]]		# SPOStnd2
+sprite = "SPOS"
+frame = 1
+tics = 10
+action = "Look"
+next_state = "SPOSStnd"
+
+
+[[states]]		# SPORUN1
+sprite = "SPOS"
+frame = 0
+tics = 3
+action = "Chase"
+next_state = "SPOSRun2"
+
+
+[[states]]		# SPORUN2
+sprite = "SPOS"
+frame = 0
+tics = 3
+action = "Chase"
+next_state = "SPOSRun3"
+
+
+[[states]]		# SPORUN3
+sprite = "SPOS"
+frame = 1
+tics = 3
+action = "Chase"
+next_state = "SPOSRun4"
+
+
+[[states]]		# SPORUN4
+sprite = "SPOS"
+frame = 1
+tics = 3
+action = "Chase"
+next_state = "SPOSRun5"
+
+
+[[states]]		# SPORUN5
+sprite = "SPOS"
+frame = 2
+tics = 3
+action = "Chase"
+next_state = "SPOSRun6"
+
+
+[[states]]		# SPORUN6
+sprite = "SPOS"
+frame = 2
+tics = 3
+action = "Chase"
+next_state = "SPOSRun7"
+
+
+[[states]]		# SPORUN7
+sprite = "SPOS"
+frame = 3
+tics = 3
+action = "Chase"
+next_state = "SPOSRun8"
+
+
+[[states]]		# SPORUN8
+sprite = "SPOS"
+frame = 3
+tics = 3
+action = "Chase"
+next_state = "SPOSRun1"
+
+
+[[states]]		# SPOATK1
+sprite = "SPOS"
+frame = 4
+tics = 10
+action = "FaceTarget"
+next_state = "SPOSAtk2"
+
+
+[[states]]		# SPOATK2
+sprite = "SPOS"
+frame = 32773
+tics = 10
+action = "SPosAttack"
+next_state = "SPOSAtk3"
+
+
+[[states]]		# SPOATK3
+sprite = "SPOS"
+frame = 4
+tics = 10
+next_state = "SPOSRun1"
+
+
+[[states]]		# SPOPAIN
+sprite = "SPOS"
+frame = 6
+tics = 3
+next_state = "SPOSPain2"
+
+
+[[states]]		# SPOPAIN2
+sprite = "SPOS"
+frame = 6
+tics = 3
+action = "Pain"
+next_state = "SPOSRun1"
+
+
+[[states]]		# SPODIE1
+sprite = "SPOS"
+frame = 7
+tics = 5
+next_state = "SPOSDie2"
+
+
+[[states]]		# SPODIE2
+sprite = "SPOS"
+frame = 8
+tics = 5
+action = "Scream"
+next_state = "SPOSDie3"
+
+
+[[states]]		# SPODIE3
+sprite = "SPOS"
+frame = 9
+tics = 5
+action = "Fall"
+next_state = "SPOSDie4"
+
+
+[[states]]		# SPODIE4
+sprite = "SPOS"
+frame = 10
+tics = 5
+next_state = "SPOSDie5"
+
+
+[[states]]		# SPODIE5
+sprite = "SPOS"
+frame = 11
+tics = -1
+
+
+[[states]]		# SPOXDIE1
+sprite = "SPOS"
+frame = 12
+tics = 5
+next_state = "SPOSXDie2"
+
+
+[[states]]		# SPOXDIE2
+sprite = "SPOS"
+frame = 13
+tics = 5
+action = "XScream"
+next_state = "SPOSXDie3"
+
+
+[[states]]		# SPOXDIE3
+sprite = "SPOS"
+frame = 14
+tics = 5
+action = "Fall"
+next_state = "SPOSXDie4"
+
+
+[[states]]		# SPOXDIE4
+sprite = "SPOS"
+frame = 15
+tics = 5
+next_state = "SPOSXDie5"
+
+
+[[states]]		# SPOXDIE5
+sprite = "SPOS"
+frame = 16
+tics = 5
+next_state = "SPOSXDie6"
+
+
+[[states]]		# SPOXDIE6
+sprite = "SPOS"
+frame = 17
+tics = 5
+next_state = "SPOSXDie7"
+
+
+[[states]]		# SPOXDIE7
+sprite = "SPOS"
+frame = 18
+tics = 5
+next_state = "SPOSXDie8"
+
+
+[[states]]		# SPOXDIE8
+sprite = "SPOS"
+frame = 19
+tics = 5
+next_state = "SPOSXDie9"
+
+
+[[states]]		# SPOXDIE9
+sprite = "SPOS"
+frame = 20
+tics = -1
+
+
+[[states]]		# SPORAISE1
+sprite = "SPOS"
+frame = 11
+tics = 5
+next_state = "SPOSRaise2"
+
+
+[[states]]		# SPORAISE2
+sprite = "SPOS"
+frame = 10
+tics = 5
+next_state = "SPOSRaise3"
+
+
+[[states]]		# SPORAISE3
+sprite = "SPOS"
+frame = 9
+tics = 5
+next_state = "SPOSRaise4"
+
+
+[[states]]		# SPORAISE4
+sprite = "SPOS"
+frame = 8
+tics = 5
+next_state = "SPOSRaise5"
+
+
+[[states]]		# SPORAISE5
+sprite = "SPOS"
+frame = 7
+tics = 5
+next_state = "SPOSRun1"
+
+
+[[states]]		# VILEStnd
+sprite = "VILE"
+frame = 0
+tics = 10
+action = "Look"
+next_state = "VILEStnd2"
+
+
+[[states]]		# VILEStnd2
+sprite = "VILE"
+frame = 1
+tics = 10
+action = "Look"
+next_state = "VILEStnd"
+
+
+[[states]]		# VILERun1
+sprite = "VILE"
+frame = 0
+tics = 2
+action = "VileChase"
+next_state = "VILERun2"
+
+
+[[states]]		# VILERun2
+sprite = "VILE"
+frame = 0
+tics = 2
+action = "VileChase"
+next_state = "VILERun3"
+
+
+[[states]]		# VILERun3
+sprite = "VILE"
+frame = 1
+tics = 2
+action = "VileChase"
+next_state = "VILERun4"
+
+
+[[states]]		# VILERun4
+sprite = "VILE"
+frame = 1
+tics = 2
+action = "VileChase"
+next_state = "VILERun5"
+
+
+[[states]]		# VILERun5
+sprite = "VILE"
+frame = 2
+tics = 2
+action = "VileChase"
+next_state = "VILERun6"
+
+
+[[states]]		# VILERun6
+sprite = "VILE"
+frame = 2
+tics = 2
+action = "VileChase"
+next_state = "VILERun7"
+
+
+[[states]]		# VILERun7
+sprite = "VILE"
+frame = 3
+tics = 2
+action = "VileChase"
+next_state = "VILERun8"
+
+
+[[states]]		# VILERun8
+sprite = "VILE"
+frame = 3
+tics = 2
+action = "VileChase"
+next_state = "VILERun9"
+
+
+[[states]]		# VILERun9
+sprite = "VILE"
+frame = 4
+tics = 2
+action = "VileChase"
+next_state = "VILERun10"
+
+
+[[states]]		# VILERun10
+sprite = "VILE"
+frame = 4
+tics = 2
+action = "VileChase"
+next_state = "VILERun11"
+
+
+[[states]]		# VILERun11
+sprite = "VILE"
+frame = 5
+tics = 2
+action = "VileChase"
+next_state = "VILERun12"
+
+
+[[states]]		# VILERun12
+sprite = "VILE"
+frame = 5
+tics = 2
+action = "VileChase"
+next_state = "VILERun1"
+
+
+[[states]]		# VILEAtk1
+sprite = "VILE"
+frame = 32774
+tics = 0
+action = "VileStart"
+next_state = "VILEAtk2"
+
+
+[[states]]		# VILEAtk2
+sprite = "VILE"
+frame = 32774
+tics = 10
+action = "FaceTarget"
+next_state = "VILEAtk3"
+
+
+[[states]]		# VILEAtk3
+sprite = "VILE"
+frame = 32775
+tics = 8
+action = "VileTarget"
+next_state = "VILEAtk4"
+
+
+[[states]]		# VILEAtk4
+sprite = "VILE"
+frame = 32776
+tics = 8
+action = "FaceTarget"
+next_state = "VILEAtk5"
+
+
+[[states]]		# VILEAtk5
+sprite = "VILE"
+frame = 32777
+tics = 8
+action = "FaceTarget"
+next_state = "VILEAtk6"
+
+
+[[states]]		# VILEAtk6
+sprite = "VILE"
+frame = 32778
+tics = 8
+action = "FaceTarget"
+next_state = "VILEAtk7"
+
+
+[[states]]		# VILEAtk7
+sprite = "VILE"
+frame = 32779
+tics = 8
+action = "FaceTarget"
+next_state = "VILEAtk8"
+
+
+[[states]]		# VILEAtk8
+sprite = "VILE"
+frame = 32780
+tics = 8
+action = "FaceTarget"
+next_state = "VILEAtk9"
+
+
+[[states]]		# VILEAtk9
+sprite = "VILE"
+frame = 32781
+tics = 8
+action = "FaceTarget"
+next_state = "VILEAtk10"
+
+
+[[states]]		# VILEAtk10
+sprite = "VILE"
+frame = 32782
+tics = 8
+action = "VileAttack"
+next_state = "VILEAtk11"
+
+
+[[states]]		# VILEAtk11
+sprite = "VILE"
+frame = 32783
+tics = 20
+next_state = "VILERun1"
+
+
+[[states]]		# VILEHeal1
+sprite = "VILE"
+frame = 32794
+tics = 10
+next_state = "VILEHeal2"
+
+
+[[states]]		# VILEHeal2
+sprite = "VILE"
+frame = 32795
+tics = 10
+next_state = "VILEHeal3"
+
+
+[[states]]		# VILEHeal3
+sprite = "VILE"
+frame = 32796
+tics = 10
+next_state = "VILERun1"
+
+
+[[states]]		# VILEPain
+sprite = "VILE"
+frame = 16
+tics = 5
+next_state = "VILEPain2"
+
+
+[[states]]		# VILEPain2
+sprite = "VILE"
+frame = 16
+tics = 5
+action = "Pain"
+next_state = "VILERun1"
+
+
+[[states]]		# VILEDie1
+sprite = "VILE"
+frame = 16
+tics = 7
+next_state = "VILEDie2"
+
+
+[[states]]		# VILEDie2
+sprite = "VILE"
+frame = 17
+tics = 7
+action = "Scream"
+next_state = "VILEDie3"
+
+
+[[states]]		# VILEDie3
+sprite = "VILE"
+frame = 18
+tics = 7
+action = "Fall"
+next_state = "VILEDie4"
+
+
+[[states]]		# VILEDie4
+sprite = "VILE"
+frame = 19
+tics = 7
+next_state = "VILEDie5"
+
+
+[[states]]		# VILEDie5
+sprite = "VILE"
+frame = 20
+tics = 7
+next_state = "VILEDie6"
+
+
+[[states]]		# VILEDie6
+sprite = "VILE"
+frame = 21
+tics = 7
+next_state = "VILEDie7"
+
+
+[[states]]		# VILEDie7
+sprite = "VILE"
+frame = 22
+tics = 7
+next_state = "VILEDie8"
+
+
+[[states]]		# VILEDie8
+sprite = "VILE"
+frame = 23
+tics = 5
+next_state = "VILEDie9"
+
+
+[[states]]		# VILEDie9
+sprite = "VILE"
+frame = 24
+tics = 5
+next_state = "VILEDie10"
+
+
+[[states]]		# VILEDie10
+sprite = "VILE"
+frame = 25
+tics = -1
+
+
+[[states]]		# FIRE1
+sprite = "FIRE"
+frame = 32768
+tics = 2
+action = "StartFire"
+next_state = "FIRE2"
+
+
+[[states]]		# FIRE2
+sprite = "FIRE"
+frame = 32769
+tics = 2
+action = "Fire"
+next_state = "FIRE3"
+
+
+[[states]]		# FIRE3
+sprite = "FIRE"
+frame = 32768
+tics = 2
+action = "Fire"
+next_state = "FIRE4"
+
+
+[[states]]		# FIRE4
+sprite = "FIRE"
+frame = 32769
+tics = 2
+action = "Fire"
+next_state = "FIRE5"
+
+
+[[states]]		# FIRE5
+sprite = "FIRE"
+frame = 32770
+tics = 2
+action = "FireCrackle"
+next_state = "FIRE6"
+
+
+[[states]]		# FIRE6
+sprite = "FIRE"
+frame = 32769
+tics = 2
+action = "Fire"
+next_state = "FIRE7"
+
+
+[[states]]		# FIRE7
+sprite = "FIRE"
+frame = 32770
+tics = 2
+action = "Fire"
+next_state = "FIRE8"
+
+
+[[states]]		# FIRE8
+sprite = "FIRE"
+frame = 32769
+tics = 2
+action = "Fire"
+next_state = "FIRE9"
+
+
+[[states]]		# FIRE9
+sprite = "FIRE"
+frame = 32770
+tics = 2
+action = "Fire"
+next_state = "FIRE10"
+
+
+[[states]]		# FIRE10
+sprite = "FIRE"
+frame = 32771
+tics = 2
+action = "Fire"
+next_state = "FIRE11"
+
+
+[[states]]		# FIRE11
+sprite = "FIRE"
+frame = 32770
+tics = 2
+action = "Fire"
+next_state = "FIRE12"
+
+
+[[states]]		# FIRE12
+sprite = "FIRE"
+frame = 32771
+tics = 2
+action = "Fire"
+next_state = "FIRE13"
+
+
+[[states]]		# FIRE13
+sprite = "FIRE"
+frame = 32770
+tics = 2
+action = "Fire"
+next_state = "FIRE14"
+
+
+[[states]]		# FIRE14
+sprite = "FIRE"
+frame = 32771
+tics = 2
+action = "Fire"
+next_state = "FIRE15"
+
+
+[[states]]		# FIRE15
+sprite = "FIRE"
+frame = 32772
+tics = 2
+action = "Fire"
+next_state = "FIRE16"
+
+
+[[states]]		# FIRE16
+sprite = "FIRE"
+frame = 32771
+tics = 2
+action = "Fire"
+next_state = "FIRE17"
+
+
+[[states]]		# FIRE17
+sprite = "FIRE"
+frame = 32772
+tics = 2
+action = "Fire"
+next_state = "FIRE18"
+
+
+[[states]]		# FIRE18
+sprite = "FIRE"
+frame = 32771
+tics = 2
+action = "Fire"
+next_state = "FIRE19"
+
+
+[[states]]		# FIRE19
+sprite = "FIRE"
+frame = 32772
+tics = 2
+action = "FireCrackle"
+next_state = "FIRE20"
+
+
+[[states]]		# FIRE20
+sprite = "FIRE"
+frame = 32773
+tics = 2
+action = "Fire"
+next_state = "FIRE21"
+
+
+[[states]]		# FIRE21
+sprite = "FIRE"
+frame = 32772
+tics = 2
+action = "Fire"
+next_state = "FIRE22"
+
+
+[[states]]		# FIRE22
+sprite = "FIRE"
+frame = 32773
+tics = 2
+action = "Fire"
+next_state = "FIRE23"
+
+
+[[states]]		# FIRE23
+sprite = "FIRE"
+frame = 32772
+tics = 2
+action = "Fire"
+next_state = "FIRE24"
+
+
+[[states]]		# FIRE24
+sprite = "FIRE"
+frame = 32773
+tics = 2
+action = "Fire"
+next_state = "FIRE25"
+
+
+[[states]]		# FIRE25
+sprite = "FIRE"
+frame = 32774
+tics = 2
+action = "Fire"
+next_state = "FIRE26"
+
+
+[[states]]		# FIRE26
+sprite = "FIRE"
+frame = 32775
+tics = 2
+action = "Fire"
+next_state = "FIRE27"
+
+
+[[states]]		# FIRE27
+sprite = "FIRE"
+frame = 32774
+tics = 2
+action = "Fire"
+next_state = "FIRE28"
+
+
+[[states]]		# FIRE28
+sprite = "FIRE"
+frame = 32775
+tics = 2
+action = "Fire"
+next_state = "FIRE29"
+
+
+[[states]]		# FIRE29
+sprite = "FIRE"
+frame = 32774
+tics = 2
+action = "Fire"
+next_state = "FIRE30"
+
+
+[[states]]		# FIRE30
+sprite = "FIRE"
+frame = 32775
+tics = 2
+action = "Fire"
+
+
+[[states]]		# Smoke1
+sprite = "PUFF"
+frame = 1
+tics = 4
+next_state = "Smoke2"
+
+
+[[states]]		# Smoke2
+sprite = "PUFF"
+frame = 2
+tics = 4
+next_state = "Smoke3"
+
+
+[[states]]		# Smoke3
+sprite = "PUFF"
+frame = 1
+tics = 4
+next_state = "Smoke4"
+
+
+[[states]]		# Smoke4
+sprite = "PUFF"
+frame = 2
+tics = 4
+next_state = "Smoke5"
+
+
+[[states]]		# Smoke5
+sprite = "PUFF"
+frame = 3
+tics = 4
+
+
+[[states]]		# Tracer
+sprite = "FATB"
+frame = 32768
+tics = 2
+action = "Tracer"
+next_state = "Tracer2"
+
+
+[[states]]		# Tracer2
+sprite = "FATB"
+frame = 32769
+tics = 2
+action = "Tracer"
+next_state = "Tracer"
+
+
+[[states]]		# TraceExp1
+sprite = "FBXP"
+frame = 32768
+tics = 8
+next_state = "TraceExp2"
+
+
+[[states]]		# TraceExp2
+sprite = "FBXP"
+frame = 32769
+tics = 6
+next_state = "TraceExp3"
+
+
+[[states]]		# TraceExp3
+sprite = "FBXP"
+frame = 32770
+tics = 4
+
+
+[[states]]		# SKELStnd
+sprite = "SKEL"
+frame = 0
+tics = 10
+action = "Look"
+next_state = "SKELStnd2"
+
+
+[[states]]		# SKELStnd2
+sprite = "SKEL"
+frame = 1
+tics = 10
+action = "Look"
+next_state = "SKELStnd"
+
+
+[[states]]		# SKELRun1
+sprite = "SKEL"
+frame = 0
+tics = 2
+action = "Chase"
+next_state = "SKELRun2"
+
+
+[[states]]		# SKELRun2
+sprite = "SKEL"
+frame = 0
+tics = 2
+action = "Chase"
+next_state = "SKELRun3"
+
+
+[[states]]		# SKELRun3
+sprite = "SKEL"
+frame = 1
+tics = 2
+action = "Chase"
+next_state = "SKELRun4"
+
+
+[[states]]		# SKELRun4
+sprite = "SKEL"
+frame = 1
+tics = 2
+action = "Chase"
+next_state = "SKELRun5"
+
+
+[[states]]		# SKELRun5
+sprite = "SKEL"
+frame = 2
+tics = 2
+action = "Chase"
+next_state = "SKELRun6"
+
+
+[[states]]		# SKELRun6
+sprite = "SKEL"
+frame = 2
+tics = 2
+action = "Chase"
+next_state = "SKELRun7"
+
+
+[[states]]		# SKELRun7
+sprite = "SKEL"
+frame = 3
+tics = 2
+action = "Chase"
+next_state = "SKELRun8"
+
+
+[[states]]		# SKELRun8
+sprite = "SKEL"
+frame = 3
+tics = 2
+action = "Chase"
+next_state = "SKELRun9"
+
+
+[[states]]		# SKELRun9
+sprite = "SKEL"
+frame = 4
+tics = 2
+action = "Chase"
+next_state = "SKELRun10"
+
+
+[[states]]		# SKELRun10
+sprite = "SKEL"
+frame = 4
+tics = 2
+action = "Chase"
+next_state = "SKELRun11"
+
+
+[[states]]		# SKELRun11
+sprite = "SKEL"
+frame = 5
+tics = 2
+action = "Chase"
+next_state = "SKELRun12"
+
+
+[[states]]		# SKELRun12
+sprite = "SKEL"
+frame = 5
+tics = 2
+action = "Chase"
+next_state = "SKELRun1"
+
+
+[[states]]		# SKELFist1
+sprite = "SKEL"
+frame = 6
+tics = 0
+action = "FaceTarget"
+next_state = "SKELFist2"
+
+
+[[states]]		# SKELFist2
+sprite = "SKEL"
+frame = 6
+tics = 6
+action = "SkelWhoosh"
+next_state = "SKELFist3"
+
+
+[[states]]		# SKELFist3
+sprite = "SKEL"
+frame = 7
+tics = 6
+action = "FaceTarget"
+next_state = "SKELFist4"
+
+
+[[states]]		# SKELFist4
+sprite = "SKEL"
+frame = 8
+tics = 6
+action = "SkelFist"
+next_state = "SKELRun1"
+
+
+[[states]]		# SKELMiss1
+sprite = "SKEL"
+frame = 32777
+tics = 0
+action = "FaceTarget"
+next_state = "SKELMiss2"
+
+
+[[states]]		# SKELMiss2
+sprite = "SKEL"
+frame = 32777
+tics = 10
+action = "FaceTarget"
+next_state = "SKELMiss3"
+
+
+[[states]]		# SKELMiss3
+sprite = "SKEL"
+frame = 10
+tics = 10
+action = "SkelMissile"
+next_state = "SKELMiss4"
+
+
+[[states]]		# SKELMiss4
+sprite = "SKEL"
+frame = 10
+tics = 10
+action = "FaceTarget"
+next_state = "SKELRun1"
+
+
+[[states]]		# SKELPain
+sprite = "SKEL"
+frame = 11
+tics = 5
+next_state = "SKELPain2"
+
+
+[[states]]		# SKELPain2
+sprite = "SKEL"
+frame = 11
+tics = 5
+action = "Pain"
+next_state = "SKELRun1"
+
+
+[[states]]		# SKELDie1
+sprite = "SKEL"
+frame = 11
+tics = 7
+next_state = "SKELDie2"
+
+
+[[states]]		# SKELDie2
+sprite = "SKEL"
+frame = 12
+tics = 7
+next_state = "SKELDie3"
+
+
+[[states]]		# SKELDie3
+sprite = "SKEL"
+frame = 13
+tics = 7
+action = "Scream"
+next_state = "SKELDie4"
+
+
+[[states]]		# SKELDie4
+sprite = "SKEL"
+frame = 14
+tics = 7
+action = "Fall"
+next_state = "SKELDie5"
+
+
+[[states]]		# SKELDie5
+sprite = "SKEL"
+frame = 15
+tics = 7
+next_state = "SKELDie6"
+
+
+[[states]]		# SKELDie6
+sprite = "SKEL"
+frame = 16
+tics = -1
+
+
+[[states]]		# SKELRaise1
+sprite = "SKEL"
+frame = 16
+tics = 5
+next_state = "SKELRaise2"
+
+
+[[states]]		# SKELRaise2
+sprite = "SKEL"
+frame = 15
+tics = 5
+next_state = "SKELRaise3"
+
+
+[[states]]		# SKELRaise3
+sprite = "SKEL"
+frame = 14
+tics = 5
+next_state = "SKELRaise4"
+
+
+[[states]]		# SKELRaise4
+sprite = "SKEL"
+frame = 13
+tics = 5
+next_state = "SKELRaise5"
+
+
+[[states]]		# SKELRaise5
+sprite = "SKEL"
+frame = 12
+tics = 5
+next_state = "SKELRaise6"
+
+
+[[states]]		# SKELRaise6
+sprite = "SKEL"
+frame = 11
+tics = 5
+next_state = "SKELRun1"
+
+
+[[states]]		# FATShot1
+sprite = "MANF"
+frame = 32768
+tics = 4
+next_state = "FATShot2"
+
+
+[[states]]		# FATShot2
+sprite = "MANF"
+frame = 32769
+tics = 4
+next_state = "FATShot1"
+
+
+[[states]]		# FATShotX1
+sprite = "MISL"
+frame = 32769
+tics = 8
+next_state = "FATShotX2"
+
+
+[[states]]		# FATShotX2
+sprite = "MISL"
+frame = 32770
+tics = 6
+next_state = "FATShotX3"
+
+
+[[states]]		# FATShotX3
+sprite = "MISL"
+frame = 32771
+tics = 4
+
+
+[[states]]		# FATTStnd
+sprite = "FATT"
+frame = 0
+tics = 15
+action = "Look"
+next_state = "FATTStnd2"
+
+
+[[states]]		# FATTStnd2
+sprite = "FATT"
+frame = 1
+tics = 15
+action = "Look"
+next_state = "FATTStnd"
+
+
+[[states]]		# FATTRun1
+sprite = "FATT"
+frame = 0
+tics = 4
+action = "Chase"
+next_state = "FATTRun2"
+
+
+[[states]]		# FATTRun2
+sprite = "FATT"
+frame = 0
+tics = 4
+action = "Chase"
+next_state = "FATTRun3"
+
+
+[[states]]		# FATTRun3
+sprite = "FATT"
+frame = 1
+tics = 4
+action = "Chase"
+next_state = "FATTRun4"
+
+
+[[states]]		# FATTRun4
+sprite = "FATT"
+frame = 1
+tics = 4
+action = "Chase"
+next_state = "FATTRun5"
+
+
+[[states]]		# FATTRun5
+sprite = "FATT"
+frame = 2
+tics = 4
+action = "Chase"
+next_state = "FATTRun6"
+
+
+[[states]]		# FATTRun6
+sprite = "FATT"
+frame = 2
+tics = 4
+action = "Chase"
+next_state = "FATTRun7"
+
+
+[[states]]		# FATTRun7
+sprite = "FATT"
+frame = 3
+tics = 4
+action = "Chase"
+next_state = "FATTRun8"
+
+
+[[states]]		# FATTRun8
+sprite = "FATT"
+frame = 3
+tics = 4
+action = "Chase"
+next_state = "FATTRun9"
+
+
+[[states]]		# FATTRun9
+sprite = "FATT"
+frame = 4
+tics = 4
+action = "Chase"
+next_state = "FATTRun10"
+
+
+[[states]]		# FATTRun10
+sprite = "FATT"
+frame = 4
+tics = 4
+action = "Chase"
+next_state = "FATTRun11"
+
+
+[[states]]		# FATTRun11
+sprite = "FATT"
+frame = 5
+tics = 4
+action = "Chase"
+next_state = "FATTRun12"
+
+
+[[states]]		# FATTRun12
+sprite = "FATT"
+frame = 5
+tics = 4
+action = "Chase"
+next_state = "FATTRun1"
+
+
+[[states]]		# FATTAtk1
+sprite = "FATT"
+frame = 6
+tics = 20
+action = "FatRaise"
+next_state = "FATTAtk2"
+
+
+[[states]]		# FATTAtk2
+sprite = "FATT"
+frame = 32775
+tics = 10
+action = "FatAttack1"
+next_state = "FATTAtk3"
+
+
+[[states]]		# FATTAtk3
+sprite = "FATT"
+frame = 8
+tics = 5
+action = "FaceTarget"
+next_state = "FATTAtk4"
+
+
+[[states]]		# FATTAtk4
+sprite = "FATT"
+frame = 6
+tics = 5
+action = "FaceTarget"
+next_state = "FATTAtk5"
+
+
+[[states]]		# FATTAtk5
+sprite = "FATT"
+frame = 32775
+tics = 10
+action = "FatAttack2"
+next_state = "FATTAtk6"
+
+
+[[states]]		# FATTAtk6
+sprite = "FATT"
+frame = 8
+tics = 5
+action = "FaceTarget"
+next_state = "FATTAtk7"
+
+
+[[states]]		# FATTAtk7
+sprite = "FATT"
+frame = 6
+tics = 5
+action = "FaceTarget"
+next_state = "FATTAtk8"
+
+
+[[states]]		# FATTAtk8
+sprite = "FATT"
+frame = 32775
+tics = 10
+action = "FatAttack3"
+next_state = "FATTAtk9"
+
+
+[[states]]		# FATTAtk9
+sprite = "FATT"
+frame = 8
+tics = 5
+action = "FaceTarget"
+next_state = "FATTAtk10"
+
+
+[[states]]		# FATTAtk10
+sprite = "FATT"
+frame = 6
+tics = 5
+action = "FaceTarget"
+next_state = "FATTRun1"
+
+
+[[states]]		# FATTPain
+sprite = "FATT"
+frame = 9
+tics = 3
+next_state = "FATTPain2"
+
+
+[[states]]		# FATTPain2
+sprite = "FATT"
+frame = 9
+tics = 3
+action = "Pain"
+next_state = "FATTRun1"
+
+
+[[states]]		# FATTDie1
+sprite = "FATT"
+frame = 10
+tics = 6
+next_state = "FATTDie2"
+
+
+[[states]]		# FATTDie2
+sprite = "FATT"
+frame = 11
+tics = 6
+action = "Scream"
+next_state = "FATTDie3"
+
+
+[[states]]		# FATTDie3
+sprite = "FATT"
+frame = 12
+tics = 6
+action = "Fall"
+next_state = "FATTDie4"
+
+
+[[states]]		# FATTDie4
+sprite = "FATT"
+frame = 13
+tics = 6
+next_state = "FATTDie5"
+
+
+[[states]]		# FATTDie5
+sprite = "FATT"
+frame = 14
+tics = 6
+next_state = "FATTDie6"
+
+
+[[states]]		# FATTDie6
+sprite = "FATT"
+frame = 15
+tics = 6
+next_state = "FATTDie7"
+
+
+[[states]]		# FATTDie7
+sprite = "FATT"
+frame = 16
+tics = 6
+next_state = "FATTDie8"
+
+
+[[states]]		# FATTDie8
+sprite = "FATT"
+frame = 17
+tics = 6
+next_state = "FATTDie9"
+
+
+[[states]]		# FATTDie9
+sprite = "FATT"
+frame = 18
+tics = 6
+next_state = "FATTDie10"
+
+
+[[states]]		# FATTDie10
+sprite = "FATT"
+frame = 19
+tics = -1
+action = "BossDeath"
+
+
+[[states]]		# FATTRaise1
+sprite = "FATT"
+frame = 17
+tics = 5
+next_state = "FATTRaise2"
+
+
+[[states]]		# FATTRaise2
+sprite = "FATT"
+frame = 16
+tics = 5
+next_state = "FATTRaise3"
+
+
+[[states]]		# FATTRaise3
+sprite = "FATT"
+frame = 15
+tics = 5
+next_state = "FATTRaise4"
+
+
+[[states]]		# FATTRaise4
+sprite = "FATT"
+frame = 14
+tics = 5
+next_state = "FATTRaise5"
+
+
+[[states]]		# FATTRaise5
+sprite = "FATT"
+frame = 13
+tics = 5
+next_state = "FATTRaise6"
+
+
+[[states]]		# FATTRaise6
+sprite = "FATT"
+frame = 12
+tics = 5
+next_state = "FATTRaise7"
+
+
+[[states]]		# FATTRaise7
+sprite = "FATT"
+frame = 11
+tics = 5
+next_state = "FATTRaise8"
+
+
+[[states]]		# FATTRaise8
+sprite = "FATT"
+frame = 10
+tics = 5
+next_state = "FATTRun1"
+
+
+[[states]]		# CPOStnd
+sprite = "CPOS"
+frame = 0
+tics = 10
+action = "Look"
+next_state = "CPOSStnd2"
+
+
+[[states]]		# CPOStnd2
+sprite = "CPOS"
+frame = 1
+tics = 10
+action = "Look"
+next_state = "CPOSStnd"
+
+
+[[states]]		# CPORUN1
+sprite = "CPOS"
+frame = 0
+tics = 3
+action = "Chase"
+next_state = "CPOSRun2"
+
+
+[[states]]		# CPORUN2
+sprite = "CPOS"
+frame = 0
+tics = 3
+action = "Chase"
+next_state = "CPOSRun3"
+
+
+[[states]]		# CPORUN3
+sprite = "CPOS"
+frame = 1
+tics = 3
+action = "Chase"
+next_state = "CPOSRun4"
+
+
+[[states]]		# CPORUN4
+sprite = "CPOS"
+frame = 1
+tics = 3
+action = "Chase"
+next_state = "CPOSRun5"
+
+
+[[states]]		# CPORUN5
+sprite = "CPOS"
+frame = 2
+tics = 3
+action = "Chase"
+next_state = "CPOSRun6"
+
+
+[[states]]		# CPORUN6
+sprite = "CPOS"
+frame = 2
+tics = 3
+action = "Chase"
+next_state = "CPOSRun7"
+
+
+[[states]]		# CPORUN7
+sprite = "CPOS"
+frame = 3
+tics = 3
+action = "Chase"
+next_state = "CPOSRun8"
+
+
+[[states]]		# CPORUN8
+sprite = "CPOS"
+frame = 3
+tics = 3
+action = "Chase"
+next_state = "CPOSRun1"
+
+
+[[states]]		# CPOATK1
+sprite = "CPOS"
+frame = 4
+tics = 10
+action = "FaceTarget"
+next_state = "CPOSAtk2"
+
+
+[[states]]		# CPOATK2
+sprite = "CPOS"
+frame = 32773
+tics = 4
+action = "CPosAttack"
+next_state = "CPOSAtk3"
+
+
+[[states]]		# CPOATK3
+sprite = "CPOS"
+frame = 32772
+tics = 4
+action = "CPosAttack"
+next_state = "CPOSAtk4"
+
+
+[[states]]		# CPOATK4
+sprite = "CPOS"
+frame = 5
+tics = 1
+action = "CPosRefire"
+next_state = "CPOSAtk2"
+
+
+[[states]]		# CPOPAIN
+sprite = "CPOS"
+frame = 6
+tics = 3
+next_state = "CPOSPain2"
+
+
+[[states]]		# CPOPAIN2
+sprite = "CPOS"
+frame = 6
+tics = 3
+action = "Pain"
+next_state = "CPOSRun1"
+
+
+[[states]]		# CPODIE1
+sprite = "CPOS"
+frame = 7
+tics = 5
+next_state = "CPOSDie2"
+
+
+[[states]]		# CPODIE2
+sprite = "CPOS"
+frame = 8
+tics = 5
+action = "Scream"
+next_state = "CPOSDie3"
+
+
+[[states]]		# CPODIE3
+sprite = "CPOS"
+frame = 9
+tics = 5
+action = "Fall"
+next_state = "CPOSDie4"
+
+
+[[states]]		# CPODIE4
+sprite = "CPOS"
+frame = 10
+tics = 5
+next_state = "CPOSDie5"
+
+
+[[states]]		# CPODIE5
+sprite = "CPOS"
+frame = 11
+tics = 5
+next_state = "CPOSDie6"
+
+
+[[states]]		# CPODIE6
+sprite = "CPOS"
+frame = 12
+tics = 5
+next_state = "CPOSDie7"
+
+
+[[states]]		# CPODIE7
+sprite = "CPOS"
+frame = 13
+tics = -1
+
+
+[[states]]		# CPOXDIE1
+sprite = "CPOS"
+frame = 14
+tics = 5
+next_state = "CPOSXDie2"
+
+
+[[states]]		# CPOXDIE2
+sprite = "CPOS"
+frame = 15
+tics = 5
+action = "XScream"
+next_state = "CPOSXDie3"
+
+
+[[states]]		# CPOXDIE3
+sprite = "CPOS"
+frame = 16
+tics = 5
+action = "Fall"
+next_state = "CPOSXDie4"
+
+
+[[states]]		# CPOXDIE4
+sprite = "CPOS"
+frame = 17
+tics = 5
+next_state = "CPOSXDie5"
+
+
+[[states]]		# CPOXDIE5
+sprite = "CPOS"
+frame = 18
+tics = 5
+next_state = "CPOSXDie6"
+
+
+[[states]]		# CPOXDIE6
+sprite = "CPOS"
+frame = 19
+tics = -1
+
+
+[[states]]		# CPORAISE1
+sprite = "CPOS"
+frame = 13
+tics = 5
+next_state = "CPOSRaise2"
+
+
+[[states]]		# CPORAISE2
+sprite = "CPOS"
+frame = 12
+tics = 5
+next_state = "CPOSRaise3"
+
+
+[[states]]		# CPORAISE3
+sprite = "CPOS"
+frame = 11
+tics = 5
+next_state = "CPOSRaise4"
+
+
+[[states]]		# CPORAISE4
+sprite = "CPOS"
+frame = 10
+tics = 5
+next_state = "CPOSRaise5"
+
+
+[[states]]		# CPORAISE5
+sprite = "CPOS"
+frame = 9
+tics = 5
+next_state = "CPOSRaise6"
+
+
+[[states]]		# CPORAISE6
+sprite = "CPOS"
+frame = 8
+tics = 5
+next_state = "CPOSRaise7"
+
+
+[[states]]		# CPORAISE7
+sprite = "CPOS"
+frame = 7
+tics = 5
+next_state = "CPOSRun1"
+
+
+[[states]]		# TROOStnd
+sprite = "TROO"
+frame = 0
+tics = 10
+action = "Look"
+next_state = "TROOStnd2"
+
+
+[[states]]		# TROOStnd2
+sprite = "TROO"
+frame = 1
+tics = 10
+action = "Look"
+next_state = "TROOStnd"
+
+
+[[states]]		# TROORun1
+sprite = "TROO"
+frame = 0
+tics = 3
+action = "Chase"
+next_state = "TROORun2"
+
+
+[[states]]		# TROORun2
+sprite = "TROO"
+frame = 0
+tics = 3
+action = "Chase"
+next_state = "TROORun3"
+
+
+[[states]]		# TROORun3
+sprite = "TROO"
+frame = 1
+tics = 3
+action = "Chase"
+next_state = "TROORun4"
+
+
+[[states]]		# TROORun4
+sprite = "TROO"
+frame = 1
+tics = 3
+action = "Chase"
+next_state = "TROORun5"
+
+
+[[states]]		# TROORun5
+sprite = "TROO"
+frame = 2
+tics = 3
+action = "Chase"
+next_state = "TROORun6"
+
+
+[[states]]		# TROORun6
+sprite = "TROO"
+frame = 2
+tics = 3
+action = "Chase"
+next_state = "TROORun7"
+
+
+[[states]]		# TROORun7
+sprite = "TROO"
+frame = 3
+tics = 3
+action = "Chase"
+next_state = "TROORun8"
+
+
+[[states]]		# TROORun8
+sprite = "TROO"
+frame = 3
+tics = 3
+action = "Chase"
+next_state = "TROORun1"
+
+
+[[states]]		# TROOAtk1
+sprite = "TROO"
+frame = 4
+tics = 8
+action = "FaceTarget"
+next_state = "TROOAtk2"
+
+
+[[states]]		# TROOAtk2
+sprite = "TROO"
+frame = 5
+tics = 8
+action = "FaceTarget"
+next_state = "TROOAtk3"
+
+
+[[states]]		# TROOAtk3
+sprite = "TROO"
+frame = 6
+tics = 6
+action = "TroopAttack"
+next_state = "TROORun1"
+
+
+[[states]]		# TROOPain
+sprite = "TROO"
+frame = 7
+tics = 2
+next_state = "TROOPain2"
+
+
+[[states]]		# TROOPain2
+sprite = "TROO"
+frame = 7
+tics = 2
+action = "Pain"
+next_state = "TROORun1"
+
+
+[[states]]		# TROODie1
+sprite = "TROO"
+frame = 8
+tics = 8
+next_state = "TROODie2"
+
+
+[[states]]		# TROODie2
+sprite = "TROO"
+frame = 9
+tics = 8
+action = "Scream"
+next_state = "TROODie3"
+
+
+[[states]]		# TROODie3
+sprite = "TROO"
+frame = 10
+tics = 6
+next_state = "TROODie4"
+
+
+[[states]]		# TROODie4
+sprite = "TROO"
+frame = 11
+tics = 6
+action = "Fall"
+next_state = "TROODie5"
+
+
+[[states]]		# TROODie5
+sprite = "TROO"
+frame = 12
+tics = -1
+
+
+[[states]]		# TROOXDie1
+sprite = "TROO"
+frame = 13
+tics = 5
+next_state = "TROOXDie2"
+
+
+[[states]]		# TROOXDie2
+sprite = "TROO"
+frame = 14
+tics = 5
+action = "XScream"
+next_state = "TROOXDie3"
+
+
+[[states]]		# TROOXDie3
+sprite = "TROO"
+frame = 15
+tics = 5
+next_state = "TROOXDie4"
+
+
+[[states]]		# TROOXDie4
+sprite = "TROO"
+frame = 16
+tics = 5
+action = "Fall"
+next_state = "TROOXDie5"
+
+
+[[states]]		# TROOXDie5
+sprite = "TROO"
+frame = 17
+tics = 5
+next_state = "TROOXDie6"
+
+
+[[states]]		# TROOXDie6
+sprite = "TROO"
+frame = 18
+tics = 5
+next_state = "TROOXDie7"
+
+
+[[states]]		# TROOXDie7
+sprite = "TROO"
+frame = 19
+tics = 5
+next_state = "TROOXDie8"
+
+
+[[states]]		# TROOXDie8
+sprite = "TROO"
+frame = 20
+tics = -1
+
+
+[[states]]		# TROORaise1
+sprite = "TROO"
+frame = 12
+tics = 8
+next_state = "TROORaise2"
+
+
+[[states]]		# TROORaise2
+sprite = "TROO"
+frame = 11
+tics = 8
+next_state = "TROORaise3"
+
+
+[[states]]		# TROORaise3
+sprite = "TROO"
+frame = 10
+tics = 6
+next_state = "TROORaise4"
+
+
+[[states]]		# TROORaise4
+sprite = "TROO"
+frame = 9
+tics = 6
+next_state = "TROORaise5"
+
+
+[[states]]		# TROORaise5
+sprite = "TROO"
+frame = 8
+tics = 6
+next_state = "TROORun1"
+
+
+[[states]]		# SARGStnd
+sprite = "SARG"
+frame = 0
+tics = 10
+action = "Look"
+next_state = "SARGStnd2"
+
+
+[[states]]		# SARGStnd2
+sprite = "SARG"
+frame = 1
+tics = 10
+action = "Look"
+next_state = "SARGStnd"
+
+
+[[states]]		# SARGRun1
+sprite = "SARG"
+frame = 0
+tics = 2
+action = "Chase"
+next_state = "SARGRun2"
+
+
+[[states]]		# SARGRun2
+sprite = "SARG"
+frame = 0
+tics = 2
+action = "Chase"
+next_state = "SARGRun3"
+
+
+[[states]]		# SARGRun3
+sprite = "SARG"
+frame = 1
+tics = 2
+action = "Chase"
+next_state = "SARGRun4"
+
+
+[[states]]		# SARGRun4
+sprite = "SARG"
+frame = 1
+tics = 2
+action = "Chase"
+next_state = "SARGRun5"
+
+
+[[states]]		# SARGRun5
+sprite = "SARG"
+frame = 2
+tics = 2
+action = "Chase"
+next_state = "SARGRun6"
+
+
+[[states]]		# SARGRun6
+sprite = "SARG"
+frame = 2
+tics = 2
+action = "Chase"
+next_state = "SARGRun7"
+
+
+[[states]]		# SARGRun7
+sprite = "SARG"
+frame = 3
+tics = 2
+action = "Chase"
+next_state = "SARGRun8"
+
+
+[[states]]		# SARGRun8
+sprite = "SARG"
+frame = 3
+tics = 2
+action = "Chase"
+next_state = "SARGRun1"
+
+
+[[states]]		# SARGAtk1
+sprite = "SARG"
+frame = 4
+tics = 8
+action = "FaceTarget"
+next_state = "SARGAtk2"
+
+
+[[states]]		# SARGAtk2
+sprite = "SARG"
+frame = 5
+tics = 8
+action = "FaceTarget"
+next_state = "SARGAtk3"
+
+
+[[states]]		# SARGAtk3
+sprite = "SARG"
+frame = 6
+tics = 8
+action = "SargAttack"
+next_state = "SARGRun1"
+
+
+[[states]]		# SARGPain
+sprite = "SARG"
+frame = 7
+tics = 2
+next_state = "SARGPain2"
+
+
+[[states]]		# SARGPain2
+sprite = "SARG"
+frame = 7
+tics = 2
+action = "Pain"
+next_state = "SARGRun1"
+
+
+[[states]]		# SARGDie1
+sprite = "SARG"
+frame = 8
+tics = 8
+next_state = "SARGDie2"
+
+
+[[states]]		# SARGDie2
+sprite = "SARG"
+frame = 9
+tics = 8
+action = "Scream"
+next_state = "SARGDie3"
+
+
+[[states]]		# SARGDie3
+sprite = "SARG"
+frame = 10
+tics = 4
+next_state = "SARGDie4"
+
+
+[[states]]		# SARGDie4
+sprite = "SARG"
+frame = 11
+tics = 4
+action = "Fall"
+next_state = "SARGDie5"
+
+
+[[states]]		# SARGDie5
+sprite = "SARG"
+frame = 12
+tics = 4
+next_state = "SARGDie6"
+
+
+[[states]]		# SARGDie6
+sprite = "SARG"
+frame = 13
+tics = -1
+
+
+[[states]]		# SARGRaise1
+sprite = "SARG"
+frame = 13
+tics = 5
+next_state = "SARGRaise2"
+
+
+[[states]]		# SARGRaise2
+sprite = "SARG"
+frame = 12
+tics = 5
+next_state = "SARGRaise3"
+
+
+[[states]]		# SARGRaise3
+sprite = "SARG"
+frame = 11
+tics = 5
+next_state = "SARGRaise4"
+
+
+[[states]]		# SARGRaise4
+sprite = "SARG"
+frame = 10
+tics = 5
+next_state = "SARGRaise5"
+
+
+[[states]]		# SARGRaise5
+sprite = "SARG"
+frame = 9
+tics = 5
+next_state = "SARGRaise6"
+
+
+[[states]]		# SARGRaise6
+sprite = "SARG"
+frame = 8
+tics = 5
+next_state = "SARGRun1"
+
+
+[[states]]		# HEADStnd
+sprite = "HEAD"
+frame = 0
+tics = 10
+action = "Look"
+next_state = "HEADStnd"
+
+
+[[states]]		# HEADRun1
+sprite = "HEAD"
+frame = 0
+tics = 3
+action = "Chase"
+next_state = "HEADRun1"
+
+
+[[states]]		# HEADAtk1
+sprite = "HEAD"
+frame = 1
+tics = 5
+action = "FaceTarget"
+next_state = "HEADAtk2"
+
+
+[[states]]		# HEADAtk2
+sprite = "HEAD"
+frame = 2
+tics = 5
+action = "FaceTarget"
+next_state = "HEADAtk3"
+
+
+[[states]]		# HEADAtk3
+sprite = "HEAD"
+frame = 32771
+tics = 5
+action = "HeadAttack"
+next_state = "HEADRun1"
+
+
+[[states]]		# HEADPain
+sprite = "HEAD"
+frame = 4
+tics = 3
+next_state = "HEADPain2"
+
+
+[[states]]		# HEADPain2
+sprite = "HEAD"
+frame = 4
+tics = 3
+action = "Pain"
+next_state = "HEADPain3"
+
+
+[[states]]		# HEADPain3
+sprite = "HEAD"
+frame = 5
+tics = 6
+next_state = "HEADRun1"
+
+
+[[states]]		# HEADDie1
+sprite = "HEAD"
+frame = 6
+tics = 8
+next_state = "HEADDie2"
+
+
+[[states]]		# HEADDie2
+sprite = "HEAD"
+frame = 7
+tics = 8
+action = "Scream"
+next_state = "HEADDie3"
+
+
+[[states]]		# HEADDie3
+sprite = "HEAD"
+frame = 8
+tics = 8
+next_state = "HEADDie4"
+
+
+[[states]]		# HEADDie4
+sprite = "HEAD"
+frame = 9
+tics = 8
+next_state = "HEADDie5"
+
+
+[[states]]		# HEADDie5
+sprite = "HEAD"
+frame = 10
+tics = 8
+action = "Fall"
+next_state = "HEADDie6"
+
+
+[[states]]		# HEADDie6
+sprite = "HEAD"
+frame = 11
+tics = -1
+
+
+[[states]]		# HEADRaise1
+sprite = "HEAD"
+frame = 11
+tics = 8
+next_state = "HEADRaise2"
+
+
+[[states]]		# HEADRaise2
+sprite = "HEAD"
+frame = 10
+tics = 8
+next_state = "HEADRaise3"
+
+
+[[states]]		# HEADRaise3
+sprite = "HEAD"
+frame = 9
+tics = 8
+next_state = "HEADRaise4"
+
+
+[[states]]		# HEADRaise4
+sprite = "HEAD"
+frame = 8
+tics = 8
+next_state = "HEADRaise5"
+
+
+[[states]]		# HEADRaise5
+sprite = "HEAD"
+frame = 7
+tics = 8
+next_state = "HEADRaise6"
+
+
+[[states]]		# HEADRaise6
+sprite = "HEAD"
+frame = 6
+tics = 8
+next_state = "HEADRun1"
+
+
+[[states]]		# BRBall1
+sprite = "BAL7"
+frame = 32768
+tics = 4
+next_state = "BRBall2"
+
+
+[[states]]		# BRBall2
+sprite = "BAL7"
+frame = 32769
+tics = 4
+next_state = "BRBall1"
+
+
+[[states]]		# BRBallX1
+sprite = "BAL7"
+frame = 32770
+tics = 6
+next_state = "BRBallX2"
+
+
+[[states]]		# BRBallX2
+sprite = "BAL7"
+frame = 32771
+tics = 6
+next_state = "BRBallX3"
+
+
+[[states]]		# BRBallX3
+sprite = "BAL7"
+frame = 32772
+tics = 6
+
+
+[[states]]		# BOSStnd
+sprite = "BOSS"
+frame = 0
+tics = 10
+action = "Look"
+next_state = "BOSSStnd2"
+
+
+[[states]]		# BOSStnd2
+sprite = "BOSS"
+frame = 1
+tics = 10
+action = "Look"
+next_state = "BOSSStnd"
+
+
+[[states]]		# BOSRUN1
+sprite = "BOSS"
+frame = 0
+tics = 3
+action = "Chase"
+next_state = "BOSSRun2"
+
+
+[[states]]		# BOSRUN2
+sprite = "BOSS"
+frame = 0
+tics = 3
+action = "Chase"
+next_state = "BOSSRun3"
+
+
+[[states]]		# BOSRUN3
+sprite = "BOSS"
+frame = 1
+tics = 3
+action = "Chase"
+next_state = "BOSSRun4"
+
+
+[[states]]		# BOSRUN4
+sprite = "BOSS"
+frame = 1
+tics = 3
+action = "Chase"
+next_state = "BOSSRun5"
+
+
+[[states]]		# BOSRUN5
+sprite = "BOSS"
+frame = 2
+tics = 3
+action = "Chase"
+next_state = "BOSSRun6"
+
+
+[[states]]		# BOSRUN6
+sprite = "BOSS"
+frame = 2
+tics = 3
+action = "Chase"
+next_state = "BOSSRun7"
+
+
+[[states]]		# BOSRUN7
+sprite = "BOSS"
+frame = 3
+tics = 3
+action = "Chase"
+next_state = "BOSSRun8"
+
+
+[[states]]		# BOSRUN8
+sprite = "BOSS"
+frame = 3
+tics = 3
+action = "Chase"
+next_state = "BOSSRun1"
+
+
+[[states]]		# BOSATK1
+sprite = "BOSS"
+frame = 4
+tics = 8
+action = "FaceTarget"
+next_state = "BOSSAtk2"
+
+
+[[states]]		# BOSATK2
+sprite = "BOSS"
+frame = 5
+tics = 8
+action = "FaceTarget"
+next_state = "BOSSAtk3"
+
+
+[[states]]		# BOSATK3
+sprite = "BOSS"
+frame = 6
+tics = 8
+action = "BruisAttack"
+next_state = "BOSSRun1"
+
+
+[[states]]		# BOSPAIN
+sprite = "BOSS"
+frame = 7
+tics = 2
+next_state = "BOSSPain2"
+
+
+[[states]]		# BOSPAIN2
+sprite = "BOSS"
+frame = 7
+tics = 2
+action = "Pain"
+next_state = "BOSSRun1"
+
+
+[[states]]		# BOSDIE1
+sprite = "BOSS"
+frame = 8
+tics = 8
+next_state = "BOSSDie2"
+
+
+[[states]]		# BOSDIE2
+sprite = "BOSS"
+frame = 9
+tics = 8
+action = "Scream"
+next_state = "BOSSDie3"
+
+
+[[states]]		# BOSDIE3
+sprite = "BOSS"
+frame = 10
+tics = 8
+next_state = "BOSSDie4"
+
+
+[[states]]		# BOSDIE4
+sprite = "BOSS"
+frame = 11
+tics = 8
+action = "Fall"
+next_state = "BOSSDie5"
+
+
+[[states]]		# BOSDIE5
+sprite = "BOSS"
+frame = 12
+tics = 8
+next_state = "BOSSDie6"
+
+
+[[states]]		# BOSDIE6
+sprite = "BOSS"
+frame = 13
+tics = 8
+next_state = "BOSSDie7"
+
+
+[[states]]		# BOSDIE7
+sprite = "BOSS"
+frame = 14
+tics = -1
+action = "BossDeath"
+
+
+[[states]]		# BOSRAISE1
+sprite = "BOSS"
+frame = 14
+tics = 8
+next_state = "BOSSRaise2"
+
+
+[[states]]		# BOSRAISE2
+sprite = "BOSS"
+frame = 13
+tics = 8
+next_state = "BOSSRaise3"
+
+
+[[states]]		# BOSRAISE3
+sprite = "BOSS"
+frame = 12
+tics = 8
+next_state = "BOSSRaise4"
+
+
+[[states]]		# BOSRAISE4
+sprite = "BOSS"
+frame = 11
+tics = 8
+next_state = "BOSSRaise5"
+
+
+[[states]]		# BOSRAISE5
+sprite = "BOSS"
+frame = 10
+tics = 8
+next_state = "BOSSRaise6"
+
+
+[[states]]		# BOSRAISE6
+sprite = "BOSS"
+frame = 9
+tics = 8
+next_state = "BOSSRaise7"
+
+
+[[states]]		# BOSRAISE7
+sprite = "BOSS"
+frame = 8
+tics = 8
+next_state = "BOSSRun1"
+
+
+[[states]]		# BOS2Stnd
+sprite = "BOS2"
+frame = 0
+tics = 10
+action = "Look"
+next_state = "BOS2Stnd2"
+
+
+[[states]]		# BOS2Stnd2
+sprite = "BOS2"
+frame = 1
+tics = 10
+action = "Look"
+next_state = "BOS2Stnd"
+
+
+[[states]]		# BOS2Run1
+sprite = "BOS2"
+frame = 0
+tics = 3
+action = "Chase"
+next_state = "BOS2Run2"
+
+
+[[states]]		# BOS2Run2
+sprite = "BOS2"
+frame = 0
+tics = 3
+action = "Chase"
+next_state = "BOS2Run3"
+
+
+[[states]]		# BOS2Run3
+sprite = "BOS2"
+frame = 1
+tics = 3
+action = "Chase"
+next_state = "BOS2Run4"
+
+
+[[states]]		# BOS2Run4
+sprite = "BOS2"
+frame = 1
+tics = 3
+action = "Chase"
+next_state = "BOS2Run5"
+
+
+[[states]]		# BOS2Run5
+sprite = "BOS2"
+frame = 2
+tics = 3
+action = "Chase"
+next_state = "BOS2Run6"
+
+
+[[states]]		# BOS2Run6
+sprite = "BOS2"
+frame = 2
+tics = 3
+action = "Chase"
+next_state = "BOS2Run7"
+
+
+[[states]]		# BOS2Run7
+sprite = "BOS2"
+frame = 3
+tics = 3
+action = "Chase"
+next_state = "BOS2Run8"
+
+
+[[states]]		# BOS2Run8
+sprite = "BOS2"
+frame = 3
+tics = 3
+action = "Chase"
+next_state = "BOS2Run1"
+
+
+[[states]]		# BOS2Atk1
+sprite = "BOS2"
+frame = 4
+tics = 8
+action = "FaceTarget"
+next_state = "BOS2Atk2"
+
+
+[[states]]		# BOS2Atk2
+sprite = "BOS2"
+frame = 5
+tics = 8
+action = "FaceTarget"
+next_state = "BOS2Atk3"
+
+
+[[states]]		# BOS2Atk3
+sprite = "BOS2"
+frame = 6
+tics = 8
+action = "BruisAttack"
+next_state = "BOS2Run1"
+
+
+[[states]]		# BOS2Pain
+sprite = "BOS2"
+frame = 7
+tics = 2
+next_state = "BOS2Pain2"
+
+
+[[states]]		# BOS2Pain2
+sprite = "BOS2"
+frame = 7
+tics = 2
+action = "Pain"
+next_state = "BOS2Run1"
+
+
+[[states]]		# BOS2Die1
+sprite = "BOS2"
+frame = 8
+tics = 8
+next_state = "BOS2Die2"
+
+
+[[states]]		# BOS2Die2
+sprite = "BOS2"
+frame = 9
+tics = 8
+action = "Scream"
+next_state = "BOS2Die3"
+
+
+[[states]]		# BOS2Die3
+sprite = "BOS2"
+frame = 10
+tics = 8
+next_state = "BOS2Die4"
+
+
+[[states]]		# BOS2Die4
+sprite = "BOS2"
+frame = 11
+tics = 8
+action = "Fall"
+next_state = "BOS2Die5"
+
+
+[[states]]		# BOS2Die5
+sprite = "BOS2"
+frame = 12
+tics = 8
+next_state = "BOS2Die6"
+
+
+[[states]]		# BOS2Die6
+sprite = "BOS2"
+frame = 13
+tics = 8
+next_state = "BOS2Die7"
+
+
+[[states]]		# BOS2Die7
+sprite = "BOS2"
+frame = 14
+tics = -1
+
+
+[[states]]		# BOS2Raise1
+sprite = "BOS2"
+frame = 14
+tics = 8
+next_state = "BOS2Raise2"
+
+
+[[states]]		# BOS2Raise2
+sprite = "BOS2"
+frame = 13
+tics = 8
+next_state = "BOS2Raise3"
+
+
+[[states]]		# BOS2Raise3
+sprite = "BOS2"
+frame = 12
+tics = 8
+next_state = "BOS2Raise4"
+
+
+[[states]]		# BOS2Raise4
+sprite = "BOS2"
+frame = 11
+tics = 8
+next_state = "BOS2Raise5"
+
+
+[[states]]		# BOS2Raise5
+sprite = "BOS2"
+frame = 10
+tics = 8
+next_state = "BOS2Raise6"
+
+
+[[states]]		# BOS2Raise6
+sprite = "BOS2"
+frame = 9
+tics = 8
+next_state = "BOS2Raise7"
+
+
+[[states]]		# BOS2Raise7
+sprite = "BOS2"
+frame = 8
+tics = 8
+next_state = "BOS2Run1"
+
+
+[[states]]		# SKULLStnd
+sprite = "SKUL"
+frame = 32768
+tics = 10
+action = "Look"
+next_state = "SKULLStnd2"
+
+
+[[states]]		# SKULLStnd2
+sprite = "SKUL"
+frame = 32769
+tics = 10
+action = "Look"
+next_state = "SKULLStnd"
+
+
+[[states]]		# SKULLRun1
+sprite = "SKUL"
+frame = 32768
+tics = 6
+action = "Chase"
+next_state = "SKULLRun2"
+
+
+[[states]]		# SKULLRun2
+sprite = "SKUL"
+frame = 32769
+tics = 6
+action = "Chase"
+next_state = "SKULLRun1"
+
+
+[[states]]		# SKULLAtk1
+sprite = "SKUL"
+frame = 32770
+tics = 10
+action = "FaceTarget"
+next_state = "SKULLAtk2"
+
+
+[[states]]		# SKULLAtk2
+sprite = "SKUL"
+frame = 32771
+tics = 4
+action = "SkullAttack"
+next_state = "SKULLAtk3"
+
+
+[[states]]		# SKULLAtk3
+sprite = "SKUL"
+frame = 32770
+tics = 4
+next_state = "SKULLAtk4"
+
+
+[[states]]		# SKULLAtk4
+sprite = "SKUL"
+frame = 32771
+tics = 4
+next_state = "SKULLAtk3"
+
+
+[[states]]		# SKULLPain
+sprite = "SKUL"
+frame = 32772
+tics = 3
+next_state = "SKULLPain2"
+
+
+[[states]]		# SKULLPain2
+sprite = "SKUL"
+frame = 32772
+tics = 3
+action = "Pain"
+next_state = "SKULLRun1"
+
+
+[[states]]		# SKULLDie1
+sprite = "SKUL"
+frame = 32773
+tics = 6
+next_state = "SKULLDie2"
+
+
+[[states]]		# SKULLDie2
+sprite = "SKUL"
+frame = 32774
+tics = 6
+action = "Scream"
+next_state = "SKULLDie3"
+
+
+[[states]]		# SKULLDie3
+sprite = "SKUL"
+frame = 32775
+tics = 6
+next_state = "SKULLDie4"
+
+
+[[states]]		# SKULLDie4
+sprite = "SKUL"
+frame = 32776
+tics = 6
+action = "Fall"
+next_state = "SKULLDie5"
+
+
+[[states]]		# SKULLDie5
+sprite = "SKUL"
+frame = 9
+tics = 6
+next_state = "SKULLDie6"
+
+
+[[states]]		# SKULLDie6
+sprite = "SKUL"
+frame = 10
+tics = 6
+
+
+[[states]]		# SPIDStnd
+sprite = "SPID"
+frame = 0
+tics = 10
+action = "Look"
+next_state = "SPIDStnd2"
+
+
+[[states]]		# SPIDStnd2
+sprite = "SPID"
+frame = 1
+tics = 10
+action = "Look"
+next_state = "SPIDStnd"
+
+
+[[states]]		# SPIDRun1
+sprite = "SPID"
+frame = 0
+tics = 3
+action = "Metal"
+next_state = "SPIDRun2"
+
+
+[[states]]		# SPIDRun2
+sprite = "SPID"
+frame = 0
+tics = 3
+action = "Chase"
+next_state = "SPIDRun3"
+
+
+[[states]]		# SPIDRun3
+sprite = "SPID"
+frame = 1
+tics = 3
+action = "Chase"
+next_state = "SPIDRun4"
+
+
+[[states]]		# SPIDRun4
+sprite = "SPID"
+frame = 1
+tics = 3
+action = "Chase"
+next_state = "SPIDRun5"
+
+
+[[states]]		# SPIDRun5
+sprite = "SPID"
+frame = 2
+tics = 3
+action = "Metal"
+next_state = "SPIDRun6"
+
+
+[[states]]		# SPIDRun6
+sprite = "SPID"
+frame = 2
+tics = 3
+action = "Chase"
+next_state = "SPIDRun7"
+
+
+[[states]]		# SPIDRun7
+sprite = "SPID"
+frame = 3
+tics = 3
+action = "Chase"
+next_state = "SPIDRun8"
+
+
+[[states]]		# SPIDRun8
+sprite = "SPID"
+frame = 3
+tics = 3
+action = "Chase"
+next_state = "SPIDRun9"
+
+
+[[states]]		# SPIDRun9
+sprite = "SPID"
+frame = 4
+tics = 3
+action = "Metal"
+next_state = "SPIDRun10"
+
+
+[[states]]		# SPIDRun10
+sprite = "SPID"
+frame = 4
+tics = 3
+action = "Chase"
+next_state = "SPIDRun11"
+
+
+[[states]]		# SPIDRun11
+sprite = "SPID"
+frame = 5
+tics = 3
+action = "Chase"
+next_state = "SPIDRun12"
+
+
+[[states]]		# SPIDRun12
+sprite = "SPID"
+frame = 5
+tics = 3
+action = "Chase"
+next_state = "SPIDRun1"
+
+
+[[states]]		# SPIDAtk1
+sprite = "SPID"
+frame = 32768
+tics = 20
+action = "FaceTarget"
+next_state = "SPIDAtk2"
+
+
+[[states]]		# SPIDAtk2
+sprite = "SPID"
+frame = 32774
+tics = 4
+action = "SPosAttack"
+next_state = "SPIDAtk3"
+
+
+[[states]]		# SPIDAtk3
+sprite = "SPID"
+frame = 32775
+tics = 4
+action = "SPosAttack"
+next_state = "SPIDAtk4"
+
+
+[[states]]		# SPIDAtk4
+sprite = "SPID"
+frame = 32775
+tics = 1
+action = "SpidRefire"
+next_state = "SPIDAtk2"
+
+
+[[states]]		# SPIDPain
+sprite = "SPID"
+frame = 8
+tics = 3
+next_state = "SPIDPain2"
+
+
+[[states]]		# SPIDPain2
+sprite = "SPID"
+frame = 8
+tics = 3
+action = "Pain"
+next_state = "SPIDRun1"
+
+
+[[states]]		# SPIDDie1
+sprite = "SPID"
+frame = 9
+tics = 20
+action = "Scream"
+next_state = "SPIDDie2"
+
+
+[[states]]		# SPIDDie2
+sprite = "SPID"
+frame = 10
+tics = 10
+action = "Fall"
+next_state = "SPIDDie3"
+
+
+[[states]]		# SPIDDie3
+sprite = "SPID"
+frame = 11
+tics = 10
+next_state = "SPIDDie4"
+
+
+[[states]]		# SPIDDie4
+sprite = "SPID"
+frame = 12
+tics = 10
+next_state = "SPIDDie5"
+
+
+[[states]]		# SPIDDie5
+sprite = "SPID"
+frame = 13
+tics = 10
+next_state = "SPIDDie6"
+
+
+[[states]]		# SPIDDie6
+sprite = "SPID"
+frame = 14
+tics = 10
+next_state = "SPIDDie7"
+
+
+[[states]]		# SPIDDie7
+sprite = "SPID"
+frame = 15
+tics = 10
+next_state = "SPIDDie8"
+
+
+[[states]]		# SPIDDie8
+sprite = "SPID"
+frame = 16
+tics = 10
+next_state = "SPIDDie9"
+
+
+[[states]]		# SPIDDie9
+sprite = "SPID"
+frame = 17
+tics = 10
+next_state = "SPIDDie10"
+
+
+[[states]]		# SPIDDie10
+sprite = "SPID"
+frame = 18
+tics = 30
+next_state = "SPIDDie11"
+
+
+[[states]]		# SPIDDie11
+sprite = "SPID"
+frame = 18
+tics = -1
+action = "BossDeath"
+
+
+[[states]]		# BSPIStnd
+sprite = "BSPI"
+frame = 0
+tics = 10
+action = "Look"
+next_state = "BSPIStnd2"
+
+
+[[states]]		# BSPIStnd2
+sprite = "BSPI"
+frame = 1
+tics = 10
+action = "Look"
+next_state = "BSPIStnd"
+
+
+[[states]]		# BSPISight
+sprite = "BSPI"
+frame = 0
+tics = 20
+next_state = "BSPIRun1"
+
+
+[[states]]		# BSPIRun1
+sprite = "BSPI"
+frame = 0
+tics = 3
+action = "BabyMetal"
+next_state = "BSPIRun2"
+
+
+[[states]]		# BSPIRun2
+sprite = "BSPI"
+frame = 0
+tics = 3
+action = "Chase"
+next_state = "BSPIRun3"
+
+
+[[states]]		# BSPIRun3
+sprite = "BSPI"
+frame = 1
+tics = 3
+action = "Chase"
+next_state = "BSPIRun4"
+
+
+[[states]]		# BSPIRun4
+sprite = "BSPI"
+frame = 1
+tics = 3
+action = "Chase"
+next_state = "BSPIRun5"
+
+
+[[states]]		# BSPIRun5
+sprite = "BSPI"
+frame = 2
+tics = 3
+action = "Chase"
+next_state = "BSPIRun6"
+
+
+[[states]]		# BSPIRun6
+sprite = "BSPI"
+frame = 2
+tics = 3
+action = "Chase"
+next_state = "BSPIRun7"
+
+
+[[states]]		# BSPIRun7
+sprite = "BSPI"
+frame = 3
+tics = 3
+action = "BabyMetal"
+next_state = "BSPIRun8"
+
+
+[[states]]		# BSPIRun8
+sprite = "BSPI"
+frame = 3
+tics = 3
+action = "Chase"
+next_state = "BSPIRun9"
+
+
+[[states]]		# BSPIRun9
+sprite = "BSPI"
+frame = 4
+tics = 3
+action = "Chase"
+next_state = "BSPIRun10"
+
+
+[[states]]		# BSPIRun10
+sprite = "BSPI"
+frame = 4
+tics = 3
+action = "Chase"
+next_state = "BSPIRun11"
+
+
+[[states]]		# BSPIRun11
+sprite = "BSPI"
+frame = 5
+tics = 3
+action = "Chase"
+next_state = "BSPIRun12"
+
+
+[[states]]		# BSPIRun12
+sprite = "BSPI"
+frame = 5
+tics = 3
+action = "Chase"
+next_state = "BSPIRun1"
+
+
+[[states]]		# BSPIAtk1
+sprite = "BSPI"
+frame = 32768
+tics = 20
+action = "FaceTarget"
+next_state = "BSPIAtk2"
+
+
+[[states]]		# BSPIAtk2
+sprite = "BSPI"
+frame = 32774
+tics = 4
+action = "BspiAttack"
+next_state = "BSPIAtk3"
+
+
+[[states]]		# BSPIAtk3
+sprite = "BSPI"
+frame = 32775
+tics = 4
+next_state = "BSPIAtk4"
+
+
+[[states]]		# BSPIAtk4
+sprite = "BSPI"
+frame = 32775
+tics = 1
+action = "SpidRefire"
+next_state = "BSPIAtk2"
+
+
+[[states]]		# BSPIPain
+sprite = "BSPI"
+frame = 8
+tics = 3
+next_state = "BSPIPain2"
+
+
+[[states]]		# BSPIPain2
+sprite = "BSPI"
+frame = 8
+tics = 3
+action = "Pain"
+next_state = "BSPIRun1"
+
+
+[[states]]		# BSPIDie1
+sprite = "BSPI"
+frame = 9
+tics = 20
+action = "Scream"
+next_state = "BSPIDie2"
+
+
+[[states]]		# BSPIDie2
+sprite = "BSPI"
+frame = 10
+tics = 7
+action = "Fall"
+next_state = "BSPIDie3"
+
+
+[[states]]		# BSPIDie3
+sprite = "BSPI"
+frame = 11
+tics = 7
+next_state = "BSPIDie4"
+
+
+[[states]]		# BSPIDie4
+sprite = "BSPI"
+frame = 12
+tics = 7
+next_state = "BSPIDie5"
+
+
+[[states]]		# BSPIDie5
+sprite = "BSPI"
+frame = 13
+tics = 7
+next_state = "BSPIDie6"
+
+
+[[states]]		# BSPIDie6
+sprite = "BSPI"
+frame = 14
+tics = 7
+next_state = "BSPIDie7"
+
+
+[[states]]		# BSPIDie7
+sprite = "BSPI"
+frame = 15
+tics = -1
+action = "BossDeath"
+
+
+[[states]]		# BSPIRaise1
+sprite = "BSPI"
+frame = 15
+tics = 5
+next_state = "BSPIRaise2"
+
+
+[[states]]		# BSPIRaise2
+sprite = "BSPI"
+frame = 14
+tics = 5
+next_state = "BSPIRaise3"
+
+
+[[states]]		# BSPIRaise3
+sprite = "BSPI"
+frame = 13
+tics = 5
+next_state = "BSPIRaise4"
+
+
+[[states]]		# BSPIRaise4
+sprite = "BSPI"
+frame = 12
+tics = 5
+next_state = "BSPIRaise5"
+
+
+[[states]]		# BSPIRaise5
+sprite = "BSPI"
+frame = 11
+tics = 5
+next_state = "BSPIRaise6"
+
+
+[[states]]		# BSPIRaise6
+sprite = "BSPI"
+frame = 10
+tics = 5
+next_state = "BSPIRaise7"
+
+
+[[states]]		# BSPIRaise7
+sprite = "BSPI"
+frame = 9
+tics = 5
+next_state = "BSPIRun1"
+
+
+[[states]]		# ARACHPlaz
+sprite = "APLS"
+frame = 32768
+tics = 5
+next_state = "ARACHPlaz2"
+
+
+[[states]]		# ARACHPlaz2
+sprite = "APLS"
+frame = 32769
+tics = 5
+next_state = "ARACHPlaz"
+
+
+[[states]]		# ARACHPlex
+sprite = "APBX"
+frame = 32768
+tics = 5
+next_state = "ARACHPlex2"
+
+
+[[states]]		# ARACHPlex2
+sprite = "APBX"
+frame = 32769
+tics = 5
+next_state = "ARACHPlex3"
+
+
+[[states]]		# ARACHPlex3
+sprite = "APBX"
+frame = 32770
+tics = 5
+next_state = "ARACHPlex4"
+
+
+[[states]]		# ARACHPlex4
+sprite = "APBX"
+frame = 32771
+tics = 5
+next_state = "ARACHPlex5"
+
+
+[[states]]		# ARACHPlex5
+sprite = "APBX"
+frame = 32772
+tics = 5
+
+
+[[states]]		# CYBERStnd
+sprite = "CYBR"
+frame = 0
+tics = 10
+action = "Look"
+next_state = "CYBERStnd2"
+
+
+[[states]]		# CYBERStnd2
+sprite = "CYBR"
+frame = 1
+tics = 10
+action = "Look"
+next_state = "CYBERStnd"
+
+
+[[states]]		# CYBERRun1
+sprite = "CYBR"
+frame = 0
+tics = 3
+action = "Hoof"
+next_state = "CYBERRun2"
+
+
+[[states]]		# CYBERRun2
+sprite = "CYBR"
+frame = 0
+tics = 3
+action = "Chase"
+next_state = "CYBERRun3"
+
+
+[[states]]		# CYBERRun3
+sprite = "CYBR"
+frame = 1
+tics = 3
+action = "Chase"
+next_state = "CYBERRun4"
+
+
+[[states]]		# CYBERRun4
+sprite = "CYBR"
+frame = 1
+tics = 3
+action = "Chase"
+next_state = "CYBERRun5"
+
+
+[[states]]		# CYBERRun5
+sprite = "CYBR"
+frame = 2
+tics = 3
+action = "Chase"
+next_state = "CYBERRun6"
+
+
+[[states]]		# CYBERRun6
+sprite = "CYBR"
+frame = 2
+tics = 3
+action = "Chase"
+next_state = "CYBERRun7"
+
+
+[[states]]		# CYBERRun7
+sprite = "CYBR"
+frame = 3
+tics = 3
+action = "Metal"
+next_state = "CYBERRun8"
+
+
+[[states]]		# CYBERRun8
+sprite = "CYBR"
+frame = 3
+tics = 3
+action = "Chase"
+next_state = "CYBERRun1"
+
+
+[[states]]		# CYBERAtk1
+sprite = "CYBR"
+frame = 4
+tics = 6
+action = "FaceTarget"
+next_state = "CYBERAtk2"
+
+
+[[states]]		# CYBERAtk2
+sprite = "CYBR"
+frame = 5
+tics = 12
+action = "CyberAttack"
+next_state = "CYBERAtk3"
+
+
+[[states]]		# CYBERAtk3
+sprite = "CYBR"
+frame = 4
+tics = 12
+action = "FaceTarget"
+next_state = "CYBERAtk4"
+
+
+[[states]]		# CYBERAtk4
+sprite = "CYBR"
+frame = 5
+tics = 12
+action = "CyberAttack"
+next_state = "CYBERAtk5"
+
+
+[[states]]		# CYBERAtk5
+sprite = "CYBR"
+frame = 4
+tics = 12
+action = "FaceTarget"
+next_state = "CYBERAtk6"
+
+
+[[states]]		# CYBERAtk6
+sprite = "CYBR"
+frame = 5
+tics = 12
+action = "CyberAttack"
+next_state = "CYBERRun1"
+
+
+[[states]]		# CYBERPain
+sprite = "CYBR"
+frame = 6
+tics = 10
+action = "Pain"
+next_state = "CYBERRun1"
+
+
+[[states]]		# CYBERDie1
+sprite = "CYBR"
+frame = 7
+tics = 10
+next_state = "CYBERDie2"
+
+
+[[states]]		# CYBERDie2
+sprite = "CYBR"
+frame = 8
+tics = 10
+action = "Scream"
+next_state = "CYBERDie3"
+
+
+[[states]]		# CYBERDie3
+sprite = "CYBR"
+frame = 9
+tics = 10
+next_state = "CYBERDie4"
+
+
+[[states]]		# CYBERDie4
+sprite = "CYBR"
+frame = 10
+tics = 10
+next_state = "CYBERDie5"
+
+
+[[states]]		# CYBERDie5
+sprite = "CYBR"
+frame = 11
+tics = 10
+next_state = "CYBERDie6"
+
+
+[[states]]		# CYBERDie6
+sprite = "CYBR"
+frame = 12
+tics = 10
+action = "Fall"
+next_state = "CYBERDie7"
+
+
+[[states]]		# CYBERDie7
+sprite = "CYBR"
+frame = 13
+tics = 10
+next_state = "CYBERDie8"
+
+
+[[states]]		# CYBERDie8
+sprite = "CYBR"
+frame = 14
+tics = 10
+next_state = "CYBERDie9"
+
+
+[[states]]		# CYBERDie9
+sprite = "CYBR"
+frame = 15
+tics = 30
+next_state = "CYBERDie10"
+
+
+[[states]]		# CYBERDie10
+sprite = "CYBR"
+frame = 15
+tics = -1
+action = "BossDeath"
+
+
+[[states]]		# PAINStnd
+sprite = "PAIN"
+frame = 0
+tics = 10
+action = "Look"
+next_state = "PAINStnd"
+
+
+[[states]]		# PAINRun1
+sprite = "PAIN"
+frame = 0
+tics = 3
+action = "Chase"
+next_state = "PAINRun2"
+
+
+[[states]]		# PAINRun2
+sprite = "PAIN"
+frame = 0
+tics = 3
+action = "Chase"
+next_state = "PAINRun3"
+
+
+[[states]]		# PAINRun3
+sprite = "PAIN"
+frame = 1
+tics = 3
+action = "Chase"
+next_state = "PAINRun4"
+
+
+[[states]]		# PAINRun4
+sprite = "PAIN"
+frame = 1
+tics = 3
+action = "Chase"
+next_state = "PAINRun5"
+
+
+[[states]]		# PAINRun5
+sprite = "PAIN"
+frame = 2
+tics = 3
+action = "Chase"
+next_state = "PAINRun6"
+
+
+[[states]]		# PAINRun6
+sprite = "PAIN"
+frame = 2
+tics = 3
+action = "Chase"
+next_state = "PAINRun1"
+
+
+[[states]]		# PAINAtk1
+sprite = "PAIN"
+frame = 3
+tics = 5
+action = "FaceTarget"
+next_state = "PAINAtk2"
+
+
+[[states]]		# PAINAtk2
+sprite = "PAIN"
+frame = 4
+tics = 5
+action = "FaceTarget"
+next_state = "PAINAtk3"
+
+
+[[states]]		# PAINAtk3
+sprite = "PAIN"
+frame = 32773
+tics = 5
+action = "FaceTarget"
+next_state = "PAINAtk4"
+
+
+[[states]]		# PAINAtk4
+sprite = "PAIN"
+frame = 32773
+tics = 0
+action = "PainAttack"
+next_state = "PAINRun1"
+
+
+[[states]]		# PAINPain
+sprite = "PAIN"
+frame = 6
+tics = 6
+next_state = "PAINPain2"
+
+
+[[states]]		# PAINPain2
+sprite = "PAIN"
+frame = 6
+tics = 6
+action = "Pain"
+next_state = "PAINRun1"
+
+
+[[states]]		# PAINDie1
+sprite = "PAIN"
+frame = 32775
+tics = 8
+next_state = "PAINDie2"
+
+
+[[states]]		# PAINDie2
+sprite = "PAIN"
+frame = 32776
+tics = 8
+action = "Scream"
+next_state = "PAINDie3"
+
+
+[[states]]		# PAINDie3
+sprite = "PAIN"
+frame = 32777
+tics = 8
+next_state = "PAINDie4"
+
+
+[[states]]		# PAINDie4
+sprite = "PAIN"
+frame = 32778
+tics = 8
+next_state = "PAINDie5"
+
+
+[[states]]		# PAINDie5
+sprite = "PAIN"
+frame = 32779
+tics = 8
+action = "PainDie"
+next_state = "PAINDie6"
+
+
+[[states]]		# PAINDie6
+sprite = "PAIN"
+frame = 32780
+tics = 8
+
+
+[[states]]		# PAINRaise1
+sprite = "PAIN"
+frame = 12
+tics = 8
+next_state = "PAINRaise2"
+
+
+[[states]]		# PAINRaise2
+sprite = "PAIN"
+frame = 11
+tics = 8
+next_state = "PAINRaise3"
+
+
+[[states]]		# PAINRaise3
+sprite = "PAIN"
+frame = 10
+tics = 8
+next_state = "PAINRaise4"
+
+
+[[states]]		# PAINRaise4
+sprite = "PAIN"
+frame = 9
+tics = 8
+next_state = "PAINRaise5"
+
+
+[[states]]		# PAINRaise5
+sprite = "PAIN"
+frame = 8
+tics = 8
+next_state = "PAINRaise6"
+
+
+[[states]]		# PAINRaise6
+sprite = "PAIN"
+frame = 7
+tics = 8
+next_state = "PAINRun1"
+
+
+[[states]]		# SSWVStnd
+sprite = "SSWV"
+frame = 0
+tics = 10
+action = "Look"
+next_state = "SSWVStnd2"
+
+
+[[states]]		# SSWVStnd2
+sprite = "SSWV"
+frame = 1
+tics = 10
+action = "Look"
+next_state = "SSWVStnd"
+
+
+[[states]]		# SSWVRun1
+sprite = "SSWV"
+frame = 0
+tics = 3
+action = "Chase"
+next_state = "SSWVRun2"
+
+
+[[states]]		# SSWVRun2
+sprite = "SSWV"
+frame = 0
+tics = 3
+action = "Chase"
+next_state = "SSWVRun3"
+
+
+[[states]]		# SSWVRun3
+sprite = "SSWV"
+frame = 1
+tics = 3
+action = "Chase"
+next_state = "SSWVRun4"
+
+
+[[states]]		# SSWVRun4
+sprite = "SSWV"
+frame = 1
+tics = 3
+action = "Chase"
+next_state = "SSWVRun5"
+
+
+[[states]]		# SSWVRun5
+sprite = "SSWV"
+frame = 2
+tics = 3
+action = "Chase"
+next_state = "SSWVRun6"
+
+
+[[states]]		# SSWVRun6
+sprite = "SSWV"
+frame = 2
+tics = 3
+action = "Chase"
+next_state = "SSWVRun7"
+
+
+[[states]]		# SSWVRun7
+sprite = "SSWV"
+frame = 3
+tics = 3
+action = "Chase"
+next_state = "SSWVRun8"
+
+
+[[states]]		# SSWVRun8
+sprite = "SSWV"
+frame = 3
+tics = 3
+action = "Chase"
+next_state = "SSWVRun1"
+
+
+[[states]]		# SSWVAtk1
+sprite = "SSWV"
+frame = 4
+tics = 10
+action = "FaceTarget"
+next_state = "SSWVAtk2"
+
+
+[[states]]		# SSWVAtk2
+sprite = "SSWV"
+frame = 5
+tics = 10
+action = "FaceTarget"
+next_state = "SSWVAtk3"
+
+
+[[states]]		# SSWVAtk3
+sprite = "SSWV"
+frame = 32774
+tics = 4
+action = "CPosAttack"
+next_state = "SSWVAtk4"
+
+
+[[states]]		# SSWVAtk4
+sprite = "SSWV"
+frame = 5
+tics = 6
+action = "FaceTarget"
+next_state = "SSWVAtk5"
+
+
+[[states]]		# SSWVAtk5
+sprite = "SSWV"
+frame = 32774
+tics = 4
+action = "CPosAttack"
+next_state = "SSWVAtk6"
+
+
+[[states]]		# SSWVAtk6
+sprite = "SSWV"
+frame = 5
+tics = 1
+action = "CPosRefire"
+next_state = "SSWVAtk2"
+
+
+[[states]]		# SSWVPain
+sprite = "SSWV"
+frame = 7
+tics = 3
+next_state = "SSWVPain2"
+
+
+[[states]]		# SSWVPain2
+sprite = "SSWV"
+frame = 7
+tics = 3
+action = "Pain"
+next_state = "SSWVRun1"
+
+
+[[states]]		# SSWVDie1
+sprite = "SSWV"
+frame = 8
+tics = 5
+next_state = "SSWVDie2"
+
+
+[[states]]		# SSWVDie2
+sprite = "SSWV"
+frame = 9
+tics = 5
+action = "Scream"
+next_state = "SSWVDie3"
+
+
+[[states]]		# SSWVDie3
+sprite = "SSWV"
+frame = 10
+tics = 5
+action = "Fall"
+next_state = "SSWVDie4"
+
+
+[[states]]		# SSWVDie4
+sprite = "SSWV"
+frame = 11
+tics = 5
+next_state = "SSWVDie5"
+
+
+[[states]]		# SSWVDie5
+sprite = "SSWV"
+frame = 12
+tics = -1
+
+
+[[states]]		# SSWVXDie1
+sprite = "SSWV"
+frame = 13
+tics = 5
+next_state = "SSWVXDie2"
+
+
+[[states]]		# SSWVXDie2
+sprite = "SSWV"
+frame = 14
+tics = 5
+action = "XScream"
+next_state = "SSWVXDie3"
+
+
+[[states]]		# SSWVXDie3
+sprite = "SSWV"
+frame = 15
+tics = 5
+action = "Fall"
+next_state = "SSWVXDie4"
+
+
+[[states]]		# SSWVXDie4
+sprite = "SSWV"
+frame = 16
+tics = 5
+next_state = "SSWVXDie5"
+
+
+[[states]]		# SSWVXDie5
+sprite = "SSWV"
+frame = 17
+tics = 5
+next_state = "SSWVXDie6"
+
+
+[[states]]		# SSWVXDie6
+sprite = "SSWV"
+frame = 18
+tics = 5
+next_state = "SSWVXDie7"
+
+
+[[states]]		# SSWVXDie7
+sprite = "SSWV"
+frame = 19
+tics = 5
+next_state = "SSWVXDie8"
+
+
+[[states]]		# SSWVXDie8
+sprite = "SSWV"
+frame = 20
+tics = 5
+next_state = "SSWVXDie9"
+
+
+[[states]]		# SSWVXDie9
+sprite = "SSWV"
+frame = 21
+tics = -1
+
+
+[[states]]		# SSWVRaise1
+sprite = "SSWV"
+frame = 12
+tics = 5
+next_state = "SSWVRaise2"
+
+
+[[states]]		# SSWVRaise2
+sprite = "SSWV"
+frame = 11
+tics = 5
+next_state = "SSWVRaise3"
+
+
+[[states]]		# SSWVRaise3
+sprite = "SSWV"
+frame = 10
+tics = 5
+next_state = "SSWVRaise4"
+
+
+[[states]]		# SSWVRaise4
+sprite = "SSWV"
+frame = 9
+tics = 5
+next_state = "SSWVRaise5"
+
+
+[[states]]		# SSWVRaise5
+sprite = "SSWV"
+frame = 8
+tics = 5
+next_state = "SSWVRun1"
+
+
+[[states]]		# KEENStnd
+sprite = "KEEN"
+frame = 0
+tics = -1
+next_state = "KEENStnd"
+
+
+[[states]]		# CommKeen
+sprite = "KEEN"
+frame = 0
+tics = 6
+next_state = "CommKeen2"
+
+
+[[states]]		# CommKeen2
+sprite = "KEEN"
+frame = 1
+tics = 6
+next_state = "CommKeen3"
+
+
+[[states]]		# CommKeen3
+sprite = "KEEN"
+frame = 2
+tics = 6
+action = "Scream"
+next_state = "CommKeen4"
+
+
+[[states]]		# CommKeen4
+sprite = "KEEN"
+frame = 3
+tics = 6
+next_state = "CommKeen5"
+
+
+[[states]]		# CommKeen5
+sprite = "KEEN"
+frame = 4
+tics = 6
+next_state = "CommKeen6"
+
+
+[[states]]		# CommKeen6
+sprite = "KEEN"
+frame = 5
+tics = 6
+next_state = "CommKeen7"
+
+
+[[states]]		# CommKeen7
+sprite = "KEEN"
+frame = 6
+tics = 6
+next_state = "CommKeen8"
+
+
+[[states]]		# CommKeen8
+sprite = "KEEN"
+frame = 7
+tics = 6
+next_state = "CommKeen9"
+
+
+[[states]]		# CommKeen9
+sprite = "KEEN"
+frame = 8
+tics = 6
+next_state = "CommKeen10"
+
+
+[[states]]		# CommKeen10
+sprite = "KEEN"
+frame = 9
+tics = 6
+next_state = "CommKeen11"
+
+
+[[states]]	# CommKeen11
+sprite = "KEEN"
+frame = 10
+tics = 6
+action = "KeenDie"
+next_state = "CommKeen12"
+
+
+[[states]]			# CommKeen12
+sprite = "KEEN"
+frame = 11
+tics = -1
+
+
+[[states]]		# KEENPain
+sprite = "KEEN"
+frame = 12
+tics = 4
+next_state = "KEENPain2"
+
+
+[[states]]		# KEENPain2
+sprite = "KEEN"
+frame = 12
+tics = 8
+action = "Pain"
+next_state = "KEENStnd"
+
+
+[[states]]			# BRAIN
+sprite = "BBRN"
+frame = 0
+tics = -1
+
+
+[[states]]		# BRAINPain
+sprite = "BBRN"
+frame = 1
+tics = 36
+action = "BrainPain"
+next_state = "BRAIN"
+
+
+[[states]]		# BRAINDie1
+sprite = "BBRN"
+frame = 0
+tics = 100
+action = "BrainScream"
+next_state = "BRAINDie2"
+
+
+[[states]]		# BRAINDie2
+sprite = "BBRN"
+frame = 0
+tics = 10
+next_state = "BRAINDie3"
+
+
+[[states]]		# BRAINDie3
+sprite = "BBRN"
+frame = 0
+tics = 10
+next_state = "BRAINDie4"
+
+
+[[states]]		# BRAINDie4
+sprite = "BBRN"
+frame = 0
+tics = -1
+action = "BrainDie"
+
+
+[[states]]		# BRAINEye
+sprite = "SSWV"
+frame = 0
+tics = 10
+action = "Look"
+next_state = "BRAINEye"
+
+
+[[states]]		# BRAINEyeSee
+sprite = "SSWV"
+frame = 0
+tics = 181
+action = "BrainAwake"
+next_state = "BRAINEye1"
+
+
+[[states]]		# BRAINEye1
+sprite = "SSWV"
+frame = 0
+tics = 150
+action = "BrainSpit"
+next_state = "BRAINEye1"
+
+
+[[states]]		# SPAWN1
+sprite = "BOSF"
+frame = 32768
+tics = 3
+action = "SpawnSound"
+next_state = "SPAWN2"
+
+
+[[states]]		# SPAWN2
+sprite = "BOSF"
+frame = 32769
+tics = 3
+action = "SpawnFly"
+next_state = "SPAWN3"
+
+
+[[states]]		# SPAWN3
+sprite = "BOSF"
+frame = 32770
+tics = 3
+action = "SpawnFly"
+next_state = "SPAWN4"
+
+
+[[states]]		# SPAWN4
+sprite = "BOSF"
+frame = 32771
+tics = 3
+action = "SpawnFly"
+next_state = "SPAWN1"
+
+
+[[states]]		# SpawnFire1
+sprite = "FIRE"
+frame = 32768
+tics = 4
+action = "Fire"
+next_state = "SpawnFire2"
+
+
+[[states]]		# SpawnFire2
+sprite = "FIRE"
+frame = 32769
+tics = 4
+action = "Fire"
+next_state = "SpawnFire3"
+
+
+[[states]]		# SpawnFire3
+sprite = "FIRE"
+frame = 32770
+tics = 4
+action = "Fire"
+next_state = "SpawnFire4"
+
+
+[[states]]		# SpawnFire4
+sprite = "FIRE"
+frame = 32771
+tics = 4
+action = "Fire"
+next_state = "SpawnFire5"
+
+
+[[states]]		# SpawnFire5
+sprite = "FIRE"
+frame = 32772
+tics = 4
+action = "Fire"
+next_state = "SpawnFire6"
+
+
+[[states]]		# SpawnFire6
+sprite = "FIRE"
+frame = 32773
+tics = 4
+action = "Fire"
+next_state = "SpawnFire7"
+
+
+[[states]]		# SpawnFire7
+sprite = "FIRE"
+frame = 32774
+tics = 4
+action = "Fire"
+next_state = "SpawnFire8"
+
+
+[[states]]			# SpawnFire8
+sprite = "FIRE"
+frame = 32775
+tics = 4
+action = "Fire"
+
+
+[[states]]		# BRAINExplode1
+sprite = "MISL"
+frame = 32769
+tics = 10
+next_state = "BRAINExplode2"
+
+
+[[states]]		# BRAINExplode2
+sprite = "MISL"
+frame = 32770
+tics = 10
+next_state = "BRAINExplode3"
+
+
+[[states]]		# BRAINExplode3
+sprite = "MISL"
+frame = 32771
+tics = 10
+action = "BrainExplode"
+
+
+[[states]]		# ARM1
+sprite = "ARM1"
+frame = 0
+tics = 6
+next_state = "ARM1A"
+
+
+[[states]]		# ARM1A
+sprite = "ARM1"
+frame = 32769
+tics = 7
+next_state = "ARM1"
+
+
+[[states]]		# ARM2
+sprite = "ARM2"
+frame = 0
+tics = 6
+next_state = "ARM2A"
+
+
+[[states]]		# ARM2A
+sprite = "ARM2"
+frame = 32769
+tics = 6
+next_state = "ARM2"
+
+
+[[states]]		# BAR1
+sprite = "BAR1"
+frame = 0
+tics = 6
+next_state = "BAR2"
+
+
+[[states]]		# BAR2
+sprite = "BAR1"
+frame = 1
+tics = 6
+next_state = "BAR1"
+
+
+[[states]]		# BEXP
+sprite = "BEXP"
+frame = 32768
+tics = 5
+next_state = "BEXP2"
+
+
+[[states]]		# BEXP2
+sprite = "BEXP"
+frame = 32769
+tics = 5
+action = "Scream"
+next_state = "BEXP3"
+
+
+[[states]]		# BEXP3
+sprite = "BEXP"
+frame = 32770
+tics = 5
+next_state = "BEXP4"
+
+
+[[states]]		# BEXP4
+sprite = "BEXP"
+frame = 32771
+tics = 10
+action = "Explode"
+next_state = "BEXP5"
+
+
+[[states]]		# BEXP5
+sprite = "BEXP"
+frame = 32772
+tics = 10
+
+
+[[states]]		# BBAR1
+sprite = "FCAN"
+frame = 32768
+tics = 4
+next_state = "BBAR2"
+
+
+[[states]]		# BBAR2
+sprite = "FCAN"
+frame = 32769
+tics = 4
+next_state = "BBAR3"
+
+
+[[states]]		# BBAR3
+sprite = "FCAN"
+frame = 32770
+tics = 4
+next_state = "BBAR1"
+
+
+[[states]]		# BON1
+sprite = "BON1"
+frame = 0
+tics = 6
+next_state = "BON1A"
+
+
+[[states]]		# BON1A
+sprite = "BON1"
+frame = 1
+tics = 6
+next_state = "BON1B"
+
+
+[[states]]		# BON1B
+sprite = "BON1"
+frame = 2
+tics = 6
+next_state = "BON1C"
+
+
+[[states]]		# BON1C
+sprite = "BON1"
+frame = 3
+tics = 6
+next_state = "BON1D"
+
+
+[[states]]		# BON1D
+sprite = "BON1"
+frame = 2
+tics = 6
+next_state = "BON1E"
+
+
+[[states]]		# BON1E
+sprite = "BON1"
+frame = 1
+tics = 6
+next_state = "BON1"
+
+
+[[states]]		# BON2
+sprite = "BON2"
+frame = 0
+tics = 6
+next_state = "BON2A"
+
+
+[[states]]		# BON2A
+sprite = "BON2"
+frame = 1
+tics = 6
+next_state = "BON2B"
+
+
+[[states]]		# BON2B
+sprite = "BON2"
+frame = 2
+tics = 6
+next_state = "BON2C"
+
+
+[[states]]		# BON2C
+sprite = "BON2"
+frame = 3
+tics = 6
+next_state = "BON2D"
+
+
+[[states]]		# BON2D
+sprite = "BON2"
+frame = 2
+tics = 6
+next_state = "BON2E"
+
+
+[[states]]		# BON2E
+sprite = "BON2"
+frame = 1
+tics = 6
+next_state = "BON2"
+
+
+[[states]]		# BKEY
+sprite = "BKEY"
+frame = 0
+tics = 10
+next_state = "BKEY2"
+
+
+[[states]]		# BKEY2
+sprite = "BKEY"
+frame = 32769
+tics = 10
+next_state = "BKEY"
+
+
+[[states]]		# RKEY
+sprite = "RKEY"
+frame = 0
+tics = 10
+next_state = "RKEY2"
+
+
+[[states]]		# RKEY2
+sprite = "RKEY"
+frame = 32769
+tics = 10
+next_state = "RKEY"
+
+
+[[states]]		# YKEY
+sprite = "YKEY"
+frame = 0
+tics = 10
+next_state = "YKEY2"
+
+
+[[states]]		# YKEY2
+sprite = "YKEY"
+frame = 32769
+tics = 10
+next_state = "YKEY"
+
+
+[[states]]		# BSKULL
+sprite = "BSKU"
+frame = 0
+tics = 10
+next_state = "BSKULL2"
+
+
+[[states]]		# BSKULL2
+sprite = "BSKU"
+frame = 32769
+tics = 10
+next_state = "BSKULL"
+
+
+[[states]]		# RSKULL
+sprite = "RSKU"
+frame = 0
+tics = 10
+next_state = "RSKULL2"
+
+
+[[states]]		# RSKULL2
+sprite = "RSKU"
+frame = 32769
+tics = 10
+next_state = "RSKULL"
+
+
+[[states]]		# YSKULL
+sprite = "YSKU"
+frame = 0
+tics = 10
+next_state = "YSKULL2"
+
+
+[[states]]		# YSKULL2
+sprite = "YSKU"
+frame = 32769
+tics = 10
+next_state = "YSKULL"
+
+
+[[states]]		# STIM
+sprite = "STIM"
+frame = 0
+tics = -1
+
+
+[[states]]		# MEDI
+sprite = "MEDI"
+frame = 0
+tics = -1
+
+
+[[states]]		# SOUL
+sprite = "SOUL"
+frame = 32768
+tics = 6
+next_state = "SOUL2"
+
+
+[[states]]		# SOUL2
+sprite = "SOUL"
+frame = 32769
+tics = 6
+next_state = "SOUL3"
+
+
+[[states]]		# SOUL3
+sprite = "SOUL"
+frame = 32770
+tics = 6
+next_state = "SOUL4"
+
+
+[[states]]		# SOUL4
+sprite = "SOUL"
+frame = 32771
+tics = 6
+next_state = "SOUL5"
+
+
+[[states]]		# SOUL5
+sprite = "SOUL"
+frame = 32770
+tics = 6
+next_state = "SOUL6"
+
+
+[[states]]		# SOUL6
+sprite = "SOUL"
+frame = 32769
+tics = 6
+next_state = "SOUL"
+
+
+[[states]]		# PINV
+sprite = "PINV"
+frame = 32768
+tics = 6
+next_state = "PINV2"
+
+
+[[states]]		# PINV2
+sprite = "PINV"
+frame = 32769
+tics = 6
+next_state = "PINV3"
+
+
+[[states]]		# PINV3
+sprite = "PINV"
+frame = 32770
+tics = 6
+next_state = "PINV4"
+
+
+[[states]]		# PINV4
+sprite = "PINV"
+frame = 32771
+tics = 6
+next_state = "PINV"
+
+
+[[states]]		# PSTR
+sprite = "PSTR"
+frame = 32768
+tics = -1
+
+
+[[states]]		# PINS
+sprite = "PINS"
+frame = 32768
+tics = 6
+next_state = "PINS2"
+
+
+[[states]]		# PINS2
+sprite = "PINS"
+frame = 32769
+tics = 6
+next_state = "PINS3"
+
+
+[[states]]		# PINS3
+sprite = "PINS"
+frame = 32770
+tics = 6
+next_state = "PINS4"
+
+
+[[states]]		# PINS4
+sprite = "PINS"
+frame = 32771
+tics = 6
+next_state = "PINS"
+
+
+[[states]]		# MEGA
+sprite = "MEGA"
+frame = 32768
+tics = 6
+next_state = "MEGA2"
+
+
+[[states]]		# MEGA2
+sprite = "MEGA"
+frame = 32769
+tics = 6
+next_state = "MEGA3"
+
+
+[[states]]		# MEGA3
+sprite = "MEGA"
+frame = 32770
+tics = 6
+next_state = "MEGA4"
+
+
+[[states]]		# MEGA4
+sprite = "MEGA"
+frame = 32771
+tics = 6
+next_state = "MEGA"
+
+
+[[states]]		# SUIT
+sprite = "SUIT"
+frame = 32768
+tics = -1
+
+
+[[states]]		# PMAP
+sprite = "PMAP"
+frame = 32768
+tics = 6
+next_state = "PMAP2"
+
+
+[[states]]		# PMAP2
+sprite = "PMAP"
+frame = 32769
+tics = 6
+next_state = "PMAP3"
+
+
+[[states]]		# PMAP3
+sprite = "PMAP"
+frame = 32770
+tics = 6
+next_state = "PMAP4"
+
+
+[[states]]		# PMAP4
+sprite = "PMAP"
+frame = 32771
+tics = 6
+next_state = "PMAP5"
+
+
+[[states]]		# PMAP5
+sprite = "PMAP"
+frame = 32770
+tics = 6
+next_state = "PMAP6"
+
+
+[[states]]		# PMAP6
+sprite = "PMAP"
+frame = 32769
+tics = 6
+next_state = "PMAP"
+
+
+[[states]]		# PVIS
+sprite = "PVIS"
+frame = 32768
+tics = 6
+next_state = "PVIS2"
+
+
+[[states]]		# PVIS2
+sprite = "PVIS"
+frame = 1
+tics = 6
+next_state = "PVIS"
+
+
+[[states]]		# CLIP
+sprite = "CLIP"
+frame = 0
+tics = -1
+
+
+[[states]]		# AMMO
+sprite = "AMMO"
+frame = 0
+tics = -1
+
+
+[[states]]		# ROCK
+sprite = "ROCK"
+frame = 0
+tics = -1
+
+
+[[states]]		# BROK
+sprite = "BROK"
+frame = 0
+tics = -1
+
+
+[[states]]		# CELL
+sprite = "CELL"
+frame = 0
+tics = -1
+
+
+[[states]]		# CELP
+sprite = "CELP"
+frame = 0
+tics = -1
+
+
+[[states]]		# SHEL
+sprite = "SHEL"
+frame = 0
+tics = -1
+
+
+[[states]]		# SBOX
+sprite = "SBOX"
+frame = 0
+tics = -1
+
+
+[[states]]		# BPAK
+sprite = "BPAK"
+frame = 0
+tics = -1
+
+
+[[states]]		# BFUG
+sprite = "BFUG"
+frame = 0
+tics = -1
+
+
+[[states]]		# MGUN
+sprite = "MGUN"
+frame = 0
+tics = -1
+
+
+[[states]]		# CSAW
+sprite = "CSAW"
+frame = 0
+tics = -1
+
+
+[[states]]		# LAUN
+sprite = "LAUN"
+frame = 0
+tics = -1
+
+
+[[states]]		# PLAS
+sprite = "PLAS"
+frame = 0
+tics = -1
+
+
+[[states]]		# SHOT
+sprite = "SHOT"
+frame = 0
+tics = -1
+
+
+[[states]]		# SHOT2
+sprite = "SGN2"
+frame = 0
+tics = -1
+
+
+[[states]]		# COLU
+sprite = "COLU"
+frame = 32768
+tics = -1
+
+
+[[states]]		# STALAG
+sprite = "SMT2"
+frame = 0
+tics = -1
+
+
+[[states]]		# BloodyTwitch
+sprite = "GOR1"
+frame = 0
+tics = 10
+next_state = "BloodyTwitch2"
+
+
+[[states]]		# BloodyTwitch2
+sprite = "GOR1"
+frame = 1
+tics = 15
+next_state = "BloodyTwitch3"
+
+
+[[states]]		# BloodyTwitch3
+sprite = "GOR1"
+frame = 2
+tics = 8
+next_state = "BloodyTwitch4"
+
+
+[[states]]		# BloodyTwitch4
+sprite = "GOR1"
+frame = 1
+tics = 6
+next_state = "BloodyTwitch"
+
+
+[[states]]		# DeadTorso
+sprite = "PLAY"
+frame = 13
+tics = -1
+
+
+[[states]]		# DeadBottom
+sprite = "PLAY"
+frame = 18
+tics = -1
+
+
+[[states]]		# HeadsOnStick
+sprite = "POL2"
+frame = 0
+tics = -1
+
+
+[[states]]		# Gibs
+sprite = "POL5"
+frame = 0
+tics = -1
+
+
+[[states]]		# HeadOnAStick
+sprite = "POL4"
+frame = 0
+tics = -1
+
+
+[[states]]		# HeadCandles
+sprite = "POL3"
+frame = 32768
+tics = 6
+next_state = "HeadCandles2"
+
+
+[[states]]		# HeadCandles2
+sprite = "POL3"
+frame = 32769
+tics = 6
+next_state = "HeadCandles"
+
+
+[[states]]		# DeadStick
+sprite = "POL1"
+frame = 0
+tics = -1
+
+
+[[states]]		# LiveStick
+sprite = "POL6"
+frame = 0
+tics = 6
+next_state = "LiveStick2"
+
+
+[[states]]		# LiveStick2
+sprite = "POL6"
+frame = 1
+tics = 8
+next_state = "LiveStick"
+
+
+[[states]]		# Meat2
+sprite = "GOR2"
+frame = 0
+tics = -1
+
+
+[[states]]		# Meat3
+sprite = "GOR3"
+frame = 0
+tics = -1
+
+
+[[states]]		# Meat4
+sprite = "GOR4"
+frame = 0
+tics = -1
+
+
+[[states]]		# Meat5
+sprite = "GOR5"
+frame = 0
+tics = -1
+
+
+[[states]]		# Stalagtite
+sprite = "SMIT"
+frame = 0
+tics = -1
+
+
+[[states]]		# TallGrnCol
+sprite = "COL1"
+frame = 0
+tics = -1
+
+
+[[states]]		# ShrtGrnCol
+sprite = "COL2"
+frame = 0
+tics = -1
+
+
+[[states]]		# TallRedCol
+sprite = "COL3"
+frame = 0
+tics = -1
+
+
+[[states]]		# ShrtRedCol
+sprite = "COL4"
+frame = 0
+tics = -1
+
+
+[[states]]		# CandleStick
+sprite = "CAND"
+frame = 32768
+tics = -1
+
+
+[[states]]		# Candelabra
+sprite = "CBRA"
+frame = 32768
+tics = -1
+
+
+[[states]]		# SkullCol
+sprite = "COL6"
+frame = 0
+tics = -1
+
+
+[[states]]		# TorchTree
+sprite = "TRE1"
+frame = 0
+tics = -1
+
+
+[[states]]		# BigTree
+sprite = "TRE2"
+frame = 0
+tics = -1
+
+
+[[states]]		# TechPillar
+sprite = "ELEC"
+frame = 0
+tics = -1
+
+
+[[states]]		# EvilEye
+sprite = "CEYE"
+frame = 32768
+tics = 6
+next_state = "EvilEye2"
+
+
+[[states]]		# EvilEye2
+sprite = "CEYE"
+frame = 32769
+tics = 6
+next_state = "EvilEye3"
+
+
+[[states]]		# EvilEye3
+sprite = "CEYE"
+frame = 32770
+tics = 6
+next_state = "EvilEye4"
+
+
+[[states]]		# EvilEye4
+sprite = "CEYE"
+frame = 32769
+tics = 6
+next_state = "EvilEye"
+
+
+[[states]]		# FloatSkull
+sprite = "FSKU"
+frame = 32768
+tics = 6
+next_state = "FloatSkull2"
+
+
+[[states]]		# FloatSkull2
+sprite = "FSKU"
+frame = 32769
+tics = 6
+next_state = "FloatSkull3"
+
+
+[[states]]		# FloatSkull3
+sprite = "FSKU"
+frame = 32770
+tics = 6
+next_state = "FloatSkull"
+
+
+[[states]]		# HeartCol
+sprite = "COL5"
+frame = 0
+tics = 14
+next_state = "HeartCol2"
+
+
+[[states]]		# HeartCol2
+sprite = "COL5"
+frame = 1
+tics = 14
+next_state = "HeartCol"
+
+
+[[states]]		# BlueTorch
+sprite = "TBLU"
+frame = 32768
+tics = 4
+next_state = "BlueTorch2"
+
+
+[[states]]		# BlueTorch2
+sprite = "TBLU"
+frame = 32769
+tics = 4
+next_state = "BlueTorch3"
+
+
+[[states]]		# BlueTorch3
+sprite = "TBLU"
+frame = 32770
+tics = 4
+next_state = "BlueTorch4"
+
+
+[[states]]		# BlueTorch4
+sprite = "TBLU"
+frame = 32771
+tics = 4
+next_state = "BlueTorch"
+
+
+[[states]]		# GreenTorch
+sprite = "TGRN"
+frame = 32768
+tics = 4
+next_state = "GreenTorch2"
+
+
+[[states]]		# GreenTorch2
+sprite = "TGRN"
+frame = 32769
+tics = 4
+next_state = "GreenTorch3"
+
+
+[[states]]		# GreenTorch3
+sprite = "TGRN"
+frame = 32770
+tics = 4
+next_state = "GreenTorch4"
+
+
+[[states]]		# GreenTorch4
+sprite = "TGRN"
+frame = 32771
+tics = 4
+next_state = "GreenTorch"
+
+
+[[states]]		# RedTorch
+sprite = "TRED"
+frame = 32768
+tics = 4
+next_state = "RedTorch2"
+
+
+[[states]]		# RedTorch2
+sprite = "TRED"
+frame = 32769
+tics = 4
+next_state = "RedTorch3"
+
+
+[[states]]		# RedTorch3
+sprite = "TRED"
+frame = 32770
+tics = 4
+next_state = "RedTorch4"
+
+
+[[states]]		# RedTorch4
+sprite = "TRED"
+frame = 32771
+tics = 4
+next_state = "RedTorch"
+
+
+[[states]]		# BTorchShrt
+sprite = "SMBT"
+frame = 32768
+tics = 4
+next_state = "BTorchShrt2"
+
+
+[[states]]		# BTorchShrt2
+sprite = "SMBT"
+frame = 32769
+tics = 4
+next_state = "BTorchShrt3"
+
+
+[[states]]		# BTorchShrt3
+sprite = "SMBT"
+frame = 32770
+tics = 4
+next_state = "BTorchShrt4"
+
+
+[[states]]		# BTorchShrt4
+sprite = "SMBT"
+frame = 32771
+tics = 4
+next_state = "BTorchShrt"
+
+
+[[states]]		# GTorchShrt
+sprite = "SMGT"
+frame = 32768
+tics = 4
+next_state = "GTorchShrt2"
+
+
+[[states]]		# GTorchShrt2
+sprite = "SMGT"
+frame = 32769
+tics = 4
+next_state = "GTorchShrt3"
+
+
+[[states]]		# GTorchShrt3
+sprite = "SMGT"
+frame = 32770
+tics = 4
+next_state = "GTorchShrt4"
+
+
+[[states]]		# GTorchShrt4
+sprite = "SMGT"
+frame = 32771
+tics = 4
+next_state = "GTorchShrt"
+
+
+[[states]]		# RTorchShrt
+sprite = "SMRT"
+frame = 32768
+tics = 4
+next_state = "RTorchShrt2"
+
+
+[[states]]		# RTorchShrt2
+sprite = "SMRT"
+frame = 32769
+tics = 4
+next_state = "RTorchShrt3"
+
+
+[[states]]		# RTorchShrt3
+sprite = "SMRT"
+frame = 32770
+tics = 4
+next_state = "RTorchShrt4"
+
+
+[[states]]		# RTorchShrt4
+sprite = "SMRT"
+frame = 32771
+tics = 4
+next_state = "RTorchShrt"
+
+
+[[states]]		# HangNoGuts
+sprite = "HDB1"
+frame = 0
+tics = -1
+
+
+[[states]]		# HangBNoBrain
+sprite = "HDB2"
+frame = 0
+tics = -1
+
+
+[[states]]		# HangtLookDn
+sprite = "HDB3"
+frame = 0
+tics = -1
+
+
+[[states]]		# HangtSkull
+sprite = "HDB4"
+frame = 0
+tics = -1
+
+
+[[states]]		# HangtLookUp
+sprite = "HDB5"
+frame = 0
+tics = -1
+
+
+[[states]]		# HangtNoBrain
+sprite = "HDB6"
+frame = 0
+tics = -1
+
+
+[[states]]		# ColonGibs
+sprite = "POB1"
+frame = 0
+tics = -1
+
+
+[[states]]		# SmallPool
+sprite = "POB2"
+frame = 0
+tics = -1
+
+
+[[states]]			# BrainStem
+sprite = "BRS1"
+frame = 0
+tics = -1
+
+
+[[states]]		# TechLamp
+sprite = "TLMP"
+frame = 32768
+tics = 4
+next_state = "TechLamp2"
+
+
+[[states]]		# TechLamp2
+sprite = "TLMP"
+frame = 32769
+tics = 4
+next_state = "TechLamp3"
+
+
+[[states]]		# TechLamp3
+sprite = "TLMP"
+frame = 32770
+tics = 4
+next_state = "TechLamp4"
+
+
+[[states]]		# TechLamp4
+sprite = "TLMP"
+frame = 32771
+tics = 4
+next_state = "TechLamp"
+
+
+[[states]]		# Tech2Lamp
+sprite = "TLP2"
+frame = 32768
+tics = 4
+next_state = "Tech2Lamp2"
+
+
+[[states]]		# Tech2Lamp2
+sprite = "TLP2"
+frame = 32769
+tics = 4
+next_state = "Tech2Lamp3"
+
+
+[[states]]		# Tech2Lamp3
+sprite = "TLP2"
+frame = 32770
+tics = 4
+next_state = "Tech2Lamp4"
+
+
+[[states]]		# Tech2Lamp4
+sprite = "TLP2"
+frame = 32771
+tics = 4
+next_state = "Tech2Lamp"

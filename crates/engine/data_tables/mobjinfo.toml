@@ -1,0 +1,2133 @@
+[[objects]]		# MT_PLAYER
+doomed_num = 0
+spawn_state = "PLAY"
+spawn_health = 100
+see_state = "PLAYRun1"
+reaction_time = 0
+pain_state = "PLAYPain"
+pain_chance = 255
+pain_sound = "Plpain"
+missile_state = "PLAYAtk1"
+death_state = "PLAYDie1"
+xdeath_state = "PLAYXDie1"
+death_sound = "Pldeth"
+speed = 0.0
+radius = 16.0
+height = 56.0
+mass = 100
+damage = 0
+flags = ["Solid","Shootable","DropOff","Pickup","NotDMatch"]
+
+
+[[objects]]		# MT_POSSESSED
+doomed_num = 3004
+spawn_state = "POSSStnd"
+spawn_health = 20
+see_state = "POSSRun1"
+see_sound = "Posit1"
+reaction_time = 8
+attack_sound = "Pistol"
+pain_state = "POSSPain"
+pain_chance = 200
+pain_sound = "Popain"
+missile_state = "POSSAtk1"
+death_state = "POSSDie1"
+xdeath_state = "POSSXDie1"
+death_sound = "Podth1"
+speed = 8.0
+radius = 20.0
+height = 56.0
+mass = 100
+damage = 0
+active_sound = "Posact"
+flags = ["Solid","Shootable","CountKill"]
+raise_state = "POSSRaise1"
+
+
+[[objects]]		# MT_SHOTGUY
+doomed_num = 9
+spawn_state = "SPOSStnd"
+spawn_health = 30
+see_state = "SPOSRun1"
+see_sound = "Posit2"
+reaction_time = 8
+pain_state = "SPOSPain"
+pain_chance = 170
+pain_sound = "Popain"
+missile_state = "SPOSAtk1"
+death_state = "SPOSDie1"
+xdeath_state = "SPOSXDie1"
+death_sound = "Podth2"
+speed = 8.0
+radius = 20.0
+height = 56.0
+mass = 100
+damage = 0
+active_sound = "Posact"
+flags = ["Solid","Shootable","CountKill"]
+raise_state = "SPOSRaise1"
+
+
+[[objects]]		# MT_VILE
+doomed_num = 64
+spawn_state = "VILEStnd"
+spawn_health = 700
+see_state = "VILERun1"
+see_sound = "Vilsit"
+reaction_time = 8
+pain_state = "VILEPain"
+pain_chance = 10
+pain_sound = "Vipain"
+missile_state = "VILEAtk1"
+death_state = "VILEDie1"
+death_sound = "Vildth"
+speed = 15.0
+radius = 20.0
+height = 56.0
+mass = 500
+damage = 0
+active_sound = "Vilact"
+flags = ["Solid","Shootable","CountKill"]
+
+
+[[objects]]		# MT_FIRE
+doomed_num = 0
+spawn_state = "FIRE1"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["NoBlockmap","NoGravity"]
+
+
+[[objects]]		# MT_UNDead
+doomed_num = 66
+spawn_state = "SKELStnd"
+spawn_health = 300
+see_state = "SKELRun1"
+see_sound = "Skesit"
+reaction_time = 8
+pain_state = "SKELPain"
+pain_chance = 100
+pain_sound = "Popain"
+melee_state = "SKELFist1"
+missile_state = "SKELMiss1"
+death_state = "SKELDie1"
+death_sound = "Skedth"
+speed = 10.0
+radius = 20.0
+height = 56.0
+mass = 500
+damage = 0
+active_sound = "Skeact"
+flags = ["Solid","Shootable","CountKill"]
+raise_state = "SKELRaise1"
+
+
+[[objects]]		# MT_TRACER
+doomed_num = 0
+spawn_state = "Tracer"
+spawn_health = 1000
+see_sound = "Skeatk"
+reaction_time = 8
+pain_chance = 0
+death_state = "TraceExp1"
+death_sound = "Barexp"
+speed = 10.0
+radius = 11.0
+height = 8.0
+mass = 100
+damage = 10
+flags = ["NoBlockmap","Missile","DropOff","NoGravity"]
+
+
+[[objects]]		# MT_SMOKE
+doomed_num = 0
+spawn_state = "Smoke1"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["NoBlockmap","NoGravity"]
+
+
+[[objects]]		# MT_FATSO
+doomed_num = 67
+spawn_state = "FATTStnd"
+spawn_health = 600
+see_state = "FATTRun1"
+see_sound = "Mansit"
+reaction_time = 8
+pain_state = "FATTPain"
+pain_chance = 80
+pain_sound = "Mnpain"
+missile_state = "FATTAtk1"
+death_state = "FATTDie1"
+death_sound = "Mandth"
+speed = 8.0
+radius = 48.0
+height = 64.0
+mass = 1000
+damage = 0
+active_sound = "Posact"
+flags = ["Solid","Shootable","CountKill"]
+raise_state = "FATTRaise1"
+
+
+[[objects]]		# MT_FATSHOT
+doomed_num = 0
+spawn_state = "FATShot1"
+spawn_health = 1000
+see_sound = "Firsht"
+reaction_time = 8
+pain_chance = 0
+death_state = "FATShotX1"
+death_sound = "Firxpl"
+speed = 20.0
+radius = 6.0
+height = 8.0
+mass = 100
+damage = 8
+flags = ["NoBlockmap","Missile","DropOff","NoGravity"]
+
+
+[[objects]]		# MT_CHAINGUY
+doomed_num = 65
+spawn_state = "CPOSStnd"
+spawn_health = 70
+see_state = "CPOSRun1"
+see_sound = "Posit2"
+reaction_time = 8
+pain_state = "CPOSPain"
+pain_chance = 170
+pain_sound = "Popain"
+missile_state = "CPOSAtk1"
+death_state = "CPOSDie1"
+xdeath_state = "CPOSXDie1"
+death_sound = "Podth2"
+speed = 8.0
+radius = 20.0
+height = 56.0
+mass = 100
+damage = 0
+active_sound = "Posact"
+flags = ["Solid","Shootable","CountKill"]
+raise_state = "CPOSRaise1"
+
+
+[[objects]]		# MT_TROOP
+doomed_num = 3001
+spawn_state = "TROOStnd"
+spawn_health = 60
+see_state = "TROORun1"
+see_sound = "Bgsit1"
+reaction_time = 8
+pain_state = "TROOPain"
+pain_chance = 200
+pain_sound = "Popain"
+melee_state = "TROOAtk1"
+missile_state = "TROOAtk1"
+death_state = "TROODie1"
+xdeath_state = "TROOXDie1"
+death_sound = "Bgdth1"
+speed = 8.0
+radius = 20.0
+height = 56.0
+mass = 100
+damage = 0
+active_sound = "Bgact"
+flags = ["Solid","Shootable","CountKill"]
+raise_state = "TROORaise1"
+
+
+[[objects]]		# MT_SERGEANT
+doomed_num = 3002
+spawn_state = "SARGStnd"
+spawn_health = 150
+see_state = "SARGRun1"
+see_sound = "Sgtsit"
+reaction_time = 8
+attack_sound = "Sgtatk"
+pain_state = "SARGPain"
+pain_chance = 180
+pain_sound = "Dmpain"
+melee_state = "SARGAtk1"
+death_state = "SARGDie1"
+death_sound = "Sgtdth"
+speed = 10.0
+radius = 30.0
+height = 56.0
+mass = 400
+damage = 0
+active_sound = "Dmact"
+flags = ["Solid","Shootable","CountKill"]
+raise_state = "SARGRaise1"
+
+
+[[objects]]		# MT_SHADOWS
+doomed_num = 58
+spawn_state = "SARGStnd"
+spawn_health = 150
+see_state = "SARGRun1"
+see_sound = "Sgtsit"
+reaction_time = 8
+attack_sound = "Sgtatk"
+pain_state = "SARGPain"
+pain_chance = 180
+pain_sound = "Dmpain"
+melee_state = "SARGAtk1"
+death_state = "SARGDie1"
+death_sound = "Sgtdth"
+speed = 10.0
+radius = 30.0
+height = 56.0
+mass = 400
+damage = 0
+active_sound = "Dmact"
+flags = ["Solid","Shootable","Shadow","CountKill"]
+raise_state = "SARGRaise1"
+
+
+[[objects]]		# MT_HEAD
+doomed_num = 3005
+spawn_state = "HEADStnd"
+spawn_health = 400
+see_state = "HEADRun1"
+see_sound = "Cacsit"
+reaction_time = 8
+pain_state = "HEADPain"
+pain_chance = 128
+pain_sound = "Dmpain"
+missile_state = "HEADAtk1"
+death_state = "HEADDie1"
+death_sound = "Cacdth"
+speed = 8.0
+radius = 31.0
+height = 56.0
+mass = 400
+damage = 0
+active_sound = "Dmact"
+flags = ["Solid","Shootable","Float","NoGravity","CountKill"]
+raise_state = "HEADRaise1"
+
+
+[[objects]]		# MT_BRUISER
+doomed_num = 3003
+spawn_state = "BOSSStnd"
+spawn_health = 1000
+see_state = "BOSSRun1"
+see_sound = "Brssit"
+reaction_time = 8
+pain_state = "BOSSPain"
+pain_chance = 50
+pain_sound = "Dmpain"
+melee_state = "BOSSAtk1"
+missile_state = "BOSSAtk1"
+death_state = "BOSSDie1"
+death_sound = "Brsdth"
+speed = 8.0
+radius = 24.0
+height = 64.0
+mass = 1000
+damage = 0
+active_sound = "Dmact"
+flags = ["Solid","Shootable","CountKill"]
+raise_state = "BOSSRaise1"
+
+
+[[objects]]		# MT_BRUISERSHOT
+doomed_num = 0
+spawn_state = "BRBall1"
+spawn_health = 1000
+see_sound = "Firsht"
+reaction_time = 8
+pain_chance = 0
+death_state = "BRBallX1"
+death_sound = "Firxpl"
+speed = 15.0
+radius = 6.0
+height = 8.0
+mass = 100
+damage = 8
+flags = ["NoBlockmap","Missile","DropOff","NoGravity"]
+
+
+[[objects]]		# MT_KNIGHT
+doomed_num = 69
+spawn_state = "BOS2Stnd"
+spawn_health = 500
+see_state = "BOS2Run1"
+see_sound = "Kntsit"
+reaction_time = 8
+pain_state = "BOS2Pain"
+pain_chance = 50
+pain_sound = "Dmpain"
+melee_state = "BOS2Atk1"
+missile_state = "BOS2Atk1"
+death_state = "BOS2Die1"
+death_sound = "Kntdth"
+speed = 8.0
+radius = 24.0
+height = 64.0
+mass = 1000
+damage = 0
+active_sound = "Dmact"
+flags = ["Solid","Shootable","CountKill"]
+raise_state = "BOS2Raise1"
+
+
+[[objects]]		# MT_SKULL
+doomed_num = 3006
+spawn_state = "SKULLStnd"
+spawn_health = 100
+see_state = "SKULLRun1"
+reaction_time = 8
+attack_sound = "Sklatk"
+pain_state = "SKULLPain"
+pain_chance = 255
+pain_sound = "Dmpain"
+missile_state = "SKULLAtk1"
+death_state = "SKULLDie1"
+death_sound = "Firxpl"
+speed = 8.0
+radius = 16.0
+height = 56.0
+mass = 50
+damage = 3
+active_sound = "Dmact"
+flags = ["Solid","Shootable","Float","NoGravity"]
+
+
+[[objects]]		# MT_SPIDER
+doomed_num = 7
+spawn_state = "SPIDStnd"
+spawn_health = 3000
+see_state = "SPIDRun1"
+see_sound = "Spisit"
+reaction_time = 8
+attack_sound = "Shotgn"
+pain_state = "SPIDPain"
+pain_chance = 40
+pain_sound = "Dmpain"
+missile_state = "SPIDAtk1"
+death_state = "SPIDDie1"
+death_sound = "Spidth"
+speed = 12.0
+radius = 128.0
+height = 100.0
+mass = 1000
+damage = 0
+active_sound = "Dmact"
+flags = ["Solid","Shootable","CountKill"]
+
+
+[[objects]]		# MT_BABY
+doomed_num = 68
+spawn_state = "BSPIStnd"
+spawn_health = 500
+see_state = "BSPISight"
+see_sound = "Bspsit"
+reaction_time = 8
+pain_state = "BSPIPain"
+pain_chance = 128
+pain_sound = "Dmpain"
+missile_state = "BSPIAtk1"
+death_state = "BSPIDie1"
+death_sound = "Bspdth"
+speed = 12.0
+radius = 64.0
+height = 64.0
+mass = 600
+damage = 0
+active_sound = "Bspact"
+flags = ["Solid","Shootable","CountKill"]
+raise_state = "BSPIRaise1"
+
+
+[[objects]]		# MT_CYBORG
+doomed_num = 16
+spawn_state = "CYBERStnd"
+spawn_health = 4000
+see_state = "CYBERRun1"
+see_sound = "Cybsit"
+reaction_time = 8
+pain_state = "CYBERPain"
+pain_chance = 20
+pain_sound = "Dmpain"
+missile_state = "CYBERAtk1"
+death_state = "CYBERDie1"
+death_sound = "Cybdth"
+speed = 16.0
+radius = 40.0
+height = 110.0
+mass = 1000
+damage = 0
+active_sound = "Dmact"
+flags = ["Solid","Shootable","CountKill"]
+
+
+[[objects]]		# MTPain
+doomed_num = 71
+spawn_state = "PAINStnd"
+spawn_health = 400
+see_state = "PAINRun1"
+see_sound = "Pesit"
+reaction_time = 8
+pain_state = "PAINPain"
+pain_chance = 128
+pain_sound = "Pepain"
+missile_state = "PAINAtk1"
+death_state = "PAINDie1"
+death_sound = "Pedth"
+speed = 8.0
+radius = 31.0
+height = 56.0
+mass = 400
+damage = 0
+active_sound = "Dmact"
+flags = ["Solid","Shootable","Float","NoGravity","CountKill"]
+raise_state = "PAINRaise1"
+
+
+[[objects]]		# MT_WOLFSS
+doomed_num = 84
+spawn_state = "SSWVStnd"
+spawn_health = 50
+see_state = "SSWVRun1"
+see_sound = "Sssit"
+reaction_time = 8
+pain_state = "SSWVPain"
+pain_chance = 170
+pain_sound = "Popain"
+missile_state = "SSWVAtk1"
+death_state = "SSWVDie1"
+xdeath_state = "SSWVXDie1"
+death_sound = "Ssdth"
+speed = 8.0
+radius = 20.0
+height = 56.0
+mass = 100
+damage = 0
+active_sound = "Posact"
+flags = ["Solid","Shootable","CountKill"]
+raise_state = "SSWVRaise1"
+
+
+[[objects]]		# MT_KEEN
+doomed_num = 72
+spawn_state = "KEENStnd"
+spawn_health = 100
+reaction_time = 8
+pain_state = "KEENPain"
+pain_chance = 255
+pain_sound = "Keenpn"
+death_state = "CommKeen"
+death_sound = "Keendt"
+speed = 0.0
+radius = 16.0
+height = 72.0
+mass = 10000000
+damage = 0
+flags = ["Solid","SpawnCeiling","NoGravity","Shootable","CountKill"]
+
+
+[[objects]]		# MT_BOSSBRAIN
+doomed_num = 88
+spawn_state = "BRAIN"
+spawn_health = 250
+reaction_time = 8
+pain_state = "BRAINPain"
+pain_chance = 255
+pain_sound = "Bospn"
+death_state = "BRAINDie1"
+death_sound = "Bosdth"
+speed = 0.0
+radius = 16.0
+height = 16.0
+mass = 10000000
+damage = 0
+flags = ["Solid","Shootable"]
+
+
+[[objects]]		# MT_BOSSSPIT
+doomed_num = 89
+spawn_state = "BRAINEye"
+spawn_health = 1000
+see_state = "BRAINEyeSee"
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 32.0
+mass = 100
+damage = 0
+flags = ["NoBlockmap","NoSector"]
+
+
+[[objects]]		# MT_BOSSTARGET
+doomed_num = 87
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 32.0
+mass = 100
+damage = 0
+flags = ["NoBlockmap","NoSector"]
+
+
+[[objects]]		# MT_SPAWNSHOT
+doomed_num = 0
+spawn_state = "SPAWN1"
+spawn_health = 1000
+see_sound = "Bospit"
+reaction_time = 8
+pain_chance = 0
+death_sound = "Firxpl"
+speed = 10.0
+radius = 6.0
+height = 32.0
+mass = 100
+damage = 3
+flags = ["NoBlockmap","Missile","DropOff","NoGravity","NoClip"]
+
+
+[[objects]]		# MT_SpawnFire
+doomed_num = 0
+spawn_state = "SpawnFire1"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["NoBlockmap","NoGravity"]
+
+
+[[objects]]		# MT_BARREL
+doomed_num = 2035
+spawn_state = "BAR1"
+spawn_health = 20
+reaction_time = 8
+pain_chance = 0
+death_state = "BEXP"
+death_sound = "Barexp"
+speed = 0.0
+radius = 10.0
+height = 42.0
+mass = 100
+damage = 0
+flags = ["Solid","Shootable","NoBlood"]
+
+
+[[objects]]		# MT_TROOPSHOT
+doomed_num = 0
+spawn_state = "TBall1"
+spawn_health = 1000
+see_sound = "Firsht"
+reaction_time = 8
+pain_chance = 0
+death_state = "TBallX1"
+death_sound = "Firxpl"
+speed = 10.0
+radius = 6.0
+height = 8.0
+mass = 100
+damage = 3
+flags = ["NoBlockmap","Missile","DropOff","NoGravity"]
+
+
+[[objects]]		# MT_HEADSHOT
+doomed_num = 0
+spawn_state = "RBall1"
+spawn_health = 1000
+see_sound = "Firsht"
+reaction_time = 8
+pain_chance = 0
+death_state = "RBallX1"
+death_sound = "Firxpl"
+speed = 10.0
+radius = 6.0
+height = 8.0
+mass = 100
+damage = 5
+flags = ["NoBlockmap","Missile","DropOff","NoGravity"]
+
+
+[[objects]]		# MT_ROCKET
+doomed_num = 0
+spawn_state = "Rocket"
+spawn_health = 1000
+see_sound = "Rlaunc"
+reaction_time = 8
+pain_chance = 0
+death_state = "Explode1"
+death_sound = "Barexp"
+speed = 20.0
+radius = 11.0
+height = 8.0
+mass = 100
+damage = 20
+flags = ["NoBlockmap","Missile","DropOff","NoGravity"]
+
+
+[[objects]]		# MT_PLASMA
+doomed_num = 0
+spawn_state = "PLASBall"
+spawn_health = 1000
+see_sound = "Plasma"
+reaction_time = 8
+pain_chance = 0
+death_state = "PLASExp"
+death_sound = "Firxpl"
+speed = 25.0
+radius = 13.0
+height = 8.0
+mass = 100
+damage = 5
+flags = ["NoBlockmap","Missile","DropOff","NoGravity"]
+
+
+[[objects]]		# MT_BFG
+doomed_num = 0
+spawn_state = "BFGShot"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+death_state = "BFGLand"
+death_sound = "Rxplod"
+speed = 25.0
+radius = 13.0
+height = 8.0
+mass = 100
+damage = 100
+flags = ["NoBlockmap","Missile","DropOff","NoGravity"]
+
+
+[[objects]]		# MT_ARACHPLAZ
+doomed_num = 0
+spawn_state = "ARACHPlaz"
+spawn_health = 1000
+see_sound = "Plasma"
+reaction_time = 8
+pain_chance = 0
+death_state = "ARACHPlex"
+death_sound = "Firxpl"
+speed = 25.0
+radius = 13.0
+height = 8.0
+mass = 100
+damage = 5
+flags = ["NoBlockmap","Missile","DropOff","NoGravity"]
+
+
+[[objects]]		# MT_PUFF
+doomed_num = 0
+spawn_state = "PUFF1"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["NoBlockmap","NoGravity"]
+
+
+[[objects]]		# MT_BLOOD
+doomed_num = 0
+spawn_state = "Blood1"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["NoBlockmap"]
+
+
+[[objects]]		# MT_TFOG
+doomed_num = 0
+spawn_state = "TFOG"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["NoBlockmap","NoGravity"]
+
+
+[[objects]]		# MT_IFOG
+doomed_num = 0
+spawn_state = "IFOG"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["NoBlockmap","NoGravity"]
+
+
+[[objects]]		# MT_TELEPORTMAN
+doomed_num = 14
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["NoBlockmap","NoSector"]
+
+
+[[objects]]		# MT_EXTRABFG
+doomed_num = 0
+spawn_state = "BFGExp"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["NoBlockmap","NoGravity"]
+
+
+[[objects]]		# MT_MISC0
+doomed_num = 2018
+spawn_state = "ARM1"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special"]
+
+
+[[objects]]		# MT_MISC1
+doomed_num = 2019
+spawn_state = "ARM2"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special"]
+
+
+[[objects]]		# MT_MISC2
+doomed_num = 2014
+spawn_state = "BON1"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special","CountItem"]
+
+
+[[objects]]		# MT_MISC3
+doomed_num = 2015
+spawn_state = "BON2"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special","CountItem"]
+
+
+[[objects]]		# MT_MISC4
+doomed_num = 5
+spawn_state = "BKEY"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special","NotDMatch"]
+
+
+[[objects]]		# MT_MISC5
+doomed_num = 13
+spawn_state = "RKEY"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special","NotDMatch"]
+
+
+[[objects]]		# MT_MISC6
+doomed_num = 6
+spawn_state = "YKEY"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special","NotDMatch"]
+
+
+[[objects]]		# MT_MISC7
+doomed_num = 39
+spawn_state = "YSKULL"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special","NotDMatch"]
+
+
+[[objects]]		# MT_MISC8
+doomed_num = 38
+spawn_state = "RSKULL"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special","NotDMatch"]
+
+
+[[objects]]		# MT_MISC9
+doomed_num = 40
+spawn_state = "BSKULL"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special","NotDMatch"]
+
+
+[[objects]]		# MT_MISC10
+doomed_num = 2011
+spawn_state = "STIM"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special"]
+
+
+[[objects]]		# MT_MISC11
+doomed_num = 2012
+spawn_state = "MEDI"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special"]
+
+
+[[objects]]		# MT_MISC12
+doomed_num = 2013
+spawn_state = "SOUL"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special","CountItem"]
+
+
+[[objects]]		# MT_INV
+doomed_num = 2022
+spawn_state = "PINV"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special","CountItem"]
+
+
+[[objects]]		# MT_MISC13
+doomed_num = 2023
+spawn_state = "PSTR"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special","CountItem"]
+
+
+[[objects]]		# MT_INS
+doomed_num = 2024
+spawn_state = "PINS"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special","CountItem"]
+
+
+[[objects]]		# MT_MISC14
+doomed_num = 2025
+spawn_state = "SUIT"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special"]
+
+
+[[objects]]		# MT_MISC15
+doomed_num = 2026
+spawn_state = "PMAP"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special","CountItem"]
+
+
+[[objects]]		# MT_MISC16
+doomed_num = 2045
+spawn_state = "PVIS"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special","CountItem"]
+
+
+[[objects]]		# MT_MEGA
+doomed_num = 83
+spawn_state = "MEGA"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special","CountItem"]
+
+
+[[objects]]		# MT_CLIP
+doomed_num = 2007
+spawn_state = "CLIP"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special"]
+
+
+[[objects]]		# MT_MISC17
+doomed_num = 2048
+spawn_state = "AMMO"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special"]
+
+
+[[objects]]		# MT_MISC18
+doomed_num = 2010
+spawn_state = "ROCK"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special"]
+
+
+[[objects]]		# MT_MISC19
+doomed_num = 2046
+spawn_state = "BROK"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special"]
+
+
+[[objects]]		# MT_MISC20
+doomed_num = 2047
+spawn_state = "CELL"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special"]
+
+
+[[objects]]		# MT_MISC21
+doomed_num = 17
+spawn_state = "CELP"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special"]
+
+
+[[objects]]		# MT_MISC22
+doomed_num = 2008
+spawn_state = "SHEL"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special"]
+
+
+[[objects]]		# MT_MISC23
+doomed_num = 2049
+spawn_state = "SBOX"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special"]
+
+
+[[objects]]		# MT_MISC24
+doomed_num = 8
+spawn_state = "BPAK"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special"]
+
+
+[[objects]]		# MT_MISC25
+doomed_num = 2006
+spawn_state = "BFUG"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special"]
+
+
+[[objects]]		# MT_CHAINGUN
+doomed_num = 2002
+spawn_state = "MGUN"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special"]
+
+
+[[objects]]		# MT_MISC26
+doomed_num = 2005
+spawn_state = "CSAW"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special"]
+
+
+[[objects]]		# MT_MISC27
+doomed_num = 2003
+spawn_state = "LAUN"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special"]
+
+
+[[objects]]		# MT_MISC28
+doomed_num = 2004
+spawn_state = "PLAS"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special"]
+
+
+[[objects]]		# MT_SHOTGUN
+doomed_num = 2001
+spawn_state = "SHOT"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special"]
+
+
+[[objects]]		# MT_SUPERSHOTGUN
+doomed_num = 82
+spawn_state = "SHOT2"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Special"]
+
+
+[[objects]]		# MT_MISC29
+doomed_num = 85
+spawn_state = "TechLamp"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Solid"]
+
+
+[[objects]]		# MT_MISC30
+doomed_num = 86
+spawn_state = "Tech2Lamp"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Solid"]
+
+
+[[objects]]		# MT_MISC31
+doomed_num = 2028
+spawn_state = "COLU"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Solid"]
+
+
+[[objects]]		# MT_MISC32
+doomed_num = 30
+spawn_state = "TallGrnCol"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Solid"]
+
+
+[[objects]]		# MT_MISC33
+doomed_num = 31
+spawn_state = "ShrtGrnCol"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Solid"]
+
+
+[[objects]]		# MT_MISC34
+doomed_num = 32
+spawn_state = "TallRedCol"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Solid"]
+
+
+[[objects]]		# MT_MISC35
+doomed_num = 33
+spawn_state = "ShrtRedCol"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Solid"]
+
+
+[[objects]]		# MT_MISC36
+doomed_num = 37
+spawn_state = "SkullCol"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Solid"]
+
+
+[[objects]]		# MT_MISC37
+doomed_num = 36
+spawn_state = "HeartCol"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Solid"]
+
+
+[[objects]]		# MT_MISC38
+doomed_num = 41
+spawn_state = "EvilEye"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Solid"]
+
+
+[[objects]]		# MT_MISC39
+doomed_num = 42
+spawn_state = "FloatSkull"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Solid"]
+
+
+[[objects]]		# MT_MISC40
+doomed_num = 43
+spawn_state = "TorchTree"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Solid"]
+
+
+[[objects]]		# MT_MISC41
+doomed_num = 44
+spawn_state = "BlueTorch"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Solid"]
+
+
+[[objects]]		# MT_MISC42
+doomed_num = 45
+spawn_state = "GreenTorch"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Solid"]
+
+
+[[objects]]		# MT_MISC43
+doomed_num = 46
+spawn_state = "RedTorch"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Solid"]
+
+
+[[objects]]		# MT_MISC44
+doomed_num = 55
+spawn_state = "BTorchShrt"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Solid"]
+
+
+[[objects]]		# MT_MISC45
+doomed_num = 56
+spawn_state = "GTorchShrt"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Solid"]
+
+
+[[objects]]		# MT_MISC46
+doomed_num = 57
+spawn_state = "RTorchShrt"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Solid"]
+
+
+[[objects]]		# MT_MISC47
+doomed_num = 47
+spawn_state = "Stalagtite"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Solid"]
+
+
+[[objects]]		# MT_MISC48
+doomed_num = 48
+spawn_state = "TechPillar"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Solid"]
+
+
+[[objects]]		# MT_MISC49
+doomed_num = 34
+spawn_state = "CandleStick"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = []
+
+
+[[objects]]		# MT_MISC50
+doomed_num = 35
+spawn_state = "Candelabra"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Solid"]
+
+
+[[objects]]		# MT_MISC51
+doomed_num = 49
+spawn_state = "BloodyTwitch"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 68.0
+mass = 100
+damage = 0
+flags = ["Solid","SpawnCeiling","NoGravity"]
+
+
+[[objects]]		# MT_MISC52
+doomed_num = 50
+spawn_state = "Meat2"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 84.0
+mass = 100
+damage = 0
+flags = ["Solid","SpawnCeiling","NoGravity"]
+
+
+[[objects]]		# MT_MISC53
+doomed_num = 51
+spawn_state = "Meat3"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 84.0
+mass = 100
+damage = 0
+flags = ["Solid","SpawnCeiling","NoGravity"]
+
+
+[[objects]]		# MT_MISC54
+doomed_num = 52
+spawn_state = "Meat4"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 68.0
+mass = 100
+damage = 0
+flags = ["Solid","SpawnCeiling","NoGravity"]
+
+
+[[objects]]		# MT_MISC55
+doomed_num = 53
+spawn_state = "Meat5"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 52.0
+mass = 100
+damage = 0
+flags = ["Solid","SpawnCeiling","NoGravity"]
+
+
+[[objects]]		# MT_MISC56
+doomed_num = 59
+spawn_state = "Meat2"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 84.0
+mass = 100
+damage = 0
+flags = ["SpawnCeiling","NoGravity"]
+
+
+[[objects]]		# MT_MISC57
+doomed_num = 60
+spawn_state = "Meat4"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 68.0
+mass = 100
+damage = 0
+flags = ["SpawnCeiling","NoGravity"]
+
+
+[[objects]]		# MT_MISC58
+doomed_num = 61
+spawn_state = "Meat3"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 52.0
+mass = 100
+damage = 0
+flags = ["SpawnCeiling","NoGravity"]
+
+
+[[objects]]		# MT_MISC59
+doomed_num = 62
+spawn_state = "Meat5"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 52.0
+mass = 100
+damage = 0
+flags = ["SpawnCeiling","NoGravity"]
+
+
+[[objects]]		# MT_MISC60
+doomed_num = 63
+spawn_state = "BloodyTwitch"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 68.0
+mass = 100
+damage = 0
+flags = ["SpawnCeiling","NoGravity"]
+
+
+[[objects]]		# MT_MISC61
+doomed_num = 22
+spawn_state = "HEADDie6"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = []
+
+
+[[objects]]		# MT_MISC62
+doomed_num = 15
+spawn_state = "PLAYDie7"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = []
+
+
+[[objects]]		# MT_MISC63
+doomed_num = 18
+spawn_state = "POSSDie5"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = []
+
+
+[[objects]]		# MT_MISC64
+doomed_num = 21
+spawn_state = "SARGDie6"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = []
+
+
+[[objects]]		# MT_MISC65
+doomed_num = 23
+spawn_state = "SKULLDie6"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = []
+
+
+[[objects]]		# MT_MISC66
+doomed_num = 20
+spawn_state = "TROODie5"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = []
+
+
+[[objects]]		# MT_MISC67
+doomed_num = 19
+spawn_state = "SPOSDie5"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = []
+
+
+[[objects]]		# MT_MISC68
+doomed_num = 10
+spawn_state = "PLAYXDie9"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = []
+
+
+[[objects]]		# MT_MISC69
+doomed_num = 12
+spawn_state = "PLAYXDie9"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = []
+
+
+[[objects]]		# MT_MISC70
+doomed_num = 28
+spawn_state = "HeadsOnStick"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Solid"]
+
+
+[[objects]]		# MT_MISC71
+doomed_num = 24
+spawn_state = "Gibs"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = []
+
+
+[[objects]]		# MT_MISC72
+doomed_num = 27
+spawn_state = "HeadOnAStick"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Solid"]
+
+
+[[objects]]		# MT_MISC73
+doomed_num = 29
+spawn_state = "HeadCandles"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Solid"]
+
+
+[[objects]]		# MT_MISC74
+doomed_num = 25
+spawn_state = "DeadStick"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Solid"]
+
+
+[[objects]]		# MT_MISC75
+doomed_num = 26
+spawn_state = "LiveStick"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Solid"]
+
+
+[[objects]]		# MT_MISC76
+doomed_num = 54
+spawn_state = "BigTree"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 32.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Solid"]
+
+
+[[objects]]		# MT_MISC77
+doomed_num = 70
+spawn_state = "BBAR1"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["Solid"]
+
+
+[[objects]]		# MT_MISC78
+doomed_num = 73
+spawn_state = "HangNoGuts"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 88.0
+mass = 100
+damage = 0
+flags = ["Solid","SpawnCeiling","NoGravity"]
+
+
+[[objects]]		# MT_MISC79
+doomed_num = 74
+spawn_state = "HangBNoBrain"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 88.0
+mass = 100
+damage = 0
+flags = ["Solid","SpawnCeiling","NoGravity"]
+
+
+[[objects]]		# MT_MISC80
+doomed_num = 75
+spawn_state = "HangtLookDn"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 64.0
+mass = 100
+damage = 0
+flags = ["Solid","SpawnCeiling","NoGravity"]
+
+
+[[objects]]		# MT_MISC81
+doomed_num = 76
+spawn_state = "HangtSkull"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 64.0
+mass = 100
+damage = 0
+flags = ["Solid","SpawnCeiling","NoGravity"]
+
+
+[[objects]]		# MT_MISC82
+doomed_num = 77
+spawn_state = "HangtLookUp"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 64.0
+mass = 100
+damage = 0
+flags = ["Solid","SpawnCeiling","NoGravity"]
+
+
+[[objects]]		# MT_MISC83
+doomed_num = 78
+spawn_state = "HangtNoBrain"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 16.0
+height = 64.0
+mass = 100
+damage = 0
+flags = ["Solid","SpawnCeiling","NoGravity"]
+
+
+[[objects]]		# MT_MISC84
+doomed_num = 79
+spawn_state = "ColonGibs"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["NoBlockmap"]
+
+
+[[objects]]		# MT_MISC85
+doomed_num = 80
+spawn_state = "SmallPool"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["NoBlockmap"]
+
+
+[[objects]]		# MT_MISC86
+doomed_num = 81
+spawn_state = "BrainStem"
+spawn_health = 1000
+reaction_time = 8
+pain_chance = 0
+speed = 0.0
+radius = 20.0
+height = 16.0
+mass = 100
+damage = 0
+flags = ["NoBlockmap"]
+    
+	
