@@ -96,9 +96,20 @@ void VulkanRenderer::updateUniformBuffer(const UniformBufferObject* ubo_ptr, uin
     ubo->proj[5] *= -1.0f;
 }
 
+void VulkanRenderer::updateObjectInstances(const ObjectInstance* instances_ptr, size_t instances_count) {
+    this->activeObjectsCount = static_cast<uint32_t>(instances_count);
+    
+    if (this->activeObjectsCount == 0 || instances_ptr == nullptr) {
+        return;
+    }
+
+	VkDeviceSize instanceBufferSize = sizeof(ObjectInstance) * this->activeObjectsCount;
+    memcpy(this->instanceBuffersMapped[this->currentFrame], instances_ptr, instanceBufferSize);   
+}
+
 void VulkanRenderer::setPaletteIndex(uint32_t idx) {
 	this->currentPaletteIndex = idx % MAX_PAL;
-};
+}
 
 void VulkanRenderer::startFrame(const UniformBufferObject* ubo_ptr) {
 	VkCommandBuffer currentCommandBuffer = this->commandBuffers[this->currentFrame];
@@ -173,9 +184,9 @@ void VulkanRenderer::drawObjects() {
             0, nullptr
         );
         
-        VkBuffer vertexBuffers[] = {this->objectVertexBuffer};
-        VkDeviceSize offsets[] = {0};
-        vkCmdBindVertexBuffers(currentCommandBuffer, 0, 1, vertexBuffers, offsets);
+        VkBuffer vertexBuffers[] = {this->objectVertexBuffer, this->instanceBuffers[this->currentFrame]};
+        VkDeviceSize offsets[] = {0, 0};
+        vkCmdBindVertexBuffers(currentCommandBuffer, 0, 2, vertexBuffers, offsets);
         
         vkCmdBindIndexBuffer(currentCommandBuffer, this->objectIndexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
@@ -191,7 +202,9 @@ void VulkanRenderer::drawObjects() {
             &constants 
         );
 
-        vkCmdDrawIndexed(currentCommandBuffer, this->objectIndexCount, 1, 0, 0, 0);
+        if (this->activeObjectsCount > 0) {
+            vkCmdDrawIndexed(currentCommandBuffer, this->objectIndexCount, this->activeObjectsCount, 0, 0, 0);
+        }
     }
 }
 

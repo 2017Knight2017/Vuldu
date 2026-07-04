@@ -40,11 +40,11 @@ struct MobjConfig {
     objects: Vec<MobjInfo>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Copy, Deserialize)]
 pub struct State {
     pub sprite: SpriteNum,
-    pub frame: u64,
-    pub tics: i64,
+    pub frame: u32,
+    pub tics: i32,
     pub action: Option<ActionFunc>,
     pub next_state: Option<StateNum>,
 }
@@ -103,4 +103,3 @@ pub fn populate_database() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-

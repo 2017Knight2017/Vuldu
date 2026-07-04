@@ -1272,7 +1272,7 @@ frame = 22
 tics = -1
 
 
-[[states]]		# POSStnd
+[[states]]		# POSSStnd
 sprite = "POSS"
 frame = 0
 tics = 10
@@ -1280,7 +1280,7 @@ action = "Look"
 next_state = "POSSStnd2"
 
 
-[[states]]		# POSStnd2
+[[states]]		# POSSStnd2
 sprite = "POSS"
 frame = 1
 tics = 10
@@ -1288,7 +1288,7 @@ action = "Look"
 next_state = "POSSStnd"
 
 
-[[states]]		# POSRUN1
+[[states]]		# POSSRun1
 sprite = "POSS"
 frame = 0
 tics = 4
@@ -1296,7 +1296,7 @@ action = "Chase"
 next_state = "POSSRun2"
 
 
-[[states]]		# POSRUN2
+[[states]]		# POSSRun2
 sprite = "POSS"
 frame = 0
 tics = 4
@@ -1304,7 +1304,7 @@ action = "Chase"
 next_state = "POSSRun3"
 
 
-[[states]]		# POSRUN3
+[[states]]		# POSSRun3
 sprite = "POSS"
 frame = 1
 tics = 4
@@ -1312,7 +1312,7 @@ action = "Chase"
 next_state = "POSSRun4"
 
 
-[[states]]		# POSRUN4
+[[states]]		# POSSRun4
 sprite = "POSS"
 frame = 1
 tics = 4
@@ -1320,7 +1320,7 @@ action = "Chase"
 next_state = "POSSRun5"
 
 
-[[states]]		# POSRUN5
+[[states]]		# POSSRun5
 sprite = "POSS"
 frame = 2
 tics = 4
@@ -1328,7 +1328,7 @@ action = "Chase"
 next_state = "POSSRun6"
 
 
-[[states]]		# POSRUN6
+[[states]]		# POSSRun6
 sprite = "POSS"
 frame = 2
 tics = 4
@@ -1336,7 +1336,7 @@ action = "Chase"
 next_state = "POSSRun7"
 
 
-[[states]]		# POSRUN7
+[[states]]		# POSSRun7
 sprite = "POSS"
 frame = 3
 tics = 4
@@ -1344,7 +1344,7 @@ action = "Chase"
 next_state = "POSSRun8"
 
 
-[[states]]		# POSRUN8
+[[states]]		# POSSRun8
 sprite = "POSS"
 frame = 3
 tics = 4
@@ -1352,7 +1352,7 @@ action = "Chase"
 next_state = "POSSRun1"
 
 
-[[states]]		# POSATK1
+[[states]]		# POSSAtk1
 sprite = "POSS"
 frame = 4
 tics = 10
@@ -1360,7 +1360,7 @@ action = "FaceTarget"
 next_state = "POSSAtk2"
 
 
-[[states]]		# POSATK2
+[[states]]		# POSSAtk2
 sprite = "POSS"
 frame = 5
 tics = 8
@@ -1368,21 +1368,21 @@ action = "PosAttack"
 next_state = "POSSAtk3"
 
 
-[[states]]		# POSATK3
+[[states]]		# POSSAtk3
 sprite = "POSS"
 frame = 4
 tics = 8
 next_state = "POSSRun1"
 
 
-[[states]]		# POSPAIN
+[[states]]		# POSSPain
 sprite = "POSS"
 frame = 6
 tics = 3
 next_state = "POSSPain2"
 
 
-[[states]]		# POSPAIN2
+[[states]]		# POSSPain2
 sprite = "POSS"
 frame = 6
 tics = 3
@@ -1390,14 +1390,14 @@ action = "Pain"
 next_state = "POSSRun1"
 
 
-[[states]]		# POSDIE1
+[[states]]		# POSSDie1
 sprite = "POSS"
 frame = 7
 tics = 5
 next_state = "POSSDie2"
 
 
-[[states]]		# POSDIE2
+[[states]]		# POSSDie2
 sprite = "POSS"
 frame = 8
 tics = 5
@@ -1405,7 +1405,7 @@ action = "Scream"
 next_state = "POSSDie3"
 
 
-[[states]]		# POSDIE3
+[[states]]		# POSSDie3
 sprite = "POSS"
 frame = 9
 tics = 5
@@ -1413,27 +1413,27 @@ action = "Fall"
 next_state = "POSSDie4"
 
 
-[[states]]		# POSDIE4
+[[states]]		# POSSDie4
 sprite = "POSS"
 frame = 10
 tics = 5
 next_state = "POSSDie5"
 
 
-[[states]]		# POSDIE5
+[[states]]		# POSSDie5
 sprite = "POSS"
 frame = 11
 tics = -1
 
 
-[[states]]		# POSXDIE1
+[[states]]		# POSSXDie1
 sprite = "POSS"
 frame = 12
 tics = 5
 next_state = "POSSXDie2"
 
 
-[[states]]		# POSXDIE2
+[[states]]		# POSSXDie2
 sprite = "POSS"
 frame = 13
 tics = 5
@@ -1441,7 +1441,7 @@ action = "XScream"
 next_state = "POSSXDie3"
 
 
-[[states]]		# POSXDIE3
+[[states]]		# POSSXDie3
 sprite = "POSS"
 frame = 14
 tics = 5
@@ -1449,76 +1449,76 @@ action = "Fall"
 next_state = "POSSXDie4"
 
 
-[[states]]		# POSXDIE4
+[[states]]		# POSSXDie4
 sprite = "POSS"
 frame = 15
 tics = 5
 next_state = "POSSXDie5"
 
 
-[[states]]		# POSXDIE5
+[[states]]		# POSSXDie5
 sprite = "POSS"
 frame = 16
 tics = 5
 next_state = "POSSXDie6"
 
 
-[[states]]		# POSXDIE6
+[[states]]		# POSSXDie6
 sprite = "POSS"
 frame = 17
 tics = 5
 next_state = "POSSXDie7"
 
 
-[[states]]		# POSXDIE7
+[[states]]		# POSSXDie7
 sprite = "POSS"
 frame = 18
 tics = 5
 next_state = "POSSXDie8"
 
 
-[[states]]		# POSXDIE8
+[[states]]		# POSSXDie8
 sprite = "POSS"
 frame = 19
 tics = 5
 next_state = "POSSXDie9"
 
 
-[[states]]		# POSXDIE9
+[[states]]		# POSSXDie9
 sprite = "POSS"
 frame = 20
 tics = -1
 
 
-[[states]]		# POSRAISE1
+[[states]]		# POSSRaise1
 sprite = "POSS"
 frame = 10
 tics = 5
 next_state = "POSSRaise2"
 
 
-[[states]]		# POSRAISE2
+[[states]]		# POSSRaise2
 sprite = "POSS"
 frame = 9
 tics = 5
 next_state = "POSSRaise3"
 
 
-[[states]]		# POSRAISE3
+[[states]]		# POSSRaise3
 sprite = "POSS"
 frame = 8
 tics = 5
 next_state = "POSSRaise4"
 
 
-[[states]]		# POSRAISE4
+[[states]]		# POSSRaise4
 sprite = "POSS"
 frame = 7
 tics = 5
 next_state = "POSSRun1"
 
 
-[[states]]		# SPOStnd
+[[states]]		# SPOSStnd
 sprite = "SPOS"
 frame = 0
 tics = 10
@@ -1526,7 +1526,7 @@ action = "Look"
 next_state = "SPOSStnd2"
 
 
-[[states]]		# SPOStnd2
+[[states]]		# SPOSStnd2
 sprite = "SPOS"
 frame = 1
 tics = 10
@@ -1534,7 +1534,7 @@ action = "Look"
 next_state = "SPOSStnd"
 
 
-[[states]]		# SPORUN1
+[[states]]		# SPOSRun1
 sprite = "SPOS"
 frame = 0
 tics = 3
@@ -1542,7 +1542,7 @@ action = "Chase"
 next_state = "SPOSRun2"
 
 
-[[states]]		# SPORUN2
+[[states]]		# SPOSRun2
 sprite = "SPOS"
 frame = 0
 tics = 3
@@ -1550,7 +1550,7 @@ action = "Chase"
 next_state = "SPOSRun3"
 
 
-[[states]]		# SPORUN3
+[[states]]		# SPOSRun3
 sprite = "SPOS"
 frame = 1
 tics = 3
@@ -1558,7 +1558,7 @@ action = "Chase"
 next_state = "SPOSRun4"
 
 
-[[states]]		# SPORUN4
+[[states]]		# SPOSRun4
 sprite = "SPOS"
 frame = 1
 tics = 3
@@ -1566,7 +1566,7 @@ action = "Chase"
 next_state = "SPOSRun5"
 
 
-[[states]]		# SPORUN5
+[[states]]		# SPOSRun5
 sprite = "SPOS"
 frame = 2
 tics = 3
@@ -1574,7 +1574,7 @@ action = "Chase"
 next_state = "SPOSRun6"
 
 
-[[states]]		# SPORUN6
+[[states]]		# SPOSRun6
 sprite = "SPOS"
 frame = 2
 tics = 3
@@ -1582,7 +1582,7 @@ action = "Chase"
 next_state = "SPOSRun7"
 
 
-[[states]]		# SPORUN7
+[[states]]		# SPOSRun7
 sprite = "SPOS"
 frame = 3
 tics = 3
@@ -1590,7 +1590,7 @@ action = "Chase"
 next_state = "SPOSRun8"
 
 
-[[states]]		# SPORUN8
+[[states]]		# SPOSRun8
 sprite = "SPOS"
 frame = 3
 tics = 3
@@ -1598,7 +1598,7 @@ action = "Chase"
 next_state = "SPOSRun1"
 
 
-[[states]]		# SPOATK1
+[[states]]		# SPOSAtk1
 sprite = "SPOS"
 frame = 4
 tics = 10
@@ -1606,7 +1606,7 @@ action = "FaceTarget"
 next_state = "SPOSAtk2"
 
 
-[[states]]		# SPOATK2
+[[states]]		# SPOSAtk2
 sprite = "SPOS"
 frame = 32773
 tics = 10
@@ -1614,21 +1614,21 @@ action = "SPosAttack"
 next_state = "SPOSAtk3"
 
 
-[[states]]		# SPOATK3
+[[states]]		# SPOSAtk3
 sprite = "SPOS"
 frame = 4
 tics = 10
 next_state = "SPOSRun1"
 
 
-[[states]]		# SPOPAIN
+[[states]]		# SPOSPain
 sprite = "SPOS"
 frame = 6
 tics = 3
 next_state = "SPOSPain2"
 
 
-[[states]]		# SPOPAIN2
+[[states]]		# SPOSPain2
 sprite = "SPOS"
 frame = 6
 tics = 3
@@ -1636,14 +1636,14 @@ action = "Pain"
 next_state = "SPOSRun1"
 
 
-[[states]]		# SPODIE1
+[[states]]		# SPOSDie1
 sprite = "SPOS"
 frame = 7
 tics = 5
 next_state = "SPOSDie2"
 
 
-[[states]]		# SPODIE2
+[[states]]		# SPOSDie2
 sprite = "SPOS"
 frame = 8
 tics = 5
@@ -1651,7 +1651,7 @@ action = "Scream"
 next_state = "SPOSDie3"
 
 
-[[states]]		# SPODIE3
+[[states]]		# SPOSDie3
 sprite = "SPOS"
 frame = 9
 tics = 5
@@ -1659,27 +1659,27 @@ action = "Fall"
 next_state = "SPOSDie4"
 
 
-[[states]]		# SPODIE4
+[[states]]		# SPOSDie4
 sprite = "SPOS"
 frame = 10
 tics = 5
 next_state = "SPOSDie5"
 
 
-[[states]]		# SPODIE5
+[[states]]		# SPOSDie5
 sprite = "SPOS"
 frame = 11
 tics = -1
 
 
-[[states]]		# SPOXDIE1
+[[states]]		# SPOSXDie1
 sprite = "SPOS"
 frame = 12
 tics = 5
 next_state = "SPOSXDie2"
 
 
-[[states]]		# SPOXDIE2
+[[states]]		# SPOSXDie2
 sprite = "SPOS"
 frame = 13
 tics = 5
@@ -1687,7 +1687,7 @@ action = "XScream"
 next_state = "SPOSXDie3"
 
 
-[[states]]		# SPOXDIE3
+[[states]]		# SPOSXDie3
 sprite = "SPOS"
 frame = 14
 tics = 5
@@ -1695,76 +1695,76 @@ action = "Fall"
 next_state = "SPOSXDie4"
 
 
-[[states]]		# SPOXDIE4
+[[states]]		# SPOSXDie4
 sprite = "SPOS"
 frame = 15
 tics = 5
 next_state = "SPOSXDie5"
 
 
-[[states]]		# SPOXDIE5
+[[states]]		# SPOSXDie5
 sprite = "SPOS"
 frame = 16
 tics = 5
 next_state = "SPOSXDie6"
 
 
-[[states]]		# SPOXDIE6
+[[states]]		# SPOSXDie6
 sprite = "SPOS"
 frame = 17
 tics = 5
 next_state = "SPOSXDie7"
 
 
-[[states]]		# SPOXDIE7
+[[states]]		# SPOSXDie7
 sprite = "SPOS"
 frame = 18
 tics = 5
 next_state = "SPOSXDie8"
 
 
-[[states]]		# SPOXDIE8
+[[states]]		# SPOSXDie8
 sprite = "SPOS"
 frame = 19
 tics = 5
 next_state = "SPOSXDie9"
 
 
-[[states]]		# SPOXDIE9
+[[states]]		# SPOSXDie9
 sprite = "SPOS"
 frame = 20
 tics = -1
 
 
-[[states]]		# SPORAISE1
+[[states]]		# SPOSRaise1
 sprite = "SPOS"
 frame = 11
 tics = 5
 next_state = "SPOSRaise2"
 
 
-[[states]]		# SPORAISE2
+[[states]]		# SPOSRaise2
 sprite = "SPOS"
 frame = 10
 tics = 5
 next_state = "SPOSRaise3"
 
 
-[[states]]		# SPORAISE3
+[[states]]		# SPOSRaise3
 sprite = "SPOS"
 frame = 9
 tics = 5
 next_state = "SPOSRaise4"
 
 
-[[states]]		# SPORAISE4
+[[states]]		# SPOSRaise4
 sprite = "SPOS"
 frame = 8
 tics = 5
 next_state = "SPOSRaise5"
 
 
-[[states]]		# SPORAISE5
+[[states]]		# SPOSRaise5
 sprite = "SPOS"
 frame = 7
 tics = 5
@@ -3031,7 +3031,7 @@ tics = 5
 next_state = "FATTRun1"
 
 
-[[states]]		# CPOStnd
+[[states]]		# CPOSStnd
 sprite = "CPOS"
 frame = 0
 tics = 10
@@ -3039,7 +3039,7 @@ action = "Look"
 next_state = "CPOSStnd2"
 
 
-[[states]]		# CPOStnd2
+[[states]]		# CPOSStnd2
 sprite = "CPOS"
 frame = 1
 tics = 10
@@ -3047,7 +3047,7 @@ action = "Look"
 next_state = "CPOSStnd"
 
 
-[[states]]		# CPORUN1
+[[states]]		# CPOSRun1
 sprite = "CPOS"
 frame = 0
 tics = 3
@@ -3055,7 +3055,7 @@ action = "Chase"
 next_state = "CPOSRun2"
 
 
-[[states]]		# CPORUN2
+[[states]]		# CPOSRun2
 sprite = "CPOS"
 frame = 0
 tics = 3
@@ -3063,7 +3063,7 @@ action = "Chase"
 next_state = "CPOSRun3"
 
 
-[[states]]		# CPORUN3
+[[states]]		# CPOSRun3
 sprite = "CPOS"
 frame = 1
 tics = 3
@@ -3071,7 +3071,7 @@ action = "Chase"
 next_state = "CPOSRun4"
 
 
-[[states]]		# CPORUN4
+[[states]]		# CPOSRun4
 sprite = "CPOS"
 frame = 1
 tics = 3
@@ -3079,7 +3079,7 @@ action = "Chase"
 next_state = "CPOSRun5"
 
 
-[[states]]		# CPORUN5
+[[states]]		# CPOSRun5
 sprite = "CPOS"
 frame = 2
 tics = 3
@@ -3087,7 +3087,7 @@ action = "Chase"
 next_state = "CPOSRun6"
 
 
-[[states]]		# CPORUN6
+[[states]]		# CPOSRun6
 sprite = "CPOS"
 frame = 2
 tics = 3
@@ -3095,7 +3095,7 @@ action = "Chase"
 next_state = "CPOSRun7"
 
 
-[[states]]		# CPORUN7
+[[states]]		# CPOSRun7
 sprite = "CPOS"
 frame = 3
 tics = 3
@@ -3103,7 +3103,7 @@ action = "Chase"
 next_state = "CPOSRun8"
 
 
-[[states]]		# CPORUN8
+[[states]]		# CPOSRun8
 sprite = "CPOS"
 frame = 3
 tics = 3
@@ -3111,7 +3111,7 @@ action = "Chase"
 next_state = "CPOSRun1"
 
 
-[[states]]		# CPOATK1
+[[states]]		# CPOSAtk1
 sprite = "CPOS"
 frame = 4
 tics = 10
@@ -3119,7 +3119,7 @@ action = "FaceTarget"
 next_state = "CPOSAtk2"
 
 
-[[states]]		# CPOATK2
+[[states]]		# CPOSAtk2
 sprite = "CPOS"
 frame = 32773
 tics = 4
@@ -3127,7 +3127,7 @@ action = "CPosAttack"
 next_state = "CPOSAtk3"
 
 
-[[states]]		# CPOATK3
+[[states]]		# CPOSAtk3
 sprite = "CPOS"
 frame = 32772
 tics = 4
@@ -3135,7 +3135,7 @@ action = "CPosAttack"
 next_state = "CPOSAtk4"
 
 
-[[states]]		# CPOATK4
+[[states]]		# CPOSAtk4
 sprite = "CPOS"
 frame = 5
 tics = 1
@@ -3143,14 +3143,14 @@ action = "CPosRefire"
 next_state = "CPOSAtk2"
 
 
-[[states]]		# CPOPAIN
+[[states]]		# CPOSPain
 sprite = "CPOS"
 frame = 6
 tics = 3
 next_state = "CPOSPain2"
 
 
-[[states]]		# CPOPAIN2
+[[states]]		# CPOSPain2
 sprite = "CPOS"
 frame = 6
 tics = 3
@@ -3158,14 +3158,14 @@ action = "Pain"
 next_state = "CPOSRun1"
 
 
-[[states]]		# CPODIE1
+[[states]]		# CPOSDie1
 sprite = "CPOS"
 frame = 7
 tics = 5
 next_state = "CPOSDie2"
 
 
-[[states]]		# CPODIE2
+[[states]]		# CPOSDie2
 sprite = "CPOS"
 frame = 8
 tics = 5
@@ -3173,7 +3173,7 @@ action = "Scream"
 next_state = "CPOSDie3"
 
 
-[[states]]		# CPODIE3
+[[states]]		# CPOSDie3
 sprite = "CPOS"
 frame = 9
 tics = 5
@@ -3181,41 +3181,41 @@ action = "Fall"
 next_state = "CPOSDie4"
 
 
-[[states]]		# CPODIE4
+[[states]]		# CPOSDie4
 sprite = "CPOS"
 frame = 10
 tics = 5
 next_state = "CPOSDie5"
 
 
-[[states]]		# CPODIE5
+[[states]]		# CPOSDie5
 sprite = "CPOS"
 frame = 11
 tics = 5
 next_state = "CPOSDie6"
 
 
-[[states]]		# CPODIE6
+[[states]]		# CPOSDie6
 sprite = "CPOS"
 frame = 12
 tics = 5
 next_state = "CPOSDie7"
 
 
-[[states]]		# CPODIE7
+[[states]]		# CPOSDie7
 sprite = "CPOS"
 frame = 13
 tics = -1
 
 
-[[states]]		# CPOXDIE1
+[[states]]		# CPOSXDie1
 sprite = "CPOS"
 frame = 14
 tics = 5
 next_state = "CPOSXDie2"
 
 
-[[states]]		# CPOXDIE2
+[[states]]		# CPOSXDie2
 sprite = "CPOS"
 frame = 15
 tics = 5
@@ -3223,7 +3223,7 @@ action = "XScream"
 next_state = "CPOSXDie3"
 
 
-[[states]]		# CPOXDIE3
+[[states]]		# CPOSXDie3
 sprite = "CPOS"
 frame = 16
 tics = 5
@@ -3231,69 +3231,69 @@ action = "Fall"
 next_state = "CPOSXDie4"
 
 
-[[states]]		# CPOXDIE4
+[[states]]		# CPOSXDie4
 sprite = "CPOS"
 frame = 17
 tics = 5
 next_state = "CPOSXDie5"
 
 
-[[states]]		# CPOXDIE5
+[[states]]		# CPOSXDie5
 sprite = "CPOS"
 frame = 18
 tics = 5
 next_state = "CPOSXDie6"
 
 
-[[states]]		# CPOXDIE6
+[[states]]		# CPOSXDie6
 sprite = "CPOS"
 frame = 19
 tics = -1
 
 
-[[states]]		# CPORAISE1
+[[states]]		# CPOSRaise1
 sprite = "CPOS"
 frame = 13
 tics = 5
 next_state = "CPOSRaise2"
 
 
-[[states]]		# CPORAISE2
+[[states]]		# CPOSRaise2
 sprite = "CPOS"
 frame = 12
 tics = 5
 next_state = "CPOSRaise3"
 
 
-[[states]]		# CPORAISE3
+[[states]]		# CPOSRaise3
 sprite = "CPOS"
 frame = 11
 tics = 5
 next_state = "CPOSRaise4"
 
 
-[[states]]		# CPORAISE4
+[[states]]		# CPOSRaise4
 sprite = "CPOS"
 frame = 10
 tics = 5
 next_state = "CPOSRaise5"
 
 
-[[states]]		# CPORAISE5
+[[states]]		# CPOSRaise5
 sprite = "CPOS"
 frame = 9
 tics = 5
 next_state = "CPOSRaise6"
 
 
-[[states]]		# CPORAISE6
+[[states]]		# CPOSRaise6
 sprite = "CPOS"
 frame = 8
 tics = 5
 next_state = "CPOSRaise7"
 
 
-[[states]]		# CPORAISE7
+[[states]]		# CPOSRaise7
 sprite = "CPOS"
 frame = 7
 tics = 5
@@ -3932,7 +3932,7 @@ frame = 32772
 tics = 6
 
 
-[[states]]		# BOSStnd
+[[states]]		# BOSSStnd
 sprite = "BOSS"
 frame = 0
 tics = 10
@@ -3940,7 +3940,7 @@ action = "Look"
 next_state = "BOSSStnd2"
 
 
-[[states]]		# BOSStnd2
+[[states]]		# BOSSStnd2
 sprite = "BOSS"
 frame = 1
 tics = 10
@@ -3948,7 +3948,7 @@ action = "Look"
 next_state = "BOSSStnd"
 
 
-[[states]]		# BOSRUN1
+[[states]]		# BOSSRun1
 sprite = "BOSS"
 frame = 0
 tics = 3
@@ -3956,7 +3956,7 @@ action = "Chase"
 next_state = "BOSSRun2"
 
 
-[[states]]		# BOSRUN2
+[[states]]		# BOSSRun2
 sprite = "BOSS"
 frame = 0
 tics = 3
@@ -3964,7 +3964,7 @@ action = "Chase"
 next_state = "BOSSRun3"
 
 
-[[states]]		# BOSRUN3
+[[states]]		# BOSSRun3
 sprite = "BOSS"
 frame = 1
 tics = 3
@@ -3972,7 +3972,7 @@ action = "Chase"
 next_state = "BOSSRun4"
 
 
-[[states]]		# BOSRUN4
+[[states]]		# BOSSRun4
 sprite = "BOSS"
 frame = 1
 tics = 3
@@ -3980,7 +3980,7 @@ action = "Chase"
 next_state = "BOSSRun5"
 
 
-[[states]]		# BOSRUN5
+[[states]]		# BOSSRun5
 sprite = "BOSS"
 frame = 2
 tics = 3
@@ -3988,7 +3988,7 @@ action = "Chase"
 next_state = "BOSSRun6"
 
 
-[[states]]		# BOSRUN6
+[[states]]		# BOSSRun6
 sprite = "BOSS"
 frame = 2
 tics = 3
@@ -3996,7 +3996,7 @@ action = "Chase"
 next_state = "BOSSRun7"
 
 
-[[states]]		# BOSRUN7
+[[states]]		# BOSSRun7
 sprite = "BOSS"
 frame = 3
 tics = 3
@@ -4004,7 +4004,7 @@ action = "Chase"
 next_state = "BOSSRun8"
 
 
-[[states]]		# BOSRUN8
+[[states]]		# BOSSRun8
 sprite = "BOSS"
 frame = 3
 tics = 3
@@ -4012,7 +4012,7 @@ action = "Chase"
 next_state = "BOSSRun1"
 
 
-[[states]]		# BOSATK1
+[[states]]		# BOSSAtk1
 sprite = "BOSS"
 frame = 4
 tics = 8
@@ -4020,7 +4020,7 @@ action = "FaceTarget"
 next_state = "BOSSAtk2"
 
 
-[[states]]		# BOSATK2
+[[states]]		# BOSSAtk2
 sprite = "BOSS"
 frame = 5
 tics = 8
@@ -4028,7 +4028,7 @@ action = "FaceTarget"
 next_state = "BOSSAtk3"
 
 
-[[states]]		# BOSATK3
+[[states]]		# BOSSAtk3
 sprite = "BOSS"
 frame = 6
 tics = 8
@@ -4036,14 +4036,14 @@ action = "BruisAttack"
 next_state = "BOSSRun1"
 
 
-[[states]]		# BOSPAIN
+[[states]]		# BOSSPain
 sprite = "BOSS"
 frame = 7
 tics = 2
 next_state = "BOSSPain2"
 
 
-[[states]]		# BOSPAIN2
+[[states]]		# BOSSPain2
 sprite = "BOSS"
 frame = 7
 tics = 2
@@ -4051,14 +4051,14 @@ action = "Pain"
 next_state = "BOSSRun1"
 
 
-[[states]]		# BOSDIE1
+[[states]]		# BOSSDie1
 sprite = "BOSS"
 frame = 8
 tics = 8
 next_state = "BOSSDie2"
 
 
-[[states]]		# BOSDIE2
+[[states]]		# BOSSDie2
 sprite = "BOSS"
 frame = 9
 tics = 8
@@ -4066,14 +4066,14 @@ action = "Scream"
 next_state = "BOSSDie3"
 
 
-[[states]]		# BOSDIE3
+[[states]]		# BOSSDie3
 sprite = "BOSS"
 frame = 10
 tics = 8
 next_state = "BOSSDie4"
 
 
-[[states]]		# BOSDIE4
+[[states]]		# BOSSDie4
 sprite = "BOSS"
 frame = 11
 tics = 8
@@ -4081,70 +4081,70 @@ action = "Fall"
 next_state = "BOSSDie5"
 
 
-[[states]]		# BOSDIE5
+[[states]]		# BOSSDie5
 sprite = "BOSS"
 frame = 12
 tics = 8
 next_state = "BOSSDie6"
 
 
-[[states]]		# BOSDIE6
+[[states]]		# BOSSDie6
 sprite = "BOSS"
 frame = 13
 tics = 8
 next_state = "BOSSDie7"
 
 
-[[states]]		# BOSDIE7
+[[states]]		# BOSSDie7
 sprite = "BOSS"
 frame = 14
 tics = -1
 action = "BossDeath"
 
 
-[[states]]		# BOSRAISE1
+[[states]]		# BOSSRaise1
 sprite = "BOSS"
 frame = 14
 tics = 8
 next_state = "BOSSRaise2"
 
 
-[[states]]		# BOSRAISE2
+[[states]]		# BOSSRaise2
 sprite = "BOSS"
 frame = 13
 tics = 8
 next_state = "BOSSRaise3"
 
 
-[[states]]		# BOSRAISE3
+[[states]]		# BOSSRaise3
 sprite = "BOSS"
 frame = 12
 tics = 8
 next_state = "BOSSRaise4"
 
 
-[[states]]		# BOSRAISE4
+[[states]]		# BOSSRaise4
 sprite = "BOSS"
 frame = 11
 tics = 8
 next_state = "BOSSRaise5"
 
 
-[[states]]		# BOSRAISE5
+[[states]]		# BOSSRaise5
 sprite = "BOSS"
 frame = 10
 tics = 8
 next_state = "BOSSRaise6"
 
 
-[[states]]		# BOSRAISE6
+[[states]]		# BOSSRaise6
 sprite = "BOSS"
 frame = 9
 tics = 8
 next_state = "BOSSRaise7"
 
 
-[[states]]		# BOSRAISE7
+[[states]]		# BOSSRaise7
 sprite = "BOSS"
 frame = 8
 tics = 8

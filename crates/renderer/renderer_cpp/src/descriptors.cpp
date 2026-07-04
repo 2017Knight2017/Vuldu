@@ -70,9 +70,35 @@ void VulkanRenderer::createUniformBuffers() {
     this->uniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, this->uniformBuffers[i], this->uniformBuffersMemory[i]);
+        createBuffer(
+            bufferSize, 
+            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
+            this->uniformBuffers[i], 
+            this->uniformBuffersMemory[i]
+        );
 
         vkMapMemory(this->device, this->uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
+    }
+}
+
+void VulkanRenderer::createInstanceBuffers() {
+    VkDeviceSize bufferSize = sizeof(ObjectInstance) * MAX_OBJECTS;
+
+    this->instanceBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+    this->instanceBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
+    this->instanceBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        createBuffer(
+            bufferSize, 
+            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
+            instanceBuffers[i], 
+            instanceBuffersMemory[i]
+        );
+
+        vkMapMemory(this->device, this->instanceBuffersMemory[i], 0, bufferSize, 0, &instanceBuffersMapped[i]);
     }
 }
 

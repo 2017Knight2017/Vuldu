@@ -16,13 +16,12 @@ layout(push_constant) uniform LevelConstants {
     uint paletteIndex;
 } lc;
 
-layout(location = 0) in vec3 fragLightLevel;      
+layout(location = 0) in float fragLightLevel;      
 layout(location = 1) in vec2 fragTexCoord;
 layout(location = 2) flat in uint fragTexId;
-layout(location = 3) flat in uint fragSectorId;
-layout(location = 4) flat in uint fragColormapIdx;
-//layout(location = 5) in vec3 fragBarycentric;
-//layout(location = 6) in vec3 fragTriangleColor;
+layout(location = 3) flat in uint fragColormapIdx;
+//layout(location = 4) in vec3 fragBarycentric;
+//layout(location = 5) in vec3 fragTriangleColor;
 
 layout(location = 0) out vec4 outColor;
 

@@ -1,6 +1,6 @@
 mod bridge; 
 
-pub use bridge::ffi::{WindowHandles, WindowSize, Vertex, UniformBufferObject, TextureDescriptor};
+pub use bridge::ffi::{WindowHandles, WindowSize, Vertex, UniformBufferObject, TextureDescriptor, ObjectInstance};
 use bridge::ffi::{VulkanRenderer, createRenderer};
 use std::pin::Pin;
 use cxx::UniquePtr;
@@ -66,6 +66,12 @@ impl SafeRenderer {
         }
     }
 
+    pub fn update_object_instances(&mut self, instances: &[ObjectInstance]) {
+        unsafe {
+            self.pin_mut().updateObjectInstances(instances.as_ptr(), instances.len());   
+        }
+    }
+
     pub fn start_frame(&mut self, ubo: &UniformBufferObject) {
         unsafe {
             self.pin_mut().startFrame(ubo as *const UniformBufferObject);
@@ -84,15 +90,9 @@ impl SafeRenderer {
         self.pin_mut().drawObjects();
     }
 
-    pub fn upload_texture_array(
-        &mut self, 
-        descriptors: &[TextureDescriptor], 
-        descriptor_count: usize, 
-        all_pixels: &[u8], 
-        all_pixels_count: usize
-    ) {
+    pub fn upload_texture_array(&mut self, descriptors: &[TextureDescriptor], all_pixels: &[u8]) {
         unsafe {
-            self.pin_mut().uploadTextureArray(descriptors.as_ptr(), descriptor_count, all_pixels.as_ptr(), all_pixels_count);
+            self.pin_mut().uploadTextureArray(descriptors.as_ptr(), descriptors.len(), all_pixels.as_ptr(), all_pixels.len());
         }
     }
 }

@@ -1,6 +1,6 @@
-use crate::{*, textures::SPRITE_NAMES};
+use crate::*;
 use bytemuck::{Pod, Zeroable};
-use renderer::Vertex;
+use renderer::{Vertex};
 use earcut::Earcut;
 
 #[repr(C)]
@@ -230,43 +230,38 @@ impl DoomMap {
 	            let start_idx = vertices.len() as u16;
 
 	            let clamped_light = front_sector.lightlevel.clamp(0, 255) as f32;
-	            let light_f32 = clamped_light / 255.0;
-	            let normalized_light_level = [light_f32, light_f32, light_f32];
+	            let modern_light = clamped_light / 255.0;
 	            let colormap_idx = 31 - ((clamped_light / 8.0).floor() as u32).clamp(0, 31);
 
 	            vertices.push(Vertex { 
 	                pos: [-(v1.x as f32), y_low, v1.y as f32],
-	                light_level: normalized_light_level,
 	                texture_pos: [u_start, v_end],
+					light_level: modern_light,
 	                texture_id: tex_id,
-	                sector_id: front_sector_id as u32,
 	                colormap_idx,
 	            });
 
 	            vertices.push(Vertex { 
 	                pos: [-(v2.x as f32), y_low, v2.y as f32],
-	                light_level: normalized_light_level,
 	                texture_pos: [u_end, v_end],
+					light_level: modern_light,
 	                texture_id: tex_id,
-	                sector_id: front_sector_id as u32,
 	                colormap_idx,
 	            });
 
 	            vertices.push(Vertex { 
 	                pos: [-(v1.x as f32), y_high, v1.y as f32],
-	                light_level: normalized_light_level,
 	                texture_pos: [u_start, v_start],
+					light_level: modern_light,
 	                texture_id: tex_id,
-	                sector_id: front_sector_id as u32,
 	                colormap_idx,
 	            });
 
 	            vertices.push(Vertex { 
 	                pos: [-(v2.x as f32), y_high, v2.y as f32],
-	                light_level: normalized_light_level,
 	                texture_pos: [u_end, v_start],
+					light_level: modern_light,
 	                texture_id: tex_id,
-	                sector_id: front_sector_id as u32,
 	                colormap_idx,
 	            });
 			
@@ -472,18 +467,16 @@ impl DoomMap {
 	            let ceil_texture_id = texture_ids.get(&ceil_texture_name).unwrap_or(&(0,0,0)).0;
 
 	            let clamped_light = sector.lightlevel.clamp(0, 255) as f32;
-	            let light_f32 = clamped_light / 255.0;
-	            let normalized_light_level = [light_f32, light_f32, light_f32];
+	            let modern_light = clamped_light / 255.0;
 	            let colormap_idx = 31 - ((clamped_light / 8.0).floor() as u32).clamp(0, 31);
 
 	            let floor_start_idx = vertices.len() as u16;
 	            for pt in &flat_points {
 	                vertices.push(Vertex { 
 	                    pos: [-(pt[0]), sector.floorheight.into(), pt[1]],
-	                    light_level: normalized_light_level,
 	                    texture_pos: [pt[0] / 64.0, pt[1] / 64.0],
+						light_level: modern_light,
 	                    texture_id: floor_texture_id,
-	                    sector_id: sector_id as u32,
 	                    colormap_idx,
 	                });
 	            }
@@ -497,10 +490,9 @@ impl DoomMap {
 	            for pt in &flat_points {
 	                vertices.push(Vertex { 
 	                    pos: [-(pt[0]), sector.ceilingheight.into(), pt[1]],
-	                    light_level: normalized_light_level,
 	                    texture_pos: [pt[0] / 64.0, pt[1] / 64.0],
+						light_level: modern_light,
 	                    texture_id: ceil_texture_id,
-	                    sector_id: sector_id as u32,
 	                    colormap_idx,
 	                });
 	            }
@@ -514,13 +506,13 @@ impl DoomMap {
 	    (vertices, indices)
 	}
 
-	pub fn get_sector_by_thing(&self, thing: &MapThing) -> usize {
+	pub fn get_sector_by_pos(&self, x: f32, y: f32) -> usize {
         if self.nodes.is_empty() {
             return 0;
         }
         
         let root_node_idx = self.nodes.len() - 1;
-        let subsector_idx = self.find_subsector_by_pos(root_node_idx, thing.x as f32, thing.y as f32);
+        let subsector_idx = self.find_subsector_by_pos(root_node_idx, x, y);
         let subsector = &self.subsectors[subsector_idx];
         
         let first_seg_idx = subsector.firstseg as usize;
@@ -556,79 +548,30 @@ impl DoomMap {
         }
     }
 
-	pub fn get_objects_vertices(
-		&self, 
-		texture_ids: &HashMap<String, (u32, u32, u32)>, 
-		sprite_offsets: Vec<(i16, i16)>) -> (Vec<Vertex>, Vec<u16>) 
-	{
-		let mut vertices = Vec::new();
-		let mut indices = Vec::new();
+	pub fn get_objects_vertices(&self) -> (Vec<Vertex>, Vec<u16>) {
+	    let corners = [
+		    ([0.0, 0.0, 0.0], [0.0, 1.0]),
+		    ([1.0, 0.0, 0.0], [1.0, 1.0]),
+		    ([1.0, 1.0, 0.0], [1.0, 0.0]),
+		    ([0.0, 1.0, 0.0], [0.0, 0.0]),
+		];
 
-		for thing in self.things.iter() {
-			let sector_idx = self.get_sector_by_thing(thing);
+	    let vertices: Vec<Vertex> = corners
+	        .iter()
+	        .map(|&(pos, uv)| Vertex {
+	            pos,
+	            texture_pos: uv,
 
-			let sector = self.sectors[sector_idx];
+				// stub values; they are used from ObjectInstance instead
+	            light_level: 1.0,
+	            texture_id: 0,
+	            colormap_idx: 0,
+	        })
+	        .collect();
 
-			let clamped_light = sector.lightlevel.clamp(0, 255) as f32;
-        	let light_f32 = clamped_light / 255.0;
-        	let colormap_idx = 31 - ((clamped_light / 8.0).floor() as u32).clamp(0, 31);
+	    let indices = vec![0, 1, 2, 0, 2, 3];
 
-			let tex_prefix = match SPRITE_NAMES.get(&thing.type_) {
-				Some(name_raw) => match name_raw {
-					Some(name) => *name,
-					None => continue
-				},
-				None => continue
-			};
-
-			let mut final_tex_name = format!("{}A1", tex_prefix);
-			if !texture_ids.contains_key(&final_tex_name) {
-			    final_tex_name = format!("{}A0", tex_prefix);
-			}
-
-			final_tex_name = match tex_prefix {
-				"BSPI" | "VILE" | "SPID" | "SKEL" => format!("{}A1D1", tex_prefix),
-				"BOS2" => format!("{}A1C1", tex_prefix),
-				_ => final_tex_name
-			};
-
-			let (tex_id, tex_width, tex_height) = texture_ids.get(&final_tex_name).unwrap_or(&(0,64,64));
-
-			let start_index = vertices.len() as u16;
-
-			let corners = [
-			    (0.0, 0.0),
-			    (1.0, 0.0),
-			    (1.0, 1.0),
-			    (0.0, 1.0),
-			];
-
-			for &(uv_x, uv_y) in &corners {
-				// since texture_ids is filled at the same time as sprite_offsets, 
-				// we can get the offsets by tex_id
-			    let x_offset = uv_x * *tex_width as f32 - sprite_offsets[*tex_id as usize].0 as f32;
-			    let y_offset = (1.0 - uv_y) * *tex_height as f32;
-
-			    vertices.push(Vertex { 
-			        pos: [-(thing.x as f32), sector.floorheight as f32, thing.y as f32], 
-			        light_level: [light_f32, x_offset, y_offset],
-			        texture_pos: [uv_x, uv_y],
-			        texture_id: *tex_id,
-			        sector_id: sector_idx as u32,
-			        colormap_idx: colormap_idx 
-			    });
-			}
-
-			indices.push(start_index + 0);
-			indices.push(start_index + 2);
-			indices.push(start_index + 1);
-
-			indices.push(start_index + 2);
-			indices.push(start_index + 0);
-			indices.push(start_index + 3);
-		}
-
-		(vertices, indices)
+	    (vertices, indices)
 	}
 }
 

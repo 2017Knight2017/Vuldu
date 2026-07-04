@@ -1,7 +1,7 @@
 use serde::Deserialize;
-use strum::EnumIter;
+use strum::{Display, EnumIter};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Display, Deserialize)]
 pub enum SpriteNum {
     TROO,SHTG,PUNG,PISG,PISF,SHTF,SHT2,CHGG,CHGF,MISG,
 	MISF,SAWG,PLSG,PLSF,BFGG,BFGF,BLUD,PUFF,BAL1,BAL2,

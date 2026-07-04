@@ -16,11 +16,10 @@ layout(push_constant) uniform SpriteConstants {
     uint paletteIndex;
 } sc;
 
-layout(location = 0) in vec3 fragLightLevel;      
-layout(location = 1) in vec2 fragTexCoord;
-layout(location = 2) flat in uint fragTexId;
-layout(location = 3) flat in uint fragSectorId;
-layout(location = 4) flat in uint fragColormapIdx;
+layout(location = 0) in vec2 fragTexCoord;
+layout(location = 1) flat in uint fragTexId;
+layout(location = 2) in float fragLightLevel;
+layout(location = 3) flat in uint fragColormapIdx;
 
 layout(location = 0) out vec4 outColor;
 
@@ -32,14 +31,16 @@ void main() {
         discard;
     }
 
+    // COLORMAP shadows
     uint colormapOffset = (fragColormapIdx * 256) | colorIndex;
     uint shadedIndex = uint(colormap.colors[colormapOffset]);
     
     uint colorPosition = (sc.paletteIndex * 256) | shadedIndex;
     vec4 finalColor = pal.colors[colorPosition];
 
-    vec3 modernColor = pal.colors[(sc.paletteIndex * 256) | colorIndex].rgb * fragLightLevel;
-
     outColor = vec4(finalColor.rgb, 1.0);
+
+    // 256-unit shadows
+    //vec3 modernColor = pal.colors[(sc.paletteIndex * 256) | colorIndex].rgb * fragLightLevel;
     //outColor = vec4(modernColor.rgb, 1.0);
 }

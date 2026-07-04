@@ -27,48 +27,38 @@ VkFormat VulkanRenderer::findDepthFormat() {
     );
 }
 
-VkVertexInputBindingDescription getBindingDescription() {
-    VkVertexInputBindingDescription bindingDescription{};
-	bindingDescription.binding = 0;
-	bindingDescription.stride = sizeof(Vertex);
-	bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-    return bindingDescription;
+std::vector<VkVertexInputBindingDescription> getLevelBindings() {
+    return { { 0, sizeof(Vertex), VK_VERTEX_INPUT_RATE_VERTEX } };
 }
 
-std::array<VkVertexInputAttributeDescription, 6> getAttributeDescriptions() {
-    std::array<VkVertexInputAttributeDescription, 6> attributeDescriptions{};
-	attributeDescriptions[0].binding = 0;
-	attributeDescriptions[0].location = 0;
-	attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-	attributeDescriptions[0].offset = offsetof(Vertex, pos);
+std::vector<VkVertexInputAttributeDescription> getLevelAttributes() {
+    return {
+        { 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, pos) },
+        { 1, 0, VK_FORMAT_R32G32_SFLOAT,    offsetof(Vertex, texture_pos) },
+        { 2, 0, VK_FORMAT_R32_SFLOAT,       offsetof(Vertex, light_level) },
+        { 3, 0, VK_FORMAT_R32_UINT,         offsetof(Vertex, texture_id) },
+        { 4, 0, VK_FORMAT_R32_UINT,         offsetof(Vertex, colormap_idx) }
+    };
+}
 
-	attributeDescriptions[1].binding = 0;
-	attributeDescriptions[1].location = 1;
-	attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-	attributeDescriptions[1].offset = offsetof(Vertex, light_level);
+std::vector<VkVertexInputBindingDescription> getSpriteBindings() {
+    return {
+        { 0, sizeof(Vertex), VK_VERTEX_INPUT_RATE_VERTEX },
+        { 1, sizeof(ObjectInstance), VK_VERTEX_INPUT_RATE_INSTANCE }
+    };
+}
 
-	attributeDescriptions[2].binding = 0;
-	attributeDescriptions[2].location = 2;
-	attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-	attributeDescriptions[2].offset = offsetof(Vertex, texture_pos);
-
-	attributeDescriptions[3].binding = 0;
-	attributeDescriptions[3].location = 3;
-	attributeDescriptions[3].format = VK_FORMAT_R32_SINT;
-	attributeDescriptions[3].offset = offsetof(Vertex, texture_id);
-
-	attributeDescriptions[4].binding = 0;
-	attributeDescriptions[4].location = 4;
-	attributeDescriptions[4].format = VK_FORMAT_R32_SINT;
-	attributeDescriptions[4].offset = offsetof(Vertex, sector_id);
-
-	attributeDescriptions[5].binding = 0;
-	attributeDescriptions[5].location = 5;
-	attributeDescriptions[5].format = VK_FORMAT_R32_SINT;
-	attributeDescriptions[5].offset = offsetof(Vertex, colormap_idx);
-
-    return attributeDescriptions;
+std::vector<VkVertexInputAttributeDescription> getSpriteAttributes() {
+    return {
+        { 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, pos) },
+        { 1, 0, VK_FORMAT_R32G32_SFLOAT,    offsetof(Vertex, texture_pos) },
+        { 2, 1, VK_FORMAT_R32G32B32_SFLOAT, offsetof(ObjectInstance, pos) },
+        { 3, 1, VK_FORMAT_R32G32_SFLOAT,    offsetof(ObjectInstance, sprite_offset) },
+		{ 4, 1, VK_FORMAT_R32G32_SFLOAT,    offsetof(ObjectInstance, sprite_size) },
+        { 5, 1, VK_FORMAT_R32_SFLOAT,       offsetof(ObjectInstance, light_level) },
+        { 6, 1, VK_FORMAT_R32_UINT,         offsetof(ObjectInstance, texture_id) },
+        { 7, 1, VK_FORMAT_R32_UINT,         offsetof(ObjectInstance, colormap_idx) }
+    };
 }
 
 void VulkanRenderer::createDepthResources() {
@@ -220,7 +210,6 @@ void VulkanRenderer::createGraphicsPipeline() {
 
 	VkPipelineShaderStageCreateInfo levelShaderStages[] = {levelVertShaderInfo, levelFragShaderInfo};
 
-	
 	std::vector<VkDynamicState> dynamicStates = {
 	    VK_DYNAMIC_STATE_VIEWPORT,
 	    VK_DYNAMIC_STATE_SCISSOR
@@ -230,9 +219,6 @@ void VulkanRenderer::createGraphicsPipeline() {
 	dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
 	dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
 	dynamicState.pDynamicStates = dynamicStates.data();
-
-	auto bindingDescription = getBindingDescription();
-	auto attributeDescriptions = getAttributeDescriptions();
 
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -302,12 +288,15 @@ void VulkanRenderer::createGraphicsPipeline() {
 	colorBlending.blendConstants[2] = 0.0f; // Optional
 	colorBlending.blendConstants[3] = 0.0f; // Optional
 
+	auto spriteBindingDescriptions = getSpriteBindings();
+	auto spriteAttributeDescriptions = getSpriteAttributes();
+
 	VkPipelineVertexInputStateCreateInfo spriteVertexInputInfo{};
 	spriteVertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	spriteVertexInputInfo.vertexBindingDescriptionCount = 1;
-	spriteVertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-	spriteVertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-	spriteVertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+	spriteVertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(spriteBindingDescriptions.size());
+	spriteVertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(spriteAttributeDescriptions.size());
+	spriteVertexInputInfo.pVertexBindingDescriptions = spriteBindingDescriptions.data();
+	spriteVertexInputInfo.pVertexAttributeDescriptions = spriteAttributeDescriptions.data();
 
 	VkPushConstantRange spritePushConstantRange{};
 	spritePushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; 
@@ -352,12 +341,15 @@ void VulkanRenderer::createGraphicsPipeline() {
 	vkDestroyShaderModule(this->device, spriteFragShaderModule, nullptr);
     vkDestroyShaderModule(this->device, spriteVertShaderModule, nullptr);
 
+	auto levelBindingDescriptions = getLevelBindings();
+	auto levelAttributeDescriptions = getLevelAttributes();
+
 	VkPipelineVertexInputStateCreateInfo levelVertexInputInfo{};
 	levelVertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	levelVertexInputInfo.vertexBindingDescriptionCount = 1;
-	levelVertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-	levelVertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-	levelVertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+	levelVertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(levelBindingDescriptions.size());
+	levelVertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(levelAttributeDescriptions.size());
+	levelVertexInputInfo.pVertexBindingDescriptions = levelBindingDescriptions.data();
+	levelVertexInputInfo.pVertexAttributeDescriptions = levelAttributeDescriptions.data();
 
 	VkPushConstantRange levelPushConstantRange{};
 	levelPushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; 

@@ -1,14 +1,15 @@
 use crate::{
-	constants::{NUMCARDS, NUMWEAPONS},
+	constants::{NUMCARDS, NUMWEAPONS, MOBJTYPE_BY_DOOMEDNUM},
 	data_tables::DB,
 	components::*,
 	enums::*
 };
 use hecs::World;
+use wad_parser::map::DoomMap;
 
 pub fn spawn_mobj(
 	world: &mut World, 
-	mobj_type: MobjType, 
+	mobj_type_raw: Option<MobjType>, 
 	x_raw: i16, 
 	y_raw: i16, 
 	z_raw: i16, 
@@ -20,6 +21,11 @@ pub fn spawn_mobj(
 
     let angle = angle_raw as u32 / 45 * 0x20000000;
 
+	let mobj_type = match mobj_type_raw {
+		Some(mobj) => mobj,
+		None => return
+	};
+
 	let mobj_info = DB.get().expect("DB has not been initialized!").mobjinfo.get(&mobj_type).unwrap();
 
 	let mut entity_builder = hecs::EntityBuilder::new();
@@ -27,7 +33,8 @@ pub fn spawn_mobj(
     entity_builder
 		.add(Transform { x, y, z, prev_x: x, prev_y: y, prev_z: z, angle, prev_angle: angle })
 		.add(Velocity::default())
-		.add(BoundingBox { radius: mobj_info.radius, height: mobj_info.height });
+		.add(BoundingBox { radius: mobj_info.radius, height: mobj_info.height })
+		.add(SpriteAnimation {current_state: mobj_info.spawn_state, tics_left: 8});
 
 	for flag in &mobj_info.flags {
 		match flag {
@@ -76,4 +83,15 @@ pub fn spawn_mobj(
 	};
 
     world.spawn(entity_builder.build());
+}
+
+pub fn spawn_all_things(world: &mut World, map: &DoomMap) {
+	for thing in map.things.iter() {
+		let sector_idx = map.get_sector_by_pos(thing.x as f32, thing.y as f32);
+		let sector = map.sectors[sector_idx];
+
+		if let Some(thing_type) =  MOBJTYPE_BY_DOOMEDNUM.get(&thing.type_) {
+			spawn_mobj(world, *thing_type, -thing.x, sector.floorheight, thing.y, thing.angle);
+		}
+	};
 }

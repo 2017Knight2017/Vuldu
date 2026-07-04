@@ -25,14 +25,13 @@ void VulkanRenderer::initVulkan(const WindowHandles& handles, size_t window_raw_
     createDescriptorSetLayout();
     createGraphicsPipeline();
     createUniformBuffers();
+    createInstanceBuffers();
     createDescriptorPool();
     createDescriptorSets(); 
     createCommandPool();
     createDepthResources();
     createFramebuffers();
     createTextureSampler();
-    //uint8_t dummyPixel[] = { 255, 0, 255, 255 };
-    //addTexture(dummyPixel, 1, 1);
     createCommandBuffers();
     createSyncObjects();
 }
@@ -101,11 +100,23 @@ void VulkanRenderer::cleanup() {
     this->textureImageMemories.clear();
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        if (this->uniformBuffersMapped[i] != nullptr) {
+            vkUnmapMemory(this->device, this->uniformBuffersMemory[i]);
+        }
+        if (this->instanceBuffersMapped[i] != nullptr) {
+            vkUnmapMemory(this->device, this->instanceBuffersMemory[i]);
+        }
         vkDestroyBuffer(this->device, this->uniformBuffers[i], nullptr);
         vkFreeMemory(this->device, this->uniformBuffersMemory[i], nullptr);
+        vkDestroyBuffer(this->device, this->instanceBuffers[i], nullptr);
+        vkFreeMemory(this->device, this->instanceBuffersMemory[i], nullptr);
     }
     this->uniformBuffers.clear();
     this->uniformBuffersMemory.clear();
+    this->uniformBuffersMapped.clear();
+    this->instanceBuffers.clear();
+    this->instanceBuffersMemory.clear();
+    this->instanceBuffersMapped.clear();
 
     destroyResource(this->device, this->descriptorPool, vkDestroyDescriptorPool);
     destroyResource(this->device, this->descriptorSetLayout, vkDestroyDescriptorSetLayout);

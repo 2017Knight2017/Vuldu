@@ -1,6 +1,6 @@
 use crate::{
-	enums::{PlayerState, SFX, StateNum},
-	constants::{NUMCARDS, NUMWEAPONS, NUMAMMO}
+	constants::{NUMAMMO, NUMCARDS, NUMWEAPONS},
+    enums::{PlayerState, SFX, StateNum}
 };
 use hecs::Bundle;
 
@@ -65,8 +65,8 @@ pub struct AiAgent {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SpriteAnimation {
-    pub current_state: StateNum, 
-    pub tics_left: u32,
+    pub current_state: Option<StateNum>, 
+    pub tics_left: i32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

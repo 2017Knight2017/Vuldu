@@ -1,3 +1,5 @@
+mod prepare_for_renderer;
+
 use renderer::*;
 use wad_parser::map::DoomMap;
 use wad_parser::*;
@@ -26,11 +28,30 @@ struct App {
     wad: Wad,
     world: World,
     map: DoomMap,
+    texture_data: HashMap<String, (u32, u32, u32)>,
+    sprite_offsets: Vec<(i16, i16)>,
     is_shutting_down: bool,
     current_input: PlayerInput,
     view_matrix: Mat4,
     last_frame_time: Instant,
     time_accumulator: f32,
+}
+
+fn register_sprite(texture_data_map: &mut HashMap<String, (u32, u32, u32)>, lump_name: &str, texture_tuple: (u32, u32, u32)) {
+    if lump_name.len() == 6 {
+        texture_data_map.insert(lump_name.to_string(), texture_tuple);
+    } else if lump_name.len() == 8 {
+        let prefix = &lump_name[0..4]; 
+
+        let frame1 = lump_name.chars().nth(4).unwrap(); 
+        let view1  = lump_name.chars().nth(5).unwrap(); 
+
+        let frame2 = lump_name.chars().nth(6).unwrap(); 
+        let view2  = lump_name.chars().nth(7).unwrap(); 
+
+        texture_data_map.insert(format!("{}{}{}", prefix, frame1, view1), texture_tuple); // VILEA1
+        texture_data_map.insert(format!("{}{}{}_FLIP", prefix, frame2, view2), texture_tuple); // VILED1
+    }
 }
 
 impl App {
@@ -46,7 +67,7 @@ impl App {
             let interpolated_angle_u32 = transform.prev_angle.wrapping_add_signed(interpolated_diff);
 
             let angle_normalized = interpolated_angle_u32 as f64 / u32::MAX as f64;
-            let angle_rad = (angle_normalized * (2.0 * std::f64::consts::PI)) as f32;
+            let angle_rad = (angle_normalized * std::f64::consts::TAU) as f32;
 
             let target_dir = glam::vec3(f32::sin(angle_rad), 0.0, f32::cos(angle_rad));
             let camera_target = interpolated_pos + target_dir;
@@ -77,8 +98,10 @@ impl ApplicationHandler for App {
             let plr_spawn = self.map.things
                 .iter().find(|thing| thing.type_ == 1)
                 .unwrap();
-            let plr_floorheight = self.map.sectors[self.map.get_sector_by_thing(plr_spawn)].floorheight;
-            engine::spawn_mobj(&mut self.world, MobjType::Player, -plr_spawn.x, plr_floorheight, plr_spawn.y, plr_spawn.angle);
+            let plr_floorheight = self.map.sectors[self.map.get_sector_by_pos(plr_spawn.x as f32, plr_spawn.y as f32)].floorheight;
+            engine::spawn_mobj(&mut self.world, Some(MobjType::Player), -plr_spawn.x, plr_floorheight, plr_spawn.y, plr_spawn.angle);
+
+            engine::spawn_all_things(&mut self.world, &self.map);
             
             self.renderer = Some(SafeRenderer::new());
 
@@ -104,10 +127,8 @@ impl ApplicationHandler for App {
                     let mut all_pixels = Vec::new();
                     let mut descriptors = Vec::with_capacity(total_textures_count);
 
-                    let mut texture_data = HashMap::new();
                     let mut current_gpu_id = 0;
 
-                    let mut sprite_offsets = Vec::new();
                     let mut are_objects_recording = true;
 
                     for (tex_names, pics) in [
@@ -117,6 +138,13 @@ impl ApplicationHandler for App {
                     {
                         for (idx, pic) in pics.iter().enumerate() {
                             let name = &tex_names[idx];
+
+                            if are_objects_recording {
+                                self.sprite_offsets.push((pic.left_offset, pic.top_offset));
+                                register_sprite(&mut self.texture_data, name, (current_gpu_id, pic.width, pic.height))
+                            } else {
+                                self.texture_data.insert(name.clone(), (current_gpu_id, pic.width, pic.height));
+                            }
                         
                             descriptors.push(TextureDescriptor {
                                 width: pic.width,
@@ -128,17 +156,12 @@ impl ApplicationHandler for App {
                                 all_pixels.push(lump_pixel);
                             }
                         
-                            texture_data.insert(name.clone(), (current_gpu_id, pic.width, pic.height));
                             current_gpu_id += 1;
-
-                            if are_objects_recording {
-                                sprite_offsets.push((pic.left_offset, pic.top_offset));
-                            }
                         }
                         are_objects_recording = false;
                     }
 
-                    renderer.upload_texture_array(descriptors.as_slice(), descriptors.len(), all_pixels.as_slice(), all_pixels.len());
+                    renderer.upload_texture_array(descriptors.as_slice(), all_pixels.as_slice());
 
                     renderer.upload_palettes(self.wad
                         .get_palettes()
@@ -150,9 +173,9 @@ impl ApplicationHandler for App {
                         .expect("No COLORMAP in the wad!")
                     );
 
-                    let (wall_vertices, wall_indices) = self.map.get_walls_vertices(&texture_data);
-                    let (flat_vertices, flat_indices) = self.map.get_flats_vertices(&texture_data);
-                    let (obj_vertices, obj_indices) = self.map.get_objects_vertices(&texture_data, sprite_offsets);
+                    let (wall_vertices, wall_indices) = self.map.get_walls_vertices(&self.texture_data);
+                    let (flat_vertices, flat_indices) = self.map.get_flats_vertices(&self.texture_data);
+                    let (obj_vertices, obj_indices) = self.map.get_objects_vertices();
 
                     let mut level_vertices = wall_vertices;
                     let mut level_indices = wall_indices;
@@ -164,6 +187,7 @@ impl ApplicationHandler for App {
                         level_indices.push(vertex_offset + idx);
                     }
 
+                    renderer.update_object_instances(&[]);
                     renderer.update_level_geometry(&level_vertices, &level_indices);
                     renderer.update_object_geometry(&obj_vertices, &obj_indices);
                 }
@@ -224,8 +248,12 @@ impl ApplicationHandler for App {
                 self.time_accumulator += delta_time;
 
                 while self.time_accumulator >= TICK_TIME {
+                    
                     engine::update_physics(&mut self.world, &self.current_input);
                     engine::system_movement_and_friction(&mut self.world);
+
+                    engine::animation_system(&mut self.world);
+                    
                     self.current_input.mouse_delta_x = 0.0;
                     self.time_accumulator -= TICK_TIME;
                 }
@@ -233,11 +261,15 @@ impl ApplicationHandler for App {
                 let alpha = self.time_accumulator / TICK_TIME;
                 self.update_camera_from_player(alpha);
 
+                let instances = self.collect_object_instances(alpha);
+
                 if let (Some(renderer), Some(window)) = (&mut self.renderer, &self.window) {
                     let size = window.inner_size();
                     if size.width == 0 || size.height == 0 {
                         return;
                     }
+
+                    renderer.update_object_instances(&instances);
 
                     let aspect_ratio = size.width as f32 / size.height as f32;
                 
@@ -248,8 +280,8 @@ impl ApplicationHandler for App {
                         view: self.view_matrix.to_cols_array(),
                         proj: proj.to_cols_array(),
                     };
-                
-                    renderer.start_frame(&ubo); 
+                    
+                    renderer.start_frame(&ubo);
                     renderer.draw_level();
                     renderer.draw_objects();
                     renderer.end_frame();
@@ -287,6 +319,8 @@ fn main() -> Result<(), String> {
         wad: wad,
         world: World::new(),
         map: map,
+        texture_data: HashMap::new(),
+        sprite_offsets: Vec::new(),
         is_shutting_down: false,
         current_input: PlayerInput::default(),
         view_matrix: Mat4::default(),

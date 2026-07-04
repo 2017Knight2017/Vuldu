@@ -15,11 +15,13 @@ inline const uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 inline const uint32_t MAX_TEXTURES = 2048;  // Maximal amount of textures on a level
 inline const uint32_t MAX_PAL = 14;
 inline const uint32_t MAX_LIGHTLEVEL = 32;
+inline const uint32_t MAX_OBJECTS = 100000;
 
 struct WindowHandles;
 struct Vertex;
 struct UniformBufferObject;
 struct TextureDescriptor;
+struct ObjectInstance;
 
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily;
@@ -65,9 +67,9 @@ public:
     ~VulkanRenderer();
     void initVulkan(const WindowHandles& handles, size_t window_raw_ptr);
     void cleanup();
-    uint32_t addTexture(const uint8_t* pixels_ptr, uint32_t width, uint32_t height);
     void updateLevelGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint16_t* indices_ptr, size_t index_count);
     void updateObjectGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint16_t* indices_ptr, size_t index_count);
+    void updateObjectInstances(const ObjectInstance* instances_ptr, size_t instances_count);
     void uploadPalettes(const float* palettes_ptr);
     void uploadColormap(const uint8_t* colormap_ptr);
     void uploadTextureArray(const TextureDescriptor* descriptors_ptr, size_t descriptor_count, const uint8_t* all_pixels_ptr, size_t all_pixels_count);
@@ -110,6 +112,11 @@ private:
     std::vector<VkBuffer> uniformBuffers;
     std::vector<VkDeviceMemory> uniformBuffersMemory;
     std::vector<void*> uniformBuffersMapped;
+
+    std::vector<VkBuffer> instanceBuffers;
+    std::vector<VkDeviceMemory> instanceBuffersMemory;
+    std::vector<void*> instanceBuffersMapped;
+    uint32_t activeObjectsCount = 0;
 
     VkBuffer levelVertexBuffer = VK_NULL_HANDLE;
     VkDeviceMemory levelVertexBufferMemory = VK_NULL_HANDLE;
@@ -160,6 +167,7 @@ private:
     void createDepthResources();
     void createFramebuffers();
     void createUniformBuffers();
+    void createInstanceBuffers();
     void createDescriptorPool();
     void createDescriptorSets();
     void createTextureSampler();
