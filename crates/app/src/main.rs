@@ -185,7 +185,7 @@ impl ApplicationHandler for App {
                     let mut level_vertices = wall_vertices;
                     let mut level_indices = wall_indices;
 
-                    let vertex_offset = level_vertices.len() as u16; 
+                    let vertex_offset = level_vertices.len() as u32; 
                     level_vertices.extend(flat_vertices);
 
                     for idx in flat_indices {

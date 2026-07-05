@@ -68,8 +68,8 @@ public:
     void initVulkan(const WindowHandles& handles, size_t window_raw_ptr);
     void cleanup();
     void recreateSwapChain();
-    void updateLevelGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint16_t* indices_ptr, size_t index_count);
-    void updateObjectGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint16_t* indices_ptr, size_t index_count);
+    void updateLevelGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint32_t* indices_ptr, size_t index_count);
+    void updateObjectGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint32_t* indices_ptr, size_t index_count);
     void updateObjectInstances(const ObjectInstance* instances_ptr, size_t instances_count);
     void uploadPalettes(const float* palettes_ptr);
     void uploadColormap(const uint8_t* colormap_ptr);

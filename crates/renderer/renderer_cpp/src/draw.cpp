@@ -188,7 +188,7 @@ void VulkanRenderer::drawObjects() {
         VkDeviceSize offsets[] = {0, 0};
         vkCmdBindVertexBuffers(currentCommandBuffer, 0, 2, vertexBuffers, offsets);
         
-        vkCmdBindIndexBuffer(currentCommandBuffer, this->objectIndexBuffer, 0, VK_INDEX_TYPE_UINT16);
+        vkCmdBindIndexBuffer(currentCommandBuffer, this->objectIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
         PushConstants constants{};
         constants.paletteIndex = this->currentPaletteIndex;
@@ -279,7 +279,7 @@ void VulkanRenderer::drawLevel() {
         VkDeviceSize offsets[] = {0};
 
         vkCmdBindVertexBuffers(currentCommandBuffer, 0, 1, vertexBuffers, offsets);
-        vkCmdBindIndexBuffer(currentCommandBuffer, this->levelIndexBuffer, 0, VK_INDEX_TYPE_UINT16);
+        vkCmdBindIndexBuffer(currentCommandBuffer, this->levelIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
         PushConstants constants{};
         constants.paletteIndex = this->currentPaletteIndex;

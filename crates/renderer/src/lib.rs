@@ -48,7 +48,7 @@ impl SafeRenderer {
         self.pin_mut().setPaletteIndex(idx);
     }
 
-    pub fn update_level_geometry(&mut self, vertices: &[Vertex], indices: &[u16]) {
+    pub fn update_level_geometry(&mut self, vertices: &[Vertex], indices: &[u32]) {
         unsafe {
             self.pin_mut().updateLevelGeometry(
                 vertices.as_ptr(),
@@ -59,7 +59,7 @@ impl SafeRenderer {
         }
     }
 
-    pub fn update_object_geometry(&mut self, vertices: &[Vertex], indices: &[u16]) {
+    pub fn update_object_geometry(&mut self, vertices: &[Vertex], indices: &[u32]) {
         unsafe {
             self.pin_mut().updateObjectGeometry(
                 vertices.as_ptr(),

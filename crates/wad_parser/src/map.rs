@@ -180,7 +180,7 @@ impl DoomMap {
         Ok(map)
     }
 
-	pub fn get_walls_vertices(&self, texture_ids: &HashMap<String, (u32, u32, u32)>) -> (Vec<Vertex>, Vec<u16>) {
+	pub fn get_walls_vertices(&self, texture_ids: &HashMap<String, (u32, u32, u32)>) -> (Vec<Vertex>, Vec<u32>) {
 	    let mut vertices = Vec::new();
 	    let mut indices = Vec::new();
 
@@ -227,7 +227,7 @@ impl DoomMap {
 	                (-(wall_height / tex_height as f32), 0.0)
 	            };
 
-	            let start_idx = vertices.len() as u16;
+	            let start_idx = vertices.len() as u32;
 
 	            let clamped_light = front_sector.lightlevel.clamp(0, 255) as f32;
 	            let modern_light = clamped_light / 255.0;
@@ -303,9 +303,9 @@ impl DoomMap {
 	    (vertices, indices)
 	}
 
-	pub fn get_flats_vertices(&self, texture_ids: &HashMap<String, (u32, u32, u32)>) -> (Vec<Vertex>, Vec<u16>) {
+	pub fn get_flats_vertices(&self, texture_ids: &HashMap<String, (u32, u32, u32)>) -> (Vec<Vertex>, Vec<u32>) {
 	    let mut vertices: Vec<Vertex> = Vec::new();
-	    let mut indices: Vec<u16> = Vec::new();
+	    let mut indices: Vec<u32> = Vec::new();
 
 	    for (sector_id, sector) in self.sectors.iter().enumerate() {
 	        let current_sector_id = sector_id as i16;
@@ -438,7 +438,7 @@ impl DoomMap {
 	                    let mut hole_copy = hole.clone();
 	                    if hole_copy.len() < 3 { continue; }
 					
-	                    let current_hole_start = flat_points.len() as u16;
+	                    let current_hole_start = flat_points.len() as u32;
 	                    hole_indices.push(current_hole_start);
 					
 	                    let mut h_area = 0.0;
@@ -452,7 +452,7 @@ impl DoomMap {
 	                }
 	            }
 			
-	            let mut sector_indices: Vec<u16> = Vec::new();
+	            let mut sector_indices: Vec<u32> = Vec::new();
 	            let mut earcut = Earcut::new();
 	            earcut.earcut(flat_points.iter().copied(), &hole_indices, &mut sector_indices);
 			
@@ -470,7 +470,7 @@ impl DoomMap {
 	            let modern_light = clamped_light / 255.0;
 	            let colormap_idx = 31 - ((clamped_light / 8.0).floor() as u32).clamp(0, 31);
 
-	            let floor_start_idx = vertices.len() as u16;
+	            let floor_start_idx = vertices.len() as u32;
 	            for pt in &flat_points {
 	                vertices.push(Vertex { 
 	                    pos: [-(pt[0]), sector.floorheight.into(), pt[1]],
@@ -486,7 +486,7 @@ impl DoomMap {
 	                indices.push(floor_start_idx + chunk[2]);
 	            }
 
-	            let ceil_start_idx = vertices.len() as u16;
+	            let ceil_start_idx = vertices.len() as u32;
 	            for pt in &flat_points {
 	                vertices.push(Vertex { 
 	                    pos: [-(pt[0]), sector.ceilingheight.into(), pt[1]],
@@ -548,7 +548,7 @@ impl DoomMap {
         }
     }
 
-	pub fn get_objects_vertices(&self) -> (Vec<Vertex>, Vec<u16>) {
+	pub fn get_objects_vertices(&self) -> (Vec<Vertex>, Vec<u32>) {
 	    let corners = [
 		    ([0.0, 0.0, 0.0], [0.0, 1.0]),
 		    ([1.0, 0.0, 0.0], [1.0, 1.0]),

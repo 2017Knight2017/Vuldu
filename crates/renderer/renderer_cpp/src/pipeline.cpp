@@ -68,7 +68,7 @@ void VulkanRenderer::createDepthResources() {
 	this->depthImageView = createImageView(this->device, this->depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
-void VulkanRenderer::updateLevelGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint16_t* indices_ptr, size_t index_count) {
+void VulkanRenderer::updateLevelGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint32_t* indices_ptr, size_t index_count) {
     if (vertex_count == 0 || vertices_ptr == nullptr || index_count == 0 || indices_ptr == nullptr) return;
 
     vkDeviceWaitIdle(this->device);
@@ -82,7 +82,7 @@ void VulkanRenderer::updateLevelGeometry(const Vertex* vertices_ptr, size_t vert
     this->levelIndexCount = static_cast<uint32_t>(index_count);
 
     VkDeviceSize vertexBufferSize = sizeof(Vertex) * vertex_count;
-    VkDeviceSize indexBufferSize = sizeof(uint16_t) * index_count;
+    VkDeviceSize indexBufferSize = sizeof(uint32_t) * index_count;
 
     VkBuffer vertexStagingBuffer;
     VkDeviceMemory vertexStagingBufferMemory;
@@ -120,7 +120,7 @@ void VulkanRenderer::updateLevelGeometry(const Vertex* vertices_ptr, size_t vert
     vkFreeMemory(this->device, indexStagingBufferMemory, nullptr);
 }
 
-void VulkanRenderer::updateObjectGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint16_t* indices_ptr, size_t index_count) {
+void VulkanRenderer::updateObjectGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint32_t* indices_ptr, size_t index_count) {
     if (vertex_count == 0 || vertices_ptr == nullptr || index_count == 0 || indices_ptr == nullptr) return;
 
     vkDeviceWaitIdle(this->device);
@@ -134,7 +134,7 @@ void VulkanRenderer::updateObjectGeometry(const Vertex* vertices_ptr, size_t ver
     this->objectIndexCount = static_cast<uint32_t>(index_count);
 
     VkDeviceSize vertexBufferSize = sizeof(Vertex) * vertex_count;
-    VkDeviceSize indexBufferSize = sizeof(uint16_t) * index_count;
+    VkDeviceSize indexBufferSize = sizeof(uint32_t) * index_count;
 
     VkBuffer vertexStagingBuffer;
     VkDeviceMemory vertexStagingBufferMemory;
