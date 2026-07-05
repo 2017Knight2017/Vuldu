@@ -12,7 +12,7 @@ const bool enableValidationLayers = false;
 #endif
 
 inline const uint32_t MAX_FRAMES_IN_FLIGHT = 2;
-inline const uint32_t MAX_TEXTURES = 2048;  // Maximal amount of textures on a level
+inline const uint32_t MAX_TEXTURES = 8192;  // Maximal amount of textures on a level
 inline const uint32_t MAX_PAL = 14;
 inline const uint32_t MAX_LIGHTLEVEL = 32;
 inline const uint32_t MAX_OBJECTS = 100000;

@@ -105,6 +105,35 @@ pub struct MapThing
 	pub options: i16,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct Aabb {
+    min_x: f32,
+    max_x: f32,
+    min_y: f32,
+    max_y: f32,
+}
+
+impl Aabb {
+    fn from_polygon(poly: &[[f32; 2]]) -> Self {
+        let mut min_x = f32::MAX;
+        let mut max_x = f32::MIN;
+        let mut min_y = f32::MAX;
+        let mut max_y = f32::MIN;
+        for pt in poly {
+            if pt[0] < min_x { min_x = pt[0]; }
+            if pt[0] > max_x { max_x = pt[0]; }
+            if pt[1] < min_y { min_y = pt[1]; }
+            if pt[1] > max_y { max_y = pt[1]; }
+        }
+        Aabb { min_x, max_x, min_y, max_y }
+    }
+
+    fn intersects(&self, other: &Self) -> bool {
+        self.min_x <= other.max_x && self.max_x >= other.min_x &&
+        self.min_y <= other.max_y && self.max_y >= other.min_y
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct DoomMap {
     vertices: Vec<MapVertex>,
@@ -307,11 +336,29 @@ impl DoomMap {
 	    let mut vertices: Vec<Vertex> = Vec::new();
 	    let mut indices: Vec<u32> = Vec::new();
 
+		let mut sector_to_linedefs: HashMap<i16, Vec<&MapLinedef>> = HashMap::with_capacity(self.sectors.len());
+    	for linedef in self.linedefs.iter() {
+    	    if linedef.sidenum[0] != -1 {
+    	        if let Some(side) = self.sidedefs.get(linedef.sidenum[0] as usize) {
+    	            sector_to_linedefs.entry(side.sector).or_default().push(linedef);
+    	        }
+    	    }
+    	    if linedef.sidenum[1] != -1 {
+    	        if let Some(side) = self.sidedefs.get(linedef.sidenum[1] as usize) {
+    	            sector_to_linedefs.entry(side.sector).or_default().push(linedef);
+    	        }
+    	    }
+    	}
+
 	    for (sector_id, sector) in self.sectors.iter().enumerate() {
 	        let current_sector_id = sector_id as i16;
-	        let mut edges: Vec<([f32; 2], [f32; 2])> = Vec::new();
+			let sector_linedefs = match sector_to_linedefs.get(&current_sector_id) {
+        	    Some(list) => list,
+        	    None => continue,
+        	};
+	        let mut edges: Vec<([f32; 2], [f32; 2])> = Vec::with_capacity(sector_linedefs.len() * 2);
 
-	        for linedef in self.linedefs.iter() {
+	        for linedef in sector_linedefs {
 	            let v1 = self.vertices[linedef.v1 as usize];
 	            let v2 = self.vertices[linedef.v2 as usize];
 	            let p1 = [v1.x as f32, v1.y as f32];
@@ -336,7 +383,7 @@ impl DoomMap {
 
 	        while !edges.is_empty() {
 	            let mut current_loop = Vec::new();
-	            let (p1, p2) = edges.remove(0);
+	            let (p1, p2) = edges.swap_remove(0);
 	            current_loop.push(p1);
 	            let mut current_tip = p2;
 
@@ -351,7 +398,7 @@ impl DoomMap {
 	                }
 
 	                if let Some(idx) = found_idx {
-	                    let next_edge = edges.remove(idx);
+	                    let next_edge = edges.swap_remove(idx);
 	                    current_loop.push(current_tip);
 	                    current_tip = next_edge.1;
 	                } else {
@@ -395,26 +442,29 @@ impl DoomMap {
 	            area_b.partial_cmp(&area_a).unwrap_or(std::cmp::Ordering::Equal)
 	        });
 
-	        let mut outer_sectors: Vec<Vec<[f32; 2]>> = Vec::new();
+	        let mut outer_sectors: Vec<(Vec<[f32; 2]>, Aabb)> = Vec::new();
 	        let mut hole_loops: Vec<Vec<[f32; 2]>> = Vec::new();
 
 	        for poly_loop in polygon_loops.iter().cloned() {
+				let poly_aabb = Aabb::from_polygon(&poly_loop);
 	            let mut is_hole = false;
-	            for outer in &outer_sectors {
-	                if poly_loop.iter().any(|&pt| point_in_polygon(pt, outer)) {
-	                    is_hole = true;
-	                    break;
-	                }
-	            }
+	            for (outer, outer_aabb) in &outer_sectors {
+            	    if poly_aabb.intersects(outer_aabb) {
+            	        if poly_loop.iter().any(|&pt| point_in_polygon(pt, outer)) {
+            	            is_hole = true;
+            	            break;
+            	        }
+            	    }
+            	}
 
 	            if is_hole {
 	                hole_loops.push(poly_loop);
 	            } else {
-	                outer_sectors.push(poly_loop);
+	                outer_sectors.push((poly_loop, poly_aabb));
 	            }
 	        }
 
-	        for mut outer_loop in outer_sectors {
+	        for (mut outer_loop, outer_aabb) in outer_sectors {
 	            if outer_loop.len() < 3 { continue; }
 
 	            let mut flat_points = Vec::new();
@@ -430,26 +480,26 @@ impl DoomMap {
 
 	            for pt in &outer_loop { flat_points.push(*pt); }
 
-	            let mut diagnostic_holes = Vec::new();
 	            for hole in &hole_loops {
-	                if hole.iter().any(|&pt| point_in_polygon(pt, &outer_loop)) {
-	                    diagnostic_holes.push(hole.clone());
+					let hole_aabb = Aabb::from_polygon(hole);
+                	if !outer_aabb.intersects(&hole_aabb) { continue; }
 
-	                    let mut hole_copy = hole.clone();
-	                    if hole_copy.len() < 3 { continue; }
-					
-	                    let current_hole_start = flat_points.len() as u32;
-	                    hole_indices.push(current_hole_start);
-					
-	                    let mut h_area = 0.0;
-	                    let h_len = hole_copy.len();
-	                    for i in 0..h_len {
-	                        let next = (i + 1) % h_len;
-	                        h_area += hole_copy[i][0] * hole_copy[next][1] - hole_copy[next][0] * hole_copy[i][1];
-	                    }
-	                    if h_area > 0.0 { hole_copy.reverse(); }
-	                    for pt in hole_copy { flat_points.push(pt); }
+	                if !hole.iter().any(|&pt| point_in_polygon(pt, &outer_loop)) { continue; }
+
+	                let mut hole_copy = hole.clone();
+	                if hole_copy.len() < 3 { continue; }
+				
+	                let current_hole_start = flat_points.len() as u32;
+	                hole_indices.push(current_hole_start);
+				
+	                let mut h_area = 0.0;
+	                let h_len = hole_copy.len();
+	                for i in 0..h_len {
+	                    let next = (i + 1) % h_len;
+	                    h_area += hole_copy[i][0] * hole_copy[next][1] - hole_copy[next][0] * hole_copy[i][1];
 	                }
+	                if h_area > 0.0 { hole_copy.reverse(); }
+	                for pt in hole_copy { flat_points.push(pt); }
 	            }
 			
 	            let mut sector_indices: Vec<u32> = Vec::new();

@@ -76,7 +76,7 @@ impl App {
             	}
 			}
 
-	        let (tex_id, tex_width, tex_height) = self.texture_data[&final_tex_name];
+	        let (tex_id, tex_width, tex_height) = *self.texture_data.get(&final_tex_name).unwrap_or(&(0, 64, 64));
 			let (left_offset, top_offset) = self.sprite_offsets[tex_id as usize];
 
 			let mut final_width = tex_width as f32;
