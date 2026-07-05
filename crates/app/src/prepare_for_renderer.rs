@@ -1,6 +1,6 @@
 use crate::App;
 use renderer::ObjectInstance;
-use engine::{DB, Health, PlayerMarker, SpriteAnimation, Transform};
+use engine::{CountItem, DB, PlayerMarker, Shootable, SpriteAnimation, SpriteNum, Transform};
 use glam::{Vec3};
 use std::f64::consts::TAU;
 use hecs::Entity;
@@ -26,11 +26,7 @@ impl App {
 
 	        let lerped_x = transform.prev_x * (1.0 - alpha) + transform.x * alpha;
 	        let mut lerped_y = transform.prev_y * (1.0 - alpha) + transform.y * alpha;
-	        let lerped_z = transform.prev_z * (1.0 - alpha) + transform.z * alpha;
-
-			if self.world.get::<&Health>(entity).is_ok() {
-				lerped_y += 5.0;
-			}
+	        let lerped_z = transform.prev_z * (1.0 - alpha) + transform.z * alpha;	
 		
 	        let monster_pos = Vec3::new(lerped_x, lerped_y, lerped_z);
 
@@ -56,6 +52,16 @@ impl App {
 		
 	        let tex_prefix = current_state_data.sprite;
 	        let frame_letter = (b'A' + current_state_data.frame as u8) as char;
+
+			if 	self.world.get::<&Shootable>(entity).is_ok() || 
+				self.world.get::<&CountItem>(entity).is_ok() || 
+				tex_prefix == SpriteNum::BPAK
+			{
+			    lerped_y += 5.0;
+			} 
+			else if tex_prefix == SpriteNum::BROK {
+				lerped_y += 1.0;
+			}
 		
 	        let mut final_tex_name = format!("{}{}{}", tex_prefix, frame_letter, sprite_rotation);
 			let mut need_flip = false;

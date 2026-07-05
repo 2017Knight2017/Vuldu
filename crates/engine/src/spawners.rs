@@ -52,9 +52,12 @@ pub fn spawn_mobj(
                 	    pain_state: mobj_info.pain_state,
                 	    xdeath_state: mobj_info.xdeath_state,
                 	    raise_state: mobj_info.raise_state
-                	}
-				)
+                	})
+					.add(Shootable)
 			},
+			MobjFlag::CountItem => entity_builder.add(CountItem),
+			MobjFlag::Special => entity_builder.add(Special),
+			MobjFlag::Pickup => entity_builder.add(Pickup),
 			_ => {continue;}
 		};
 	}

@@ -82,7 +82,11 @@ impl App {
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if self.window.is_none() {
-            let window = event_loop.create_window(Window::default_attributes()).unwrap();
+            let window_attributes = Window::default_attributes()
+                .with_maximized(true)
+                .with_title("Vuldu")
+                .with_visible(true);
+            let window = event_loop.create_window(window_attributes).unwrap();
             
             window.set_cursor_visible(false);
 
