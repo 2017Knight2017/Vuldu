@@ -46,8 +46,6 @@ void VulkanRenderer::recreateSwapChain() {
     createDepthResources();
     createFramebuffers();
 
-    createSyncObjects(); 
-
     this->currentFrame = 0;
 }
 

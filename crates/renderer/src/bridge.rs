@@ -52,6 +52,7 @@ pub(crate) mod ffi {
         fn createRenderer() -> UniquePtr<VulkanRenderer>;
         fn initVulkan(self: Pin<&mut VulkanRenderer>, handles: &WindowHandles, window_raw_ptr: usize);
         fn cleanup(self: Pin<&mut VulkanRenderer>);
+        fn recreateSwapChain(self: Pin<&mut VulkanRenderer>);
         unsafe fn startFrame(self: Pin<&mut VulkanRenderer>, ubo_ptr: *const UniformBufferObject);
         fn endFrame(self: Pin<&mut VulkanRenderer>);
         fn drawLevel(self: Pin<&mut VulkanRenderer>);

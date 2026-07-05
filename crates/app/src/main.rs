@@ -11,7 +11,8 @@ use winit::{
     application::ApplicationHandler,
     event::{WindowEvent, ElementState, DeviceEvent, DeviceId},
     window::{Window, WindowId, CursorGrabMode},
-    keyboard::{PhysicalKey, KeyCode}
+    keyboard::{PhysicalKey, KeyCode},
+    dpi::LogicalSize
 };
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle, RawDisplayHandle, RawWindowHandle};
 use std::time::Instant;
@@ -83,7 +84,7 @@ impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if self.window.is_none() {
             let window_attributes = Window::default_attributes()
-                .with_maximized(true)
+                .with_inner_size(LogicalSize::new(1280, 720))
                 .with_title("Vuldu")
                 .with_visible(true);
             let window = event_loop.create_window(window_attributes).unwrap();
@@ -216,6 +217,12 @@ impl ApplicationHandler for App {
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
         match event {
+            WindowEvent::Resized(_) => {
+                if let Some(renderer) = &mut self.renderer {
+                    renderer.recreate_swapchain()
+                }
+            }
+
             WindowEvent::KeyboardInput { event, .. } => {
                 if event.repeat { return; }
 
@@ -310,8 +317,8 @@ impl ApplicationHandler for App {
 }
 
 fn main() -> Result<(), String> {
-    let wad = Wad::open("assets/DOOM2.WAD")?;
-    let map = DoomMap::from_wad(&wad, "MAP24")?;
+    let wad = Wad::open("assets/PLUTONIA.WAD")?;
+    let map = DoomMap::from_wad(&wad, "MAP23")?;
 
     let event_loop = EventLoop::new().unwrap();
 

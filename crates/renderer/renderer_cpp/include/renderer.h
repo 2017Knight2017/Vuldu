@@ -67,6 +67,7 @@ public:
     ~VulkanRenderer();
     void initVulkan(const WindowHandles& handles, size_t window_raw_ptr);
     void cleanup();
+    void recreateSwapChain();
     void updateLevelGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint16_t* indices_ptr, size_t index_count);
     void updateObjectGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint16_t* indices_ptr, size_t index_count);
     void updateObjectInstances(const ObjectInstance* instances_ptr, size_t instances_count);
@@ -178,7 +179,6 @@ private:
     void updateUniformBuffer(const UniformBufferObject* ubo_ptr, uint32_t currentImage);
     void updateDescriptorSetWithTexture(uint32_t textureId, VkImageView newView);
 
-    void recreateSwapChain();
     void cleanupSwapChain();
 
     void createBuffer(VkDeviceSize bufferSize, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);

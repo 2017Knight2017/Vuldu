@@ -28,6 +28,10 @@ impl SafeRenderer {
         self.pin_mut().cleanup();
     }
 
+    pub fn recreate_swapchain(&mut self) {
+        self.pin_mut().recreateSwapChain();
+    }
+
     pub fn upload_palettes(&mut self, palettes: &[f32]) {
         unsafe {
             self.pin_mut().uploadPalettes(palettes.as_ptr());
