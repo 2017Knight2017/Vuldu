@@ -138,6 +138,9 @@ pub struct PlayerStats {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CurrentSector(pub usize);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PlayerInventory {
     pub ready_weapon: u32,
     pub pending_weapon: u32,

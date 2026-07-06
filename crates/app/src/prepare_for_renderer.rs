@@ -1,9 +1,10 @@
 use crate::App;
 use renderer::ObjectInstance;
-use engine::{CountItem, DB, PlayerMarker, Shootable, SpriteAnimation, SpriteNum, Transform};
+use engine::{CountItem, CurrentSector, DB, PlayerMarker, Shootable, SpriteAnimation, SpriteNum, Transform};
 use glam::{Vec3};
-use std::f64::consts::TAU;
 use hecs::Entity;
+use std::f32::consts::TAU;
+use std::io::{Write, Cursor};
 
 impl App {
 	pub fn collect_object_instances(&self, alpha: f32) -> Vec<ObjectInstance> {
@@ -18,7 +19,7 @@ impl App {
 	        player_pos = Vec3::new(lerped_x, lerped_y, lerped_z);
 	    }
 
-	    for (entity, transform, anim) in self.world.query::<(Entity, &Transform, &SpriteAnimation)>().iter() {   
+	    for (entity, transform, sector_idx, anim) in self.world.query::<(Entity, &Transform, &CurrentSector, &SpriteAnimation)>().iter() {   
 			let current_state = match anim.current_state {
 				Some(state) => state,
 				None => continue
@@ -33,12 +34,12 @@ impl App {
 	        let monster_angle = lerp_angle(transform.prev_angle, transform.angle, alpha);
 
 	        let to_player = player_pos - monster_pos;
-			let mut rad_to_player = f64::atan2(to_player.z.into(), (-to_player.x).into());
+			let mut rad_to_player = f32::atan2(to_player.z.into(), (-to_player.x).into());
 			if rad_to_player < 0.0 {
 			    rad_to_player += TAU;
 			}
 
-			let angle_to_player = ((rad_to_player / TAU) * u32::MAX as f64) as u32;
+			let angle_to_player = ((rad_to_player / TAU) * u32::MAX as f32) as u32;
 
 			let view_angle = angle_to_player.wrapping_sub(monster_angle);
 
@@ -63,20 +64,27 @@ impl App {
 				lerped_y += 1.0;
 			}
 		
-	        let mut final_tex_name = format!("{}{}{}", tex_prefix, frame_letter, sprite_rotation);
+	        let mut buf = [0u8; 17];
+        	let mut cursor = Cursor::new(&mut buf[..]);
+			
+        	write!(cursor, "{}{}{}", tex_prefix, frame_letter, sprite_rotation).unwrap();
+			
+        	let mut final_tex_name = std::str::from_utf8(&cursor.get_ref()[..6]).unwrap();
 			let mut need_flip = false;
 
-	        if !self.texture_data.contains_key(&final_tex_name) {
-				let flipped_name = format!("{}_FLIP", final_tex_name);
-	            if self.texture_data.contains_key(&flipped_name) {
+	        if !self.texture_data.contains_key(final_tex_name) {
+				write!(cursor, "_FLIP").unwrap();
+				let flipped_name = std::str::from_utf8(&cursor.get_ref()[..11]).unwrap();
+	            if self.texture_data.contains_key(flipped_name) {
             	    final_tex_name = flipped_name;
 					need_flip = true;
             	} else {
-            	    final_tex_name = format!("{}{}0", tex_prefix, frame_letter);
+					write!(cursor, "{}{}{}", tex_prefix, frame_letter, 0).unwrap();
+            	    final_tex_name = std::str::from_utf8(&cursor.get_ref()[11..]).unwrap();
             	}
 			}
 
-	        let (tex_id, tex_width, tex_height) = *self.texture_data.get(&final_tex_name).unwrap_or(&(0, 64, 64));
+	        let (tex_id, tex_width, tex_height) = *self.texture_data.get(final_tex_name).unwrap_or(&(0, 64, 64));
 			let (left_offset, top_offset) = self.sprite_offsets[tex_id as usize];
 
 			let mut final_width = tex_width as f32;
@@ -87,8 +95,7 @@ impl App {
         	    final_left_offset = tex_width as f32 - final_left_offset;
         	}
 
-			let sector_idx = self.map.get_sector_by_pos(lerped_x, lerped_z);
-			let sector = self.map.sectors[sector_idx];
+			let sector = self.map.sectors[sector_idx.0];
 
 			let clamped_light = sector.lightlevel.clamp(0, 255) as f32;
 	        let modern_light = clamped_light / 255.0;

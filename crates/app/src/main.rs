@@ -103,8 +103,9 @@ impl ApplicationHandler for App {
             let plr_spawn = self.map.things
                 .iter().find(|thing| thing.type_ == 1)
                 .unwrap();
-            let plr_floorheight = self.map.sectors[self.map.get_sector_by_pos(plr_spawn.x as f32, plr_spawn.y as f32)].floorheight;
-            engine::spawn_mobj(&mut self.world, Some(MobjType::Player), -plr_spawn.x, plr_floorheight, plr_spawn.y, plr_spawn.angle);
+            let plr_sector_idx = self.map.get_sector_by_pos(plr_spawn.x as f32, plr_spawn.y as f32);
+            let plr_floorheight = self.map.sectors[plr_sector_idx].floorheight;
+            engine::spawn_mobj(&mut self.world, Some(MobjType::Player), plr_sector_idx, -plr_spawn.x, plr_floorheight, plr_spawn.y, plr_spawn.angle);
 
             engine::spawn_all_things(&mut self.world, &self.map);
             

@@ -10,6 +10,7 @@ use wad_parser::map::DoomMap;
 pub fn spawn_mobj(
 	world: &mut World, 
 	mobj_type_raw: Option<MobjType>, 
+	sector_idx: usize,
 	x_raw: i16, 
 	y_raw: i16, 
 	z_raw: i16, 
@@ -32,6 +33,7 @@ pub fn spawn_mobj(
     
     entity_builder
 		.add(Transform { x, y, z, prev_x: x, prev_y: y, prev_z: z, angle, prev_angle: angle })
+		.add(CurrentSector(sector_idx))
 		.add(Velocity::default())
 		.add(BoundingBox { radius: mobj_info.radius, height: mobj_info.height })
 		.add(SpriteAnimation {current_state: mobj_info.spawn_state, tics_left: 8});
@@ -94,7 +96,7 @@ pub fn spawn_all_things(world: &mut World, map: &DoomMap) {
 		let sector = map.sectors[sector_idx];
 
 		if let Some(thing_type) =  MOBJTYPE_BY_DOOMEDNUM.get(&thing.type_) {
-			spawn_mobj(world, *thing_type, -thing.x, sector.floorheight, thing.y, thing.angle);
+			spawn_mobj(world, *thing_type, sector_idx, -thing.x, sector.floorheight, thing.y, thing.angle);
 		}
 	};
 }
