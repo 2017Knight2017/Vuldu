@@ -109,6 +109,13 @@ define_markers! {
     CountItem;
     SkullFly;
     NotDMatch;
+    VertOffset1;
+    VertOffset2;
+    VertOffset3;
+    VertOffset4;
+    VertOffset5;
+    VertOffsetM1;
+    VertOffsetM2;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

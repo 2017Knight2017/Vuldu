@@ -1,6 +1,8 @@
 use crate::App;
 use renderer::ObjectInstance;
-use engine::{CountItem, CurrentSector, DB, PlayerMarker, Shootable, SpriteAnimation, SpriteNum, Transform};
+use engine::{CurrentSector, DB, PlayerMarker, Shootable, 
+			SpriteAnimation, Transform, VertOffset1, VertOffset2, 
+			VertOffset3, VertOffset4, VertOffset5, VertOffsetM1, VertOffsetM2};
 use glam::{Vec3};
 use hecs::Entity;
 use std::f32::consts::TAU;
@@ -26,7 +28,7 @@ impl App {
 			};
 
 	        let lerped_x = transform.prev_x * (1.0 - alpha) + transform.x * alpha;
-	        let mut lerped_y = transform.prev_y * (1.0 - alpha) + transform.y * alpha;
+	        let lerped_y = transform.prev_y * (1.0 - alpha) + transform.y * alpha;
 	        let lerped_z = transform.prev_z * (1.0 - alpha) + transform.z * alpha;	
 		
 	        let monster_pos = Vec3::new(lerped_x, lerped_y, lerped_z);
@@ -53,16 +55,6 @@ impl App {
 		
 	        let tex_prefix = current_state_data.sprite;
 	        let frame_letter = (b'A' + current_state_data.frame as u8) as char;
-
-			if 	self.world.get::<&Shootable>(entity).is_ok() || 
-				self.world.get::<&CountItem>(entity).is_ok() || 
-				tex_prefix == SpriteNum::BPAK
-			{
-			    lerped_y += 5.0;
-			} 
-			else if tex_prefix == SpriteNum::BROK {
-				lerped_y += 1.0;
-			}
 		
 	        let mut buf = [0u8; 17];
         	let mut cursor = Cursor::new(&mut buf[..]);
@@ -89,6 +81,33 @@ impl App {
 
 			let mut final_width = tex_width as f32;
         	let mut final_left_offset = left_offset as f32;
+			let mut final_top_offset = top_offset as f32;
+
+			if let Ok(entity_ref) = self.world.entity(entity) {
+				if 	entity_ref.has::<Shootable>() || 
+					entity_ref.has::<VertOffset5>()
+				{
+				    final_top_offset += 5.0;
+				}
+				else if entity_ref.has::<VertOffset4>() {
+					final_top_offset += 4.0;
+				}
+				else if entity_ref.has::<VertOffset3>() {
+					final_top_offset += 3.0;
+				}
+				else if entity_ref.has::<VertOffset2>() {
+					final_top_offset += 2.0;
+				}
+				else if entity_ref.has::<VertOffset1>() {
+					final_top_offset += 1.0;
+				}
+				else if entity_ref.has::<VertOffsetM1>() {
+					final_top_offset -= 1.0;
+				}
+				else if entity_ref.has::<VertOffsetM2>() {
+					final_top_offset -= 2.0;
+				}
+			}
 
         	if need_flip {
         	    final_width = -final_width;
@@ -103,7 +122,7 @@ impl App {
 
 	        instances.push(ObjectInstance {
 	            pos: [lerped_x, lerped_y, lerped_z],
-	            sprite_offset: [final_left_offset, top_offset as f32],
+	            sprite_offset: [final_left_offset, final_top_offset],
 				sprite_size: [final_width, tex_height as f32],
 	            light_level: modern_light,
 	            texture_id: tex_id,

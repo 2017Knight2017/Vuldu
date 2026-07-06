@@ -318,8 +318,8 @@ impl ApplicationHandler for App {
 }
 
 fn main() -> Result<(), String> {
-    let wad = Wad::open("assets/TNT.WAD")?;
-    let map = DoomMap::from_wad(&wad, "MAP20")?;
+    let wad = Wad::open("assets/PLUTONIA.WAD")?;
+    let map = DoomMap::from_wad(&wad, "MAP24")?;
 
     let event_loop = EventLoop::new().unwrap();
 

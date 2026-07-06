@@ -60,6 +60,13 @@ pub fn spawn_mobj(
 			MobjFlag::CountItem => entity_builder.add(CountItem),
 			MobjFlag::Special => entity_builder.add(Special),
 			MobjFlag::Pickup => entity_builder.add(Pickup),
+			MobjFlag::VertOffset1 => entity_builder.add(VertOffset1),
+			MobjFlag::VertOffset2 => entity_builder.add(VertOffset2),
+			MobjFlag::VertOffset3 => entity_builder.add(VertOffset3),
+			MobjFlag::VertOffset4 => entity_builder.add(VertOffset4),
+			MobjFlag::VertOffset5 => entity_builder.add(VertOffset5),
+			MobjFlag::VertOffsetM1 => entity_builder.add(VertOffsetM1),
+			MobjFlag::VertOffsetM2 => entity_builder.add(VertOffsetM2),
 			_ => {continue;}
 		};
 	}
