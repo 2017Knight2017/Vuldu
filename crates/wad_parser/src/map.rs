@@ -1,11 +1,12 @@
 use crate::*;
-use bytemuck::{Pod, Zeroable};
 use renderer::{Vertex};
 use earcut::Earcut;
 use std::collections::HashMap;
+use std::ptr::read_unaligned;
+use std::mem::size_of;
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+#[derive(Debug, Clone, Copy)]
 pub struct MapVertex
 {
   x: i16,
@@ -13,7 +14,7 @@ pub struct MapVertex
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+#[derive(Debug, Clone, Copy)]
 pub struct MapSidedef
 {
 	textureoffset: i16,
@@ -25,7 +26,7 @@ pub struct MapSidedef
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+#[derive(Debug, Clone, Copy)]
 pub struct MapLinedef
 {
 	v1: i16,
@@ -49,7 +50,7 @@ pub struct MapLinedef
 //}
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+#[derive(Debug, Clone, Copy)]
 pub struct MapSector
 {
 	pub floorheight: i16,
@@ -62,7 +63,7 @@ pub struct MapSector
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+#[derive(Debug, Clone, Copy)]
 pub struct MapSubsector
 {
 	numsegs: i16,
@@ -70,7 +71,7 @@ pub struct MapSubsector
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+#[derive(Debug, Clone, Copy)]
 pub struct MapSegment
 {
 	v1: i16,
@@ -84,7 +85,7 @@ pub struct MapSegment
 pub const NF_SUBSECTOR: usize = 0x8000;
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+#[derive(Debug, Clone, Copy)]
 pub struct MapNode
 {
 	x: i16,
@@ -96,7 +97,7 @@ pub struct MapNode
 }
 
 #[repr(C)] 
-#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+#[derive(Debug, Clone, Copy)]
 pub struct MapThing
 {
 	pub x: i16,
@@ -152,36 +153,68 @@ impl DoomMap {
         let mut map = DoomMap::default();
 
     	let vertexes_bytes = wad_manager.get_data(&format!("VERTEXES_{}", map_name))?;
-    	let typed_slice: &[MapVertex] = bytemuck::cast_slice(vertexes_bytes);
-    	map.vertices = typed_slice.to_vec();
+		map.vertices = vertexes_bytes
+    		.chunks_exact(size_of::<MapVertex>())
+    		.map(|chunk| {
+    		    unsafe { read_unaligned(chunk.as_ptr() as *const MapVertex) }
+    		})
+    		.collect();
 
 		let linedefs_bytes = wad_manager.get_data(&format!("LINEDEFS_{}", map_name))?;
-    	let typed_slice: &[MapLinedef] = bytemuck::cast_slice(linedefs_bytes);
-    	map.linedefs = typed_slice.to_vec();
+		map.linedefs = linedefs_bytes
+    		.chunks_exact(size_of::<MapLinedef>())
+    		.map(|chunk| {
+    		    unsafe { read_unaligned(chunk.as_ptr() as *const MapLinedef) }
+    		})
+    		.collect();
 
 		let sidedefs_bytes = wad_manager.get_data(&format!("SIDEDEFS_{}", map_name))?;
-    	let typed_slice: &[MapSidedef] = bytemuck::cast_slice(sidedefs_bytes);
-    	map.sidedefs = typed_slice.to_vec();
+		map.sidedefs = sidedefs_bytes
+    		.chunks_exact(size_of::<MapSidedef>())
+    		.map(|chunk| {
+    		    unsafe { read_unaligned(chunk.as_ptr() as *const MapSidedef) }
+    		})
+    		.collect();
 
 		let sectors_bytes = wad_manager.get_data(&format!("SECTORS_{}", map_name))?;
-    	let typed_slice: &[MapSector] = bytemuck::cast_slice(sectors_bytes);
-    	map.sectors = typed_slice.to_vec();
+		map.sectors = sectors_bytes
+    		.chunks_exact(size_of::<MapSector>())
+    		.map(|chunk| {
+    		    unsafe { read_unaligned(chunk.as_ptr() as *const MapSector) }
+    		})
+    		.collect();
 
 		let things_bytes = wad_manager.get_data(&format!("THINGS_{}", map_name))?;
-    	let typed_slice: &[MapThing] = bytemuck::cast_slice(things_bytes);
-    	map.things = typed_slice.to_vec();
+		map.things = things_bytes
+    		.chunks_exact(size_of::<MapThing>())
+    		.map(|chunk| {
+    		    unsafe { read_unaligned(chunk.as_ptr() as *const MapThing) }
+    		})
+    		.collect();
 
 		let ssectors_bytes = wad_manager.get_data(&format!("SSECTORS_{}", map_name))?;
-    	let typed_slice: &[MapSubsector] = bytemuck::cast_slice(ssectors_bytes);
-    	map.subsectors = typed_slice.to_vec();
+		map.subsectors = ssectors_bytes
+    		.chunks_exact(size_of::<MapSubsector>())
+    		.map(|chunk| {
+    		    unsafe { read_unaligned(chunk.as_ptr() as *const MapSubsector) }
+    		})
+    		.collect();
 
 		let segs_bytes = wad_manager.get_data(&format!("SEGS_{}", map_name))?;
-    	let typed_slice: &[MapSegment] = bytemuck::cast_slice(segs_bytes);
-    	map.segs = typed_slice.to_vec();
+		map.segs = segs_bytes
+    		.chunks_exact(size_of::<MapSegment>())
+    		.map(|chunk| {
+    		    unsafe { read_unaligned(chunk.as_ptr() as *const MapSegment) }
+    		})
+    		.collect();
 
 		let nodes_bytes = wad_manager.get_data(&format!("NODES_{}", map_name))?;
-    	let typed_slice: &[MapNode] = bytemuck::cast_slice(nodes_bytes);
-    	map.nodes = typed_slice.to_vec();
+		map.nodes = nodes_bytes
+    		.chunks_exact(size_of::<MapNode>())
+    		.map(|chunk| {
+    		    unsafe { read_unaligned(chunk.as_ptr() as *const MapNode) }
+    		})
+    		.collect();
 
         Ok(map)
     }

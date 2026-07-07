@@ -1,9 +1,11 @@
 use crate::*;
 use phf::{Map, phf_map};
 use std::collections::HashMap;
+use std::ptr::read_unaligned;
+use std::mem::size_of;
 
-#[repr(C, packed)]
-#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+#[repr(C)]
+#[derive(Clone, Copy)]
 struct MapPatch {
     originx: i16,
     originy: i16,
@@ -178,12 +180,18 @@ impl WadManager {
 			
 	    let offsets_bytes = texture1_raw.get(4..4 + num_textures * 4)
 			.ok_or_else(|| "Failed to get offsets_bytes from TEXTURE1")?;
-	    let offsets: &[u32] = bytemuck::cast_slice(offsets_bytes);
+
+		let offsets: Vec<u32> = offsets_bytes
+			.chunks_exact(size_of::<u32>())
+			.map(|chunk| {
+    		    unsafe { read_unaligned(chunk.as_ptr() as *const u32) }
+    		})
+    		.collect();
 
 	    let mut baked_textures = Vec::with_capacity(num_textures);
 		let mut textures_names = Vec::with_capacity(num_textures);
 
-	    for &offset in offsets {
+	    for offset in offsets {
 	        let map_texture = self.parse_texture_lump(&texture1_raw, offset as usize)?;
 
     		let name = String::from_utf8_lossy(&map_texture.name)
@@ -276,7 +284,12 @@ impl WadManager {
     	        patchcount * 10, patchcount
     	    ))?;
 
-	    let wad_patches: &[MapPatch] = bytemuck::cast_slice(patches_bytes);
+	    let wad_patches: Vec<MapPatch> = patches_bytes
+			.chunks_exact(size_of::<MapPatch>())
+			.map(|chunk| {
+    		    unsafe { read_unaligned(chunk.as_ptr() as *const MapPatch) }
+    		})
+    		.collect();
 
 	    let patches: Vec<MapPatch> = wad_patches
 	        .iter()

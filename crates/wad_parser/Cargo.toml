@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-bytemuck = { version = "1.25.0", features = ["derive"] }
 earcut = "0.4.10"
 image = "0.25.10"
 rayon = "1.12.0"
