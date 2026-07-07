@@ -1,5 +1,8 @@
 mod prepare_for_renderer;
+mod parse_commandline;
 
+use clap::Parser;
+use parse_commandline::Args;
 use renderer::*;
 use wad_parser::map::DoomMap;
 use wad_parser::*;
@@ -17,6 +20,7 @@ use winit::{
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle, RawDisplayHandle, RawWindowHandle};
 use std::time::Instant;
 use std::collections::HashMap;
+use std::process::exit;
 
 const EYE_HEIGHT: f32 = 41.0;
 const FOV_ANGLE: f32 = 90.0;
@@ -26,7 +30,7 @@ const TICK_TIME: f32 = 1.0 / TICKRATE as f32;
 struct App {
     window: Option<Window>,
     renderer: Option<SafeRenderer>,
-    wad: Wad,
+    wad_manager: WadManager,
     world: World,
     map: DoomMap,
     texture_data: HashMap<String, (u32, u32, u32)>,
@@ -125,9 +129,41 @@ impl ApplicationHandler for App {
 
                     renderer.init(&handles, window_raw_ptr);
 
-                    let (wall_texture_names, wall_pics) = self.wad.bake_walls().unwrap();
-                    let (flat_texture_names, flat_pics) = self.wad.bake_flats().unwrap(); 
-                    let (obj_texture_names, obj_pics) = self.wad.bake_objects().unwrap(); 
+                    let (wall_texture_names, wall_pics): (Vec<String>, Vec<DoomPicture>);
+                    match self.wad_manager.bake_walls() {
+                        Ok(res) => { (wall_texture_names, wall_pics) = res; },
+                        Err(err) => {
+                            eprintln!("[FATAL] Wall baking failed: {}", err);
+                            self.is_shutting_down = true;
+                            renderer.shutdown();
+                            event_loop.exit();
+                            exit(1);
+                        }
+                    };
+
+                    let (flat_texture_names, flat_pics): (Vec<String>, Vec<DoomPicture>);
+                    match self.wad_manager.bake_flats() {
+                        Ok(res) => { (flat_texture_names, flat_pics) = res; },
+                        Err(err) => {
+                            eprintln!("[FATAL] Flat baking failed: {}", err);
+                            self.is_shutting_down = true;
+                            renderer.shutdown();
+                            event_loop.exit();  
+                            exit(1);
+                        }
+                    };
+
+                    let (obj_texture_names, obj_pics): (Vec<String>, Vec<DoomPicture>);
+                    match self.wad_manager.bake_objects() {
+                        Ok(res) => { (obj_texture_names, obj_pics) = res; },
+                        Err(err) => {
+                            eprintln!("[FATAL] Object baking failed: {}", err);
+                            self.is_shutting_down = true;
+                            renderer.shutdown();
+                            event_loop.exit(); 
+                            exit(1);
+                        }
+                    };
 
                     let total_textures_count = wall_pics.len() + flat_pics.len() + obj_pics.len();
                     let mut all_pixels = Vec::new();
@@ -169,15 +205,24 @@ impl ApplicationHandler for App {
 
                     renderer.upload_texture_array(descriptors.as_slice(), all_pixels.as_slice());
 
-                    renderer.upload_palettes(self.wad
-                        .get_palettes()
-                        .expect("No PLAYPAL in the wad!")
-                        .as_slice()
-                    );
-                    renderer.upload_colormap(self.wad
-                        .get_data_by_lumpname("COLORMAP")
-                        .expect("No COLORMAP in the wad!")
-                    );
+                    match self.wad_manager.get_palettes() {
+                        Ok(data) => renderer.upload_palettes(data.as_slice()),
+                        Err(err) => {
+                            eprintln!("[FATAL] PLAYPAL upload failed: {}", err);
+                            self.is_shutting_down = true;
+                            renderer.shutdown();
+                            event_loop.exit(); 
+                        }
+                    }
+                    match self.wad_manager.get_data("COLORMAP") {
+                        Ok(data) => renderer.upload_colormap(data),
+                        Err(err) => {
+                            eprintln!("[FATAL] COLORMAP upload failed: {}", err);
+                            self.is_shutting_down = true;
+                            renderer.shutdown();
+                            event_loop.exit(); 
+                        }
+                    }
 
                     let (wall_vertices, wall_indices) = self.map.get_walls_vertices(&self.texture_data);
                     let (flat_vertices, flat_indices) = self.map.get_flats_vertices(&self.texture_data);
@@ -318,8 +363,15 @@ impl ApplicationHandler for App {
 }
 
 fn main() -> Result<(), String> {
-    let wad = Wad::open("assets/PLUTONIA.WAD")?;
-    let map = DoomMap::from_wad(&wad, "MAP24")?;
+    let args = Args::parse();
+    let mut wad_manager = WadManager::new();
+
+    wad_manager.add_wad(args.iwad)?;
+    for pwad in args.pwads {
+        wad_manager.add_wad(pwad)?;
+    }
+
+    let map = DoomMap::from_wad(&wad_manager, &args.map)?;
 
     let event_loop = EventLoop::new().unwrap();
 
@@ -328,7 +380,7 @@ fn main() -> Result<(), String> {
     let mut app = App {
         window: None,
         renderer: None,
-        wad: wad,
+        wad_manager: wad_manager,
         world: World::new(),
         map: map,
         texture_data: HashMap::new(),

@@ -2,6 +2,7 @@ use crate::*;
 use bytemuck::{Pod, Zeroable};
 use renderer::{Vertex};
 use earcut::Earcut;
+use std::collections::HashMap;
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
@@ -147,64 +148,40 @@ pub struct DoomMap {
 }
 
 impl DoomMap {
-    pub fn from_wad(wad: &Wad, map_name: &str) -> Result<Self, String> {
+    pub fn from_wad(wad_manager: &WadManager, map_name: &String) -> Result<Self, String> {
         let mut map = DoomMap::default();
 
-        if let Some(lump) = wad.directory.get(&format!("VERTEXES_{}", map_name)) {
-            let bytes = wad.data.get(lump.offset..lump.offset + lump.size)
-                .ok_or("Failed to get VERTEXES bytes")?;
-            let typed_slice: &[MapVertex] = bytemuck::cast_slice(bytes);
-            map.vertices = typed_slice.to_vec();
-        }
+    	let vertexes_bytes = wad_manager.get_data(&format!("VERTEXES_{}", map_name))?;
+    	let typed_slice: &[MapVertex] = bytemuck::cast_slice(vertexes_bytes);
+    	map.vertices = typed_slice.to_vec();
 
-        if let Some(lump) = wad.directory.get(&format!("LINEDEFS_{}", map_name)) {
-            let bytes = wad.data.get(lump.offset..lump.offset + lump.size)
-                .ok_or("Failed to get LINEDEFS bytes")?;
-            let typed_slice: &[MapLinedef] = bytemuck::cast_slice(bytes);
-            map.linedefs = typed_slice.to_vec();
-        }
+		let linedefs_bytes = wad_manager.get_data(&format!("LINEDEFS_{}", map_name))?;
+    	let typed_slice: &[MapLinedef] = bytemuck::cast_slice(linedefs_bytes);
+    	map.linedefs = typed_slice.to_vec();
 
-        if let Some(lump) = wad.directory.get(&format!("SIDEDEFS_{}", map_name)) {
-            let bytes = wad.data.get(lump.offset..lump.offset + lump.size)
-                .ok_or("Failed to get SIDEDEFS bytes")?;
-            let typed_slice: &[MapSidedef] = bytemuck::cast_slice(bytes);
-            map.sidedefs = typed_slice.to_vec();
-        }
+		let sidedefs_bytes = wad_manager.get_data(&format!("SIDEDEFS_{}", map_name))?;
+    	let typed_slice: &[MapSidedef] = bytemuck::cast_slice(sidedefs_bytes);
+    	map.sidedefs = typed_slice.to_vec();
 
-        if let Some(lump) = wad.directory.get(&format!("SECTORS_{}", map_name)) {
-            let bytes = wad.data.get(lump.offset..lump.offset + lump.size)
-                .ok_or("Failed to get SECTORS bytes")?;
-            let typed_slice: &[MapSector] = bytemuck::cast_slice(bytes);
-            map.sectors = typed_slice.to_vec();
-        }
+		let sectors_bytes = wad_manager.get_data(&format!("SECTORS_{}", map_name))?;
+    	let typed_slice: &[MapSector] = bytemuck::cast_slice(sectors_bytes);
+    	map.sectors = typed_slice.to_vec();
 
-        if let Some(lump) = wad.directory.get(&format!("THINGS_{}", map_name)) {
-            let bytes = wad.data.get(lump.offset..lump.offset + lump.size)
-                .ok_or("Failed to get THINGS bytes")?;
-            let typed_slice: &[MapThing] = bytemuck::cast_slice(bytes);
-            map.things = typed_slice.to_vec();
-        }
+		let things_bytes = wad_manager.get_data(&format!("THINGS_{}", map_name))?;
+    	let typed_slice: &[MapThing] = bytemuck::cast_slice(things_bytes);
+    	map.things = typed_slice.to_vec();
 
-        if let Some(lump) = wad.directory.get(&format!("SSECTORS_{}", map_name)) {
-            let bytes = wad.data.get(lump.offset..lump.offset + lump.size)
-                .ok_or("Failed to get SSECTORS bytes")?;
-            let typed_slice: &[MapSubsector] = bytemuck::cast_slice(bytes);
-            map.subsectors = typed_slice.to_vec();
-        }
+		let ssectors_bytes = wad_manager.get_data(&format!("SSECTORS_{}", map_name))?;
+    	let typed_slice: &[MapSubsector] = bytemuck::cast_slice(ssectors_bytes);
+    	map.subsectors = typed_slice.to_vec();
 
-        if let Some(lump) = wad.directory.get(&format!("SEGS_{}", map_name)) {
-            let bytes = wad.data.get(lump.offset..lump.offset + lump.size)
-                .ok_or("Failed to get SEGS bytes")?;
-            let typed_slice: &[MapSegment] = bytemuck::cast_slice(bytes);
-            map.segs = typed_slice.to_vec();
-        }
+		let segs_bytes = wad_manager.get_data(&format!("SEGS_{}", map_name))?;
+    	let typed_slice: &[MapSegment] = bytemuck::cast_slice(segs_bytes);
+    	map.segs = typed_slice.to_vec();
 
-		if let Some(lump) = wad.directory.get(&format!("NODES_{}", map_name)) {
-            let bytes = wad.data.get(lump.offset..lump.offset + lump.size)
-                .ok_or("Failed to get NODES bytes")?;
-            let typed_slice: &[MapNode] = bytemuck::cast_slice(bytes);
-            map.nodes = typed_slice.to_vec();
-        }
+		let nodes_bytes = wad_manager.get_data(&format!("NODES_{}", map_name))?;
+    	let typed_slice: &[MapNode] = bytemuck::cast_slice(nodes_bytes);
+    	map.nodes = typed_slice.to_vec();
 
         Ok(map)
     }

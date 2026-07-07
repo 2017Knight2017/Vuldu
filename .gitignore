@@ -9,3 +9,4 @@ compile_commands.json
 Cargo.lock
 doomdata.h
 assets/TNT.WAD
+assets/test.wad
