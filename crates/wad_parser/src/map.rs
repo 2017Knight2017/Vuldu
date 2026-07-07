@@ -313,9 +313,13 @@ impl DoomMap {
 	            indices.push(start_idx + 3);
 	        };
 
-	        let mid_tex = String::from_utf8_lossy(&front_sidedef.midtexture).trim_matches('\0').trim().to_uppercase();
-	        let top_tex = String::from_utf8_lossy(&front_sidedef.toptexture).trim_matches('\0').trim().to_uppercase();
-	        let bottom_tex = String::from_utf8_lossy(&front_sidedef.bottomtexture).trim_matches('\0').trim().to_uppercase();
+			let actual_midtexture = &front_sidedef.midtexture[..(front_sidedef.midtexture.iter().position(|&b| b == 0).unwrap_or(8))];
+			let actual_toptexture = &front_sidedef.toptexture[..(front_sidedef.toptexture.iter().position(|&b| b == 0).unwrap_or(8))];
+			let actual_bottomtexture = &front_sidedef.bottomtexture[..(front_sidedef.bottomtexture.iter().position(|&b| b == 0).unwrap_or(8))];
+
+	        let mid_tex = String::from_utf8_lossy(actual_midtexture).to_uppercase();
+	        let top_tex = String::from_utf8_lossy(actual_toptexture).to_uppercase();
+	        let bottom_tex = String::from_utf8_lossy(actual_bottomtexture).to_uppercase();
 
 	        match back_sector {
 	            None => {
@@ -521,8 +525,11 @@ impl DoomMap {
 	                continue; 
 	            }
 
-	            let floor_texture_name = String::from_utf8_lossy(&sector.floorpic).trim_matches('\0').trim().to_uppercase();
-	            let ceil_texture_name = String::from_utf8_lossy(&sector.ceilingpic).trim_matches('\0').trim().to_uppercase();
+				let actual_floorpic = &sector.floorpic[..(sector.floorpic.iter().position(|&b| b == 0).unwrap_or(8))];
+				let actual_ceilingpic = &sector.ceilingpic[..(sector.ceilingpic.iter().position(|&b| b == 0).unwrap_or(8))];
+				
+	            let floor_texture_name = String::from_utf8_lossy(actual_floorpic).to_uppercase();
+	            let ceil_texture_name = String::from_utf8_lossy(actual_ceilingpic).to_uppercase();
 	            let floor_texture_id = texture_ids.get(&floor_texture_name).unwrap_or(&(0,0,0)).0;
 	            let ceil_texture_id = texture_ids.get(&ceil_texture_name).unwrap_or(&(0,0,0)).0;
 
