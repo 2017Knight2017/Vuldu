@@ -160,7 +160,7 @@ pub static SPRITE_NAMES: Map<i16, Option<&'static str>> = phf_map! {
 };
 
 impl WadManager {
-	pub fn bake_walls(&self) -> Result<(Vec<String>, Vec<DoomPicture>), String> {
+	pub fn bake_walls(&self) -> Result<(Vec<u64>, Vec<DoomPicture>), String> {
 		let all_patchnames_raw = self.get_data("PNAMES")?;
 		let patch_names: Vec<String> = all_patchnames_raw.get(4..)
 			.ok_or_else(|| "Failed to get PNAMES data".to_string())?
@@ -193,11 +193,6 @@ impl WadManager {
 
 	    for offset in offsets {
 	        let map_texture = self.parse_texture_lump(&texture1_raw, offset as usize)?;
-
-    		let name = String::from_utf8_lossy(&map_texture.name)
-    		    .trim_matches('\0')
-    		    .trim()
-    		    .to_uppercase();
 				
     		let width = map_texture.width as usize;
     		let height = map_texture.height as usize;
@@ -231,7 +226,7 @@ impl WadManager {
 	            }
 	        }
 
-			textures_names.push(name);
+			textures_names.push(pack_name_to_u64(&map_texture.name));
 
 	        baked_textures.push(DoomPicture {
 	            raw_pixels: final_wall_pixels,
@@ -312,7 +307,7 @@ impl WadManager {
 	    })
 	}
 
-	pub fn bake_flats(&self) -> Result<(Vec<String>, Vec<DoomPicture>), String> {
+	pub fn bake_flats(&self) -> Result<(Vec<u64>, Vec<DoomPicture>), String> {
 		let mut flats_map = HashMap::new();
 
 		for wad in self.wads.iter() {
@@ -346,13 +341,12 @@ impl WadManager {
                     if lump_size == 0 { continue; }
 
                     let name_bytes = &chunk[8..16];
-                    let name = String::from_utf8_lossy(name_bytes).trim_matches('\0').to_uppercase();
 
                     let pic_bytes = &wad.data[lump_offset..lump_offset + lump_size];
 
 					match decode_flat_picture(pic_bytes) {
-                        Ok(picture) => { let _ = flats_map.insert(name, picture); },
-						Err(err) => { eprintln!("{}: {}", name, err); }
+                        Ok(picture) => { let _ = flats_map.insert(name_bytes, picture); },
+						Err(err) => { eprintln!("{}: {}", String::from_utf8_lossy(name_bytes), err); }
                     }
                 }
             }
@@ -362,8 +356,8 @@ impl WadManager {
         let mut flats_names = Vec::with_capacity(flats_map.len());
         let mut baked_flats = Vec::with_capacity(flats_map.len());
 
-        for (name, picture) in flats_map {
-            flats_names.push(name);
+        for (name_bytes, picture) in flats_map {
+            flats_names.push(pack_name_to_u64(name_bytes));
             baked_flats.push(picture);
         }
 

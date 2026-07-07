@@ -1,7 +1,7 @@
 use crate::*;
 use renderer::{Vertex};
 use earcut::Earcut;
-use std::collections::HashMap;
+use rustc_hash::{FxBuildHasher, FxHashMap};
 use std::ptr::read_unaligned;
 use std::mem::size_of;
 
@@ -149,7 +149,7 @@ pub struct DoomMap {
 }
 
 impl DoomMap {
-    pub fn from_wad(wad_manager: &WadManager, map_name: &String) -> Result<Self, String> {
+    pub fn from_wad(wad_manager: &WadManager, map_name: &str) -> Result<Self, String> {
         let mut map = DoomMap::default();
 
     	let vertexes_bytes = wad_manager.get_data(&format!("VERTEXES_{}", map_name))?;
@@ -219,7 +219,7 @@ impl DoomMap {
         Ok(map)
     }
 
-	pub fn get_walls_vertices(&self, texture_ids: &HashMap<String, (u32, u32, u32)>) -> (Vec<Vertex>, Vec<u32>) {
+	pub fn get_walls_vertices(&self, texture_ids: &FxHashMap<u64, (u32, u32, u32, bool)>) -> (Vec<Vertex>, Vec<u32>) {
 	    let mut vertices = Vec::new();
 	    let mut indices = Vec::new();
 
@@ -250,10 +250,10 @@ impl DoomMap {
 	        let wall_length = (dx * dx + dy * dy).sqrt();
 	        let tex_offset = front_sidedef.textureoffset as f32;
 
-	        let mut add_wall_quad = |y_low: f32, y_high: f32, tex_name: &str, v_top_align: bool| {
-	            if tex_name == "-" || tex_name.is_empty() { return; }
+	        let mut add_wall_quad = |y_low: f32, y_high: f32, tex_name: &[u8], v_top_align: bool| {
+	            if tex_name[0] == 0x2d || tex_name.is_empty() { return; }
 			
-	            let (tex_id, tex_width, tex_height) = *texture_ids.get(tex_name).unwrap_or(&(0, 64, 64));
+	            let (tex_id, tex_width, tex_height, _) = *texture_ids.get(&pack_name_to_u64(tex_name)).unwrap_or(&(0, 64, 64, false));
 	            let wall_height = y_high - y_low;
 	            if wall_height <= 0.0 { return; }
 
@@ -313,31 +313,23 @@ impl DoomMap {
 	            indices.push(start_idx + 3);
 	        };
 
-			let actual_midtexture = &front_sidedef.midtexture[..(front_sidedef.midtexture.iter().position(|&b| b == 0).unwrap_or(8))];
-			let actual_toptexture = &front_sidedef.toptexture[..(front_sidedef.toptexture.iter().position(|&b| b == 0).unwrap_or(8))];
-			let actual_bottomtexture = &front_sidedef.bottomtexture[..(front_sidedef.bottomtexture.iter().position(|&b| b == 0).unwrap_or(8))];
-
-	        let mid_tex = String::from_utf8_lossy(actual_midtexture).to_uppercase();
-	        let top_tex = String::from_utf8_lossy(actual_toptexture).to_uppercase();
-	        let bottom_tex = String::from_utf8_lossy(actual_bottomtexture).to_uppercase();
-
 	        match back_sector {
 	            None => {
-	                add_wall_quad(front_sector.floorheight as f32, front_sector.ceilingheight as f32, &mid_tex, true);
+	                add_wall_quad(front_sector.floorheight as f32, front_sector.ceilingheight as f32, &front_sidedef.midtexture, true);
 	            },
 	            Some((_, b_sector)) => {
 	                if front_sector.ceilingheight > b_sector.ceilingheight {
-	                    add_wall_quad(b_sector.ceilingheight as f32, front_sector.ceilingheight as f32, &top_tex, true);
+	                    add_wall_quad(b_sector.ceilingheight as f32, front_sector.ceilingheight as f32, &front_sidedef.toptexture, true);
 	                }
 
 	                if front_sector.floorheight < b_sector.floorheight {
-	                    add_wall_quad(front_sector.floorheight as f32, b_sector.floorheight as f32, &bottom_tex, false);
+	                    add_wall_quad(front_sector.floorheight as f32, b_sector.floorheight as f32, &front_sidedef.bottomtexture, false);
 	                }
 
-	                if mid_tex != "-" && !mid_tex.is_empty() {
+	                if front_sidedef.midtexture[0] != 0x2d {
 	                    let mid_low = f32::max(front_sector.floorheight as f32, b_sector.floorheight as f32);
 	                    let mid_high = f32::min(front_sector.ceilingheight as f32, b_sector.ceilingheight as f32);
-	                    add_wall_quad(mid_low, mid_high, &mid_tex, true);
+	                    add_wall_quad(mid_low, mid_high, &front_sidedef.midtexture, true);
 	                }
 	            }
 	        }
@@ -346,11 +338,11 @@ impl DoomMap {
 	    (vertices, indices)
 	}
 
-	pub fn get_flats_vertices(&self, texture_ids: &HashMap<String, (u32, u32, u32)>) -> (Vec<Vertex>, Vec<u32>) {
+	pub fn get_flats_vertices(&self, texture_ids: &FxHashMap<u64, (u32, u32, u32, bool)>) -> (Vec<Vertex>, Vec<u32>) {
 	    let mut vertices: Vec<Vertex> = Vec::new();
 	    let mut indices: Vec<u32> = Vec::new();
 
-		let mut sector_to_linedefs: HashMap<i16, Vec<&MapLinedef>> = HashMap::with_capacity(self.sectors.len());
+		let mut sector_to_linedefs: FxHashMap<i16, Vec<&MapLinedef>> = FxHashMap::with_capacity_and_hasher(self.sectors.len(), FxBuildHasher::default());
     	for linedef in self.linedefs.iter() {
     	    if linedef.sidenum[0] != -1 {
     	        if let Some(side) = self.sidedefs.get(linedef.sidenum[0] as usize) {
@@ -524,14 +516,11 @@ impl DoomMap {
 	                println!("[WARN] Sector {}: Earcut failed to triangulate polygon!", sector_id);
 	                continue; 
 	            }
-
-				let actual_floorpic = &sector.floorpic[..(sector.floorpic.iter().position(|&b| b == 0).unwrap_or(8))];
-				let actual_ceilingpic = &sector.ceilingpic[..(sector.ceilingpic.iter().position(|&b| b == 0).unwrap_or(8))];
 				
-	            let floor_texture_name = String::from_utf8_lossy(actual_floorpic).to_uppercase();
-	            let ceil_texture_name = String::from_utf8_lossy(actual_ceilingpic).to_uppercase();
-	            let floor_texture_id = texture_ids.get(&floor_texture_name).unwrap_or(&(0,0,0)).0;
-	            let ceil_texture_id = texture_ids.get(&ceil_texture_name).unwrap_or(&(0,0,0)).0;
+	            let floor_texture_name = pack_name_to_u64(&sector.floorpic);
+	            let ceil_texture_name = pack_name_to_u64(&sector.ceilingpic);
+	            let floor_texture_id = texture_ids.get(&floor_texture_name).unwrap_or(&(0,0,0,false)).0;
+	            let ceil_texture_id = texture_ids.get(&ceil_texture_name).unwrap_or(&(0,0,0,false)).0;
 
 	            let clamped_light = sector.lightlevel.clamp(0, 255) as f32;
 	            let modern_light = clamped_light / 255.0;
@@ -669,4 +658,17 @@ fn clean_polygon(poly: &[[f32; 2]]) -> Vec<[f32; 2]> {
         }
     }
     cleaned
+}
+
+pub fn pack_name_to_u64(name_bytes: &[u8]) -> u64 {
+    let mut buf = [0u8; 8];
+
+    for i in 0..8 {
+        if i >= name_bytes.len() || name_bytes[i] == 0 {
+            break;
+        }
+        buf[i] = name_bytes[i].to_ascii_uppercase();
+    }
+
+    u64::from_le_bytes(buf)
 }

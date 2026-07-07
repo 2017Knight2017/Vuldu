@@ -1,7 +1,7 @@
 mod prepare_for_renderer;
 mod parse_commandline;
 
-use clap::Parser;
+use prepare_for_renderer::*;
 use parse_commandline::Args;
 use renderer::*;
 use wad_parser::map::DoomMap;
@@ -18,8 +18,9 @@ use winit::{
     dpi::LogicalSize
 };
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle, RawDisplayHandle, RawWindowHandle};
+use clap::Parser;
+use rustc_hash::FxHashMap;
 use std::time::Instant;
-use std::collections::HashMap;
 use std::process::exit;
 
 const EYE_HEIGHT: f32 = 41.0;
@@ -33,7 +34,7 @@ struct App {
     wad_manager: WadManager,
     world: World,
     map: DoomMap,
-    texture_data: HashMap<String, (u32, u32, u32)>,
+    texture_data: FxHashMap<u64, (u32, u32, u32, bool)>,
     sprite_offsets: Vec<(i16, i16)>,
     is_shutting_down: bool,
     current_input: PlayerInput,
@@ -42,20 +43,35 @@ struct App {
     time_accumulator: f32,
 }
 
-fn register_sprite(texture_data_map: &mut HashMap<String, (u32, u32, u32)>, lump_name: &str, texture_tuple: (u32, u32, u32)) {
-    if lump_name.len() == 6 {
-        texture_data_map.insert(lump_name.to_string(), texture_tuple);
-    } else if lump_name.len() == 8 {
-        let prefix = &lump_name[0..4]; 
+fn register_sprite(
+    texture_data_map: &mut FxHashMap<u64, (u32, u32, u32, bool)>, 
+    lump_name: &str, 
+    texture_tuple: (u32, u32, u32)
+) {
+    let bytes = lump_name.as_bytes();
+    let (id, w, h) = texture_tuple;
 
-        let frame1 = lump_name.chars().nth(4).unwrap(); 
-        let view1  = lump_name.chars().nth(5).unwrap(); 
+    if bytes.len() == 6 {
+        let key = pack_name_to_u64(bytes);
+        texture_data_map.insert(key, (id, w, h, false));
 
-        let frame2 = lump_name.chars().nth(6).unwrap(); 
-        let view2  = lump_name.chars().nth(7).unwrap(); 
+    } else if bytes.len() == 8 {
+        let prefix = match std::str::from_utf8(&bytes[0..4]) {
+            Ok(s) => s,
+            Err(_) => return,
+        };
 
-        texture_data_map.insert(format!("{}{}{}", prefix, frame1, view1), texture_tuple); // VILEA1
-        texture_data_map.insert(format!("{}{}{}_FLIP", prefix, frame2, view2), texture_tuple); // VILED1
+        let frame1 = bytes[4] as char;
+        let view1 = bytes[5] - b'0';
+
+        let frame2 = bytes[6] as char;
+        let view2 = bytes[7] - b'0';
+
+        let key1 = pack_sprite_u64(prefix, frame1, view1);
+        texture_data_map.insert(key1, (id, w, h, false));
+
+        let key2 = pack_sprite_u64(prefix, frame2, view2);
+        texture_data_map.insert(key2, (id, w, h, true));
     }
 }
 
@@ -129,7 +145,7 @@ impl ApplicationHandler for App {
 
                     renderer.init(&handles, window_raw_ptr);
 
-                    let (wall_texture_names, wall_pics): (Vec<String>, Vec<DoomPicture>);
+                    let (wall_texture_names, wall_pics): (Vec<u64>, Vec<DoomPicture>);
                     match self.wad_manager.bake_walls() {
                         Ok(res) => { (wall_texture_names, wall_pics) = res; },
                         Err(err) => {
@@ -141,7 +157,7 @@ impl ApplicationHandler for App {
                         }
                     };
 
-                    let (flat_texture_names, flat_pics): (Vec<String>, Vec<DoomPicture>);
+                    let (flat_texture_names, flat_pics): (Vec<u64>, Vec<DoomPicture>);
                     match self.wad_manager.bake_flats() {
                         Ok(res) => { (flat_texture_names, flat_pics) = res; },
                         Err(err) => {
@@ -171,22 +187,33 @@ impl ApplicationHandler for App {
 
                     let mut current_gpu_id = 0;
 
-                    let mut are_objects_recording = true;
+                    for (idx, pic) in obj_pics.iter().enumerate() {
+                        let name = &obj_texture_names[idx];
+
+                        self.sprite_offsets.push((pic.left_offset, pic.top_offset));
+                        register_sprite(&mut self.texture_data, name, (current_gpu_id, pic.width, pic.height));
+                    
+                        descriptors.push(TextureDescriptor {
+                            width: pic.width,
+                            height: pic.height,
+                            pixel_offset: all_pixels.len(),
+                        });
+
+                        for &lump_pixel in &pic.raw_pixels {
+                            all_pixels.push(lump_pixel);
+                        }
+                    
+                        current_gpu_id += 1;
+                    }
 
                     for (tex_names, pics) in [
-                        (obj_texture_names, obj_pics),
                         (wall_texture_names, wall_pics),
                         (flat_texture_names, flat_pics)].iter() 
                     {
                         for (idx, pic) in pics.iter().enumerate() {
-                            let name = &tex_names[idx];
+                            let name = tex_names[idx];
 
-                            if are_objects_recording {
-                                self.sprite_offsets.push((pic.left_offset, pic.top_offset));
-                                register_sprite(&mut self.texture_data, name, (current_gpu_id, pic.width, pic.height))
-                            } else {
-                                self.texture_data.insert(name.clone(), (current_gpu_id, pic.width, pic.height));
-                            }
+                            self.texture_data.insert(name, (current_gpu_id, pic.width, pic.height, false));
                         
                             descriptors.push(TextureDescriptor {
                                 width: pic.width,
@@ -200,7 +227,6 @@ impl ApplicationHandler for App {
                         
                             current_gpu_id += 1;
                         }
-                        are_objects_recording = false;
                     }
 
                     renderer.upload_texture_array(descriptors.as_slice(), all_pixels.as_slice());
@@ -363,15 +389,19 @@ impl ApplicationHandler for App {
 }
 
 fn main() -> Result<(), String> {
-    let args = Args::parse();
+    //let args = Args::parse();
     let mut wad_manager = WadManager::new();
 
-    wad_manager.add_wad(args.iwad)?;
-    for pwad in args.pwads {
-        wad_manager.add_wad(pwad)?;
-    }
+    //wad_manager.add_wad(args.iwad)?;
+    //for pwad in args.pwads {
+    //    wad_manager.add_wad(pwad)?;
+    //}
+    //
+    //let map = DoomMap::from_wad(&wad_manager, &args.map)?;
 
-    let map = DoomMap::from_wad(&wad_manager, &args.map)?;
+    wad_manager.add_wad("assets/DOOM2.WAD")?;
+
+    let map = DoomMap::from_wad(&wad_manager, "MAP01")?;
 
     let event_loop = EventLoop::new().unwrap();
 
@@ -383,7 +413,7 @@ fn main() -> Result<(), String> {
         wad_manager: wad_manager,
         world: World::new(),
         map: map,
-        texture_data: HashMap::new(),
+        texture_data: FxHashMap::default(),
         sprite_offsets: Vec::new(),
         is_shutting_down: false,
         current_input: PlayerInput::default(),
