@@ -23,6 +23,7 @@ impl App {
 	        let lerped_z = transform.prev_z * (1.0 - alpha) + transform.z * alpha;	
 		
 	        let monster_pos = Vec3::new(lerped_x, lerped_y, lerped_z);
+			if player_pos == monster_pos { continue; }
 
 	        let monster_angle = lerp_angle(transform.prev_angle, transform.angle, alpha);
 
