@@ -16,6 +16,7 @@ pub(crate) mod ffi {
         pub light_level: f32,
         pub texture_id: u32,
         pub colormap_idx: u32,
+        pub floor_tex_id: u32,
     }
 
     pub struct UniformBufferObject {
@@ -64,6 +65,7 @@ pub(crate) mod ffi {
         unsafe fn uploadColormap(self: Pin<&mut VulkanRenderer>, colormap_ptr: *const u8);
         unsafe fn uploadTextureArray(self: Pin<&mut VulkanRenderer>, descriptors: *const TextureDescriptor, descriptor_count: usize, all_pixels: *const u8, all_pixels_count: usize);
         fn setPaletteIndex(self: Pin<&mut VulkanRenderer>, idx: u32);
+        fn setResolution(self: Pin<&mut VulkanRenderer>, width: u32, height: u32);
     }
 }
 

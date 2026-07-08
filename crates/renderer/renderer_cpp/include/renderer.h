@@ -58,7 +58,8 @@ struct Texture {
 };
 
 struct PushConstants {
-    uint32_t paletteIndex;   
+    uint32_t paletteIndex;
+    float resolution[2];  
 };
 
 class VulkanRenderer {
@@ -75,6 +76,7 @@ public:
     void uploadColormap(const uint8_t* colormap_ptr);
     void uploadTextureArray(const TextureDescriptor* descriptors_ptr, size_t descriptor_count, const uint8_t* all_pixels_ptr, size_t all_pixels_count);
     void setPaletteIndex(uint32_t idx);
+    void setResolution(uint32_t width, uint32_t height);
     void startFrame(const UniformBufferObject* ubo_ptr);
     void endFrame();
     void drawObjects();
@@ -154,6 +156,8 @@ private:
 
     VkBuffer colormapBuffer = VK_NULL_HANDLE;
     VkDeviceMemory colormapBufferMemory = VK_NULL_HANDLE;
+
+    float currentResolution[2];
     
     void createInstance();
     void setupDebugMessenger();

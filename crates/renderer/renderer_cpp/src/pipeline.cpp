@@ -37,7 +37,8 @@ std::vector<VkVertexInputAttributeDescription> getLevelAttributes() {
         { 1, 0, VK_FORMAT_R32G32_SFLOAT,    offsetof(Vertex, texture_pos) },
         { 2, 0, VK_FORMAT_R32_SFLOAT,       offsetof(Vertex, light_level) },
         { 3, 0, VK_FORMAT_R32_UINT,         offsetof(Vertex, texture_id) },
-        { 4, 0, VK_FORMAT_R32_UINT,         offsetof(Vertex, colormap_idx) }
+        { 4, 0, VK_FORMAT_R32_UINT,         offsetof(Vertex, colormap_idx) },
+		{ 5, 0, VK_FORMAT_R32_UINT,         offsetof(Vertex, floor_tex_id) }
     };
 }
 
@@ -301,7 +302,7 @@ void VulkanRenderer::createGraphicsPipeline() {
 	VkPushConstantRange spritePushConstantRange{};
 	spritePushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; 
 	spritePushConstantRange.offset = 0;
-	spritePushConstantRange.size = sizeof(PushConstants);
+	spritePushConstantRange.size = sizeof(uint32_t);
 
 	VkPipelineLayoutCreateInfo spritePipelineLayoutInfo{};
 	spritePipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;

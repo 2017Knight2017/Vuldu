@@ -130,6 +130,8 @@ impl ApplicationHandler for App {
 
                     renderer.init(&handles, window_raw_ptr);
 
+                    renderer.set_resolution(1280, 720);
+
                     let (wall_texture_names, wall_pics): (Vec<u64>, Vec<DoomPicture>);
                     match self.wad_manager.bake_walls() {
                         Ok(res) => { (wall_texture_names, wall_pics) = res; },
@@ -287,9 +289,10 @@ impl ApplicationHandler for App {
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
         match event {
-            WindowEvent::Resized(_) => {
+            WindowEvent::Resized(win_size) => {
                 if let Some(renderer) = &mut self.renderer {
-                    renderer.recreate_swapchain()
+                    renderer.recreate_swapchain();
+                    renderer.set_resolution(win_size.width, win_size.height);
                 }
             }
 

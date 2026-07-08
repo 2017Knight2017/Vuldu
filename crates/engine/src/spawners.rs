@@ -1,6 +1,6 @@
 use crate::{
 	constants::{NUMCARDS, NUMWEAPONS, MOBJTYPE_BY_DOOMEDNUM},
-	data_tables::{DB, CachedStateSprite},
+	data_tables::DB,
 	components::*,
 	enums::*
 };
@@ -27,7 +27,17 @@ pub fn spawn_mobj(
 		None => return
 	};
 
-	let mobj_info = DB.get().expect("DB has not been initialized!").mobjinfo.get(&mobj_type).unwrap();
+	let db = DB.get().expect("DB has not been initialized!");
+	let mobj_info = db.mobjinfo.get(&mobj_type).expect(&format!("[FATAL] mobj_info with {:?} was not found!", mobj_type));
+
+	let spawn_state = match mobj_info.spawn_state {
+		Some(state) => state,
+		None => return
+	};
+
+	let spawn_state_data = db.states.get(&spawn_state)
+    	.expect("Spawn state not found in database!");
+	let initial_rotations = spawn_state_data.cached_rotations;
 
 	let mut entity_builder = hecs::EntityBuilder::new();
     
@@ -36,7 +46,7 @@ pub fn spawn_mobj(
 		.add(CurrentSector(sector_idx))
 		.add(Velocity::default())
 		.add(BoundingBox { radius: mobj_info.radius, height: mobj_info.height })
-		.add(SpriteAnimation {current_state: mobj_info.spawn_state, tics_left: 8, cached_rotations: [CachedStateSprite::default(); 9]});
+		.add(SpriteAnimation {current_state: mobj_info.spawn_state, tics_left: 8, cached_rotations: initial_rotations});
 
 	for flag in &mobj_info.flags {
 		match flag {

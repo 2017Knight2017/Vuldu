@@ -111,6 +111,11 @@ void VulkanRenderer::setPaletteIndex(uint32_t idx) {
 	this->currentPaletteIndex = idx % MAX_PAL;
 }
 
+void VulkanRenderer::setResolution(uint32_t width, uint32_t height) {
+    this->currentResolution[0] = static_cast<float>(width); 
+    this->currentResolution[1] = static_cast<float>(height);
+}
+
 void VulkanRenderer::startFrame(const UniformBufferObject* ubo_ptr) {
 	VkCommandBuffer currentCommandBuffer = this->commandBuffers[this->currentFrame];
 	vkWaitForFences(this->device, 1, &this->inFlightFences[this->currentFrame], VK_TRUE, UINT64_MAX);
@@ -198,7 +203,7 @@ void VulkanRenderer::drawObjects() {
             this->spritePipelineLayout,
             VK_SHADER_STAGE_FRAGMENT_BIT,
             0,                    
-            sizeof(PushConstants),
+            sizeof(uint32_t),
             &constants 
         );
 
@@ -283,13 +288,15 @@ void VulkanRenderer::drawLevel() {
 
         PushConstants constants{};
         constants.paletteIndex = this->currentPaletteIndex;
+        constants.resolution[0] = this->currentResolution[0];
+        constants.resolution[1] = this->currentResolution[1];
 
 		vkCmdPushConstants(
             currentCommandBuffer,
             this->levelPipelineLayout,
             VK_SHADER_STAGE_FRAGMENT_BIT,
-            0,                    
-            sizeof(int),
+            0,
+            sizeof(PushConstants),
             &constants 
         );
 
