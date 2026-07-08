@@ -34,7 +34,7 @@ pub struct MapLinedef
 	flags: i16,
 	special: i16,
 	tag: i16,
-	sidenum: [i16; 2]	
+	sidenum: [u16; 2]	
 }
 
 //pub mod LinedefFlags {
@@ -67,7 +67,7 @@ pub struct MapSector
 pub struct MapSubsector
 {
 	numsegs: i16,
-	firstseg: i16	
+	firstseg: u16	
 }
 
 #[repr(C)]
@@ -230,15 +230,15 @@ impl DoomMap {
 	        let v2 = self.vertices[seg.v2 as usize];
 	        let linedef = self.linedefs[seg.linedef as usize];
 
-	        let front_side_idx = if seg.side == 0 { linedef.sidenum[0] } else { linedef.sidenum[1] };
-	        let back_side_idx = if seg.side == 0 { linedef.sidenum[1] } else { linedef.sidenum[0] };
+	        let front_side_idx = if seg.side == 0 { linedef.sidenum[0] as u16 } else { linedef.sidenum[1] as u16 };
+	        let back_side_idx = if seg.side == 0 { linedef.sidenum[1] as u16 } else { linedef.sidenum[0] as u16 };
 
-	        if front_side_idx == -1 { continue; }
+	        if front_side_idx == u16::MAX { continue; }
 	        let front_sidedef = self.sidedefs[front_side_idx as usize];
 	        let front_sector_id = front_sidedef.sector;
 	        let front_sector = self.sectors[front_sector_id as usize];
 
-	        let back_sector = if back_side_idx != -1 {
+	        let back_sector = if back_side_idx != u16::MAX {
 	            let back_sidedef = self.sidedefs[back_side_idx as usize];
 	            Some((back_sidedef, self.sectors[back_sidedef.sector as usize]))
 	        } else {
@@ -344,12 +344,12 @@ impl DoomMap {
 
 		let mut sector_to_linedefs: FxHashMap<i16, Vec<&MapLinedef>> = FxHashMap::with_capacity_and_hasher(self.sectors.len(), FxBuildHasher::default());
     	for linedef in self.linedefs.iter() {
-    	    if linedef.sidenum[0] != -1 {
+    	    if linedef.sidenum[0] != u16::MAX {
     	        if let Some(side) = self.sidedefs.get(linedef.sidenum[0] as usize) {
     	            sector_to_linedefs.entry(side.sector).or_default().push(linedef);
     	        }
     	    }
-    	    if linedef.sidenum[1] != -1 {
+    	    if linedef.sidenum[1] != u16::MAX {
     	        if let Some(side) = self.sidedefs.get(linedef.sidenum[1] as usize) {
     	            sector_to_linedefs.entry(side.sector).or_default().push(linedef);
     	        }
@@ -370,13 +370,13 @@ impl DoomMap {
 	            let p1 = [v1.x as f32, v1.y as f32];
 	            let p2 = [v2.x as f32, v2.y as f32];
 
-	            if linedef.sidenum[0] != -1 {
+	            if linedef.sidenum[0] != u16::MAX {
 	                if let Some(side) = self.sidedefs.get(linedef.sidenum[0] as usize) {
 	                    if side.sector == current_sector_id { edges.push((p1, p2)); }
 	                }
 	            }
 			
-	            if linedef.sidenum[1] != -1 {
+	            if linedef.sidenum[1] != u16::MAX {
 	                if let Some(side) = self.sidedefs.get(linedef.sidenum[1] as usize) {
 	                    if side.sector == current_sector_id { edges.push((p2, p1)); }
 	                }
@@ -577,7 +577,7 @@ impl DoomMap {
         if seg.linedef != -1 {
             let linedef = &self.linedefs[seg.linedef as usize];
             let side = linedef.sidenum[seg.side as usize];
-            if side != -1 {
+            if side != u16::MAX {
                 return self.sidedefs[side as usize].sector as usize;
             }
         }
@@ -653,7 +653,7 @@ fn clean_polygon(poly: &[[f32; 2]]) -> Vec<[f32; 2]> {
         let next = poly[(i + 1) % poly.len()];
 
         let area = (curr[0] - prev[0]) * (next[1] - prev[1]) - (next[0] - prev[0]) * (curr[1] - prev[1]);
-        if area.abs() > 0.1 { 
+        if area.abs() > 0.001 { 
             cleaned.push(curr);
         }
     }

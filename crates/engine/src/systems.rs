@@ -91,6 +91,7 @@ pub fn animation_system(world: &mut World) {
                 
                 anim.current_state = Some(next_state_id);
                 anim.tics_left = next_state_data.tics;
+                anim.cached_rotations = next_state_data.cached_rotations;
             }
         }
     }

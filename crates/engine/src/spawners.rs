@@ -1,6 +1,6 @@
 use crate::{
 	constants::{NUMCARDS, NUMWEAPONS, MOBJTYPE_BY_DOOMEDNUM},
-	data_tables::DB,
+	data_tables::{DB, CachedStateSprite},
 	components::*,
 	enums::*
 };
@@ -36,7 +36,7 @@ pub fn spawn_mobj(
 		.add(CurrentSector(sector_idx))
 		.add(Velocity::default())
 		.add(BoundingBox { radius: mobj_info.radius, height: mobj_info.height })
-		.add(SpriteAnimation {current_state: mobj_info.spawn_state, tics_left: 8});
+		.add(SpriteAnimation {current_state: mobj_info.spawn_state, tics_left: 8, cached_rotations: [CachedStateSprite::default(); 9]});
 
 	for flag in &mobj_info.flags {
 		match flag {

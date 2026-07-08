@@ -1,8 +1,7 @@
 mod prepare_for_renderer;
 mod parse_commandline;
 
-use prepare_for_renderer::*;
-use parse_commandline::Args;
+//use parse_commandline::Args;
 use renderer::*;
 use wad_parser::map::DoomMap;
 use wad_parser::*;
@@ -18,7 +17,7 @@ use winit::{
     dpi::LogicalSize
 };
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle, RawDisplayHandle, RawWindowHandle};
-use clap::Parser;
+//use clap::Parser;
 use rustc_hash::FxHashMap;
 use std::time::Instant;
 use std::process::exit;
@@ -56,10 +55,7 @@ fn register_sprite(
         texture_data_map.insert(key, (id, w, h, false));
 
     } else if bytes.len() == 8 {
-        let prefix = match std::str::from_utf8(&bytes[0..4]) {
-            Ok(s) => s,
-            Err(_) => return,
-        };
+        let prefix = &bytes[..4];
 
         let frame1 = bytes[4] as char;
         let view1 = bytes[5] - b'0';
@@ -117,17 +113,6 @@ impl ApplicationHandler for App {
             }
 
             self.window = Some(window);
-
-            let _ = engine::populate_database().map_err(|err| println!("{}", err));
-
-            let plr_spawn = self.map.things
-                .iter().find(|thing| thing.type_ == 1)
-                .unwrap();
-            let plr_sector_idx = self.map.get_sector_by_pos(plr_spawn.x as f32, plr_spawn.y as f32);
-            let plr_floorheight = self.map.sectors[plr_sector_idx].floorheight;
-            engine::spawn_mobj(&mut self.world, Some(MobjType::Player), plr_sector_idx, -plr_spawn.x, plr_floorheight, plr_spawn.y, plr_spawn.angle);
-
-            engine::spawn_all_things(&mut self.world, &self.map);
             
             self.renderer = Some(SafeRenderer::new());
 
@@ -169,6 +154,8 @@ impl ApplicationHandler for App {
                         }
                     };
 
+                    // We need divide obj_texture_names later into mirrored and unmirrored versions,
+                    // so we don't pack them into u64 yet.
                     let (obj_texture_names, obj_pics): (Vec<String>, Vec<DoomPicture>);
                     match self.wad_manager.bake_objects() {
                         Ok(res) => { (obj_texture_names, obj_pics) = res; },
@@ -267,6 +254,17 @@ impl ApplicationHandler for App {
                     renderer.update_object_instances(&[]);
                     renderer.update_level_geometry(&level_vertices, &level_indices);
                     renderer.update_object_geometry(&obj_vertices, &obj_indices);
+
+                    let _ = engine::populate_database(&self.texture_data).map_err(|err| println!("{}", err));
+
+                    let plr_spawn = self.map.things
+                        .iter().find(|thing| thing.type_ == 1)
+                        .unwrap();
+                    let plr_sector_idx = self.map.get_sector_by_pos(plr_spawn.x as f32, plr_spawn.y as f32);
+                    let plr_floorheight = self.map.sectors[plr_sector_idx].floorheight;
+                    engine::spawn_mobj(&mut self.world, Some(MobjType::Player), plr_sector_idx, -plr_spawn.x, plr_floorheight, plr_spawn.y, plr_spawn.angle);
+                        
+                    engine::spawn_all_things(&mut self.world, &self.map);
                 }
             }
         }
@@ -400,6 +398,7 @@ fn main() -> Result<(), String> {
     //let map = DoomMap::from_wad(&wad_manager, &args.map)?;
 
     wad_manager.add_wad("assets/DOOM2.WAD")?;
+    wad_manager.add_wad("assets/oku2v31.wad")?;
 
     let map = DoomMap::from_wad(&wad_manager, "MAP01")?;
 

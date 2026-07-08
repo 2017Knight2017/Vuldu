@@ -1,11 +1,11 @@
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 use strum::IntoEnumIterator;
 use toml;
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 use std::sync::OnceLock;
 use std::fs;
 use crate::{
-    enums::{ActionFunc, MobjFlag, SFX, SpriteNum, StateNum, MobjType}
+    enums::{ActionFunc, MobjFlag, SFX, StateNum, MobjType}
 };
 
 #[derive(Debug, Deserialize)]
@@ -41,28 +41,64 @@ struct MobjConfig {
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]
-pub struct State {
-    pub sprite: SpriteNum,
+pub struct StateRaw {
+    #[serde(deserialize_with = "parse_sprite_num")]
+    pub sprite: [u8; 4],
     pub frame: u32,
     pub tics: i32,
     pub action: Option<ActionFunc>,
     pub next_state: Option<StateNum>,
 }
 
+fn parse_sprite_num<'de, D>(deserializer: D) -> Result<[u8; 4], D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    
+    if s.len() != 4 {
+        return Err(serde::de::Error::custom(format!(
+            "Sprite name must be exactly 4 characters long, got: '{}'", s
+        )));
+    }
+
+    let mut bytes = [0u8; 4];
+    bytes.copy_from_slice(s.as_bytes());
+    Ok(bytes)
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct State {
+    pub sprite: [u8; 4],
+    pub frame: u32,
+    pub tics: i32,
+    pub action: Option<ActionFunc>,
+    pub next_state: Option<StateNum>,
+    pub cached_rotations: [CachedStateSprite; 9]
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct CachedStateSprite {
+    pub tex_id: u32,
+    pub width: u32,
+    pub height: u32,
+    pub need_flip: bool,
+}
+
 #[derive(Debug, Deserialize)]
 struct StateConfig {
-    states: Vec<State>,
+    states: Vec<StateRaw>,
 }
 
 #[derive(Debug, Default)]
 pub struct Database {
-    pub mobjinfo: HashMap<MobjType, MobjInfo>,
-    pub states: HashMap<StateNum, State>
+    pub mobjinfo: FxHashMap<MobjType, MobjInfo>,
+    pub states: FxHashMap<StateNum, State>
 }
 
 pub static DB: OnceLock<Database> = OnceLock::new();
 
-pub fn populate_database() -> Result<(), Box<dyn std::error::Error>> {
+pub fn populate_database(texture_data: &FxHashMap<u64, (u32, u32, u32, bool)>) -> Result<(), Box<dyn std::error::Error>> {
     let states_content = fs::read_to_string("crates/engine/data_tables/states.toml")?;
     let state_config: StateConfig = toml::from_str(&states_content)?;
 
@@ -92,7 +128,34 @@ pub fn populate_database() -> Result<(), Box<dyn std::error::Error>> {
     let mut db = Database::default();
 
     for (state_num, state) in StateNum::iter().zip(state_config.states) {
-        db.states.insert(state_num, state);
+        let mut cached_rotations = [CachedStateSprite::default(); 9];
+        let tex_prefix = state.sprite;
+        let frame_letter = (b'A' + state.frame as u8) as char;
+
+        let mut key_0 = pack_sprite_u64(&tex_prefix, frame_letter, 0);
+        if !texture_data.contains_key(&key_0) { key_0 = pack_sprite_u64(&tex_prefix, frame_letter, 1); }
+
+        let &(id0, w0, h0, flip0) = texture_data.get(&key_0).unwrap_or(&(0, 64, 64, false));
+        cached_rotations[0] = CachedStateSprite { tex_id: id0, width: w0, height: h0, need_flip: flip0 };
+
+        for rot in 1..=8 as usize {
+            let lookup_key = pack_sprite_u64(&tex_prefix, frame_letter, rot as u8);
+            
+            if !texture_data.contains_key(&lookup_key) {
+                cached_rotations[rot] = cached_rotations[0];
+            } else {
+                let &(id, w, h, flip) = texture_data.get(&lookup_key).unwrap_or(&(0, 64, 64, false));
+                cached_rotations[rot] = CachedStateSprite { tex_id: id, width: w, height: h, need_flip: flip };
+            }
+        }
+        db.states.insert(state_num, State { 
+            sprite: state.sprite, 
+            frame: state.frame,
+            tics: state.tics,
+            action: state.action,
+            next_state: state.next_state,
+            cached_rotations
+        });
     }
 
     for (mobj_type, mobj_info) in MobjType::iter().zip(mobj_config.objects) {
@@ -102,4 +165,16 @@ pub fn populate_database() -> Result<(), Box<dyn std::error::Error>> {
     DB.set(db).unwrap_or_else(|_| eprintln!("Database has already been initialized!"));
 
     Ok(())
+}
+
+pub fn pack_sprite_u64(prefix: &[u8], frame: char, rotation: u8) -> u64 {
+    let mut buf = [0u8; 8];
+
+    let p_len = std::cmp::min(prefix.len(), 4);
+    buf[..p_len].copy_from_slice(&prefix[..p_len]);
+
+    buf[4] = frame as u8;
+    buf[5] = b'0' + rotation;
+
+    u64::from_le_bytes(buf)
 }

@@ -1,10 +1,7 @@
 use crate::App;
 use renderer::ObjectInstance;
-use engine::{CurrentSector, DB, PlayerMarker, Shootable, 
-			SpriteAnimation, Transform, VertOffset1, VertOffset2, 
-			VertOffset3, VertOffset4, VertOffset5, VertOffsetM1, VertOffsetM2};
+use engine::{CurrentSector, PlayerMarker, SpriteAnimation, Transform};
 use glam::Vec3;
-use hecs::Entity;
 use std::f32::consts::TAU;
 
 impl App {
@@ -20,13 +17,8 @@ impl App {
 	        player_pos = Vec3::new(lerped_x, lerped_y, lerped_z);
 	    }
 
-	    for (entity, transform, sector_idx, anim) in self.world.query::<(Entity, &Transform, &CurrentSector, &SpriteAnimation)>().iter() {   
-			let current_state = match anim.current_state {
-				Some(state) => state,
-				None => continue
-			};
-
-	        let lerped_x = transform.prev_x * (1.0 - alpha) + transform.x * alpha;
+	    for (transform, sector_idx, anim) in self.world.query::<(&Transform, &CurrentSector, &SpriteAnimation)>().iter() {   
+			let lerped_x = transform.prev_x * (1.0 - alpha) + transform.x * alpha;
 	        let lerped_y = transform.prev_y * (1.0 - alpha) + transform.y * alpha;
 	        let lerped_z = transform.prev_z * (1.0 - alpha) + transform.z * alpha;	
 		
@@ -48,56 +40,22 @@ impl App {
 			let shifted_angle = view_angle.wrapping_add(sector_offset);
 
 			let sprite_rotation = ((shifted_angle >> 29) + 1) as u8;  // same as shifted_angle / 0x20000000
-
-			let db = DB.get().expect("DB is not initialized!");
-			let current_state_data = db.states[&current_state];
 		
-	        let tex_prefix = current_state_data.sprite.to_string();
-	        let frame_letter = (b'A' + current_state_data.frame as u8) as char;
-			
-        	let mut lookup_key = pack_sprite_u64(&tex_prefix, frame_letter, sprite_rotation);
-            
-            if !self.texture_data.contains_key(&lookup_key) {
-                lookup_key = pack_sprite_u64(&tex_prefix, frame_letter, 0);
-            }
-
-	        let (tex_id, tex_width, tex_height, need_flip) = *self.texture_data.get(&lookup_key).unwrap_or(&(0, 64, 64, false));
+	        let cached = anim.cached_rotations[sprite_rotation as usize];
+        
+        	let tex_id = cached.tex_id;
+        	let tex_width = cached.width;
+        	let tex_height = cached.height;
+        	let need_flip = cached.need_flip;
 			let (left_offset, top_offset) = self.sprite_offsets[tex_id as usize];
 
 			let mut final_width = tex_width as f32;
         	let mut final_left_offset = left_offset as f32;
-			let mut final_top_offset = top_offset as f32;
 
 			if need_flip {
         	    final_width = -final_width;
         	    final_left_offset = tex_width as f32 - final_left_offset;
         	}
-
-			if let Ok(entity_ref) = self.world.entity(entity) {
-				if 	entity_ref.has::<Shootable>() || 
-					entity_ref.has::<VertOffset5>()
-				{
-				    final_top_offset += 5.0;
-				}
-				else if entity_ref.has::<VertOffset4>() {
-					final_top_offset += 4.0;
-				}
-				else if entity_ref.has::<VertOffset3>() {
-					final_top_offset += 3.0;
-				}
-				else if entity_ref.has::<VertOffset2>() {
-					final_top_offset += 2.0;
-				}
-				else if entity_ref.has::<VertOffset1>() {
-					final_top_offset += 1.0;
-				}
-				else if entity_ref.has::<VertOffsetM1>() {
-					final_top_offset -= 1.0;
-				}
-				else if entity_ref.has::<VertOffsetM2>() {
-					final_top_offset -= 2.0;
-				}
-			}
 
 			let sector = self.map.sectors[sector_idx.0];
 
@@ -107,7 +65,7 @@ impl App {
 
 	        instances.push(ObjectInstance {
 	            pos: [lerped_x, lerped_y, lerped_z],
-	            sprite_offset: [final_left_offset, final_top_offset],
+	            sprite_offset: [final_left_offset, top_offset as f32],
 				sprite_size: [final_width, tex_height as f32],
 	            light_level: modern_light,
 	            texture_id: tex_id,
@@ -125,21 +83,4 @@ fn lerp_angle(from: u32, to: u32, alpha: f32) -> u32 {
     let lerped_diff = (diff as f64 * alpha as f64) as i32;
     
     from.wrapping_add_signed(lerped_diff)
-}
-
-pub fn pack_sprite_u64(prefix: &str, frame: char, rotation: u8) -> u64 {
-    let bytes = prefix.as_bytes();
-    let mut buf = [0u8; 8];
-	
-    let p_len = std::cmp::min(bytes.len(), 4);
-    for i in 0..p_len {
-        if bytes[i] == 0 { break; }
-        buf[i] = bytes[i].to_ascii_uppercase();
-    }
-
-    buf[4] = frame as u8;
-
-    buf[5] = b'0' + rotation;
-
-    u64::from_le_bytes(buf)
 }
