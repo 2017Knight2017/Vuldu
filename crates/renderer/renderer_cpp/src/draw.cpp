@@ -295,6 +295,7 @@ void VulkanRenderer::drawLevel() {
         constants.resolution[0] = this->currentResolution[0];
         constants.resolution[1] = this->currentResolution[1];
         constants.skyIndex = this->currentSkyIndex;
+        constants.skyWidth = this->skyWidths[this->currentSkyIndex];
 
 		vkCmdPushConstants(
             currentCommandBuffer,

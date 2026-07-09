@@ -162,7 +162,7 @@ pub static SPRITE_NAMES: Map<i16, Option<&'static str>> = phf_map! {
 };
 
 impl WadManager {
-	pub fn bake_walls(&self) -> Result<(Vec<u64>, Vec<DoomPicture>, Vec<u64>, Vec<DoomPicture>), String> {
+	pub fn bake_walls(&self) -> Result<(Vec<u64>, Vec<DoomPicture>, Vec<u64>, Vec<DoomPicture>, Vec<f32>), String> {
 		let all_patchnames_raw = self.get_data("PNAMES")?;
 		let patch_names: Vec<String> = all_patchnames_raw.get(4..)
 			.ok_or_else(|| "Failed to get PNAMES data".to_string())?
@@ -204,6 +204,7 @@ impl WadManager {
 		let mut textures_names = Vec::with_capacity(num_textures);
 		let mut baked_sky_textures = Vec::with_capacity(MAX_SKY);
 		let mut sky_textures_names = Vec::with_capacity(MAX_SKY);
+		let mut sky_widths = Vec::with_capacity(MAX_SKY);
 
 	    for offset in offsets {
 	        let map_texture = self.parse_texture_lump(&texture1_raw, offset as usize)?;
@@ -253,6 +254,7 @@ impl WadManager {
 
 			if sky_names.contains(&tex_name_packed) {
 				sky_textures_names.push(tex_name_packed);
+				sky_widths.push(width as f32);
 			    baked_sky_textures.push(DoomPicture {
 			        raw_pixels: final_wall_pixels, 
 			        width: width as u32,
@@ -262,7 +264,7 @@ impl WadManager {
 			    });
 			}
 	    }
-	    Ok((textures_names, baked_textures, sky_textures_names, baked_sky_textures))
+	    Ok((textures_names, baked_textures, sky_textures_names, baked_sky_textures, sky_widths))
 	}
 
 	pub fn parse_texture_lump(&self, lump_data: &[u8], offset: usize) -> Result<MapTexture, String> {

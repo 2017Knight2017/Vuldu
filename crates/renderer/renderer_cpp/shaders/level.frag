@@ -23,6 +23,7 @@ layout(push_constant) uniform LevelConstants {
     uint paletteIndex;
     float resolution[2];
     uint skyIndex;
+    float skyWidth;
 } lc;
 
 layout(location = 0) in float fragLightLevel;      
@@ -55,18 +56,19 @@ void main() {
     
     // sky
     } else if (fragTexId == 65534) {
-        vec3 forward = normalize(vec3(ubo.view[0][2], ubo.view[1][2], ubo.view[2][2]));
-
+        vec3 forward = normalize(vec3(ubo.proj[0][2], ubo.proj[1][2], ubo.proj[2][2]));
         float cameraYaw = atan(forward.z, forward.x);
 
-        float skyU = (cameraYaw + PI) / (2.0 * PI);
-        skyU += screenUV.x * 1.6 - 0.5;
+        float widthFactor = 1024.0 / lc.skyWidth;
+
+        float skyU = (cameraYaw + PI) / (2.0 * PI) * widthFactor;
+        skyU += screenUV.x * (0.4 * widthFactor);
+        skyU = fract(skyU);
 
         float skyV = screenUV.y * 1.6;
 
         float rawColor = textureLod(skySamplers[nonuniformEXT(lc.skyIndex)], vec2(skyU, skyV), 0.0).r;
-        colorIndex = uint(rawColor * 255.0 + 0.5);
-    
+        colorIndex = uint(rawColor * 255.0 + 0.5); 
     } else {
         float rawColor = textureLod(texSamplers[nonuniformEXT(fragTexId)], fragTexCoord, 0.0).r;
         colorIndex = uint(rawColor * 255.0 + 0.5);

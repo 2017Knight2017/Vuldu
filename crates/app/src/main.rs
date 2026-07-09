@@ -144,9 +144,9 @@ impl ApplicationHandler for App {
                     renderer.set_resolution(1280, 720);
                     renderer.set_sky_index(if self.wad_manager.is_doom1 { self.map.map_num / 9 } else { get_sky_texture_index(self.map.map_num) });
 
-                    let (wall_texture_names, wall_pics, sky_texture_names, sky_pics): (Vec<u64>, Vec<DoomPicture>, Vec<u64>, Vec<DoomPicture>);
+                    let (wall_texture_names, wall_pics, sky_texture_names, sky_pics, sky_widths): (Vec<u64>, Vec<DoomPicture>, Vec<u64>, Vec<DoomPicture>, Vec<f32>);
                     match self.wad_manager.bake_walls() {
-                        Ok(res) => { (wall_texture_names, wall_pics, sky_texture_names, sky_pics) = res; },
+                        Ok(res) => { (wall_texture_names, wall_pics, sky_texture_names, sky_pics, sky_widths) = res; },
                         Err(err) => {
                             eprintln!("[FATAL] Wall baking failed: {}", err);
                             self.is_shutting_down = true;
@@ -236,6 +236,12 @@ impl ApplicationHandler for App {
                         .collect::<Vec<_>>();
                     sky_textures_sorted.sort_by_key(|tex| tex.0);
 
+                    let mut sky_widths_sorted = sky_texture_names
+                        .iter().zip(sky_widths)
+                        .collect::<Vec<_>>();
+                    sky_widths_sorted.sort_by_key(|tex| tex.0);
+                    let sky_widths_no_name: Vec<f32> = sky_widths_sorted.iter().map(|&(_, val)| val).collect();
+
                     for (_, pic) in sky_textures_sorted {
                         sky_descriptors.push(TextureDescriptor {
                             width: pic.width,
@@ -245,7 +251,7 @@ impl ApplicationHandler for App {
                         all_sky_pixels.extend_from_slice(&pic.raw_pixels);
                     }
 
-                    renderer.upload_sky_texture_array(sky_descriptors.as_slice(), all_sky_pixels.as_slice());
+                    renderer.upload_sky_texture_array(sky_descriptors.as_slice(), all_sky_pixels.as_slice(), sky_widths_no_name.as_slice());
                     renderer.upload_texture_array(descriptors.as_slice(), all_pixels.as_slice());
                     
                     match self.wad_manager.get_palettes() {
@@ -426,10 +432,10 @@ fn main() -> Result<(), String> {
     //
     //let map = DoomMap::from_wad(&wad_manager, &args.map)?;
 
-    wad_manager.add_wad("assets/DOOM2.WAD")?;
-    wad_manager.add_wad("assets/oku2v31.wad")?;
+    wad_manager.add_wad("assets/TNT.WAD")?;
+    //wad_manager.add_wad("assets/oku2v31.wad")?;
 
-    let map = DoomMap::from_wad(&wad_manager, wad_manager.is_doom1, 1)?;
+    let map = DoomMap::from_wad(&wad_manager, wad_manager.is_doom1, 20)?;
 
     let event_loop = EventLoop::new().unwrap();
 

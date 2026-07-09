@@ -170,12 +170,16 @@ void VulkanRenderer::uploadTextureArray(const TextureDescriptor* descriptors_ptr
     std::cout << "Bound " << descriptor_count << " textures to Bindless Set (Binding 4)" << std::endl;
 }
 
-void VulkanRenderer::uploadSkyTextureArray(const TextureDescriptor* descriptors_ptr, size_t descriptor_count, const uint8_t* all_pixels_ptr, size_t all_pixels_count) {
+void VulkanRenderer::uploadSkyTextureArray(const TextureDescriptor* descriptors_ptr, size_t descriptor_count, const uint8_t* all_pixels_ptr, size_t all_pixels_count, const float* sky_widths_ptr, size_t sky_widths_count) {
     uploadTextureArrayInternal(
         descriptors_ptr, descriptor_count, all_pixels_ptr, all_pixels_count,
         this->skyImages, this->skyImageMemories, this->skyImageViews,
         this->skySampler, 3
     );
+
+    this->skyWidths.resize(sky_widths_count);
+    memcpy(this->skyWidths.data(), sky_widths_ptr, sizeof(float) * sky_widths_count);
+
     std::cout << "Bound " << descriptor_count << " sky textures to Sky Set (Binding 3)" << std::endl;
 }
 

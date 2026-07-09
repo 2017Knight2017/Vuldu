@@ -62,6 +62,7 @@ struct PushConstants {
     uint32_t paletteIndex;
     float resolution[2];  
     uint32_t skyIndex;
+    float skyWidth;
 };
 
 class VulkanRenderer {
@@ -76,7 +77,7 @@ public:
     void updateObjectInstances(const ObjectInstance* instances_ptr, size_t instances_count);
     void uploadPalettes(const float* palettes_ptr);
     void uploadColormap(const uint8_t* colormap_ptr);
-    void uploadSkyTextureArray(const TextureDescriptor* descriptors_ptr, size_t descriptor_count, const uint8_t* all_pixels_ptr, size_t all_pixels_count);
+    void uploadSkyTextureArray(const TextureDescriptor* descriptors_ptr, size_t descriptor_count, const uint8_t* all_pixels_ptr, size_t all_pixels_count, const float* sky_widths_ptr, size_t sky_widths_count);
     void uploadTextureArray(const TextureDescriptor* descriptors_ptr, size_t descriptor_count, const uint8_t* all_pixels_ptr, size_t all_pixels_count);
     void setPaletteIndex(uint32_t idx);
     void setResolution(uint32_t width, uint32_t height);
@@ -168,6 +169,7 @@ private:
     uint32_t currentPaletteIndex = 0;
     float currentResolution[2];
     uint32_t currentSkyIndex = 0;
+    std::vector<float> skyWidths;
     
     void createInstance();
     void setupDebugMessenger();
