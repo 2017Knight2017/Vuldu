@@ -64,8 +64,10 @@ pub(crate) mod ffi {
         unsafe fn uploadPalettes(self: Pin<&mut VulkanRenderer>, palettes_ptr: *const f32);
         unsafe fn uploadColormap(self: Pin<&mut VulkanRenderer>, colormap_ptr: *const u8);
         unsafe fn uploadTextureArray(self: Pin<&mut VulkanRenderer>, descriptors: *const TextureDescriptor, descriptor_count: usize, all_pixels: *const u8, all_pixels_count: usize);
+        unsafe fn uploadSkyTextureArray(self: Pin<&mut VulkanRenderer>, descriptors: *const TextureDescriptor, descriptor_count: usize, all_pixels: *const u8, all_pixels_count: usize);
         fn setPaletteIndex(self: Pin<&mut VulkanRenderer>, idx: u32);
         fn setResolution(self: Pin<&mut VulkanRenderer>, width: u32, height: u32);
+        fn setSkyIndex(self: Pin<&mut VulkanRenderer>, idx: u32);
     }
 }
 

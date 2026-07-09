@@ -3,6 +3,7 @@ use std::path::Path;
 use crate::{Lump, Wad};
 
 pub struct WadManager {
+    pub is_doom1: bool,
     pub wads: Vec<Wad>,
     pub directory: HashMap<String, Lump>,
 }
@@ -10,12 +11,21 @@ pub struct WadManager {
 impl WadManager {
     pub fn new() -> Self {
         Self {
+            is_doom1: false,
             wads: Vec::new(),
             directory: HashMap::new(),
         }
     }
 
     pub fn add_wad<P: AsRef<Path>>(&mut self, path: P) -> Result<(), String> {
+        let path_ref = path.as_ref();
+        
+        if let Some(file_name) = path_ref.file_name().and_then(|os_str| os_str.to_str()) {
+            if file_name.to_lowercase() == "doom.wad" {
+                self.is_doom1 = true;
+            }
+        }
+
         let (wad, parsed_lumps) = Wad::open(path)?;
         
         let wad_index = self.wads.len();

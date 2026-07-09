@@ -4,6 +4,8 @@ use std::collections::HashMap;
 use std::ptr::read_unaligned;
 use std::mem::size_of;
 
+const MAX_SKY: usize = 16;
+
 #[repr(C)]
 #[derive(Clone, Copy)]
 struct MapPatch {
@@ -160,7 +162,7 @@ pub static SPRITE_NAMES: Map<i16, Option<&'static str>> = phf_map! {
 };
 
 impl WadManager {
-	pub fn bake_walls(&self) -> Result<(Vec<u64>, Vec<DoomPicture>), String> {
+	pub fn bake_walls(&self) -> Result<(Vec<u64>, Vec<DoomPicture>, Vec<u64>, Vec<DoomPicture>), String> {
 		let all_patchnames_raw = self.get_data("PNAMES")?;
 		let patch_names: Vec<String> = all_patchnames_raw.get(4..)
 			.ok_or_else(|| "Failed to get PNAMES data".to_string())?
@@ -188,8 +190,20 @@ impl WadManager {
     		})
     		.collect();
 
+		let sky_names = [
+			pack_name_to_u64(b"RSKY1"),
+			pack_name_to_u64(b"RSKY1"),
+			pack_name_to_u64(b"RSKY2"),
+			pack_name_to_u64(b"SKY1"),
+			pack_name_to_u64(b"SKY2"),
+			pack_name_to_u64(b"SKY3"),
+			pack_name_to_u64(b"SKY4")
+		];
+
 	    let mut baked_textures = Vec::with_capacity(num_textures);
 		let mut textures_names = Vec::with_capacity(num_textures);
+		let mut baked_sky_textures = Vec::with_capacity(MAX_SKY);
+		let mut sky_textures_names = Vec::with_capacity(MAX_SKY);
 
 	    for offset in offsets {
 	        let map_texture = self.parse_texture_lump(&texture1_raw, offset as usize)?;
@@ -226,18 +240,29 @@ impl WadManager {
 	            }
 	        }
 
-			textures_names.push(pack_name_to_u64(&map_texture.name));
+			let tex_name_packed = pack_name_to_u64(&map_texture.name);
 
-	        baked_textures.push(DoomPicture {
-	            raw_pixels: final_wall_pixels,
-	            width: width as u32,
-	            height: height as u32,
-	            left_offset: 0,
-	            top_offset: 0,
-	        });
+			textures_names.push(tex_name_packed);
+			baked_textures.push(DoomPicture {
+			    raw_pixels: final_wall_pixels.clone(),
+			    width: width as u32,
+			    height: height as u32,
+			    left_offset: 0,
+			    top_offset: 0,
+			});
+
+			if sky_names.contains(&tex_name_packed) {
+				sky_textures_names.push(tex_name_packed);
+			    baked_sky_textures.push(DoomPicture {
+			        raw_pixels: final_wall_pixels, 
+			        width: width as u32,
+			        height: height as u32,
+			        left_offset: 0,
+			        top_offset: 0,
+			    });
+			}
 	    }
-
-	    Ok((textures_names, baked_textures))
+	    Ok((textures_names, baked_textures, sky_textures_names, baked_sky_textures))
 	}
 
 	pub fn parse_texture_lump(&self, lump_data: &[u8], offset: usize) -> Result<MapTexture, String> {

@@ -15,11 +15,14 @@ layout(binding = 2) readonly buffer ColormapBuffer {
     uint8_t colors[8448];
 } colormap;
 
-layout(binding = 3) uniform sampler2D texSamplers[];
+layout(binding = 3) uniform sampler2D skySamplers[];
+
+layout(binding = 4) uniform sampler2D texSamplers[];
 
 layout(push_constant) uniform LevelConstants {
     uint paletteIndex;
     float resolution[2];
+    uint skyIndex;
 } lc;
 
 layout(location = 0) in float fragLightLevel;      
@@ -33,21 +36,39 @@ layout(location = 5) in float fragViewZ;
 
 layout(location = 0) out vec4 outColor;
 
+const float PI = 3.14159265359;
+
 void main() {
     uint colorIndex = 0;
 
-    if (fragTexId != 65535) {
-        float rawColor = textureLod(texSamplers[nonuniformEXT(fragTexId)], fragTexCoord, 0.0).r;
-        colorIndex = uint(rawColor * 255.0 + 0.5);
-    } else {
-        vec2 res = vec2(lc.resolution[0], lc.resolution[1]);
-        vec2 screenUV = gl_FragCoord.xy / res; 
+    vec2 res = vec2(lc.resolution[0], lc.resolution[1]);
+    vec2 screenUV = gl_FragCoord.xy / res; 
 
+    // untextured walls
+    if (fragTexId == 65535) {
         float scale = fragViewZ * 0.04;
 
         vec2 floorUV = screenUV * scale; 
 
         float rawColor = textureLod(texSamplers[nonuniformEXT(fragFloorTexId)], floorUV, 0.0).r;
+        colorIndex = uint(rawColor * 255.0 + 0.5);
+    
+    // sky
+    } else if (fragTexId == 65534) {
+        vec3 forward = normalize(vec3(ubo.view[0][2], ubo.view[1][2], ubo.view[2][2]));
+
+        float cameraYaw = atan(forward.z, forward.x);
+
+        float skyU = (cameraYaw + PI) / (2.0 * PI);
+        skyU += screenUV.x * 1.6 - 0.5;
+
+        float skyV = screenUV.y * 1.6;
+
+        float rawColor = textureLod(skySamplers[nonuniformEXT(lc.skyIndex)], vec2(skyU, skyV), 0.0).r;
+        colorIndex = uint(rawColor * 255.0 + 0.5);
+    
+    } else {
+        float rawColor = textureLod(texSamplers[nonuniformEXT(fragTexId)], fragTexCoord, 0.0).r;
         colorIndex = uint(rawColor * 255.0 + 0.5);
     }
 
@@ -56,7 +77,8 @@ void main() {
     }
 
     /// COLORMAP shadows
-    uint colormapOffset = (fragColormapIdx * 256) | colorIndex;
+    uint finalColormapIdx = (fragTexId == 65534) ? 0 : fragColormapIdx;
+    uint colormapOffset = (finalColormapIdx * 256) | colorIndex;
     uint shadedIndex = uint(colormap.colors[colormapOffset]);
     
     uint colorPosition = (lc.paletteIndex * 256) | shadedIndex;

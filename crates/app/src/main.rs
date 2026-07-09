@@ -26,6 +26,7 @@ const EYE_HEIGHT: f32 = 41.0;
 const FOV_ANGLE: f32 = 90.0;
 const TICKRATE: u32 = 35;
 const TICK_TIME: f32 = 1.0 / TICKRATE as f32;
+const MAX_SKY: usize = 16;
 
 struct App {
     window: Option<Window>,
@@ -40,6 +41,16 @@ struct App {
     view_matrix: Mat4,
     last_frame_time: Instant,
     time_accumulator: f32,
+}
+
+fn get_sky_texture_index(map: u32) -> u32 {
+    if map <= 11 {
+        0
+    } else if map <= 20 {
+        1
+    } else {
+        2
+    }
 }
 
 fn register_sprite(
@@ -131,10 +142,11 @@ impl ApplicationHandler for App {
                     renderer.init(&handles, window_raw_ptr);
 
                     renderer.set_resolution(1280, 720);
+                    renderer.set_sky_index(if self.wad_manager.is_doom1 { self.map.map_num / 9 } else { get_sky_texture_index(self.map.map_num) });
 
-                    let (wall_texture_names, wall_pics): (Vec<u64>, Vec<DoomPicture>);
+                    let (wall_texture_names, wall_pics, sky_texture_names, sky_pics): (Vec<u64>, Vec<DoomPicture>, Vec<u64>, Vec<DoomPicture>);
                     match self.wad_manager.bake_walls() {
-                        Ok(res) => { (wall_texture_names, wall_pics) = res; },
+                        Ok(res) => { (wall_texture_names, wall_pics, sky_texture_names, sky_pics) = res; },
                         Err(err) => {
                             eprintln!("[FATAL] Wall baking failed: {}", err);
                             self.is_shutting_down = true;
@@ -156,7 +168,7 @@ impl ApplicationHandler for App {
                         }
                     };
 
-                    // We need divide obj_texture_names later into mirrored and unmirrored versions,
+                    // We need to divide obj_texture_names later into mirrored and unmirrored versions,
                     // so we don't pack them into u64 yet.
                     let (obj_texture_names, obj_pics): (Vec<String>, Vec<DoomPicture>);
                     match self.wad_manager.bake_objects() {
@@ -173,6 +185,8 @@ impl ApplicationHandler for App {
                     let total_textures_count = wall_pics.len() + flat_pics.len() + obj_pics.len();
                     let mut all_pixels = Vec::new();
                     let mut descriptors = Vec::with_capacity(total_textures_count);
+                    let mut all_sky_pixels = Vec::new();
+                    let mut sky_descriptors = Vec::with_capacity(MAX_SKY);
 
                     let mut current_gpu_id = 0;
 
@@ -201,7 +215,6 @@ impl ApplicationHandler for App {
                     {
                         for (idx, pic) in pics.iter().enumerate() {
                             let name = tex_names[idx];
-
                             self.texture_data.insert(name, (current_gpu_id, pic.width, pic.height, false));
                         
                             descriptors.push(TextureDescriptor {
@@ -218,8 +231,23 @@ impl ApplicationHandler for App {
                         }
                     }
 
-                    renderer.upload_texture_array(descriptors.as_slice(), all_pixels.as_slice());
+                    let mut sky_textures_sorted = sky_texture_names
+                        .iter().zip(sky_pics)
+                        .collect::<Vec<_>>();
+                    sky_textures_sorted.sort_by_key(|tex| tex.0);
 
+                    for (_, pic) in sky_textures_sorted {
+                        sky_descriptors.push(TextureDescriptor {
+                            width: pic.width,
+                            height: pic.height,
+                            pixel_offset: all_sky_pixels.len(),
+                        });
+                        all_sky_pixels.extend_from_slice(&pic.raw_pixels);
+                    }
+
+                    renderer.upload_sky_texture_array(sky_descriptors.as_slice(), all_sky_pixels.as_slice());
+                    renderer.upload_texture_array(descriptors.as_slice(), all_pixels.as_slice());
+                    
                     match self.wad_manager.get_palettes() {
                         Ok(data) => renderer.upload_palettes(data.as_slice()),
                         Err(err) => {
@@ -370,8 +398,6 @@ impl ApplicationHandler for App {
                     renderer.draw_objects();
                     renderer.end_frame();
                 
-                    renderer.set_palette_index(0);
-                
                     if let Some(window) = &self.window {
                         window.request_redraw();
                     }
@@ -403,7 +429,7 @@ fn main() -> Result<(), String> {
     wad_manager.add_wad("assets/DOOM2.WAD")?;
     wad_manager.add_wad("assets/oku2v31.wad")?;
 
-    let map = DoomMap::from_wad(&wad_manager, "MAP01")?;
+    let map = DoomMap::from_wad(&wad_manager, wad_manager.is_doom1, 1)?;
 
     let event_loop = EventLoop::new().unwrap();
 

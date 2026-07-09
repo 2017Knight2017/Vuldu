@@ -13,6 +13,7 @@ const bool enableValidationLayers = false;
 
 inline const uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 inline const uint32_t MAX_TEXTURES = 8192;  // Maximal amount of textures on a level
+inline const uint32_t MAX_SKY = 16;  
 inline const uint32_t MAX_PAL = 14;
 inline const uint32_t MAX_LIGHTLEVEL = 32;
 inline const uint32_t MAX_OBJECTS = 100000;
@@ -60,6 +61,7 @@ struct Texture {
 struct PushConstants {
     uint32_t paletteIndex;
     float resolution[2];  
+    uint32_t skyIndex;
 };
 
 class VulkanRenderer {
@@ -74,9 +76,11 @@ public:
     void updateObjectInstances(const ObjectInstance* instances_ptr, size_t instances_count);
     void uploadPalettes(const float* palettes_ptr);
     void uploadColormap(const uint8_t* colormap_ptr);
+    void uploadSkyTextureArray(const TextureDescriptor* descriptors_ptr, size_t descriptor_count, const uint8_t* all_pixels_ptr, size_t all_pixels_count);
     void uploadTextureArray(const TextureDescriptor* descriptors_ptr, size_t descriptor_count, const uint8_t* all_pixels_ptr, size_t all_pixels_count);
     void setPaletteIndex(uint32_t idx);
     void setResolution(uint32_t width, uint32_t height);
+    void setSkyIndex(uint32_t idx);
     void startFrame(const UniformBufferObject* ubo_ptr);
     void endFrame();
     void drawObjects();
@@ -140,6 +144,11 @@ private:
     std::vector<VkImageView> textureImageViews;
     VkSampler textureSampler = VK_NULL_HANDLE;
 
+    std::vector<VkImage> skyImages;
+    std::vector<VkDeviceMemory> skyImageMemories;
+    std::vector<VkImageView> skyImageViews;
+    VkSampler skySampler = VK_NULL_HANDLE;
+
     VkImage depthImage = VK_NULL_HANDLE;
     VkDeviceMemory depthImageMemory = VK_NULL_HANDLE;
     VkImageView depthImageView = VK_NULL_HANDLE;
@@ -150,14 +159,15 @@ private:
     std::vector<VkSemaphore> renderFinishedSemaphores;
     std::vector<VkFence> inFlightFences;
 
-    uint32_t currentPaletteIndex = 0;
     VkBuffer paletteBuffer = VK_NULL_HANDLE;
     VkDeviceMemory paletteBufferMemory = VK_NULL_HANDLE;
 
     VkBuffer colormapBuffer = VK_NULL_HANDLE;
     VkDeviceMemory colormapBufferMemory = VK_NULL_HANDLE;
 
+    uint32_t currentPaletteIndex = 0;
     float currentResolution[2];
+    uint32_t currentSkyIndex = 0;
     
     void createInstance();
     void setupDebugMessenger();
@@ -175,19 +185,32 @@ private:
     void createInstanceBuffers();
     void createDescriptorPool();
     void createDescriptorSets();
-    void createTextureSampler();
+    void createTextureSamplers();
     void createCommandPool();
     void createCommandBuffers();
     void createSyncObjects();
 
     void updateUniformBuffer(const UniformBufferObject* ubo_ptr, uint32_t currentImage);
-    void updateDescriptorSetWithTexture(uint32_t textureId, VkImageView newView);
 
     void cleanupSwapChain();
 
-    void createBuffer(VkDeviceSize bufferSize, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+    void createBuffer(VkDeviceSize bufferSize, VkBufferUsageFlags usage, 
+        VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
     void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
-    void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
+    void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, 
+        VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
+
+    void uploadTextureArrayInternal(
+        const TextureDescriptor* descriptors_ptr, 
+        size_t descriptor_count, 
+        const uint8_t* all_pixels_ptr, 
+        size_t all_pixels_count,
+        std::vector<VkImage>& out_images,
+        std::vector<VkDeviceMemory>& out_memories,
+        std::vector<VkImageView>& out_image_views,
+        VkSampler sampler,
+        uint32_t dst_binding
+    );
     
     VkCommandBuffer beginSingleTimeCommands();
     void endSingleTimeCommands(VkCommandBuffer commandBuffer);

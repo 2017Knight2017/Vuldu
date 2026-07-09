@@ -52,6 +52,10 @@ impl SafeRenderer {
         self.pin_mut().setResolution(width, height);
     }
 
+    pub fn set_sky_index(&mut self, idx: u32) {
+        self.pin_mut().setSkyIndex(idx);
+    }
+
     pub fn update_level_geometry(&mut self, vertices: &[Vertex], indices: &[u32]) {
         unsafe {
             self.pin_mut().updateLevelGeometry(
@@ -101,6 +105,12 @@ impl SafeRenderer {
     pub fn upload_texture_array(&mut self, descriptors: &[TextureDescriptor], all_pixels: &[u8]) {
         unsafe {
             self.pin_mut().uploadTextureArray(descriptors.as_ptr(), descriptors.len(), all_pixels.as_ptr(), all_pixels.len());
+        }
+    }
+
+    pub fn upload_sky_texture_array(&mut self, descriptors: &[TextureDescriptor], all_pixels: &[u8]) {
+        unsafe {
+            self.pin_mut().uploadSkyTextureArray(descriptors.as_ptr(), descriptors.len(), all_pixels.as_ptr(), all_pixels.len());
         }
     }
 }

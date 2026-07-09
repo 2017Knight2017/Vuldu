@@ -23,24 +23,33 @@ void VulkanRenderer::createDescriptorSetLayout() {
     colormapLayoutBinding.pImmutableSamplers = nullptr;
     colormapLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-    VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-    samplerLayoutBinding.binding = 3;
-    samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    samplerLayoutBinding.descriptorCount = MAX_TEXTURES;
-    samplerLayoutBinding.pImmutableSamplers = nullptr;
-    samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    VkDescriptorSetLayoutBinding skySamplerLayoutBinding{};
+    skySamplerLayoutBinding.binding = 3;
+    skySamplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    skySamplerLayoutBinding.descriptorCount = MAX_SKY;
+    skySamplerLayoutBinding.pImmutableSamplers = nullptr;
+    skySamplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-    std::array<VkDescriptorSetLayoutBinding, 4> bindings = {
+    VkDescriptorSetLayoutBinding textureSamplerLayoutBinding{};
+    textureSamplerLayoutBinding.binding = 4;
+    textureSamplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    textureSamplerLayoutBinding.descriptorCount = MAX_TEXTURES;
+    textureSamplerLayoutBinding.pImmutableSamplers = nullptr;
+    textureSamplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    std::array<VkDescriptorSetLayoutBinding, 5> bindings = {
         uboLayoutBinding,
         paletteLayoutBinding, 
         colormapLayoutBinding,
-        samplerLayoutBinding,
+        skySamplerLayoutBinding,
+        textureSamplerLayoutBinding,
     };
 
-    std::array<VkDescriptorBindingFlags, 4> bindingFlags = {
+    std::array<VkDescriptorBindingFlags, 5> bindingFlags = {
         0,
         0,
         0,
+        VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
         VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT,
     };
 
@@ -103,15 +112,17 @@ void VulkanRenderer::createInstanceBuffers() {
 }
 
 void VulkanRenderer::createDescriptorPool() {
-	std::array<VkDescriptorPoolSize, 4> poolSizes{};
+	std::array<VkDescriptorPoolSize, 5> poolSizes{};
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	poolSizes[0].descriptorCount = MAX_FRAMES_IN_FLIGHT;
-	poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	poolSizes[1].descriptorCount = MAX_FRAMES_IN_FLIGHT * MAX_TEXTURES;
+    poolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	poolSizes[1].descriptorCount = MAX_FRAMES_IN_FLIGHT;
     poolSizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 	poolSizes[2].descriptorCount = MAX_FRAMES_IN_FLIGHT;
-    poolSizes[3].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	poolSizes[3].descriptorCount = MAX_FRAMES_IN_FLIGHT;
+    poolSizes[3].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	poolSizes[3].descriptorCount = MAX_FRAMES_IN_FLIGHT * MAX_SKY;
+    poolSizes[4].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	poolSizes[4].descriptorCount = MAX_FRAMES_IN_FLIGHT * MAX_TEXTURES;
 	
 	VkDescriptorPoolCreateInfo poolInfo{};
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -166,26 +177,4 @@ void VulkanRenderer::createDescriptorSets() {
 
         vkUpdateDescriptorSets(this->device, 1, &descriptorWrite, 0, nullptr);
     }
-}
-
-void VulkanRenderer::updateDescriptorSetWithTexture(uint32_t textureId, VkImageView newView) {
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        VkDescriptorImageInfo imageInfo{};
-        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        imageInfo.imageView = newView;
-        imageInfo.sampler = this->textureSampler;
-		
-        VkWriteDescriptorSet descriptorWrite{};
-        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrite.dstSet = this->descriptorSets[i];
-        descriptorWrite.dstBinding = 3;                  
-        descriptorWrite.dstArrayElement = textureId; 
-        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrite.descriptorCount = 1; 
-        descriptorWrite.pImageInfo = &imageInfo;
-		
-        vkUpdateDescriptorSets(this->device, 1, &descriptorWrite, 0, nullptr);
-    }
-
-    vkDeviceWaitIdle(this->device); 
 }

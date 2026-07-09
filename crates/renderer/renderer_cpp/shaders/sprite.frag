@@ -10,7 +10,7 @@ layout(binding = 2) readonly buffer ColormapBuffer {
     uint8_t colors[8448]; 
 } colormap;
 
-layout(binding = 3) uniform sampler2D texSamplers[];
+layout(binding = 4) uniform sampler2D texSamplers[];
 
 layout(push_constant) uniform SpriteConstants {
     uint paletteIndex;

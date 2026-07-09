@@ -31,7 +31,7 @@ void VulkanRenderer::initVulkan(const WindowHandles& handles, size_t window_raw_
     createCommandPool();
     createDepthResources();
     createFramebuffers();
-    createTextureSampler();
+    createTextureSamplers();
     createCommandBuffers();
     createSyncObjects();
 }
@@ -81,6 +81,8 @@ void VulkanRenderer::cleanup() {
     cleanupSwapChain();
 
     destroyResource(this->device, this->textureSampler, vkDestroySampler);
+    destroyResource(this->device, this->skySampler, vkDestroySampler);
+
 
     for (size_t i = 0; i < this->textureImageViews.size(); i++) {
         vkDestroyImageView(this->device, this->textureImageViews[i], nullptr);
@@ -96,6 +98,23 @@ void VulkanRenderer::cleanup() {
         vkFreeMemory(this->device, this->textureImageMemories[i], nullptr);
     }
     this->textureImageMemories.clear();
+
+
+    for (size_t i = 0; i < this->skyImageViews.size(); i++) {
+        vkDestroyImageView(this->device, this->skyImageViews[i], nullptr);
+    }
+    this->skyImageViews.clear();
+
+    for (size_t i = 0; i < this->skyImages.size(); i++) {
+        vkDestroyImage(this->device, this->skyImages[i], nullptr);
+    }
+    this->skyImages.clear();
+
+    for (size_t i = 0; i < this->skyImageMemories.size(); i++) {
+        vkFreeMemory(this->device, this->skyImageMemories[i], nullptr);
+    }
+    this->skyImageMemories.clear();
+
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         if (this->uniformBuffersMapped[i] != nullptr) {

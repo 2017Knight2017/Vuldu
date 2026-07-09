@@ -138,6 +138,7 @@ impl Aabb {
 
 #[derive(Debug, Default)]
 pub struct DoomMap {
+	pub map_num: u32,
     vertices: Vec<MapVertex>,
     linedefs: Vec<MapLinedef>,
     sidedefs: Vec<MapSidedef>,
@@ -149,8 +150,12 @@ pub struct DoomMap {
 }
 
 impl DoomMap {
-    pub fn from_wad(wad_manager: &WadManager, map_name: &str) -> Result<Self, String> {
-        let mut map = DoomMap::default();
+    pub fn from_wad(wad_manager: &WadManager, is_doom1: bool, map_num: u32) -> Result<Self, String> {
+		let mut map = DoomMap::default();
+
+		map.map_num = map_num;
+
+		let map_name = construct_map_name(is_doom1, map_num);
 
     	let vertexes_bytes = wad_manager.get_data(&format!("VERTEXES_{}", map_name))?;
 		map.vertices = vertexes_bytes
@@ -250,7 +255,7 @@ impl DoomMap {
 	        let wall_length = (dx * dx + dy * dy).sqrt();
 	        let tex_offset = front_sidedef.textureoffset as f32;
 
-	        let mut add_wall_quad = |y_low: f32, y_high: f32, tex_name: &[u8], v_top_align: bool, fake_flat_name: &[u8]| {
+	        let mut add_wall_quad = |y_low: f32, y_high: f32, tex_name: &[u8], v_top_align: bool, fake_flat_name: &[u8], other_sector_ceilingpic: &[u8]| {
             	let wall_height = y_high - y_low;
             	if wall_height <= 0.0 { return; }
 
@@ -262,9 +267,12 @@ impl DoomMap {
     			    .get(&pack_name_to_u64(final_tex_name))
     			    .unwrap_or(&(0, 64, 64, false));
 
-    			let (final_tex_id, floor_tex_id) = if is_fake_wall {
+    			let (final_tex_id, floor_tex_id) = if final_tex_name == b"F_SKY1\0\0" || 
+					(other_sector_ceilingpic == b"F_SKY1\0\0" && fake_flat_name == b"F_SKY1\0\0") {
+					((u16::MAX - 1) as u32, 0)
+				} else if is_fake_wall {
     			    (u16::MAX as u32, tex_id)
-    			} else {
+				} else {
     			    (tex_id, 0)
     			};
 
@@ -350,7 +358,8 @@ impl DoomMap {
 						front_sector.ceilingheight as f32, 
 						&front_sidedef.midtexture, 
 						true, 
-						&front_sector.floorpic
+						&front_sector.floorpic,
+						&[]
 					);
         	    },
         	    Some((_, b_sector)) => {
@@ -360,7 +369,8 @@ impl DoomMap {
 							front_sector.ceilingheight as f32, 
 							&front_sidedef.toptexture, 
 							true, 
-							&front_sector.ceilingpic
+							&front_sector.ceilingpic,
+							&b_sector.ceilingpic
 						);
         	        }
 
@@ -370,14 +380,15 @@ impl DoomMap {
 							b_sector.floorheight as f32, 
 							&front_sidedef.bottomtexture, 
 							false, 
-							&b_sector.floorpic
+							&b_sector.floorpic,
+							&front_sector.ceilingpic
 						);
         	        }
 
         	        if front_sidedef.midtexture[0] != 0x2d {
         	            let mid_low = f32::max(front_sector.floorheight as f32, b_sector.floorheight as f32);
         	            let mid_high = f32::min(front_sector.ceilingheight as f32, b_sector.ceilingheight as f32);
-        	            add_wall_quad(mid_low, mid_high, &front_sidedef.midtexture, true, &front_sector.floorpic);
+        	            add_wall_quad(mid_low, mid_high, &front_sidedef.midtexture, true, &front_sector.floorpic, &b_sector.ceilingpic);
         	        }
         	    }
         	}
@@ -567,8 +578,18 @@ impl DoomMap {
 				
 	            let floor_texture_name = pack_name_to_u64(&sector.floorpic);
 	            let ceil_texture_name = pack_name_to_u64(&sector.ceilingpic);
-	            let floor_texture_id = texture_ids.get(&floor_texture_name).unwrap_or(&(0,0,0,false)).0;
-	            let ceil_texture_id = texture_ids.get(&ceil_texture_name).unwrap_or(&(0,0,0,false)).0;
+
+	            let floor_texture_id = if &sector.floorpic == b"F_SKY1\0\0" {
+					(u16::MAX - 1) as u32
+				} else {
+					texture_ids.get(&floor_texture_name).unwrap_or(&(0,0,0,false)).0
+				};
+
+	            let ceil_texture_id = if &sector.ceilingpic == b"F_SKY1\0\0" {
+					(u16::MAX - 1) as u32
+				} else { 
+					texture_ids.get(&ceil_texture_name).unwrap_or(&(0,0,0,false)).0 
+				};
 
 	            let clamped_light = sector.lightlevel.clamp(0, 255) as f32;
 	            let modern_light = clamped_light / 255.0;
@@ -709,6 +730,16 @@ fn clean_polygon(poly: &[[f32; 2]]) -> Vec<[f32; 2]> {
         }
     }
     cleaned
+}
+
+fn construct_map_name(is_doom1: bool, num: u32) -> String {
+	if is_doom1 {
+        let episode = (num / 9) + 1;
+        let map_num = (num % 9) + 1;
+        format!("E{}M{}", episode, map_num)
+    } else {
+        format!("MAP{:02}", num)
+    }
 }
 
 pub fn pack_name_to_u64(name_bytes: &[u8]) -> u64 {
