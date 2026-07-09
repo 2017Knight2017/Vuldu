@@ -53,6 +53,7 @@ impl App {
 			let mut final_width = tex_width as f32;
         	let mut final_left_offset = left_offset as f32;
 
+
 			if need_flip {
         	    final_width = -final_width;
         	    final_left_offset = tex_width as f32 - final_left_offset;
@@ -66,7 +67,7 @@ impl App {
 
 	        instances.push(ObjectInstance {
 	            pos: [lerped_x, lerped_y, lerped_z],
-	            sprite_offset: [final_left_offset, top_offset as f32],
+	            sprite_offset: [final_left_offset, (top_offset + anim.top_offset_shift) as f32],
 				sprite_size: [final_width, tex_height as f32],
 	            light_level: modern_light,
 	            texture_id: tex_id,

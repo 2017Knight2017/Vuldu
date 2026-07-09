@@ -16,7 +16,7 @@ radius = 16.0
 height = 56.0
 mass = 100
 damage = 0
-flags = ["Solid","Shootable","DropOff","Pickup","NotDMatch"]
+flags = ["Solid","Shootable","DropOff","Pickup","NotDMatch", "VertOffset5"]
 
 
 [[objects]]		# MT_POSSESSED
@@ -40,7 +40,7 @@ height = 56.0
 mass = 100
 damage = 0
 active_sound = "Posact"
-flags = ["Solid","Shootable","CountKill"]
+flags = ["Solid","Shootable","CountKill", "VertOffset5"]
 raise_state = "POSSRaise1"
 
 
@@ -64,7 +64,7 @@ height = 56.0
 mass = 100
 damage = 0
 active_sound = "Posact"
-flags = ["Solid","Shootable","CountKill"]
+flags = ["Solid","Shootable","CountKill", "VertOffset5"]
 raise_state = "SPOSRaise1"
 
 
@@ -87,7 +87,7 @@ height = 56.0
 mass = 500
 damage = 0
 active_sound = "Vilact"
-flags = ["Solid","Shootable","CountKill"]
+flags = ["Solid","Shootable","CountKill", "VertOffset5"]
 
 
 [[objects]]		# MT_FIRE
@@ -124,7 +124,7 @@ height = 56.0
 mass = 500
 damage = 0
 active_sound = "Skeact"
-flags = ["Solid","Shootable","CountKill"]
+flags = ["Solid","Shootable","CountKill", "VertOffset5"]
 raise_state = "SKELRaise1"
 
 
@@ -178,7 +178,7 @@ height = 64.0
 mass = 1000
 damage = 0
 active_sound = "Posact"
-flags = ["Solid","Shootable","CountKill"]
+flags = ["Solid","Shootable","CountKill", "VertOffset5"]
 raise_state = "FATTRaise1"
 
 
@@ -219,7 +219,7 @@ height = 56.0
 mass = 100
 damage = 0
 active_sound = "Posact"
-flags = ["Solid","Shootable","CountKill"]
+flags = ["Solid","Shootable","CountKill", "VertOffset5"]
 raise_state = "CPOSRaise1"
 
 
@@ -244,7 +244,7 @@ height = 56.0
 mass = 100
 damage = 0
 active_sound = "Bgact"
-flags = ["Solid","Shootable","CountKill"]
+flags = ["Solid","Shootable","CountKill", "VertOffset5"]
 raise_state = "TROORaise1"
 
 
@@ -268,7 +268,7 @@ height = 56.0
 mass = 400
 damage = 0
 active_sound = "Dmact"
-flags = ["Solid","Shootable","CountKill"]
+flags = ["Solid","Shootable","CountKill", "VertOffset5"]
 raise_state = "SARGRaise1"
 
 
@@ -292,7 +292,7 @@ height = 56.0
 mass = 400
 damage = 0
 active_sound = "Dmact"
-flags = ["Solid","Shootable","Shadow","CountKill"]
+flags = ["Solid","Shootable","Shadow","CountKill", "VertOffset5"]
 raise_state = "SARGRaise1"
 
 
@@ -315,7 +315,7 @@ height = 56.0
 mass = 400
 damage = 0
 active_sound = "Dmact"
-flags = ["Solid","Shootable","Float","NoGravity","CountKill"]
+flags = ["Solid","Shootable","Float","NoGravity","CountKill", "VertOffset5"]
 raise_state = "HEADRaise1"
 
 
@@ -339,7 +339,7 @@ height = 64.0
 mass = 1000
 damage = 0
 active_sound = "Dmact"
-flags = ["Solid","Shootable","CountKill"]
+flags = ["Solid","Shootable","CountKill", "VertOffset5"]
 raise_state = "BOSSRaise1"
 
 
@@ -380,7 +380,7 @@ height = 64.0
 mass = 1000
 damage = 0
 active_sound = "Dmact"
-flags = ["Solid","Shootable","CountKill"]
+flags = ["Solid","Shootable","CountKill", "VertOffset5"]
 raise_state = "BOS2Raise1"
 
 
@@ -403,7 +403,7 @@ height = 56.0
 mass = 50
 damage = 3
 active_sound = "Dmact"
-flags = ["Solid","Shootable","Float","NoGravity"]
+flags = ["Solid","Shootable","Float","NoGravity", "VertOffset5"]
 
 
 [[objects]]		# MT_SPIDER
@@ -426,7 +426,7 @@ height = 100.0
 mass = 1000
 damage = 0
 active_sound = "Dmact"
-flags = ["Solid","Shootable","CountKill"]
+flags = ["Solid","Shootable","CountKill", "VertOffset5"]
 
 
 [[objects]]		# MT_BABY
@@ -448,7 +448,7 @@ height = 64.0
 mass = 600
 damage = 0
 active_sound = "Bspact"
-flags = ["Solid","Shootable","CountKill"]
+flags = ["Solid","Shootable","CountKill", "VertOffset5"]
 raise_state = "BSPIRaise1"
 
 
@@ -471,7 +471,7 @@ height = 110.0
 mass = 1000
 damage = 0
 active_sound = "Dmact"
-flags = ["Solid","Shootable","CountKill"]
+flags = ["Solid","Shootable","CountKill", "VertOffset5"]
 
 
 [[objects]]		# MTPain
@@ -493,7 +493,7 @@ height = 56.0
 mass = 400
 damage = 0
 active_sound = "Dmact"
-flags = ["Solid","Shootable","Float","NoGravity","CountKill"]
+flags = ["Solid","Shootable","Float","NoGravity","CountKill", "VertOffset5"]
 raise_state = "PAINRaise1"
 
 
@@ -517,7 +517,7 @@ height = 56.0
 mass = 100
 damage = 0
 active_sound = "Posact"
-flags = ["Solid","Shootable","CountKill"]
+flags = ["Solid","Shootable","CountKill", "VertOffset5"]
 raise_state = "SSWVRaise1"
 
 
@@ -536,7 +536,7 @@ radius = 16.0
 height = 72.0
 mass = 10000000
 damage = 0
-flags = ["Solid","SpawnCeiling","NoGravity","Shootable","CountKill"]
+flags = ["Solid","SpawnCeiling","NoGravity","Shootable","CountKill", "VertOffset5"]
 
 
 [[objects]]		# MT_BOSSBRAIN
@@ -554,7 +554,7 @@ radius = 16.0
 height = 16.0
 mass = 10000000
 damage = 0
-flags = ["Solid","Shootable"]
+flags = ["Solid","Shootable", "VertOffset5"]
 
 
 [[objects]]		# MT_BOSSSPIT
@@ -628,7 +628,7 @@ radius = 10.0
 height = 42.0
 mass = 100
 damage = 0
-flags = ["Solid","Shootable","NoBlood"]
+flags = ["Solid","Shootable","NoBlood", "VertOffset5"]
 
 
 [[objects]]		# MT_TROOPSHOT
@@ -1064,7 +1064,7 @@ radius = 20.0
 height = 16.0
 mass = 100
 damage = 0
-flags = ["Special","CountItem"]
+flags = ["Special","CountItem", "VertOffset4"]
 
 
 [[objects]]		# MT_MISC16
@@ -1330,7 +1330,7 @@ radius = 16.0
 height = 16.0
 mass = 100
 damage = 0
-flags = ["Solid"]
+flags = ["Solid", "VertOffset3"]
 
 
 [[objects]]		# MT_MISC30
@@ -1344,7 +1344,7 @@ radius = 16.0
 height = 16.0
 mass = 100
 damage = 0
-flags = ["Solid"]
+flags = ["Solid", "VertOffset3"]
 
 
 [[objects]]		# MT_MISC31
@@ -1456,7 +1456,7 @@ radius = 16.0
 height = 16.0
 mass = 100
 damage = 0
-flags = ["Solid"]
+flags = ["Solid", "VertOffset4"]
 
 
 [[objects]]		# MT_MISC39
@@ -1624,7 +1624,7 @@ radius = 16.0
 height = 16.0
 mass = 100
 damage = 0
-flags = ["Solid"]
+flags = ["Solid", "VertOffset4"]
 
 
 [[objects]]		# MT_MISC51
@@ -1778,7 +1778,7 @@ radius = 20.0
 height = 16.0
 mass = 100
 damage = 0
-flags = []
+flags = ["VertOffset2"]
 
 
 [[objects]]		# MT_MISC62
@@ -1792,7 +1792,7 @@ radius = 20.0
 height = 16.0
 mass = 100
 damage = 0
-flags = []
+flags = ["VertOffset5"]
 
 
 [[objects]]		# MT_MISC63
@@ -1806,7 +1806,7 @@ radius = 20.0
 height = 16.0
 mass = 100
 damage = 0
-flags = []
+flags = ["VertOffset5"]
 
 
 [[objects]]		# MT_MISC64
@@ -1820,7 +1820,7 @@ radius = 20.0
 height = 16.0
 mass = 100
 damage = 0
-flags = []
+flags = ["VertOffset5"]
 
 
 [[objects]]		# MT_MISC65
@@ -1848,7 +1848,7 @@ radius = 20.0
 height = 16.0
 mass = 100
 damage = 0
-flags = []
+flags = ["VertOffset3"]
 
 
 [[objects]]		# MT_MISC67
@@ -1862,7 +1862,7 @@ radius = 20.0
 height = 16.0
 mass = 100
 damage = 0
-flags = []
+flags = ["VertOffset5"]
 
 
 [[objects]]		# MT_MISC68
@@ -1946,7 +1946,7 @@ radius = 16.0
 height = 16.0
 mass = 100
 damage = 0
-flags = ["Solid"]
+flags = ["Solid", "VertOffset5"]
 
 
 [[objects]]		# MT_MISC74
@@ -1960,7 +1960,7 @@ radius = 16.0
 height = 16.0
 mass = 100
 damage = 0
-flags = ["Solid"]
+flags = ["Solid", "VertOffset4"]
 
 
 [[objects]]		# MT_MISC75
@@ -1974,7 +1974,7 @@ radius = 16.0
 height = 16.0
 mass = 100
 damage = 0
-flags = ["Solid"]
+flags = ["Solid", "VertOffset4"]
 
 
 [[objects]]		# MT_MISC76
@@ -2100,7 +2100,7 @@ radius = 20.0
 height = 16.0
 mass = 100
 damage = 0
-flags = ["NoBlockmap"]
+flags = ["NoBlockmap", "VertOffset5"]
 
 
 [[objects]]		# MT_MISC85
@@ -2114,7 +2114,7 @@ radius = 20.0
 height = 16.0
 mass = 100
 damage = 0
-flags = ["NoBlockmap"]
+flags = ["NoBlockmap", "VertOffset5"]
 
 
 [[objects]]		# MT_MISC86
@@ -2128,6 +2128,6 @@ radius = 20.0
 height = 16.0
 mass = 100
 damage = 0
-flags = ["NoBlockmap"]
+flags = ["NoBlockmap", "VertOffset5"]
     
 	

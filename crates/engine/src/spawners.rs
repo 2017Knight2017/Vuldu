@@ -37,7 +37,22 @@ pub fn spawn_mobj(
 
 	let spawn_state_data = db.states.get(&spawn_state)
     	.expect("Spawn state not found in database!");
-	let initial_rotations = spawn_state_data.cached_rotations;
+	let cached_rotations = spawn_state_data.cached_rotations;
+
+	let m_len = mobj_info.flags.len();
+	let mut top_offset_shift: i16 = 0;
+	if m_len > 0 {
+		top_offset_shift = match mobj_info.flags[m_len-1] {
+			MobjFlag::VertOffsetM1 => -1,
+			MobjFlag::VertOffsetM2 => -2,
+			MobjFlag::VertOffset1 => 1,
+			MobjFlag::VertOffset2 => 2,
+			MobjFlag::VertOffset3 => 3,
+			MobjFlag::VertOffset4 => 4,
+			MobjFlag::VertOffset5 => 5,
+			_ => 0
+		}
+	}
 
 	let mut entity_builder = hecs::EntityBuilder::new();
     
@@ -46,7 +61,7 @@ pub fn spawn_mobj(
 		.add(CurrentSector(sector_idx))
 		.add(Velocity::default())
 		.add(BoundingBox { radius: mobj_info.radius, height: mobj_info.height })
-		.add(SpriteAnimation {current_state: mobj_info.spawn_state, tics_left: 8, cached_rotations: initial_rotations});
+		.add(SpriteAnimation {current_state: mobj_info.spawn_state, tics_left: 8, cached_rotations, top_offset_shift});
 
 	for flag in &mobj_info.flags {
 		match flag {
@@ -70,14 +85,7 @@ pub fn spawn_mobj(
 			MobjFlag::CountItem => entity_builder.add(CountItem),
 			MobjFlag::Special => entity_builder.add(Special),
 			MobjFlag::Pickup => entity_builder.add(Pickup),
-			MobjFlag::VertOffset1 => entity_builder.add(VertOffset1),
-			MobjFlag::VertOffset2 => entity_builder.add(VertOffset2),
-			MobjFlag::VertOffset3 => entity_builder.add(VertOffset3),
-			MobjFlag::VertOffset4 => entity_builder.add(VertOffset4),
-			MobjFlag::VertOffset5 => entity_builder.add(VertOffset5),
-			MobjFlag::VertOffsetM1 => entity_builder.add(VertOffsetM1),
-			MobjFlag::VertOffsetM2 => entity_builder.add(VertOffsetM2),
-			_ => {continue;}
+			_ => { continue; }
 		};
 	}
 

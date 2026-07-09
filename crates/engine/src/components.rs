@@ -69,6 +69,7 @@ pub struct SpriteAnimation {
     pub current_state: Option<StateNum>, 
     pub tics_left: i32,
     pub cached_rotations: [CachedStateSprite; 9],
+    pub top_offset_shift: i16
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -111,13 +112,6 @@ define_markers! {
     CountItem;
     SkullFly;
     NotDMatch;
-    VertOffset1;
-    VertOffset2;
-    VertOffset3;
-    VertOffset4;
-    VertOffset5;
-    VertOffsetM1;
-    VertOffsetM2;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
