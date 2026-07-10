@@ -102,15 +102,9 @@ impl SafeRenderer {
         self.pin_mut().drawObjects();
     }
 
-    pub fn upload_texture_array(&mut self, descriptors: &[TextureDescriptor], all_pixels: &[u8]) {
+    pub fn upload_texture_array(&mut self, descriptors: &[TextureDescriptor], all_pixels: &[u8], sky_widths: &[f32]) {
         unsafe {
-            self.pin_mut().uploadTextureArray(descriptors.as_ptr(), descriptors.len(), all_pixels.as_ptr(), all_pixels.len());
-        }
-    }
-
-    pub fn upload_sky_texture_array(&mut self, descriptors: &[TextureDescriptor], all_pixels: &[u8], sky_widths: &[f32]) {
-        unsafe {
-            self.pin_mut().uploadSkyTextureArray(descriptors.as_ptr(), descriptors.len(), all_pixels.as_ptr(), all_pixels.len(), sky_widths.as_ptr(), sky_widths.len());
+            self.pin_mut().uploadTextureArray(descriptors.as_ptr(), descriptors.len(), all_pixels.as_ptr(), all_pixels.len(), sky_widths.as_ptr(), sky_widths.len());
         }
     }
 }

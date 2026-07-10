@@ -26,7 +26,7 @@ const EYE_HEIGHT: f32 = 41.0;
 const FOV_ANGLE: f32 = 90.0;
 const TICKRATE: u32 = 35;
 const TICK_TIME: f32 = 1.0 / TICKRATE as f32;
-const MAX_SKY: usize = 16;
+pub const MAX_SKY: usize = 16;
 
 struct App {
     window: Option<Window>,
@@ -185,10 +185,41 @@ impl ApplicationHandler for App {
                     let total_textures_count = wall_pics.len() + flat_pics.len() + obj_pics.len();
                     let mut all_pixels = Vec::new();
                     let mut descriptors = Vec::with_capacity(total_textures_count);
-                    let mut all_sky_pixels = Vec::new();
-                    let mut sky_descriptors = Vec::with_capacity(MAX_SKY);
 
                     let mut current_gpu_id = 0;
+
+                    let mut sky_data: Vec<_> = sky_texture_names
+                        .iter()
+                        .zip(sky_pics)
+                        .zip(sky_widths)
+                        .map(|((name, pic), width)| (name, pic, width))
+                        .collect();
+
+                    sky_data.sort_by_key(|trio| trio.0);
+
+                    current_gpu_id += MAX_SKY as u32;
+
+                    let mut sky_widths_no_name = Vec::with_capacity(sky_data.len());
+
+                    for (_, pic, width) in sky_data {
+                        descriptors.push(TextureDescriptor {
+                            width: pic.width,
+                            height: pic.height,
+                            pixel_offset: all_pixels.len(),
+                        });
+                        all_pixels.extend_from_slice(&pic.raw_pixels);
+                        sky_widths_no_name.push(width);
+                    }
+
+                    let padding_needed = MAX_SKY.saturating_sub(descriptors.len());                    
+                    for _ in 0..padding_needed {
+                        descriptors.push(TextureDescriptor {
+                            width: 1,
+                            height: 1,
+                            pixel_offset: all_pixels.len(),
+                        });
+                    }
+                    all_pixels.push(0);
 
                     for (idx, pic) in obj_pics.iter().enumerate() {
                         let name = &obj_texture_names[idx];
@@ -231,28 +262,7 @@ impl ApplicationHandler for App {
                         }
                     }
 
-                    let mut sky_textures_sorted = sky_texture_names
-                        .iter().zip(sky_pics)
-                        .collect::<Vec<_>>();
-                    sky_textures_sorted.sort_by_key(|tex| tex.0);
-
-                    let mut sky_widths_sorted = sky_texture_names
-                        .iter().zip(sky_widths)
-                        .collect::<Vec<_>>();
-                    sky_widths_sorted.sort_by_key(|tex| tex.0);
-                    let sky_widths_no_name: Vec<f32> = sky_widths_sorted.iter().map(|&(_, val)| val).collect();
-
-                    for (_, pic) in sky_textures_sorted {
-                        sky_descriptors.push(TextureDescriptor {
-                            width: pic.width,
-                            height: pic.height,
-                            pixel_offset: all_sky_pixels.len(),
-                        });
-                        all_sky_pixels.extend_from_slice(&pic.raw_pixels);
-                    }
-
-                    renderer.upload_sky_texture_array(sky_descriptors.as_slice(), all_sky_pixels.as_slice(), sky_widths_no_name.as_slice());
-                    renderer.upload_texture_array(descriptors.as_slice(), all_pixels.as_slice());
+                    renderer.upload_texture_array(descriptors.as_slice(), all_pixels.as_slice(), sky_widths_no_name.as_slice());
                     
                     match self.wad_manager.get_palettes() {
                         Ok(data) => renderer.upload_palettes(data.as_slice()),
@@ -432,10 +442,10 @@ fn main() -> Result<(), String> {
     //
     //let map = DoomMap::from_wad(&wad_manager, &args.map)?;
 
-    wad_manager.add_wad("assets/TNT.WAD")?;
+    wad_manager.add_wad("assets/PLUTONIA.WAD")?;
     //wad_manager.add_wad("assets/oku2v31.wad")?;
 
-    let map = DoomMap::from_wad(&wad_manager, wad_manager.is_doom1, 20)?;
+    let map = DoomMap::from_wad(&wad_manager, wad_manager.is_doom1, 15)?;
 
     let event_loop = EventLoop::new().unwrap();
 

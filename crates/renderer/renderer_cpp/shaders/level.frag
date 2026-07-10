@@ -15,9 +15,7 @@ layout(binding = 2) readonly buffer ColormapBuffer {
     uint8_t colors[8448];
 } colormap;
 
-layout(binding = 3) uniform sampler2D skySamplers[];
-
-layout(binding = 4) uniform sampler2D texSamplers[];
+layout(binding = 3) uniform sampler2D texSamplers[];
 
 layout(push_constant) uniform LevelConstants {
     uint paletteIndex;
@@ -54,8 +52,8 @@ void main() {
         float rawColor = textureLod(texSamplers[nonuniformEXT(fragFloorTexId)], floorUV, 0.0).r;
         colorIndex = uint(rawColor * 255.0 + 0.5);
     
-    // sky
-    } else if (fragTexId == 65534) {
+    // sky walls or sky ceilings
+    } else if (fragTexId == 65534 || fragTexId == 65533) {
         vec3 forward = normalize(vec3(ubo.proj[0][2], ubo.proj[1][2], ubo.proj[2][2]));
         float cameraYaw = atan(forward.z, forward.x);
 
@@ -67,7 +65,7 @@ void main() {
 
         float skyV = screenUV.y * 1.6;
 
-        float rawColor = textureLod(skySamplers[nonuniformEXT(lc.skyIndex)], vec2(skyU, skyV), 0.0).r;
+        float rawColor = textureLod(texSamplers[nonuniformEXT(lc.skyIndex)], vec2(skyU, skyV), 0.0).r;
         colorIndex = uint(rawColor * 255.0 + 0.5); 
     } else {
         float rawColor = textureLod(texSamplers[nonuniformEXT(fragTexId)], fragTexCoord, 0.0).r;
@@ -79,7 +77,7 @@ void main() {
     }
 
     /// COLORMAP shadows
-    uint finalColormapIdx = (fragTexId == 65534) ? 0 : fragColormapIdx;
+    uint finalColormapIdx = (fragTexId == 65534 || fragTexId == 65533) ? 0 : fragColormapIdx;
     uint colormapOffset = (finalColormapIdx * 256) | colorIndex;
     uint shadedIndex = uint(colormap.colors[colormapOffset]);
     

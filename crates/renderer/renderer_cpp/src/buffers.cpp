@@ -161,38 +161,13 @@ void VulkanRenderer::endSingleTimeCommands(VkCommandBuffer commandBuffer) {
     vkFreeCommandBuffers(this->device, this->commandPool, 1, &commandBuffer);
 }
 
-void VulkanRenderer::uploadTextureArray(const TextureDescriptor* descriptors_ptr, size_t descriptor_count, const uint8_t* all_pixels_ptr, size_t all_pixels_count) {
-    uploadTextureArrayInternal(
-        descriptors_ptr, descriptor_count, all_pixels_ptr, all_pixels_count,
-        this->textureImages, this->textureImageMemories, this->textureImageViews,
-        this->textureSampler, 4
-    );
-    std::cout << "Bound " << descriptor_count << " textures to Bindless Set (Binding 4)" << std::endl;
-}
-
-void VulkanRenderer::uploadSkyTextureArray(const TextureDescriptor* descriptors_ptr, size_t descriptor_count, const uint8_t* all_pixels_ptr, size_t all_pixels_count, const float* sky_widths_ptr, size_t sky_widths_count) {
-    uploadTextureArrayInternal(
-        descriptors_ptr, descriptor_count, all_pixels_ptr, all_pixels_count,
-        this->skyImages, this->skyImageMemories, this->skyImageViews,
-        this->skySampler, 3
-    );
-
-    this->skyWidths.resize(sky_widths_count);
-    memcpy(this->skyWidths.data(), sky_widths_ptr, sizeof(float) * sky_widths_count);
-
-    std::cout << "Bound " << descriptor_count << " sky textures to Sky Set (Binding 3)" << std::endl;
-}
-
-void VulkanRenderer::uploadTextureArrayInternal(
+void VulkanRenderer::uploadTextureArray(
     const TextureDescriptor* descriptors_ptr, 
     size_t descriptor_count, 
     const uint8_t* all_pixels_ptr, 
-    size_t all_pixels_count,
-    std::vector<VkImage>& out_images,
-    std::vector<VkDeviceMemory>& out_memories,
-    std::vector<VkImageView>& out_image_views,
-    VkSampler sampler,
-    uint32_t dst_binding
+    size_t all_pixels_count, 
+    const float* sky_widths_ptr, 
+    size_t sky_widths_count
 ) {
     if (descriptors_ptr == nullptr) {
         throw std::runtime_error("descriptors_ptr is empty!");
@@ -200,6 +175,9 @@ void VulkanRenderer::uploadTextureArrayInternal(
     if (all_pixels_ptr == nullptr) {
         throw std::runtime_error("all_pixels_ptr is empty!");
     }
+    this->skyWidths.resize(sky_widths_count);
+    memcpy(this->skyWidths.data(), sky_widths_ptr, sizeof(float) * sky_widths_count);
+
     std::vector<TextureDescriptor> descriptors(descriptors_ptr, descriptors_ptr + descriptor_count);
 
     VkBuffer pixelStagingBuffer;
@@ -213,9 +191,9 @@ void VulkanRenderer::uploadTextureArrayInternal(
         memcpy(pixelsData, all_pixels_ptr, all_pixels_count);
     vkUnmapMemory(this->device, pixelStagingBufferMemory);
 
-    out_images.resize(descriptor_count);
-    out_image_views.resize(descriptor_count);
-    out_memories.resize(descriptor_count);
+    this->textureImages.resize(descriptor_count);
+    this->textureImageViews.resize(descriptor_count);
+    this->textureImageMemories.resize(descriptor_count);
 
     VkCommandBuffer commandBuffer = beginSingleTimeCommands();
     
@@ -225,9 +203,9 @@ void VulkanRenderer::uploadTextureArrayInternal(
         createImage(desc.width, desc.height, VK_FORMAT_R8_UNORM, VK_IMAGE_TILING_OPTIMAL,
                     VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
-                    out_images[i], out_memories[i]);
+                    this->textureImages[i], this->textureImageMemories[i]);
 
-        transitionImageLayout(out_images[i], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        transitionImageLayout(this->textureImages[i], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
         
         VkBufferImageCopy region{};
         region.bufferOffset = desc.pixel_offset;
@@ -240,18 +218,18 @@ void VulkanRenderer::uploadTextureArrayInternal(
         region.imageOffset = {0, 0, 0};
         region.imageExtent = { desc.width, desc.height, 1 };
 
-        vkCmdCopyBufferToImage(commandBuffer, pixelStagingBuffer, out_images[i], 
+        vkCmdCopyBufferToImage(commandBuffer, pixelStagingBuffer, this->textureImages[i], 
                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
     }
         
     endSingleTimeCommands(commandBuffer);
 
     for (size_t i = 0; i < descriptor_count; i++) {
-        transitionImageLayout(out_images[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        transitionImageLayout(this->textureImages[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
         VkImageViewCreateInfo viewInfo{};
         viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        viewInfo.image = out_images[i];
+        viewInfo.image = this->textureImages[i];
         viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
         viewInfo.format = VK_FORMAT_R8_UNORM;
         viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -260,7 +238,7 @@ void VulkanRenderer::uploadTextureArrayInternal(
         viewInfo.subresourceRange.baseArrayLayer = 0;
         viewInfo.subresourceRange.layerCount = 1;
 
-        if (vkCreateImageView(this->device, &viewInfo, nullptr, &out_image_views[i]) != VK_SUCCESS) {
+        if (vkCreateImageView(this->device, &viewInfo, nullptr, &this->textureImageViews[i]) != VK_SUCCESS) {
             throw std::runtime_error("failed to create texture image view!");
         }
     }
@@ -271,15 +249,15 @@ void VulkanRenderer::uploadTextureArrayInternal(
     std::vector<VkDescriptorImageInfo> imageInfos(descriptor_count);
     for (size_t i = 0; i < descriptor_count; i++) {
         imageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        imageInfos[i].imageView = out_image_views[i];
-        imageInfos[i].sampler = sampler;
+        imageInfos[i].imageView = this->textureImageViews[i];
+        imageInfos[i].sampler = this->textureSampler;
     }
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         VkWriteDescriptorSet descriptorWrite{};
         descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrite.dstSet = this->descriptorSets[i];
-        descriptorWrite.dstBinding = dst_binding;
+        descriptorWrite.dstBinding = 3;
         descriptorWrite.dstArrayElement = 0;
         descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         descriptorWrite.descriptorCount = static_cast<uint32_t>(descriptors.size());
@@ -287,6 +265,8 @@ void VulkanRenderer::uploadTextureArrayInternal(
 
         vkUpdateDescriptorSets(this->device, 1, &descriptorWrite, 0, nullptr);
     }
+
+    std::cout << "Bound " << descriptor_count << " textures to Bindless Set" << std::endl;
 }
 
 void VulkanRenderer::createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory) {
@@ -325,37 +305,30 @@ void VulkanRenderer::createImage(uint32_t width, uint32_t height, VkFormat forma
 }
 
 void VulkanRenderer::createTextureSamplers() {
-	VkSamplerCreateInfo textureSamplerInfo{}, skySamplerInfo{};
+	VkSamplerCreateInfo textureSamplerInfo{};
 
-    for (auto samplerInfo : { &skySamplerInfo, &textureSamplerInfo }) {
-	    samplerInfo->sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	    samplerInfo->magFilter = VK_FILTER_NEAREST;
-	    samplerInfo->minFilter = VK_FILTER_NEAREST;
-	    samplerInfo->addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	    samplerInfo->addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	    samplerInfo->addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	    samplerInfo->anisotropyEnable = VK_TRUE;
+	textureSamplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	textureSamplerInfo.magFilter = VK_FILTER_NEAREST;
+	textureSamplerInfo.minFilter = VK_FILTER_NEAREST;
+	textureSamplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	textureSamplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	textureSamplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	textureSamplerInfo.anisotropyEnable = VK_TRUE;
 
-	    VkPhysicalDeviceProperties properties{};
-	    vkGetPhysicalDeviceProperties(this->physicalDevice, &properties);
+	VkPhysicalDeviceProperties properties{};
+	vkGetPhysicalDeviceProperties(this->physicalDevice, &properties);
 
-	    samplerInfo->maxAnisotropy = properties.limits.maxSamplerAnisotropy;
-	    samplerInfo->borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-	    samplerInfo->unnormalizedCoordinates = VK_FALSE;
-	    samplerInfo->mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-	    samplerInfo->mipLodBias = 0.0f;
-	    samplerInfo->minLod = 0.0f;
-	    samplerInfo->maxLod = 0.0f;
-    }
+	textureSamplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
+	textureSamplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	textureSamplerInfo.unnormalizedCoordinates = VK_FALSE;
+	textureSamplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+	textureSamplerInfo.mipLodBias = 0.0f;
+	textureSamplerInfo.minLod = 0.0f;
+	textureSamplerInfo.maxLod = 0.0f;
 	
 	VkResult textureSamplerResult = vkCreateSampler(this->device, &textureSamplerInfo, nullptr, &this->textureSampler);
 	if (textureSamplerResult != VK_SUCCESS) {
         throw std::runtime_error("failed to create texture sampler!");
-    }
-
-    VkResult skySamplerResult = vkCreateSampler(this->device, &skySamplerInfo, nullptr, &this->skySampler);
-	if (skySamplerResult != VK_SUCCESS) {
-        throw std::runtime_error("failed to create sky sampler!");
     }
 }
 

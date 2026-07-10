@@ -77,8 +77,7 @@ public:
     void updateObjectInstances(const ObjectInstance* instances_ptr, size_t instances_count);
     void uploadPalettes(const float* palettes_ptr);
     void uploadColormap(const uint8_t* colormap_ptr);
-    void uploadSkyTextureArray(const TextureDescriptor* descriptors_ptr, size_t descriptor_count, const uint8_t* all_pixels_ptr, size_t all_pixels_count, const float* sky_widths_ptr, size_t sky_widths_count);
-    void uploadTextureArray(const TextureDescriptor* descriptors_ptr, size_t descriptor_count, const uint8_t* all_pixels_ptr, size_t all_pixels_count);
+    void uploadTextureArray(const TextureDescriptor* descriptors_ptr, size_t descriptor_count, const uint8_t* all_pixels_ptr, size_t all_pixels_count, const float* sky_widths_ptr, size_t sky_widths_count);
     void setPaletteIndex(uint32_t idx);
     void setResolution(uint32_t width, uint32_t height);
     void setSkyIndex(uint32_t idx);
@@ -144,11 +143,6 @@ private:
     std::vector<VkDeviceMemory> textureImageMemories;
     std::vector<VkImageView> textureImageViews;
     VkSampler textureSampler = VK_NULL_HANDLE;
-
-    std::vector<VkImage> skyImages;
-    std::vector<VkDeviceMemory> skyImageMemories;
-    std::vector<VkImageView> skyImageViews;
-    VkSampler skySampler = VK_NULL_HANDLE;
 
     VkImage depthImage = VK_NULL_HANDLE;
     VkDeviceMemory depthImageMemory = VK_NULL_HANDLE;

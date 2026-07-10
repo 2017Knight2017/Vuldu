@@ -1,4 +1,4 @@
-use crate::App;
+use crate::{App, MAX_SKY};
 use renderer::ObjectInstance;
 use engine::{CurrentSector, PlayerMarker, SpriteAnimation, Transform};
 use glam::Vec3;
@@ -48,7 +48,9 @@ impl App {
         	let tex_width = cached.width;
         	let tex_height = cached.height;
         	let need_flip = cached.need_flip;
-			let (left_offset, top_offset) = self.sprite_offsets[tex_id as usize];
+			// first 16 indices are reserved for sky textures,
+			// so we have to subtract MAX_SKY from the actual index
+			let (left_offset, top_offset) = self.sprite_offsets[tex_id as usize - MAX_SKY];  
 
 			let mut final_width = tex_width as f32;
         	let mut final_left_offset = left_offset as f32;

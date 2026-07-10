@@ -580,13 +580,13 @@ impl DoomMap {
 	            let ceil_texture_name = pack_name_to_u64(&sector.ceilingpic);
 
 	            let floor_texture_id = if &sector.floorpic == b"F_SKY1\0\0" {
-					(u16::MAX - 1) as u32
+					(u16::MAX - 2) as u32
 				} else {
 					texture_ids.get(&floor_texture_name).unwrap_or(&(0,0,0,false)).0
 				};
 
 	            let ceil_texture_id = if &sector.ceilingpic == b"F_SKY1\0\0" {
-					(u16::MAX - 1) as u32
+					(u16::MAX - 2) as u32
 				} else { 
 					texture_ids.get(&ceil_texture_name).unwrap_or(&(0,0,0,false)).0 
 				};
