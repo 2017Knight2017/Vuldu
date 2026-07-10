@@ -734,8 +734,9 @@ fn clean_polygon(poly: &[[f32; 2]]) -> Vec<[f32; 2]> {
 
 fn construct_map_name(is_doom1: bool, num: u32) -> String {
 	if is_doom1 {
-        let episode = (num / 9) + 1;
-        let map_num = (num % 9) + 1;
+		let map_idx = num - 1;
+        let episode = (map_idx / 9) + 1;
+        let map_num = (map_idx % 9) + 1;
         format!("E{}M{}", episode, map_num)
     } else {
         format!("MAP{:02}", num)

@@ -1,14 +1,10 @@
 *.spv
 /target
 /renderer_cpp/.cache
-/assets/DOOM2.WAD
-/assets/PLUTONIA.WAD
 /.vscode
 /cache
 compile_commands.json
 Cargo.lock
 doomdata.h
-assets/TNT.WAD
-assets/test.wad
-assets/nuts.wad
-assets/oku2v31.wad
+assets/*.WAD
+assets/*.wad

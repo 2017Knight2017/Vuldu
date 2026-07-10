@@ -308,7 +308,7 @@ impl ApplicationHandler for App {
                         .unwrap();
                     let plr_sector_idx = self.map.get_sector_by_pos(plr_spawn.x as f32, plr_spawn.y as f32);
                     let plr_floorheight = self.map.sectors[plr_sector_idx].floorheight;
-                    engine::spawn_mobj(&mut self.world, Some(MobjType::Player), plr_sector_idx, -plr_spawn.x, plr_floorheight, plr_spawn.y, plr_spawn.angle);
+                    engine::spawn_mobj(&mut self.world, Some(MobjType::Player), plr_sector_idx, -plr_spawn.x, plr_floorheight, plr_spawn.y, (plr_spawn.angle - 90) % 360);
                         
                     engine::spawn_all_things(&mut self.world, &self.map);
                 }
@@ -442,10 +442,10 @@ fn main() -> Result<(), String> {
     //
     //let map = DoomMap::from_wad(&wad_manager, &args.map)?;
 
-    wad_manager.add_wad("assets/PLUTONIA.WAD")?;
+    wad_manager.add_wad("assets/DOOM.WAD")?;
     //wad_manager.add_wad("assets/oku2v31.wad")?;
 
-    let map = DoomMap::from_wad(&wad_manager, wad_manager.is_doom1, 15)?;
+    let map = DoomMap::from_wad(&wad_manager, wad_manager.is_doom1, 1)?;
 
     let event_loop = EventLoop::new().unwrap();
 

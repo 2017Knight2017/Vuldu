@@ -173,22 +173,18 @@ impl WadManager {
 			)
 			.collect();
 
-		let texture1_raw = self.get_data("TEXTURE1")?;
-			
-	    let num_textures = u32::from_le_bytes(texture1_raw.get(0..4)
-			.ok_or_else(|| "Failed to get num_textures from TEXTURE1!".to_string())?
-			.try_into()
-			.map_err(|_| "Failed to parse num_textures from TEXTURE1; expected 4 bytes for u32")?) as usize;
-			
-	    let offsets_bytes = texture1_raw.get(4..4 + num_textures * 4)
-			.ok_or_else(|| "Failed to get offsets_bytes from TEXTURE1")?;
 
-		let offsets: Vec<u32> = offsets_bytes
-			.chunks_exact(size_of::<u32>())
-			.map(|chunk| {
-    		    unsafe { read_unaligned(chunk.as_ptr() as *const u32) }
-    		})
-    		.collect();
+
+		let mut texture_lumps = Vec::new();
+
+    	let texture1_raw = self.get_data("TEXTURE1")?;
+    	let offsets1 = parse_texture_header(&texture1_raw, "TEXTURE1")?;
+    	texture_lumps.push((texture1_raw, offsets1));
+
+    	if let Ok(texture2_raw) = self.get_data("TEXTURE2") {
+    	    let offsets2 = parse_texture_header(&texture2_raw, "TEXTURE2")?;
+    	    texture_lumps.push((texture2_raw, offsets2));
+    	}
 
 		let sky_names = [
 			pack_name_to_u64(b"RSKY1"),
@@ -200,70 +196,73 @@ impl WadManager {
 			pack_name_to_u64(b"SKY4")
 		];
 
-	    let mut baked_textures = Vec::with_capacity(num_textures);
-		let mut textures_names = Vec::with_capacity(num_textures);
+		let total_textures = texture_lumps.iter().map(|(_, offsets)| offsets.len()).sum();
+	    let mut baked_textures = Vec::with_capacity(total_textures);
+		let mut textures_names = Vec::with_capacity(total_textures);
 		let mut baked_sky_textures = Vec::with_capacity(MAX_SKY);
 		let mut sky_textures_names = Vec::with_capacity(MAX_SKY);
 		let mut sky_widths = Vec::with_capacity(MAX_SKY);
 
-	    for offset in offsets {
-	        let map_texture = self.parse_texture_lump(&texture1_raw, offset as usize)?;
+		for (texture_raw, offsets) in &texture_lumps {
+	    	for &offset in offsets {
+	    	    let map_texture = self.parse_texture_lump(texture_raw, offset as usize)?;
+
+    			let width = map_texture.width as usize;
+    			let height = map_texture.height as usize;
+
+	    	    let mut final_wall_pixels = vec![0xFFu8; width * height];
+
+	    	    for wad_patch in &map_texture.patches {
+	    	        let patch_idx = wad_patch.patch as usize;
 				
-    		let width = map_texture.width as usize;
-    		let height = map_texture.height as usize;
+	    	        if patch_idx >= patch_names.len() { continue; }
+	    	        let patch_lump_name = &patch_names[patch_idx];
+					let patch_data = self.get_data(patch_lump_name)?;
 
-	        let mut final_wall_pixels = vec![0xFFu8; width * height];
+	    	        if let Ok(patch_pic) = decode_column_picture(patch_data) {
+	    	            for py in 0..patch_pic.height as usize {
+	    	                for px in 0..patch_pic.width as usize {
+	    	                    let dest_x = (wad_patch.originx as usize).wrapping_add(px);
+	    	                    let dest_y = (wad_patch.originy as usize).wrapping_add(py);
 
-	        for wad_patch in &map_texture.patches {
-	            let patch_idx = wad_patch.patch as usize;
-			
-	            if patch_idx >= patch_names.len() { continue; }
-	            let patch_lump_name = &patch_names[patch_idx];
-				let patch_data = self.get_data(patch_lump_name)?;
+	    	                    if dest_x < width && dest_y < height {
+	    	                        let src_idx = py * patch_pic.width as usize + px;
+	    	                        let color_idx = patch_pic.raw_pixels[src_idx];
 
-	            if let Ok(patch_pic) = decode_column_picture(patch_data) {
-	                for py in 0..patch_pic.height as usize {
-	                    for px in 0..patch_pic.width as usize {
-	                        let dest_x = (wad_patch.originx as usize).wrapping_add(px);
-	                        let dest_y = (wad_patch.originy as usize).wrapping_add(py);
+	    	                        if color_idx != 0xFF {
+	    	                            let dest_idx = dest_y * width + dest_x;
+										final_wall_pixels[dest_idx] = color_idx;
+	    	                        }
+	    	                    }
+	    	                }
+	    	            }
+	    	        }
+	    	    }
 
-	                        if dest_x < width && dest_y < height {
-	                            let src_idx = py * patch_pic.width as usize + px;
-	                            let color_idx = patch_pic.raw_pixels[src_idx];
+				let tex_name_packed = pack_name_to_u64(&map_texture.name);
 
-	                            if color_idx != 0xFF {
-	                                let dest_idx = dest_y * width + dest_x;
-									final_wall_pixels[dest_idx] = color_idx;
-	                            }
-	                        }
-	                    }
-	                }
-	            }
-	        }
+				textures_names.push(tex_name_packed);
+				baked_textures.push(DoomPicture {
+				    raw_pixels: final_wall_pixels.clone(),
+				    width: width as u32,
+				    height: height as u32,
+				    left_offset: 0,
+				    top_offset: 0,
+				});
 
-			let tex_name_packed = pack_name_to_u64(&map_texture.name);
-
-			textures_names.push(tex_name_packed);
-			baked_textures.push(DoomPicture {
-			    raw_pixels: final_wall_pixels.clone(),
-			    width: width as u32,
-			    height: height as u32,
-			    left_offset: 0,
-			    top_offset: 0,
-			});
-
-			if sky_names.contains(&tex_name_packed) {
-				sky_textures_names.push(tex_name_packed);
-				sky_widths.push(width as f32);
-			    baked_sky_textures.push(DoomPicture {
-			        raw_pixels: final_wall_pixels, 
-			        width: width as u32,
-			        height: height as u32,
-			        left_offset: 0,
-			        top_offset: 0,
-			    });
-			}
-	    }
+				if sky_names.contains(&tex_name_packed) {
+					sky_textures_names.push(tex_name_packed);
+					sky_widths.push(width as f32);
+				    baked_sky_textures.push(DoomPicture {
+				        raw_pixels: final_wall_pixels, 
+				        width: width as u32,
+				        height: height as u32,
+				        left_offset: 0,
+				        top_offset: 0,
+				    });
+				}
+	    	}
+		}
 	    Ok((textures_names, baked_textures, sky_textures_names, baked_sky_textures, sky_widths))
 	}
 
@@ -540,4 +539,23 @@ pub fn decode_flat_picture(pic_data: &[u8]) -> Result<DoomPicture, String> {
 			top_offset: 0
 		})
 	}
+}
+
+fn parse_texture_header(raw_data: &[u8], lump_name: &str) -> Result<Vec<u32>, String> {
+    let num_textures = u32::from_le_bytes(raw_data.get(0..4)
+        .ok_or_else(|| format!("Failed to get num_textures from {}!", lump_name))?
+        .try_into()
+        .map_err(|_| format!("Failed to parse num_textures from {}; expected 4 bytes for u32", lump_name))?) as usize;
+        
+    let offsets_bytes = raw_data.get(4..4 + num_textures * 4)
+        .ok_or_else(|| format!("Failed to get offsets_bytes from {}", lump_name))?;
+
+    let offsets: Vec<u32> = offsets_bytes
+        .chunks_exact(std::mem::size_of::<u32>())
+        .map(|chunk| {
+            unsafe { std::ptr::read_unaligned(chunk.as_ptr() as *const u32) }
+        })
+        .collect();
+
+    Ok(offsets)
 }
