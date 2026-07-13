@@ -2,13 +2,16 @@ use crate::{
 	constants::{NUMCARDS, NUMWEAPONS, MOBJTYPE_BY_DOOMEDNUM},
 	data_tables::DB,
 	components::*,
-	enums::*
+	enums::*,
+	random::Random,
+	player::*,
 };
 use hecs::World;
 use wad_parser::map::DoomMap;
 
 pub fn spawn_mobj(
 	world: &mut World, 
+	random: &mut Random,
 	mobj_type_raw: Option<MobjType>, 
 	sector_idx: usize,
 	x_raw: i16, 
@@ -19,8 +22,12 @@ pub fn spawn_mobj(
 	let x = x_raw as f32;
 	let y = y_raw as f32;
 	let z = z_raw as f32;
-
-    let angle = angle_raw as u32 / 45 * 0x20000000;
+	
+    let angle = if angle_raw < 0 {
+		(360 + angle_raw - 90) as u32 / 45 * 0x20000000
+	} else {
+		angle_raw as u32 / 45 * 0x20000000
+	};
 
 	let mobj_type = match mobj_type_raw {
 		Some(mobj) => mobj,
@@ -54,6 +61,10 @@ pub fn spawn_mobj(
 		}
 	}
 
+	let tics_left = if spawn_state_data.tics > 0 {
+		1 + (random.p() as i32) % spawn_state_data.tics
+	} else { 0 };
+
 	let mut entity_builder = hecs::EntityBuilder::new();
     
     entity_builder
@@ -61,7 +72,8 @@ pub fn spawn_mobj(
 		.add(CurrentSector(sector_idx))
 		.add(Velocity::default())
 		.add(BoundingBox { radius: mobj_info.radius, height: mobj_info.height })
-		.add(SpriteAnimation {current_state: mobj_info.spawn_state, tics_left: 8, cached_rotations, top_offset_shift});
+		.add(SpriteAnimation {
+			current_state: mobj_info.spawn_state, tics_left, cached_rotations, top_offset_shift});
 
 	for flag in &mobj_info.flags {
 		match flag {
@@ -115,13 +127,13 @@ pub fn spawn_mobj(
     world.spawn(entity_builder.build());
 }
 
-pub fn spawn_all_things(world: &mut World, map: &DoomMap) {
+pub fn spawn_all_things(world: &mut World, map: &DoomMap, random: &mut Random) {
 	for thing in map.things.iter() {
 		let sector_idx = map.get_sector_by_pos(thing.x as f32, thing.y as f32);
 		let sector = map.sectors[sector_idx];
 
 		if let Some(thing_type) =  MOBJTYPE_BY_DOOMEDNUM.get(&thing.type_) {
-			spawn_mobj(world, *thing_type, sector_idx, -thing.x, sector.floorheight, thing.y, thing.angle);
+			spawn_mobj(world, random, *thing_type, sector_idx, -thing.x, sector.floorheight, thing.y, thing.angle);
 		}
 	};
 }

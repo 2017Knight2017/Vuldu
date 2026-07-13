@@ -1,7 +1,7 @@
 use crate::{
 	components::{Velocity, Transform, PlayerMarker, SpriteAnimation},
 	constants::FRICTION,
-    data_tables::DB
+    data_tables::DB,
 };
 use std::f64::consts::TAU;
 use hecs::World;
@@ -18,7 +18,7 @@ pub struct PlayerInput {
     pub mouse_delta_x: f32,
 }
 
-pub fn update_physics(world: &mut World, input: &PlayerInput) {
+pub fn handle_input(world: &mut World, input: &PlayerInput) {
     for (velocity, transform, _player) in world.query_mut::<(&mut Velocity, &mut Transform, &PlayerMarker)>() {
         
         let mut move_forward = 0.0;

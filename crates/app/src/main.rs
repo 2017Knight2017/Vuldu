@@ -36,6 +36,7 @@ struct App {
     map: DoomMap,
     texture_data: FxHashMap<u64, (u32, u32, u32, bool)>,
     sprite_offsets: Vec<(i16, i16)>,
+    random: Random,
     is_shutting_down: bool,
     current_input: PlayerInput,
     view_matrix: Mat4,
@@ -140,13 +141,22 @@ impl ApplicationHandler for App {
                     let window_raw_ptr = self.window.as_ref().unwrap() as *const Window as usize;
 
                     renderer.init(&handles, window_raw_ptr);
+                    println!("Renderer's just initialized!");
 
                     renderer.set_resolution(1280, 720);
-                    renderer.set_sky_index(if self.wad_manager.is_doom1 { self.map.map_num / 9 } else { get_sky_texture_index(self.map.map_num) });
+                    renderer.set_sky_index(if self.wad_manager.is_doom1 { 
+                            self.map.map_num / 9 
+                        } else { 
+                            get_sky_texture_index(self.map.map_num) 
+                        }
+                    );
 
-                    let (wall_texture_names, wall_pics, sky_texture_names, sky_pics, sky_widths): (Vec<u64>, Vec<DoomPicture>, Vec<u64>, Vec<DoomPicture>, Vec<f32>);
+                    let (wall_texture_names, wall_pics, sky_texture_names, sky_pics, sky_widths): 
+                        (Vec<u64>, Vec<DoomPicture>, Vec<u64>, Vec<DoomPicture>, Vec<f32>);
                     match self.wad_manager.bake_walls() {
-                        Ok(res) => { (wall_texture_names, wall_pics, sky_texture_names, sky_pics, sky_widths) = res; },
+                        Ok(res) => { 
+                            (wall_texture_names, wall_pics, sky_texture_names, sky_pics, sky_widths) = res; 
+                        },
                         Err(err) => {
                             eprintln!("[FATAL] Wall baking failed: {}", err);
                             self.is_shutting_down = true;
@@ -155,6 +165,7 @@ impl ApplicationHandler for App {
                             exit(1);
                         }
                     };
+                    println!("{} walls are baked!", wall_texture_names.len());
 
                     let (flat_texture_names, flat_pics): (Vec<u64>, Vec<DoomPicture>);
                     match self.wad_manager.bake_flats() {
@@ -167,6 +178,7 @@ impl ApplicationHandler for App {
                             exit(1);
                         }
                     };
+                    println!("{} flats are baked!", flat_texture_names.len());
 
                     // We need to divide obj_texture_names later into mirrored and unmirrored versions,
                     // so we don't pack them into u64 yet.
@@ -181,9 +193,15 @@ impl ApplicationHandler for App {
                             exit(1);
                         }
                     };
+                    println!("{} objects are baked!", obj_texture_names.len());
 
-                    let total_textures_count = wall_pics.len() + flat_pics.len() + obj_pics.len();
-                    let mut all_pixels = Vec::new();
+                    let total_textures_count = wall_pics.len() + flat_pics.len() + obj_pics.len() + MAX_SKY;
+                    let total_pixels_capacity = 1 
+                        + sky_pics.iter().map(|p| p.raw_pixels.len()).sum::<usize>()
+                        + obj_pics.iter().map(|p| p.raw_pixels.len()).sum::<usize>()
+                        + wall_pics.iter().map(|p| p.raw_pixels.len()).sum::<usize>()
+                        + flat_pics.iter().map(|p| p.raw_pixels.len()).sum::<usize>();
+                    let mut all_pixels = Vec::with_capacity(total_pixels_capacity);
                     let mut descriptors = Vec::with_capacity(total_textures_count);
 
                     let mut current_gpu_id = 0;
@@ -220,7 +238,9 @@ impl ApplicationHandler for App {
                         });
                     }
                     all_pixels.push(0);
+                    println!("Skies are registered!");
 
+                    self.sprite_offsets.reserve(obj_pics.len());
                     for (idx, pic) in obj_pics.iter().enumerate() {
                         let name = &obj_texture_names[idx];
 
@@ -233,12 +253,11 @@ impl ApplicationHandler for App {
                             pixel_offset: all_pixels.len(),
                         });
 
-                        for &lump_pixel in &pic.raw_pixels {
-                            all_pixels.push(lump_pixel);
-                        }
+                        all_pixels.extend_from_slice(&pic.raw_pixels);
                     
                         current_gpu_id += 1;
                     }
+                    println!("Objects are registered!");
 
                     for (tex_names, pics) in [
                         (wall_texture_names, wall_pics),
@@ -254,13 +273,12 @@ impl ApplicationHandler for App {
                                 pixel_offset: all_pixels.len(),
                             });
 
-                            for &lump_pixel in &pic.raw_pixels {
-                                all_pixels.push(lump_pixel);
-                            }
+                            all_pixels.extend_from_slice(&pic.raw_pixels);
                         
                             current_gpu_id += 1;
                         }
                     }
+                    println!("Walls and Flats are registered!");
 
                     renderer.upload_texture_array(descriptors.as_slice(), all_pixels.as_slice(), sky_widths_no_name.as_slice());
                     
@@ -282,9 +300,11 @@ impl ApplicationHandler for App {
                             event_loop.exit(); 
                         }
                     }
-
+                    println!("Starting build the map's geometry...");
                     let (wall_vertices, wall_indices) = self.map.get_walls_vertices(&self.texture_data);
+                    println!("Walls' geometry is built!");
                     let (flat_vertices, flat_indices) = self.map.get_flats_vertices(&self.texture_data);
+                    println!("Flats' geometry is built!");
                     let (obj_vertices, obj_indices) = self.map.get_objects_vertices();
 
                     let mut level_vertices = wall_vertices;
@@ -303,14 +323,16 @@ impl ApplicationHandler for App {
 
                     let _ = engine::populate_database(&self.texture_data).map_err(|err| println!("{}", err));
 
+                    println!("Starting mobj spawning...");
                     let plr_spawn = self.map.things
                         .iter().find(|thing| thing.type_ == 1)
                         .unwrap();
                     let plr_sector_idx = self.map.get_sector_by_pos(plr_spawn.x as f32, plr_spawn.y as f32);
                     let plr_floorheight = self.map.sectors[plr_sector_idx].floorheight;
-                    engine::spawn_mobj(&mut self.world, Some(MobjType::Player), plr_sector_idx, -plr_spawn.x, plr_floorheight, plr_spawn.y, (plr_spawn.angle - 90) % 360);
+                    engine::spawn_mobj(&mut self.world, &mut self.random, Some(MobjType::Player), plr_sector_idx, -plr_spawn.x, plr_floorheight, plr_spawn.y, plr_spawn.angle);
                         
-                    engine::spawn_all_things(&mut self.world, &self.map);
+                    engine::spawn_all_things(&mut self.world, &self.map, &mut self.random);
+                    println!("Mobj spawning is done!");
                 }
             }
         }
@@ -377,7 +399,7 @@ impl ApplicationHandler for App {
 
                 while self.time_accumulator >= TICK_TIME {
                     
-                    engine::update_physics(&mut self.world, &self.current_input);
+                    engine::handle_input(&mut self.world, &self.current_input);
                     engine::system_movement_and_friction(&mut self.world);
 
                     engine::animation_system(&mut self.world);
@@ -459,6 +481,7 @@ fn main() -> Result<(), String> {
         map: map,
         texture_data: FxHashMap::default(),
         sprite_offsets: Vec::new(),
+        random: Random::default(),
         is_shutting_down: false,
         current_input: PlayerInput::default(),
         view_matrix: Mat4::default(),

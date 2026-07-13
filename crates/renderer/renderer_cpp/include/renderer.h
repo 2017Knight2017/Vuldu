@@ -195,23 +195,9 @@ private:
     void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
     void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, 
         VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
-
-    void uploadTextureArrayInternal(
-        const TextureDescriptor* descriptors_ptr, 
-        size_t descriptor_count, 
-        const uint8_t* all_pixels_ptr, 
-        size_t all_pixels_count,
-        std::vector<VkImage>& out_images,
-        std::vector<VkDeviceMemory>& out_memories,
-        std::vector<VkImageView>& out_image_views,
-        VkSampler sampler,
-        uint32_t dst_binding
-    );
     
     VkCommandBuffer beginSingleTimeCommands();
     void endSingleTimeCommands(VkCommandBuffer commandBuffer);
-    void transitionImageLayout(VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout);
-    void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
     VkFormat findDepthFormat();
 
     bool isDeviceSuitable(VkPhysicalDevice device);

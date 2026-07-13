@@ -44,90 +44,6 @@ void VulkanRenderer::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDevice
 	endSingleTimeCommands(commandBuffer);
 }
 
-void VulkanRenderer::transitionImageLayout(VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout) {
-    VkCommandBuffer commandBuffer = beginSingleTimeCommands();
-	
-	VkImageMemoryBarrier barrier{};
-	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	barrier.oldLayout = oldLayout;
-	barrier.newLayout = newLayout;
-	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.image = image;
-	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	barrier.subresourceRange.baseMipLevel = 0;
-	barrier.subresourceRange.levelCount = 1;
-	barrier.subresourceRange.baseArrayLayer = 0;
-	barrier.subresourceRange.layerCount = 1;
-	
-	VkPipelineStageFlags sourceStage;
-	VkPipelineStageFlags destinationStage;
-
-	if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-	    barrier.srcAccessMask = 0;
-	    barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-
-	    sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-	    destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-	} else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-	    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-	    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-	    sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-	    destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-	} else {
-	    throw std::invalid_argument("unsupported layout transition!");
-	}
-
-	vkCmdPipelineBarrier(
-	    commandBuffer,
-	    sourceStage, destinationStage,
-	    0,
-	    0, nullptr,
-	    0, nullptr,
-	    1, &barrier
-	);
-
-    endSingleTimeCommands(commandBuffer);
-}
-
-
-//TODO: When I get around to it, it would be cool to rewrite the logic like this:
-//1. Create one large Staging Buffer for all the level's textures at once.
-//2. Open one shared commandBuffer.
-//3. In a loop, create multiple VkBufferImageCopy structures with offsets (bufferOffset) inside this huge buffer and call vkCmdCopyBufferToImage multiple times in a row.
-//4. Send the command to the GPU once at the very end.
-
-void VulkanRenderer::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
-    VkCommandBuffer commandBuffer = beginSingleTimeCommands();
-
-	VkBufferImageCopy region{};
-	region.bufferOffset = 0;
-	region.bufferRowLength = 0;
-	region.bufferImageHeight = 0;
-	region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	region.imageSubresource.mipLevel = 0;
-	region.imageSubresource.baseArrayLayer = 0;
-	region.imageSubresource.layerCount = 1;
-	region.imageOffset = {0, 0, 0};
-	region.imageExtent = {
-	    width,
-	    height,
-	    1
-	};
-
-	vkCmdCopyBufferToImage(
-	    commandBuffer,
-	    buffer,
-	    image,
-	    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-	    1,
-	    &region
-	);
-
-    endSingleTimeCommands(commandBuffer);
-}
-
 VkCommandBuffer VulkanRenderer::beginSingleTimeCommands() {
     VkCommandBufferAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -194,39 +110,67 @@ void VulkanRenderer::uploadTextureArray(
     this->textureImages.resize(descriptor_count);
     this->textureImageViews.resize(descriptor_count);
     this->textureImageMemories.resize(descriptor_count);
-
-    VkCommandBuffer commandBuffer = beginSingleTimeCommands();
-    
     for (size_t i = 0; i < descriptor_count; i++) {
-        const auto& desc = descriptors[i];
-        
-        createImage(desc.width, desc.height, VK_FORMAT_R8_UNORM, VK_IMAGE_TILING_OPTIMAL,
+        createImage(descriptors[i].width, descriptors[i].height, VK_FORMAT_R8_UNORM, VK_IMAGE_TILING_OPTIMAL,
                     VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
                     this->textureImages[i], this->textureImageMemories[i]);
+    }
+    VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+    
+    std::vector<VkImageMemoryBarrier> preCopyBarriers(descriptor_count);
+    for (size_t i = 0; i < descriptor_count; i++) {
+        preCopyBarriers[i].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        preCopyBarriers[i].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        preCopyBarriers[i].newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        preCopyBarriers[i].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        preCopyBarriers[i].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        preCopyBarriers[i].image = this->textureImages[i];
+        preCopyBarriers[i].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        preCopyBarriers[i].subresourceRange.baseMipLevel = 0;
+        preCopyBarriers[i].subresourceRange.levelCount = 1;
+        preCopyBarriers[i].subresourceRange.baseArrayLayer = 0;
+        preCopyBarriers[i].subresourceRange.layerCount = 1;
+        preCopyBarriers[i].srcAccessMask = 0;
+        preCopyBarriers[i].dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    }
+    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 
+                         0, 0, nullptr, 0, nullptr, static_cast<uint32_t>(preCopyBarriers.size()), preCopyBarriers.data());
 
-        transitionImageLayout(this->textureImages[i], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-        
+    for (size_t i = 0; i < descriptor_count; i++) {
+        const auto& desc = descriptors[i];
         VkBufferImageCopy region{};
         region.bufferOffset = desc.pixel_offset;
-        region.bufferRowLength = 0;
-        region.bufferImageHeight = 0;
         region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        region.imageSubresource.mipLevel = 0;
-        region.imageSubresource.baseArrayLayer = 0;
         region.imageSubresource.layerCount = 1;
-        region.imageOffset = {0, 0, 0};
         region.imageExtent = { desc.width, desc.height, 1 };
 
         vkCmdCopyBufferToImage(commandBuffer, pixelStagingBuffer, this->textureImages[i], 
                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
     }
+
+    std::vector<VkImageMemoryBarrier> postCopyBarriers(descriptor_count);
+    for (size_t i = 0; i < descriptor_count; i++) {
+        postCopyBarriers[i].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        postCopyBarriers[i].oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        postCopyBarriers[i].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        postCopyBarriers[i].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        postCopyBarriers[i].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        postCopyBarriers[i].image = this->textureImages[i];
+        postCopyBarriers[i].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        postCopyBarriers[i].subresourceRange.baseMipLevel = 0;
+        postCopyBarriers[i].subresourceRange.levelCount = 1;
+        postCopyBarriers[i].subresourceRange.baseArrayLayer = 0;
+        postCopyBarriers[i].subresourceRange.layerCount = 1;
+        postCopyBarriers[i].srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        postCopyBarriers[i].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    }
+    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 
+                         0, 0, nullptr, 0, nullptr, static_cast<uint32_t>(postCopyBarriers.size()), postCopyBarriers.data());
         
     endSingleTimeCommands(commandBuffer);
 
     for (size_t i = 0; i < descriptor_count; i++) {
-        transitionImageLayout(this->textureImages[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
         VkImageViewCreateInfo viewInfo{};
         viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         viewInfo.image = this->textureImages[i];

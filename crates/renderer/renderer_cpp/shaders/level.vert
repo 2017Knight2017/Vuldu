@@ -43,9 +43,9 @@ void main() {
     gl_Position = ubo.proj * viewPos;
 
     // sky ceilings
-    if (inTexId == 65533) {
-        gl_Position.z = gl_Position.w;
-    }
+    //if (inTexId == 65533) {
+    //    gl_Position.z = gl_Position.w;
+    //}
 
     /// WIREMAP
     //int localIndex = gl_VertexIndex % 3;
