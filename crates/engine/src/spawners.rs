@@ -23,15 +23,15 @@ pub fn spawn_mobj(
 	let y = y_raw as f32;
 	let z = z_raw as f32;
 	
-    let angle = if angle_raw < 0 {
-		(360 + angle_raw - 90) as u32 / 45 * 0x20000000
-	} else {
-		angle_raw as u32 / 45 * 0x20000000
-	};
-
 	let mobj_type = match mobj_type_raw {
 		Some(mobj) => mobj,
 		None => return
+	};
+
+	let angle = if mobj_type == MobjType::Player {
+		(angle_raw + 270) as u32 % 360 / 45 * 0x20000000
+	} else { 
+		angle_raw as u32 / 45 * 0x20000000 
 	};
 
 	let db = DB.get().expect("DB has not been initialized!");

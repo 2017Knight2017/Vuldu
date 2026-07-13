@@ -19,8 +19,40 @@ pub	const FRICTION: f32 = 0.9375;
 pub const TRANSLATION: u32 = 0xc000000;
 pub const TRANSSHIFT: u32 = 26;
 
-pub static MOBJTYPE_BY_DOOMEDNUM: Map<i16, Option<MobjType>> = phf_map! {
-	1i16 => None,
+pub const INVULNTICS: u32 = 30;
+pub const INVISTICS: u32 = 60;
+pub const INFRATICS: u32 = 120;
+pub const IRONTICS: u32 = 60;
+
+pub const NUMQUITMESSAGES: usize = 21;
+pub const END_MESSAGE: [&'static str; NUMQUITMESSAGES] = [
+	"please don't leave, there's more\ndemons to toast!",
+	"let's beat it -- this is turning\ninto a bloodbath!",
+	"i wouldn't leave if i were you.\ndos is much worse.",
+	"you're trying to say you like dos\nbetter than me, right?",
+	"don't leave yet -- there's a\ndemon around that corner!",
+	"ya know, next time you come in here\ni'm gonna toast ya.",
+	"go ahead and leave. see if i care.",
+
+	"you want to quit?\nthen, thou hast lost an eighth!",
+	"don't go now, there's a \ndimensional shambler waiting\nat the dos prompt!",
+	"get outta here and go back\nto your boring programs.",
+	"if i were your boss, i'd \n deathmatch ya in a minute!",
+	"look, bud. you leave now\nand you forfeit your body count!",
+	"just leave. when you come\nback, i'll be waiting with a bat.",
+	"you're lucky i don't smack\nyou for thinking about leaving.",
+
+	"fuck you, pussy!\nget the fuck out!",
+	"you quit and i'll jizz\nin your cystholes!",
+	"if you leave, i'll make\nthe lord drink my jizz.",
+	"hey, ron! can we say\n'fuck' in the game?",
+	"i'd leave: this is just\nmore monsters and levels.\nwhat a load.",
+	"suck it down, asshole!\nyou're a fucking wimp!",
+	"don't quit now! we're \nstill spending your money!",
+];
+
+pub const MOBJTYPE_BY_DOOMEDNUM: Map<i16, Option<MobjType>> = phf_map! {
+	1i16 => Some(MobjType::Player),
 	2i16 => None,
 	3i16 => None,
 	4i16 => None,

@@ -1,0 +1,80 @@
+
+
+[[weapons]]
+# fist
+ammo = "NoAmmo"
+up_state = "PunchUp"
+down_state = "PunchDown"
+ready_state = "Punch"
+atk_state = "Punch1"
+    
+[[weapons]]
+# pistol
+ammo = "Clip"
+up_state = "PistolUp"
+down_state = "PistolDown"
+ready_state = "Pistol"
+atk_state = "Pistol1"
+flash_state = "PistolFlash"
+    
+[[weapons]]
+# shotgun
+ammo = "Shell"
+up_state = "SgunUp"
+down_state = "SgunDown"
+ready_state = "Sgun"
+atk_state = "Sgun1"
+flash_state = "SgunFlash1"
+    
+[[weapons]]
+# chaingun
+ammo = "Clip"
+up_state = "ChainUp"
+down_state = "ChainDown"
+ready_state = "Chain"
+atk_state = "Chain1"
+flash_state = "ChainFlash1"
+    
+[[weapons]]
+# missile launcher
+ammo = "Missile"
+up_state = "MissileUp"
+down_state = "MissileDown"
+ready_state = "Missile"
+atk_state = "Missile1"
+flash_state = "MissileFlash1"
+    
+[[weapons]]
+# plasma rifle
+ammo = "Cell"
+up_state = "PlasmaUp"
+down_state = "PlasmaDown"
+ready_state = "Plasma"
+atk_state = "Plasma1"
+flash_state = "PlasmaFlash1"
+    
+[[weapons]]
+# bfg 9000
+ammo = "Cell"
+up_state = "BFGUp"
+down_state = "BFGDown"
+ready_state = "BFG"
+atk_state = "BFG1"
+flash_state = "BFGFlash1"
+    
+[[weapons]]
+# chainsaw
+ammo = "NoAmmo"
+up_state = "SawUp"
+down_state = "SawDown"
+ready_state = "Saw"
+atk_state = "Saw1"
+    
+[[weapons]]
+# super shotgun
+ammo = "Shell"
+up_state = "DSgunUp"
+down_state = "DSgunDown"
+ready_state = "DSgun"
+atk_state = "DSgun1"
+flash_state = "DSgunFlash1"

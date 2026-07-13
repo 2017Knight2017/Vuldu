@@ -11,7 +11,7 @@ use hecs::World;
 use winit::{
     event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
     application::ApplicationHandler,
-    event::{WindowEvent, ElementState, DeviceEvent, DeviceId},
+    event::{WindowEvent, ElementState, DeviceEvent, DeviceId, MouseButton},
     window::{Window, WindowId, CursorGrabMode},
     keyboard::{PhysicalKey, KeyCode},
     dpi::LogicalSize
@@ -321,16 +321,7 @@ impl ApplicationHandler for App {
                     renderer.update_level_geometry(&level_vertices, &level_indices);
                     renderer.update_object_geometry(&obj_vertices, &obj_indices);
 
-                    let _ = engine::populate_database(&self.texture_data).map_err(|err| println!("{}", err));
-
-                    println!("Starting mobj spawning...");
-                    let plr_spawn = self.map.things
-                        .iter().find(|thing| thing.type_ == 1)
-                        .unwrap();
-                    let plr_sector_idx = self.map.get_sector_by_pos(plr_spawn.x as f32, plr_spawn.y as f32);
-                    let plr_floorheight = self.map.sectors[plr_sector_idx].floorheight;
-                    engine::spawn_mobj(&mut self.world, &mut self.random, Some(MobjType::Player), plr_sector_idx, -plr_spawn.x, plr_floorheight, plr_spawn.y, plr_spawn.angle);
-                        
+                    let _ = engine::populate_database(&self.texture_data).map_err(|err| eprintln!("{}", err));
                     engine::spawn_all_things(&mut self.world, &self.map, &mut self.random);
                     println!("Mobj spawning is done!");
                 }
@@ -347,7 +338,7 @@ impl ApplicationHandler for App {
         match event {
             DeviceEvent::MouseMotion { delta } => {
                 self.current_input.mouse_delta_x += delta.0 as f32;
-            }
+            },
 
             _ => {}
         }
@@ -374,6 +365,15 @@ impl ApplicationHandler for App {
                     PhysicalKey::Code(KeyCode::KeyD) => self.current_input.move_right = is_pressed,
                     PhysicalKey::Code(KeyCode::Space) => self.current_input.move_up = is_pressed,
                     PhysicalKey::Code(KeyCode::ShiftLeft) => self.current_input.move_down = is_pressed,
+                    _ => {}
+                }
+            },
+
+            WindowEvent::MouseInput { state, button, .. } => {
+                let is_pressed = state == ElementState::Pressed;
+
+                match button {
+                    MouseButton::Left => self.current_input.shoot = is_pressed,
                     _ => {}
                 }
             }

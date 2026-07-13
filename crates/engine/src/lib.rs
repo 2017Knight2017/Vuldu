@@ -6,6 +6,8 @@ pub mod spawners;
 pub mod data_tables;
 pub mod random;
 pub mod player;
+pub mod weapons;
+pub mod sound;
 
 pub use components::*;
 pub use enums::*;
@@ -15,3 +17,5 @@ pub use spawners::*;
 pub use data_tables::*;
 pub use random::*;
 pub use player::*;
+pub use weapons::*;
+pub use sound::*;

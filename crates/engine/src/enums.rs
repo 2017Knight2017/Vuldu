@@ -1407,3 +1407,51 @@ pub enum SFX {
     Skeatk,
     Radio,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter)]
+pub enum WeaponType {
+    Fist,
+    Pistol,
+    Shotgun,
+    Chaingun,
+    Missile,
+    Plasma,
+    BFG,
+    Chainsaw,
+    SuperShotgun,
+    NoChange
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+pub enum AmmoType {
+    Clip,
+    Shell,
+    Cell,
+    Missile,
+    NoAmmo
+}
+
+pub enum PowerType {
+    Invulnerability,
+    Strength,
+    Invisibility,
+    IronFeet,
+    AllMap,
+    Infrared
+}
+
+pub enum GameState {
+    Level,
+    Intermission,
+    Finale,
+    Demoscreen,
+}
+
+pub enum Card {
+    BlueCard,
+    YellowCard,
+    RedCard,
+    BlueSkull,
+    YellowSkull,
+    RedSkull,
+}
