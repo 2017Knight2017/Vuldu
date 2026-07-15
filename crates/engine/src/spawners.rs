@@ -68,12 +68,11 @@ pub fn spawn_mobj(
 	let mut entity_builder = hecs::EntityBuilder::new();
     
     entity_builder
-		.add(Transform { x, y, z, prev_x: x, prev_y: y, prev_z: z, angle, prev_angle: angle })
+		.add(Position { x, y, z, prev_x: x, prev_y: y, prev_z: z })
+		.add(Rotation { angle, prev_angle: angle })
 		.add(CurrentSector(sector_idx))
 		.add(Velocity::default())
-		.add(BoundingBox { radius: mobj_info.radius, height: mobj_info.height })
-		.add(SpriteAnimation {
-			current_state: mobj_info.spawn_state, tics_left, cached_rotations, top_offset_shift});
+		.add(BoundingBox { radius: mobj_info.radius, height: mobj_info.height });
 
 	for flag in &mobj_info.flags {
 		match flag {
@@ -122,6 +121,9 @@ pub fn spawn_mobj(
         	    max_ammo: [200, 50, 50, 300] 
         	})
         	.add(WeaponOverlay { state_idx: 0, tics: 0, sx: 0.0, sy: 0.0 });
+	} else {
+		entity_builder.add(SpriteAnimation {
+			current_state: mobj_info.spawn_state, tics_left, cached_rotations, top_offset_shift});
 	};
 
     world.spawn(entity_builder.build());

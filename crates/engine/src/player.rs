@@ -1,12 +1,12 @@
 use crate::{
 	enums::PlayerState,
 	constants::{NUMCARDS, NUMWEAPONS, NUMAMMO},
-    components::{Velocity, Transform, PlayerMarker},
+    components::{Velocity, Rotation, PlayerMarker},
     weapons::weapon_shoot,
     sound::propogate_sound,
 };
 use std::f64::consts::TAU;
-use hecs::World;
+use hecs::QueryBorrow;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PlayerCamera {
@@ -50,8 +50,8 @@ pub struct PlayerInput {
     pub mouse_delta_x: f32,
 }
 
-pub fn handle_input(world: &mut World, input: &PlayerInput) {
-    for (velocity, transform, _player) in world.query_mut::<(&mut Velocity, &mut Transform, &PlayerMarker)>() {
+pub fn handle_position_input(mut query: QueryBorrow<'_, (&mut Velocity, &Rotation, &PlayerMarker)>, input: &PlayerInput) {
+    for (velocity, rotation, _player) in query.iter() {
         let mut move_forward = 0.0;
         let mut move_sideways = 0.0;
         let mut move_vertically = 0.0;
@@ -63,7 +63,7 @@ pub fn handle_input(world: &mut World, input: &PlayerInput) {
         if input.move_up       { move_vertically += 1.0; }
         if input.move_down     { move_vertically -= 1.0; }
 
-        let current_angle_rad = (transform.angle as f64 / u32::MAX as f64) * TAU;
+        let current_angle_rad = (rotation.angle as f64 / u32::MAX as f64) * TAU;
 
         let sin = f64::sin(current_angle_rad);
         let cos = f64::cos(current_angle_rad);
@@ -76,19 +76,23 @@ pub fn handle_input(world: &mut World, input: &PlayerInput) {
         velocity.x += thrust_x as f32 * 0.2; 
         velocity.z += thrust_z as f32 * 0.2;
         velocity.y += move_vertically * 4.0;
-
-		let sensitivity = 0.008; 
-        let angle_delta_rad = -input.mouse_delta_x * sensitivity;
-        let factor = (angle_delta_rad as f64) / TAU;
-
-        let angle_delta = (factor * u32::MAX as f64) as i32;
-
-        transform.prev_angle = transform.angle;
-        transform.angle = transform.angle.wrapping_add_signed(angle_delta);
     }
 
     if input.shoot {
         weapon_shoot();
         propogate_sound();
+    }
+}
+
+pub fn handle_rotation_input(mut query: QueryBorrow<'_, (&mut Rotation, &PlayerMarker)>, input: &PlayerInput) {
+    for (rotation, _player) in query.iter() {
+        let sensitivity = 0.008; 
+        let angle_delta_rad = -input.mouse_delta_x * sensitivity;
+        let factor = (angle_delta_rad as f64) / TAU;
+
+        let angle_delta = (factor * u32::MAX as f64) as i32;
+
+        rotation.prev_angle = rotation.angle;
+        rotation.angle = rotation.angle.wrapping_add_signed(angle_delta);
     }
 }

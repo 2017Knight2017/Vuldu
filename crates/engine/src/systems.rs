@@ -1,27 +1,31 @@
 use crate::{
-	components::{Velocity, Transform, SpriteAnimation},
+	components::{Velocity, Position, SpriteAnimation},
 	constants::FRICTION,
     data_tables::DB,
 };
-use hecs::World;
+use hecs::QueryBorrow;
 
-pub fn system_movement_and_friction(world: &mut World) {
-	for (transform, velocity) in world.query_mut::<(&mut Transform, &mut Velocity)>() {
-		velocity.x *= FRICTION;
-		velocity.y *= 0.7;
-		velocity.z *= FRICTION;
-
-		transform.prev_x = transform.x;
-        transform.prev_y = transform.y;
-		transform.prev_z = transform.z;
-        transform.x += velocity.x;
-        transform.y += velocity.y;
-        transform.z += velocity.z;
+pub fn movement_system(mut query: QueryBorrow<'_, (&mut Position, &Velocity)>) {
+	for (position, velocity) in query.iter() {
+		position.prev_x = position.x;
+        position.prev_y = position.y;
+		position.prev_z = position.z;
+        position.x += velocity.x;
+        position.y += velocity.y;
+        position.z += velocity.z;
     }
 }
 
-pub fn animation_system(world: &mut World) {
-    for anim in world.query_mut::<&mut SpriteAnimation>() {
+pub fn friction_system(mut query: QueryBorrow<'_, &mut Velocity>) {
+    for velocity in query.iter() {
+		velocity.x *= FRICTION;
+		velocity.y *= 0.7;
+		velocity.z *= FRICTION;
+    }
+}
+
+pub fn animation_system(mut query: QueryBorrow<'_, &mut SpriteAnimation>) {
+    for anim in query.iter() {
         if anim.tics_left <= 0 {
             continue; 
         }

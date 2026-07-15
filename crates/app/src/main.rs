@@ -85,15 +85,15 @@ fn register_sprite(
 
 impl App {
     fn update_camera_from_player(&mut self, alpha: f32) {
-        for (transform, _player) in self.world.query::<(&Transform, &PlayerMarker)>().iter() {
+        for (position, rotation, _player) in self.world.query::<(&Position, &Rotation, &PlayerMarker)>().iter() {
 
-            let prev_pos = glam::vec3(transform.prev_x, transform.prev_y + EYE_HEIGHT, transform.prev_z);
-            let current_pos = glam::vec3(transform.x, transform.y + EYE_HEIGHT, transform.z);
+            let prev_pos = glam::vec3(position.prev_x, position.prev_y + EYE_HEIGHT, position.prev_z);
+            let current_pos = glam::vec3(position.x, position.y + EYE_HEIGHT, position.z);
             let interpolated_pos = prev_pos + (current_pos - prev_pos) * alpha;
 
-            let angle_diff = transform.angle.wrapping_sub(transform.prev_angle) as i32;
+            let angle_diff = rotation.angle.wrapping_sub(rotation.prev_angle) as i32;
             let interpolated_diff = (angle_diff as f64 * alpha as f64) as i32;
-            let interpolated_angle_u32 = transform.prev_angle.wrapping_add_signed(interpolated_diff);
+            let interpolated_angle_u32 = rotation.prev_angle.wrapping_add_signed(interpolated_diff);
 
             let angle_normalized = interpolated_angle_u32 as f64 / u32::MAX as f64;
             let angle_rad = (angle_normalized * std::f64::consts::TAU) as f32;
@@ -398,11 +398,22 @@ impl ApplicationHandler for App {
                 self.time_accumulator += delta_time;
 
                 while self.time_accumulator >= TICK_TIME {
-                    
-                    engine::handle_input(&mut self.world, &self.current_input);
-                    engine::system_movement_and_friction(&mut self.world);
+                    let rotation_query = self.world.query::<(&mut Rotation, &PlayerMarker)>();
+                    let animation_query = self.world.query::<&mut SpriteAnimation>();
 
-                    engine::animation_system(&mut self.world);
+                    micropool::join(
+                        || handle_rotation_input(rotation_query, &self.current_input),
+                        || animation_system(animation_query)
+                    );
+
+                    let position_input_query = self.world.query::<(&mut Velocity, &Rotation, &PlayerMarker)>();
+                    handle_position_input(position_input_query, &self.current_input);
+
+                    let friction_query = self.world.query::<&mut Velocity>();
+                    friction_system(friction_query); 
+
+                    let movement_query = self.world.query::<(&mut Position, &Velocity)>();
+                    movement_system(movement_query);
                     
                     self.current_input.mouse_delta_x = 0.0;
                     self.time_accumulator -= TICK_TIME;
@@ -464,10 +475,11 @@ fn main() -> Result<(), String> {
     //
     //let map = DoomMap::from_wad(&wad_manager, &args.map)?;
 
-    wad_manager.add_wad("assets/DOOM.WAD")?;
+    wad_manager.add_wad("assets/DOOM2.WAD")?;
     //wad_manager.add_wad("assets/oku2v31.wad")?;
+    wad_manager.add_wad("/home/iaroslavs/Документы/wads/Sunder 2512/Sunder 2512.wad")?;
 
-    let map = DoomMap::from_wad(&wad_manager, wad_manager.is_doom1, 1)?;
+    let map = DoomMap::from_wad(&wad_manager, wad_manager.is_doom1, 2)?;
 
     let event_loop = EventLoop::new().unwrap();
 
@@ -478,7 +490,7 @@ fn main() -> Result<(), String> {
         renderer: None,
         wad_manager: wad_manager,
         world: World::new(),
-        map: map,
+        map,
         texture_data: FxHashMap::default(),
         sprite_offsets: Vec::new(),
         random: Random::default(),

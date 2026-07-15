@@ -1,81 +1,98 @@
 use crate::{App, MAX_SKY};
 use renderer::ObjectInstance;
-use engine::{CurrentSector, PlayerMarker, SpriteAnimation, Transform};
+use engine::{CurrentSector, PlayerMarker, Position, Rotation, SpriteAnimation};
 use glam::Vec3;
+use micropool::iter::*;
 use std::f32::consts::TAU;
 
 impl App {
 	pub fn collect_object_instances(&self, alpha: f32) -> Vec<ObjectInstance> {
-	    let mut instances = Vec::new();
-
 	    let mut player_pos = Vec3::ZERO;
 	
-	    for (transform, _player_marker) in self.world.query::<(&Transform, &PlayerMarker)>().iter() {
-	        let lerped_x = transform.prev_x * (1.0 - alpha) + transform.x * alpha;
-	        let lerped_y = transform.prev_y * (1.0 - alpha) + transform.y * alpha;
-	        let lerped_z = transform.prev_z * (1.0 - alpha) + transform.z * alpha;
+	    for (position, _player_marker) in self.world.query::<(&Position, &PlayerMarker)>().iter() {
+	        let lerped_x = position.prev_x * (1.0 - alpha) + position.x * alpha;
+	        let lerped_y = position.prev_y * (1.0 - alpha) + position.y * alpha;
+	        let lerped_z = position.prev_z * (1.0 - alpha) + position.z * alpha;
 	        player_pos = Vec3::new(lerped_x, lerped_y, lerped_z);
 	    }
 
-	    for (transform, sector_idx, anim) in self.world.query::<(&Transform, &CurrentSector, &SpriteAnimation)>().iter() {   
-			let lerped_x = transform.prev_x * (1.0 - alpha) + transform.x * alpha;
-	        let lerped_y = transform.prev_y * (1.0 - alpha) + transform.y * alpha;
-	        let lerped_z = transform.prev_z * (1.0 - alpha) + transform.z * alpha;	
-		
-	        let monster_pos = Vec3::new(lerped_x, lerped_y, lerped_z);
-			if player_pos == monster_pos { continue; }
+		let mut entities_query = self.world.query::<(&Position, &Rotation, &CurrentSector, &SpriteAnimation)>();
+		let entities_to_process: Vec<(&Position, &Rotation, &CurrentSector, &SpriteAnimation)> = entities_query
+			.iter()
+			.collect();
 
-	        let monster_angle = lerp_angle(transform.prev_angle, transform.angle, alpha);
+		let sprite_offsets = &self.sprite_offsets;
+    	let sectors = &self.map.sectors;
 
-	        let to_player = player_pos - monster_pos;
-			let mut rad_to_player = f32::atan2(to_player.z.into(), (-to_player.x).into());
-			if rad_to_player < 0.0 {
-			    rad_to_player += TAU;
-			}
+		let nested_instances = entities_to_process 
+        	.par_iter()
+        	.with_thread_pool(micropool::split_by_threads())
+        	.map(|(position, rotation, sector_idx, anim)| {
+				let lerped_x = position.prev_x * (1.0 - alpha) + position.x * alpha;
+	    	    let lerped_y = position.prev_y * (1.0 - alpha) + position.y * alpha;
+	    	    let lerped_z = position.prev_z * (1.0 - alpha) + position.z * alpha;	
+			
+	    	    let monster_pos = Vec3::new(lerped_x, lerped_y, lerped_z);
 
-			let angle_to_player = ((rad_to_player / TAU) * u32::MAX as f32) as u32;
+	    	    let monster_angle = lerp_angle(rotation.prev_angle, rotation.angle, alpha);
 
-			let view_angle = angle_to_player.wrapping_sub(monster_angle);
+	    	    let to_player = player_pos - monster_pos;
+				let mut rad_to_player = f32::atan2(to_player.z.into(), (-to_player.x).into());
+				if rad_to_player < 0.0 {
+				    rad_to_player += TAU;
+				}
 
-			let sector_offset = 0x10000000;
-			let shifted_angle = view_angle.wrapping_add(sector_offset);
+				let angle_to_player = ((rad_to_player / TAU) * u32::MAX as f32) as u32;
 
-			let sprite_rotation = ((shifted_angle >> 29) + 1) as u8;  // same as shifted_angle / 0x20000000
-		
-	        let cached = anim.cached_rotations[sprite_rotation as usize];
-        
-        	let tex_id = cached.tex_id;
-        	let tex_width = cached.width;
-        	let tex_height = cached.height;
-        	let need_flip = cached.need_flip;
-			// first 16 indices are reserved for sky textures,
-			// so we have to subtract MAX_SKY from the actual index
-			let (left_offset, top_offset) = self.sprite_offsets[tex_id as usize - MAX_SKY];  
+				let view_angle = angle_to_player.wrapping_sub(monster_angle);
 
-			let mut final_width = tex_width as f32;
-        	let mut final_left_offset = left_offset as f32;
+				let sector_offset = 0x10000000;
+				let shifted_angle = view_angle.wrapping_add(sector_offset);
 
+				let sprite_rotation = ((shifted_angle >> 29) + 1) as u8;  // same as shifted_angle / 0x20000000
+			
+	    	    let cached = anim.cached_rotations[sprite_rotation as usize];
+			
+        		let tex_id = cached.tex_id;
+        		let tex_width = cached.width;
+        		let tex_height = cached.height;
+        		let need_flip = cached.need_flip;
+				// first 16 indices are reserved for sky textures,
+				// so we have to subtract MAX_SKY from the actual index
+				let (left_offset, top_offset) = sprite_offsets[tex_id as usize - MAX_SKY];  
 
-			if need_flip {
-        	    final_width = -final_width;
-        	    final_left_offset = tex_width as f32 - final_left_offset;
-        	}
+				let mut final_width = tex_width as f32;
+        		let mut final_left_offset = left_offset as f32;
 
-			let sector = self.map.sectors[sector_idx.0];
+				if need_flip {
+        		    final_width = -final_width;
+        		    final_left_offset = tex_width as f32 - final_left_offset;
+        		}
 
-			let clamped_light = sector.lightlevel.clamp(0, 255) as f32;
-	        let modern_light = clamped_light / 255.0;
-	        let colormap_idx = 31 - ((clamped_light / 8.0).floor() as u32).clamp(0, 31);
+				let sector = sectors[sector_idx.0];
 
-	        instances.push(ObjectInstance {
-	            pos: [lerped_x, lerped_y, lerped_z],
-	            sprite_offset: [final_left_offset, (top_offset + anim.top_offset_shift) as f32],
-				sprite_size: [final_width, tex_height as f32],
-	            light_level: modern_light,
-	            texture_id: tex_id,
-	            colormap_idx: colormap_idx,
-	        });
-	    }
+				let clamped_light = sector.lightlevel.clamp(0, 255) as f32;
+	    	    let modern_light = clamped_light / 255.0;
+	    	    let colormap_idx = 31 - ((clamped_light / 8.0).floor() as u32).clamp(0, 31);
+
+	    	    ObjectInstance {
+	    	        pos: [lerped_x, lerped_y, lerped_z],
+	    	        sprite_offset: [final_left_offset, (top_offset + anim.top_offset_shift) as f32],
+					sprite_size: [final_width, tex_height as f32],
+	    	        light_level: modern_light,
+	    	        texture_id: tex_id,
+	    	        colormap_idx: colormap_idx,
+	    	    }
+	    	})
+			.collect_per_thread::<Vec<ObjectInstance>>();
+
+		let total_count: usize = nested_instances.iter().map(|v| v.len()).sum();
+
+		let mut instances = Vec::with_capacity(total_count);
+
+		for mut thread_vec in nested_instances {
+		    instances.append(&mut thread_vec); 
+		}
 
 	    instances
 	}

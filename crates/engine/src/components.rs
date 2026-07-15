@@ -14,13 +14,17 @@ macro_rules! define_markers {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Transform {
+pub struct Position {
 	pub x: f32,
 	pub y: f32,
 	pub z: f32,
 	pub prev_x: f32,
 	pub prev_y: f32,
 	pub prev_z: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Rotation {
 	pub angle: u32,
     pub prev_angle: u32,
 }
@@ -126,7 +130,7 @@ pub struct CurrentSector(pub usize);
 
 #[derive(Bundle)]
 pub struct MobjBundle {
-    pub transform: Transform,
+    pub transform: Position,
     pub velocity: Velocity,
     pub bbox: BoundingBox,
     pub sprite_anim: SpriteAnimation,
