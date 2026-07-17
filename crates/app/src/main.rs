@@ -477,9 +477,9 @@ fn main() -> Result<(), String> {
 
     wad_manager.add_wad("assets/DOOM2.WAD")?;
     //wad_manager.add_wad("assets/oku2v31.wad")?;
-    wad_manager.add_wad("/home/iaroslavs/Документы/wads/Sunder 2512/Sunder 2512.wad")?;
+    wad_manager.add_wad("assets/Sunder 2512.wad")?;
 
-    let map = DoomMap::from_wad(&wad_manager, wad_manager.is_doom1, 2)?;
+    let map = DoomMap::from_wad(&wad_manager, wad_manager.is_doom1, 1)?;
 
     let event_loop = EventLoop::new().unwrap();
 

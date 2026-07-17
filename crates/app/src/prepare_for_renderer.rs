@@ -1,9 +1,8 @@
 use crate::{App, MAX_SKY};
 use renderer::ObjectInstance;
-use engine::{CurrentSector, PlayerMarker, Position, Rotation, SpriteAnimation};
+use engine::{CurrentSector, PlayerMarker, Position, Rotation, SpriteAnimation, point_to_angle};
 use glam::Vec3;
 use micropool::iter::*;
-use std::f32::consts::TAU;
 
 impl App {
 	pub fn collect_object_instances(&self, alpha: f32) -> Vec<ObjectInstance> {
@@ -37,12 +36,7 @@ impl App {
 	    	    let monster_angle = lerp_angle(rotation.prev_angle, rotation.angle, alpha);
 
 	    	    let to_player = player_pos - monster_pos;
-				let mut rad_to_player = f32::atan2(to_player.z.into(), (-to_player.x).into());
-				if rad_to_player < 0.0 {
-				    rad_to_player += TAU;
-				}
-
-				let angle_to_player = ((rad_to_player / TAU) * u32::MAX as f32) as u32;
+				let angle_to_player = point_to_angle(-to_player.x, to_player.z);
 
 				let view_angle = angle_to_player.wrapping_sub(monster_angle);
 

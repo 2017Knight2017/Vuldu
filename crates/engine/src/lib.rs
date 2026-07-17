@@ -8,6 +8,7 @@ pub mod random;
 pub mod player;
 pub mod weapons;
 pub mod sound;
+pub mod angles;
 
 pub use components::*;
 pub use enums::*;
@@ -19,3 +20,4 @@ pub use random::*;
 pub use player::*;
 pub use weapons::*;
 pub use sound::*;
+pub use angles::*;
