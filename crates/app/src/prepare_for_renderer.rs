@@ -1,6 +1,6 @@
 use crate::{App, MAX_SKY};
 use renderer::ObjectInstance;
-use engine::{CurrentSector, PlayerMarker, Position, Rotation, SpriteAnimation, point_to_angle};
+use engine::{CurrentSector, PlayerMarker, Position, MonsterRotation, SpriteAnimation, point_to_angle};
 use glam::Vec3;
 use micropool::iter::*;
 
@@ -15,8 +15,8 @@ impl App {
 	        player_pos = Vec3::new(lerped_x, lerped_y, lerped_z);
 	    }
 
-		let mut entities_query = self.world.query::<(&Position, &Rotation, &CurrentSector, &SpriteAnimation)>();
-		let entities_to_process: Vec<(&Position, &Rotation, &CurrentSector, &SpriteAnimation)> = entities_query
+		let mut entities_query = self.world.query::<(&Position, &MonsterRotation, &CurrentSector, &SpriteAnimation)>();
+		let entities_to_process: Vec<(&Position, &MonsterRotation, &CurrentSector, &SpriteAnimation)> = entities_query
 			.iter()
 			.collect();
 
@@ -33,7 +33,7 @@ impl App {
 			
 	    	    let monster_pos = Vec3::new(lerped_x, lerped_y, lerped_z);
 
-	    	    let monster_angle = lerp_angle(rotation.prev_angle, rotation.angle, alpha);
+	    	    let monster_angle = rotation.move_dir << 29;
 
 	    	    let to_player = player_pos - monster_pos;
 				let angle_to_player = point_to_angle(-to_player.x, to_player.z);
@@ -43,7 +43,7 @@ impl App {
 				let sector_offset = 0x10000000;
 				let shifted_angle = view_angle.wrapping_add(sector_offset);
 
-				let sprite_rotation = ((shifted_angle >> 29) + 1) as u8;  // same as shifted_angle / 0x20000000
+				let sprite_rotation = ((shifted_angle >> 29) + 1) as u8;
 			
 	    	    let cached = anim.cached_rotations[sprite_rotation as usize];
 			
@@ -63,7 +63,7 @@ impl App {
         		    final_left_offset = tex_width as f32 - final_left_offset;
         		}
 
-				let sector = sectors[sector_idx.0];
+				let sector = sectors[sector_idx.0].props;
 
 				let clamped_light = sector.lightlevel.clamp(0, 255) as f32;
 	    	    let modern_light = clamped_light / 255.0;
@@ -90,12 +90,4 @@ impl App {
 
 	    instances
 	}
-}
-
-fn lerp_angle(from: u32, to: u32, alpha: f32) -> u32 {
-    let diff = (to as i32).wrapping_sub(from as i32);
-    
-    let lerped_diff = (diff as f64 * alpha as f64) as i32;
-    
-    from.wrapping_add_signed(lerped_diff)
 }

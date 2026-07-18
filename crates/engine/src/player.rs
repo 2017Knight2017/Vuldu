@@ -1,12 +1,6 @@
-use crate::{
-	enums::PlayerState,
-	constants::{NUMCARDS, NUMWEAPONS, NUMAMMO},
-    components::{Velocity, Rotation, PlayerMarker},
-    weapons::weapon_shoot,
-    sound::propogate_sound,
-};
+use crate::{NUMAMMO, NUMCARDS, NUMWEAPONS, PlayerRotation, PlayerShoot, PlayerState, Velocity};
 use std::f64::consts::TAU;
-use hecs::QueryBorrow;
+use hecs::{CommandBuffer, Entity, QueryBorrow};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PlayerCamera {
@@ -37,7 +31,6 @@ pub struct PlayerInventory {
     pub max_ammo: [i32; NUMAMMO],
 }
 
-
 #[derive(Clone, Copy, Default)]
 pub struct PlayerInput {
     pub move_forward: bool,
@@ -50,8 +43,12 @@ pub struct PlayerInput {
     pub mouse_delta_x: f32,
 }
 
-pub fn handle_position_input(mut query: QueryBorrow<'_, (&mut Velocity, &Rotation, &PlayerMarker)>, input: &PlayerInput) {
-    for (velocity, rotation, _player) in query.iter() {
+pub fn handle_position_input(
+    mut query: QueryBorrow<'_, (Entity, &mut Velocity, &PlayerRotation)>, 
+    input: &PlayerInput,
+    command_buffer: &mut CommandBuffer
+) {
+    for (entity, velocity, rotation) in query.iter() {
         let mut move_forward = 0.0;
         let mut move_sideways = 0.0;
         let mut move_vertically = 0.0;
@@ -76,16 +73,15 @@ pub fn handle_position_input(mut query: QueryBorrow<'_, (&mut Velocity, &Rotatio
         velocity.x += thrust_x as f32 * 0.2; 
         velocity.z += thrust_z as f32 * 0.2;
         velocity.y += move_vertically * 4.0;
-    }
 
-    if input.shoot {
-        weapon_shoot();
-        propogate_sound();
+        if input.shoot{
+            command_buffer.insert_one(entity, PlayerShoot);
+        }
     }
 }
 
-pub fn handle_rotation_input(mut query: QueryBorrow<'_, (&mut Rotation, &PlayerMarker)>, input: &PlayerInput) {
-    for (rotation, _player) in query.iter() {
+pub fn handle_rotation_input(mut query: QueryBorrow<'_, &mut PlayerRotation>, input: &PlayerInput) {
+    for rotation in query.iter() {
         let sensitivity = 0.008; 
         let angle_delta_rad = -input.mouse_delta_x * sensitivity;
         let factor = (angle_delta_rad as f64) / TAU;

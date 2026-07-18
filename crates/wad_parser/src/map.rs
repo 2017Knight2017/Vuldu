@@ -17,37 +17,25 @@ pub struct MapVertex
 #[derive(Debug, Clone, Copy)]
 pub struct MapSidedef
 {
-	textureoffset: i16,
-	rowoffset: i16,
-  	toptexture: [u8; 8],
-  	bottomtexture: [u8; 8],
-  	midtexture: [u8; 8],
-	sector: i16,
+	pub textureoffset: i16,
+	pub rowoffset: i16,
+  	pub toptexture: [u8; 8],
+  	pub bottomtexture: [u8; 8],
+  	pub midtexture: [u8; 8],
+	pub sector: i16,
 }
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct MapLinedef
 {
-	v1: i16,
-	v2: i16,
-	flags: i16,
-	special: i16,
-	tag: i16,
-	sidenum: [u16; 2]	
+	pub v1: i16,
+	pub v2: i16,
+	pub flags: i16,
+	pub special: i16,
+	pub tag: i16,
+	pub sidenum: [u16; 2]	
 }
-
-//pub mod LinedefFlags {
-//	const ML_BLOCKING: i16 = 1;
-//	const ML_BLOCKMONSTER: i16 = 2;
-//	const ML_TWOSIDED: i16 = 4;
-//	const ML_DONTPEGTOP: i16 = 8;
-//	const ML_DONTPEGBOTTO: i16 = 16;
-//	const ML_SECRET: i16 = 32;
-//	const ML_SOUNDBLOCK: i16 = 64;
-//	const ML_DONTDRAW: i16 = 128;
-//	const ML_MAPPED: i16 = 256;
-//}
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
@@ -60,6 +48,13 @@ pub struct MapSector
 	pub lightlevel: i16,
 	pub special: i16,
 	pub tag: i16,
+}
+
+#[derive(Debug, Clone)]
+pub struct Sector {
+	pub props: MapSector,
+	pub sound_traversed: u32,
+	pub lines: Vec<usize>
 }
 
 #[repr(C)]
@@ -77,12 +72,12 @@ pub struct MapSegment
 	v1: i16,
 	v2: i16,
 	angle: i16,
-	linedef: i16,
+	linedef: u16,
 	side: i16,
 	offset: i16,
 }
 
-pub const NF_SUBSECTOR: usize = 0x8000;
+pub const NF_SUBSECTOR: usize = 0x8000; 
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
@@ -139,14 +134,14 @@ impl Aabb {
 #[derive(Debug, Default)]
 pub struct DoomMap {
 	pub map_num: u32,
-    vertices: Vec<MapVertex>,
-    linedefs: Vec<MapLinedef>,
-    sidedefs: Vec<MapSidedef>,
-    pub sectors: Vec<MapSector>,
+    pub vertices: Vec<MapVertex>,
+    pub linedefs: Vec<MapLinedef>,
+    pub sidedefs: Vec<MapSidedef>,
+    pub sectors: Vec<Sector>,
     pub things: Vec<MapThing>,
-	subsectors: Vec<MapSubsector>,
-	segs: Vec<MapSegment>,
-	nodes: Vec<MapNode>
+	pub subsectors: Vec<MapSubsector>,
+	pub segs: Vec<MapSegment>,
+	pub nodes: Vec<MapNode>
 }
 
 impl DoomMap {
@@ -185,9 +180,23 @@ impl DoomMap {
 		map.sectors = sectors_bytes
     		.chunks_exact(size_of::<MapSector>())
     		.map(|chunk| {
-    		    unsafe { read_unaligned(chunk.as_ptr() as *const MapSector) }
+    		    unsafe { 
+					let props = read_unaligned(chunk.as_ptr() as *const MapSector);
+					Sector { props, sound_traversed: u32::MAX, lines: Vec::with_capacity(5) }
+				}
     		})
     		.collect();
+
+		for (line_idx, line) in map.linedefs.iter().enumerate() {
+		    if line.sidenum[0] != u16::MAX {
+		        let front_sector = map.sidedefs[line.sidenum[0] as usize].sector;
+		        map.sectors[front_sector as usize].lines.push(line_idx);
+		    }
+		    if line.sidenum[1] != u16::MAX {
+		        let back_sector = map.sidedefs[line.sidenum[1] as usize].sector;
+		        map.sectors[back_sector as usize].lines.push(line_idx);
+		    }
+		}
 
 		let things_bytes = wad_manager.get_data(&format!("THINGS_{}", map_name))?;
 		map.things = things_bytes
@@ -229,7 +238,7 @@ impl DoomMap {
 	    let mut indices = Vec::new();
 
 	    for seg in self.segs.iter() {
-	        if seg.linedef == -1 { continue; }
+	        if seg.linedef == u16::MAX { continue; }
 
 	        let v1 = self.vertices[seg.v1 as usize];
 	        let v2 = self.vertices[seg.v2 as usize];
@@ -241,11 +250,11 @@ impl DoomMap {
 	        if front_side_idx == u16::MAX { continue; }
 	        let front_sidedef = self.sidedefs[front_side_idx as usize];
 	        let front_sector_id = front_sidedef.sector;
-	        let front_sector = self.sectors[front_sector_id as usize];
+	        let front_sector = self.sectors[front_sector_id as usize].props;
 
 	        let back_sector = if back_side_idx != u16::MAX {
 	            let back_sidedef = self.sidedefs[back_side_idx as usize];
-	            Some((back_sidedef, self.sectors[back_sidedef.sector as usize]))
+	            Some((back_sidedef, self.sectors[back_sidedef.sector as usize].props))
 	        } else {
 	            None
 	        };
@@ -416,6 +425,7 @@ impl DoomMap {
     	}
 
 	    for (sector_id, sector) in self.sectors.iter().enumerate() {
+			let map_sector = sector.props;
 	        let current_sector_id = sector_id as i16;
 			let sector_linedefs = match sector_to_linedefs.get(&current_sector_id) {
         	    Some(list) => list,
@@ -576,29 +586,29 @@ impl DoomMap {
 	                continue; 
 	            }
 				
-	            let floor_texture_name = pack_name_to_u64(&sector.floorpic);
-	            let ceil_texture_name = pack_name_to_u64(&sector.ceilingpic);
+	            let floor_texture_name = pack_name_to_u64(&map_sector.floorpic);
+	            let ceil_texture_name = pack_name_to_u64(&map_sector.ceilingpic);
 
-	            let floor_texture_id = if &sector.floorpic == b"F_SKY1\0\0" {
+	            let floor_texture_id = if &map_sector.floorpic == b"F_SKY1\0\0" {
 					(u16::MAX - 2) as u32
 				} else {
 					texture_ids.get(&floor_texture_name).unwrap_or(&(0,0,0,false)).0
 				};
 
-	            let ceil_texture_id = if &sector.ceilingpic == b"F_SKY1\0\0" {
+	            let ceil_texture_id = if &map_sector.ceilingpic == b"F_SKY1\0\0" {
 					(u16::MAX - 2) as u32
 				} else { 
 					texture_ids.get(&ceil_texture_name).unwrap_or(&(0,0,0,false)).0 
 				};
 
-	            let clamped_light = sector.lightlevel.clamp(0, 255) as f32;
+	            let clamped_light = map_sector.lightlevel.clamp(0, 255) as f32;
 	            let modern_light = clamped_light / 255.0;
 	            let colormap_idx = 31 - ((clamped_light / 8.0).floor() as u32).clamp(0, 31);
 
 	            let floor_start_idx = vertices.len() as u32;
 	            for pt in &flat_points {
 	                vertices.push(Vertex { 
-	                    pos: [-(pt[0]), sector.floorheight.into(), pt[1]],
+	                    pos: [-(pt[0]), map_sector.floorheight.into(), pt[1]],
 	                    texture_pos: [pt[0] / 64.0, pt[1] / 64.0],
 						light_level: modern_light,
 	                    texture_id: floor_texture_id,
@@ -615,7 +625,7 @@ impl DoomMap {
 	            let ceil_start_idx = vertices.len() as u32;
 	            for pt in &flat_points {
 	                vertices.push(Vertex { 
-	                    pos: [-(pt[0]), sector.ceilingheight.into(), pt[1]],
+	                    pos: [-(pt[0]), map_sector.ceilingheight.into(), pt[1]],
 	                    texture_pos: [pt[0] / 64.0, pt[1] / 64.0],
 						light_level: modern_light,
 	                    texture_id: ceil_texture_id,
@@ -645,7 +655,7 @@ impl DoomMap {
         let first_seg_idx = subsector.firstseg as usize;
         let seg = &self.segs[first_seg_idx];
         
-        if seg.linedef != -1 {
+        if seg.linedef != u16::MAX {
             let linedef = &self.linedefs[seg.linedef as usize];
             let side = linedef.sidenum[seg.side as usize];
             if side != u16::MAX {

@@ -7,7 +7,7 @@ use wad_parser::map::DoomMap;
 use wad_parser::*;
 use engine::*;
 use glam::Mat4;
-use hecs::World;
+use hecs::{CommandBuffer, Entity, World};
 use winit::{
     event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
     application::ApplicationHandler,
@@ -85,7 +85,7 @@ fn register_sprite(
 
 impl App {
     fn update_camera_from_player(&mut self, alpha: f32) {
-        for (position, rotation, _player) in self.world.query::<(&Position, &Rotation, &PlayerMarker)>().iter() {
+        for (position, rotation, _player) in self.world.query::<(&Position, &PlayerRotation, &PlayerMarker)>().iter() {
 
             let prev_pos = glam::vec3(position.prev_x, position.prev_y + EYE_HEIGHT, position.prev_z);
             let current_pos = glam::vec3(position.x, position.y + EYE_HEIGHT, position.z);
@@ -121,7 +121,7 @@ impl ApplicationHandler for App {
 
             if let Err(err) = window.set_cursor_grab(CursorGrabMode::Locked) {
                 let _ = window.set_cursor_grab(CursorGrabMode::Confined);
-                println!("{:?}", err);
+                eprintln!("{:?}", err);
             }
 
             self.window = Some(window);
@@ -398,23 +398,50 @@ impl ApplicationHandler for App {
                 self.time_accumulator += delta_time;
 
                 while self.time_accumulator >= TICK_TIME {
-                    let rotation_query = self.world.query::<(&mut Rotation, &PlayerMarker)>();
-                    let animation_query = self.world.query::<&mut SpriteAnimation>();
+                    let mut command_buffer = CommandBuffer::new();
 
+                    let position_input_query = self.world.query::<(Entity, &mut Velocity, &PlayerRotation)>();
+                    let animation_query = self.world.query::<&mut SpriteAnimation>();
                     micropool::join(
-                        || handle_rotation_input(rotation_query, &self.current_input),
+                        || handle_position_input(position_input_query, &self.current_input, &mut command_buffer),
                         || animation_system(animation_query)
                     );
 
-                    let position_input_query = self.world.query::<(&mut Velocity, &Rotation, &PlayerMarker)>();
-                    handle_position_input(position_input_query, &self.current_input);
+                    command_buffer.run_on(&mut self.world);
+                    command_buffer.clear();
 
+                    let rotation_query = self.world.query::<&mut PlayerRotation>();
                     let friction_query = self.world.query::<&mut Velocity>();
-                    friction_system(friction_query); 
+                    micropool::join(
+                        || handle_rotation_input(rotation_query, &self.current_input),
+                        || friction_system(friction_query)
+                    );
 
-                    let movement_query = self.world.query::<(&mut Position, &Velocity)>();
-                    movement_system(movement_query);
-                    
+                    let propagate_sound_query = self.world.query::<(Entity, &CurrentSector, &PlayerShoot)>();
+                    propagate_sound_system(
+                        propagate_sound_query, 
+                        &mut command_buffer, 
+                        &mut self.map.sectors, 
+                        &self.map.linedefs,
+                        &self.map.sidedefs
+                    );
+
+                    command_buffer.run_on(&mut self.world);
+                    command_buffer.clear();
+
+                    let check_sound_query = self.world.query::<(Entity, &CurrentSector, &SpriteAnimation, &MobjType, &Sleeping)>();
+                    check_sound_system(check_sound_query, &mut command_buffer, &self.map.sectors);
+
+                    command_buffer.run_on(&mut self.world);
+                    command_buffer.clear();
+
+                    let chase_query = self.world.query::<(&mut MonsterRotation, &Position, &Active)>();
+                    let player_query = self.world.query::<(&Position, &PlayerMarker)>();
+                    chase_system(chase_query, player_query);
+
+                    let movement_query = self.world.query::<(&mut Position, &mut CurrentSector, &Velocity, &Active)>();
+                    movement_system(movement_query, &self.map);
+
                     self.current_input.mouse_delta_x = 0.0;
                     self.time_accumulator -= TICK_TIME;
                 }
@@ -477,7 +504,8 @@ fn main() -> Result<(), String> {
 
     wad_manager.add_wad("assets/DOOM2.WAD")?;
     //wad_manager.add_wad("assets/oku2v31.wad")?;
-    wad_manager.add_wad("assets/Sunder 2512.wad")?;
+    wad_manager.add_wad("assets/nuts.wad")?;
+    //wad_manager.add_wad("assets/Sunder 2512.wad")?;
 
     let map = DoomMap::from_wad(&wad_manager, wad_manager.is_doom1, 1)?;
 

@@ -1,18 +1,11 @@
-use crate::{
-	constants::{NUMCARDS, NUMWEAPONS, MOBJTYPE_BY_DOOMEDNUM},
-	data_tables::DB,
-	components::*,
-	enums::*,
-	random::Random,
-	player::*,
-};
+use crate::*;
 use hecs::World;
 use wad_parser::map::DoomMap;
 
 pub fn spawn_mobj(
 	world: &mut World, 
 	random: &mut Random,
-	mobj_type_raw: Option<MobjType>, 
+	mobj_type_raw: Option<MobjNum>, 
 	sector_idx: usize,
 	x_raw: i16, 
 	y_raw: i16, 
@@ -28,14 +21,15 @@ pub fn spawn_mobj(
 		None => return
 	};
 
-	let angle = if mobj_type == MobjType::Player {
-		(angle_raw + 270) as u32 % 360 / 45 * 0x20000000
+	let angle = if mobj_type == MobjNum::Player {
+		(angle_raw + 270) as u32 % 360 / 45 * ANG45
 	} else { 
-		angle_raw as u32 / 45 * 0x20000000 
+		angle_raw as u32 / 45 // move_dir, to be exact
 	};
 
 	let db = DB.get().expect("DB has not been initialized!");
-	let mobj_info = db.mobjinfo.get(&mobj_type).expect(&format!("[FATAL] mobj_info with {:?} was not found!", mobj_type));
+	let mobj_info = db.mobjinfo.get(&mobj_type)
+		.expect(&format!("[FATAL] mobj_info with {:?} was not found!", mobj_type));
 
 	let spawn_state = match mobj_info.spawn_state {
 		Some(state) => state,
@@ -69,46 +63,15 @@ pub fn spawn_mobj(
     
     entity_builder
 		.add(Position { x, y, z, prev_x: x, prev_y: y, prev_z: z })
-		.add(Rotation { angle, prev_angle: angle })
 		.add(CurrentSector(sector_idx))
 		.add(Velocity::default())
-		.add(BoundingBox { radius: mobj_info.radius, height: mobj_info.height });
+		.add(MobjType(mobj_type));
 
-	for flag in &mobj_info.flags {
-		match flag {
-			MobjFlag::Solid => entity_builder.add(Solid),
-			MobjFlag::CountKill => entity_builder.add(CountKill),
-			MobjFlag::Shootable => {
-				entity_builder.add(Health { current: mobj_info.spawn_health, max: mobj_info.spawn_health })
-					.add(PainReaction { chance: mobj_info.pain_chance, sound: mobj_info.pain_sound })
-					.add(MonsterBrainConfig {
-                	    spawn_state: mobj_info.spawn_state,
-                	    see_state: mobj_info.see_state,
-                	    death_state: mobj_info.death_state,
-                	    death_sound: mobj_info.death_sound,
-                	    missile_state: mobj_info.missile_state,
-                	    pain_state: mobj_info.pain_state,
-                	    xdeath_state: mobj_info.xdeath_state,
-                	    raise_state: mobj_info.raise_state
-                	})
-					.add(Shootable)
-			},
-			MobjFlag::CountItem => entity_builder.add(CountItem),
-			MobjFlag::Special => entity_builder.add(Special),
-			MobjFlag::Pickup => entity_builder.add(Pickup),
-			_ => { continue; }
-		};
-	}
-
-    if mobj_info.speed > 0.0 {
-        entity_builder.add(Physics {
-            speed: mobj_info.speed,
-            mass: mobj_info.mass,
-        });
-    }
-
-	if mobj_type == MobjType::Player {
-		entity_builder.add(PlayerMarker)
+	if mobj_type == MobjNum::Player {
+		entity_builder
+			.add(PlayerMarker)
+			.add(Active)
+			.add(PlayerRotation { angle, prev_angle: angle })
         	.add(PlayerCamera { view_z: 41.0, view_height: 41.0, delta_view_height: 0.0, bob: 0.0 })
         	.add(PlayerStats::default())
         	.add(PlayerInventory { 
@@ -122,17 +85,51 @@ pub fn spawn_mobj(
         	})
         	.add(WeaponOverlay { state_idx: 0, tics: 0, sx: 0.0, sy: 0.0 });
 	} else {
-		entity_builder.add(SpriteAnimation {
-			current_state: mobj_info.spawn_state, tics_left, cached_rotations, top_offset_shift});
+		entity_builder
+			.add(Sleeping)
+			.add(SpriteAnimation {
+				current_state: mobj_info.spawn_state, 
+				tics_left, 
+				cached_rotations, 
+				top_offset_shift
+			})
+			.add(MonsterRotation { 
+				move_dir: angle,
+				move_count: (random.p() % 15) as u32
+			});
 	};
+
+	for flag in &mobj_info.flags {
+		match flag {
+			MobjFlag::Solid => entity_builder.add(Solid),
+			MobjFlag::CountKill => entity_builder.add(CountKill),
+			MobjFlag::Shootable => {
+				entity_builder
+					.add(Shootable)
+					.add(Sleeping)
+			},
+			MobjFlag::CountItem => entity_builder.add(CountItem),
+			MobjFlag::Special => entity_builder.add(Special),
+			MobjFlag::Pickup => entity_builder.add(Pickup),
+			_ => { continue; }
+		};
+	}
 
     world.spawn(entity_builder.build());
 }
 
 pub fn spawn_all_things(world: &mut World, map: &DoomMap, random: &mut Random) {
+	let mut player_spawned = false;
 	for thing in map.things.iter() {
+		if thing.type_ == 1 {
+            if player_spawned {
+                continue;
+            }
+            player_spawned = true;
+		}
+
 		let sector_idx = map.get_sector_by_pos(thing.x as f32, thing.y as f32);
-		let sector = map.sectors[sector_idx];
+		let sector = map.sectors[sector_idx].props;
 
 		if let Some(thing_type) =  MOBJTYPE_BY_DOOMEDNUM.get(&thing.type_) {
 			spawn_mobj(world, random, *thing_type, sector_idx, -thing.x, sector.floorheight, thing.y, thing.angle);

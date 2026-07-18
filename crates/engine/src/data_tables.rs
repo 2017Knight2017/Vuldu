@@ -4,10 +4,7 @@ use toml;
 use rustc_hash::FxHashMap;
 use std::sync::OnceLock;
 use std::fs;
-use crate::{
-    constants::{NUMSTATES, NUMMOBJTYPES, NUMWEAPONS}, 
-    enums::{ActionFunc, AmmoType, MobjFlag, MobjType, SFX, StateNum, WeaponType},
-};
+use crate::{ActionFunc, AmmoType, MobjFlag, MobjNum, NUMMOBJTYPES, NUMSTATES, NUMWEAPONS, SFX, StateNum, WeaponType};
 
 #[derive(Debug, Deserialize)]
 pub struct MobjInfo {
@@ -108,7 +105,7 @@ struct WeaponConfig {
 
 #[derive(Debug, Default)]
 pub struct Database {
-    pub mobjinfo: FxHashMap<MobjType, MobjInfo>,
+    pub mobjinfo: FxHashMap<MobjNum, MobjInfo>,
     pub states: FxHashMap<StateNum, State>,
     pub weapon_info: FxHashMap<WeaponType, WeaponInfo>,
 }
@@ -136,7 +133,7 @@ pub fn populate_database(texture_data: &FxHashMap<u64, (u32, u32, u32, bool)>) -
     let mobjinfo_toml_count = mobj_config.objects.len();
     if mobjinfo_toml_count != NUMMOBJTYPES {
         return Err(format!(
-            "[ERROR]: Length of MobjType ({}) is not equal to the amount of mobjtypes in mobjinfo.toml ({})!", 
+            "[ERROR]: Length of MobjNum ({}) is not equal to the amount of mobjnums in mobjinfo.toml ({})!", 
             NUMMOBJTYPES, mobjinfo_toml_count
         ).into());
     };
@@ -144,7 +141,7 @@ pub fn populate_database(texture_data: &FxHashMap<u64, (u32, u32, u32, bool)>) -
     let weapon_toml_count = weapon_config.weapons.len();
     if weapon_toml_count != NUMWEAPONS {
         return Err(format!(
-            "[ERROR]: Length of MobjType ({}) is not equal to the amount of mobjtypes in mobjinfo.toml ({})!", 
+            "[ERROR]: Length of WeaponType ({}) is not equal to the amount of weapons in weapons.toml ({})!", 
             NUMWEAPONS, weapon_toml_count
         ).into());
     };
@@ -182,7 +179,7 @@ pub fn populate_database(texture_data: &FxHashMap<u64, (u32, u32, u32, bool)>) -
         });
     }
 
-    for (mobj_type, mobj_info) in MobjType::iter().zip(mobj_config.objects) {
+    for (mobj_type, mobj_info) in MobjNum::iter().zip(mobj_config.objects) {
         db.mobjinfo.insert(mobj_type, mobj_info);
     }
 

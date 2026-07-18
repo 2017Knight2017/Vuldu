@@ -972,86 +972,8 @@ pub enum StateNum {
     Tech2Lamp4,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
-pub enum ActionFunc {
-	Light0,
-	WeaponReady,
-	Lower,
-	Raise,
-	Punch,
-	ReFire,
-	FirePistol,
-	Light1,
-	FireShotgun,
-	Light2,
-	FireShotgun2,
-	CheckReload,
-	OpenShotgun2,
-	LoadShotgun2,
-	CloseShotgun2,
-	FireCGun,
-	GunFlash,
-	FireMissile,
-	Saw,
-	FirePlasma,
-	BFGSound,
-	FireBFG,
-	BFGSpray,
-	Explode,
-	Pain,
-	PlayerScream,
-	Fall,
-	XScream,
-	Look,
-	Chase,
-	FaceTarget,
-	PosAttack,
-	Scream,
-	SPosAttack,
-	VileChase,
-	VileStart,
-	VileTarget,
-	VileAttack,
-	StartFire,
-	Fire,
-	FireCrackle,
-	Tracer,
-	SkelWhoosh,
-	SkelFist,
-	SkelMissile,
-	FatRaise,
-	FatAttack1,
-	FatAttack2,
-	FatAttack3,
-	BossDeath,
-	CPosAttack,
-	CPosRefire,
-	TroopAttack,
-	SargAttack,
-	HeadAttack,
-	BruisAttack,
-	SkullAttack,
-	Metal,
-	SpidRefire,
-	BabyMetal,
-	BspiAttack,
-	Hoof,
-	CyberAttack,
-	PainAttack,
-	PainDie,
-	KeenDie,
-	BrainPain,
-	BrainScream,
-	BrainDie,
-	BrainAwake,
-	BrainSpit,
-	SpawnSound,
-	SpawnFly,
-	BrainExplode,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter)]
-pub enum MobjType {
+pub enum MobjNum {
     Player,
     Possessed,
     Shotguy,
@@ -1431,6 +1353,7 @@ pub enum AmmoType {
     NoAmmo
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PowerType {
     Invulnerability,
     Strength,
@@ -1440,6 +1363,7 @@ pub enum PowerType {
     Infrared
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GameState {
     Level,
     Intermission,
@@ -1447,6 +1371,7 @@ pub enum GameState {
     Demoscreen,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Card {
     BlueCard,
     YellowCard,
@@ -1454,4 +1379,17 @@ pub enum Card {
     BlueSkull,
     YellowSkull,
     RedSkull,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LinedefFlags {
+	Blocking,
+	BlockMonster,
+	TwoSided,
+	DontPegTop,
+	DontPegBottom,
+	Secret,
+	SoundBlock,
+	DontDraw,
+	Mapped,
 }

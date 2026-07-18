@@ -1,18 +1,17 @@
-use crate::{
-	components::{Velocity, Position, SpriteAnimation},
-	constants::FRICTION,
-    data_tables::DB,
-};
+use crate::{Active, CurrentSector, DB, FRICTION, Position, SpriteAnimation, Velocity};
+use wad_parser::DoomMap;
 use hecs::QueryBorrow;
 
-pub fn movement_system(mut query: QueryBorrow<'_, (&mut Position, &Velocity)>) {
-	for (position, velocity) in query.iter() {
+pub fn movement_system(mut query: QueryBorrow<'_, (&mut Position, &mut CurrentSector, &Velocity, &Active)>, map: &DoomMap) {
+	for (position, current_sector, velocity, _active) in query.iter() {
 		position.prev_x = position.x;
         position.prev_y = position.y;
 		position.prev_z = position.z;
         position.x += velocity.x;
         position.y += velocity.y;
         position.z += velocity.z;
+
+        current_sector.0 = map.get_sector_by_pos(-position.x, position.z);
     }
 }
 
