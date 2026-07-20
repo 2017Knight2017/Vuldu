@@ -34,9 +34,10 @@ struct App {
     wad_manager: WadManager,
     world: World,
     map: DoomMap,
+    random: Random,
+    command_buffer: CommandBuffer,
     texture_data: FxHashMap<u64, (u32, u32, u32, bool)>,
     sprite_offsets: Vec<(i16, i16)>,
-    random: Random,
     is_shutting_down: bool,
     current_input: PlayerInput,
     view_matrix: Mat4,
@@ -44,7 +45,7 @@ struct App {
     time_accumulator: f32,
 }
 
-fn get_sky_texture_index(map: u32) -> u32 {
+fn get_sky_texture_index(map: u8) -> u32 {
     if map <= 11 {
         0
     } else if map <= 20 {
@@ -56,27 +57,24 @@ fn get_sky_texture_index(map: u32) -> u32 {
 
 fn register_sprite(
     texture_data_map: &mut FxHashMap<u64, (u32, u32, u32, bool)>, 
-    lump_name: &str, 
+    lump_name: &[u8], 
     texture_tuple: (u32, u32, u32)
 ) {
-    let bytes = lump_name.as_bytes();
     let (id, w, h) = texture_tuple;
 
-    if bytes.len() == 6 {
-        let key = pack_name_to_u64(bytes);
-        texture_data_map.insert(key, (id, w, h, false));
+    let last_non_zero = lump_name.iter().rposition(|&b| b != 0).unwrap();
+    let normed_name = &lump_name[..=last_non_zero];
 
-    } else if bytes.len() == 8 {
-        let prefix = &bytes[..4];
+    let prefix = &normed_name[..4];
+    let frame1 = normed_name[4] as char;
+    let view1 = normed_name[5] - b'0';
 
-        let frame1 = bytes[4] as char;
-        let view1 = bytes[5] - b'0';
+    let key1 = pack_sprite_u64(prefix, frame1, view1);
+    texture_data_map.insert(key1, (id, w, h, false));
 
-        let frame2 = bytes[6] as char;
-        let view2 = bytes[7] - b'0';
-
-        let key1 = pack_sprite_u64(prefix, frame1, view1);
-        texture_data_map.insert(key1, (id, w, h, false));
+    if normed_name.len() == 8 {
+        let frame2 = normed_name[6] as char;
+        let view2 = normed_name[7] - b'0';
 
         let key2 = pack_sprite_u64(prefix, frame2, view2);
         texture_data_map.insert(key2, (id, w, h, true));
@@ -145,7 +143,7 @@ impl ApplicationHandler for App {
 
                     renderer.set_resolution(1280, 720);
                     renderer.set_sky_index(if self.wad_manager.is_doom1 { 
-                            self.map.map_num / 9 
+                            self.map.map_num as u32 / 9 
                         } else { 
                             get_sky_texture_index(self.map.map_num) 
                         }
@@ -182,7 +180,7 @@ impl ApplicationHandler for App {
 
                     // We need to divide obj_texture_names later into mirrored and unmirrored versions,
                     // so we don't pack them into u64 yet.
-                    let (obj_texture_names, obj_pics): (Vec<String>, Vec<DoomPicture>);
+                    let (obj_texture_names, obj_pics): (Vec<&[u8]>, Vec<DoomPicture>);
                     match self.wad_manager.bake_objects() {
                         Ok(res) => { (obj_texture_names, obj_pics) = res; },
                         Err(err) => {
@@ -242,7 +240,7 @@ impl ApplicationHandler for App {
 
                     self.sprite_offsets.reserve(obj_pics.len());
                     for (idx, pic) in obj_pics.iter().enumerate() {
-                        let name = &obj_texture_names[idx];
+                        let name = obj_texture_names[idx];
 
                         self.sprite_offsets.push((pic.left_offset, pic.top_offset));
                         register_sprite(&mut self.texture_data, name, (current_gpu_id, pic.width, pic.height));
@@ -281,8 +279,9 @@ impl ApplicationHandler for App {
                     println!("Walls and Flats are registered!");
 
                     renderer.upload_texture_array(descriptors.as_slice(), all_pixels.as_slice(), sky_widths_no_name.as_slice());
-                    
-                    match self.wad_manager.get_palettes() {
+
+                    let map_name = construct_map_name(self.wad_manager.is_doom1, self.map.map_num);
+                    match self.wad_manager.get_palettes(&map_name) {
                         Ok(data) => renderer.upload_palettes(data.as_slice()),
                         Err(err) => {
                             eprintln!("[FATAL] PLAYPAL upload failed: {}", err);
@@ -291,7 +290,7 @@ impl ApplicationHandler for App {
                             event_loop.exit(); 
                         }
                     }
-                    match self.wad_manager.get_data("COLORMAP") {
+                    match self.wad_manager.get_colormap(&map_name) {
                         Ok(data) => renderer.upload_colormap(data),
                         Err(err) => {
                             eprintln!("[FATAL] COLORMAP upload failed: {}", err);
@@ -300,6 +299,7 @@ impl ApplicationHandler for App {
                             event_loop.exit(); 
                         }
                     }
+
                     println!("Starting build the map's geometry...");
                     let (wall_vertices, wall_indices) = self.map.get_walls_vertices(&self.texture_data);
                     println!("Walls' geometry is built!");
@@ -398,17 +398,15 @@ impl ApplicationHandler for App {
                 self.time_accumulator += delta_time;
 
                 while self.time_accumulator >= TICK_TIME {
-                    let mut command_buffer = CommandBuffer::new();
-
                     let position_input_query = self.world.query::<(Entity, &mut Velocity, &PlayerRotation)>();
                     let animation_query = self.world.query::<&mut SpriteAnimation>();
                     micropool::join(
-                        || handle_position_input(position_input_query, &self.current_input, &mut command_buffer),
+                        || handle_position_input(position_input_query, &self.current_input, &mut self.command_buffer),
                         || animation_system(animation_query)
                     );
 
-                    command_buffer.run_on(&mut self.world);
-                    command_buffer.clear();
+                    self.command_buffer.run_on(&mut self.world);
+                    self.command_buffer.clear();
 
                     let rotation_query = self.world.query::<&mut PlayerRotation>();
                     let friction_query = self.world.query::<&mut Velocity>();
@@ -420,20 +418,20 @@ impl ApplicationHandler for App {
                     let propagate_sound_query = self.world.query::<(Entity, &CurrentSector, &PlayerShoot)>();
                     propagate_sound_system(
                         propagate_sound_query, 
-                        &mut command_buffer, 
+                        &mut self.command_buffer, 
                         &mut self.map.sectors, 
                         &self.map.linedefs,
                         &self.map.sidedefs
                     );
 
-                    command_buffer.run_on(&mut self.world);
-                    command_buffer.clear();
+                    self.command_buffer.run_on(&mut self.world);
+                    self.command_buffer.clear();
 
                     let check_sound_query = self.world.query::<(Entity, &CurrentSector, &SpriteAnimation, &MobjType, &Sleeping)>();
-                    check_sound_system(check_sound_query, &mut command_buffer, &self.map.sectors);
+                    check_sound_system(check_sound_query, &mut self.command_buffer, &self.map.sectors);
 
-                    command_buffer.run_on(&mut self.world);
-                    command_buffer.clear();
+                    self.command_buffer.run_on(&mut self.world);
+                    self.command_buffer.clear();
 
                     let chase_query = self.world.query::<(&mut MonsterRotation, &Position, &Active)>();
                     let player_query = self.world.query::<(&Position, &PlayerMarker)>();
@@ -507,7 +505,7 @@ fn main() -> Result<(), String> {
     wad_manager.add_wad("assets/nuts.wad")?;
     //wad_manager.add_wad("assets/Sunder 2512.wad")?;
 
-    let map = DoomMap::from_wad(&wad_manager, wad_manager.is_doom1, 1)?;
+    let map = DoomMap::from_wad(&wad_manager, 1)?;
 
     let event_loop = EventLoop::new().unwrap();
 
@@ -519,9 +517,10 @@ fn main() -> Result<(), String> {
         wad_manager: wad_manager,
         world: World::new(),
         map,
+        random: Random::default(),
+        command_buffer: CommandBuffer::new(),
         texture_data: FxHashMap::default(),
         sprite_offsets: Vec::new(),
-        random: Random::default(),
         is_shutting_down: false,
         current_input: PlayerInput::default(),
         view_matrix: Mat4::default(),

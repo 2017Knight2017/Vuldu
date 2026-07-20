@@ -88,6 +88,8 @@ pub fn chase_system(
 		let (player_pos, _) = player_query.iter().next().unwrap();
 		let dx = player_pos.x - pos.x;
 		let dy = player_pos.z - pos.z;
-		rot.move_dir = ((point_to_angle(-dx, dy) + ANG45/2) >> 29) & 0b111;
+
+		let angle = point_to_angle(-dx, dy);
+		rot.move_dir = ((angle.wrapping_add(ANG45/2)) >> 29) & 0b111;
 	}
 }

@@ -1,7 +1,7 @@
 use std::fs::read;
 use std::path::Path;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct Lump {
     pub wad_index: usize,
     pub offset: usize,
@@ -14,18 +14,19 @@ pub struct Wad {
 	pub num_lumps: usize,
 }
 
+#[derive(Clone, Copy, Default)]
 pub struct ParsedLump {
-    pub name: String,
+    pub name: [u8; 8],
     pub offset: usize,
     pub size: usize,
 }
 
 impl Wad {
-    pub fn open<P: AsRef<Path>>(path: P) -> Result<(Self, Vec<ParsedLump>), String> {
-        let data = read(path).map_err(|e| e.to_string())?;
+    pub fn open<P: AsRef<Path>>(path: P) -> Result<(Self, Vec<ParsedLump>, Vec<([u8; 8], [ParsedLump; 10])>), String> {
+        let data = read(&path).map_err(|e| e.to_string())?;
 
         if data.len() < 12 {
-            return Err("File is too small for a WAD".to_string());
+            return Err(format!("File '{}' is under 12 bytes long", path.as_ref().file_name().unwrap().display()));
         }
 
         let header = std::str::from_utf8(&data[0..4]).map_err(|e| e.to_string())?;
@@ -33,12 +34,13 @@ impl Wad {
             return Err(format!("Invalid WAD format: {}, which is not IWAD or PWAD", header));
         }
 
-        let num_lumps = u32::from_le_bytes(data[4..8].try_into().map_err(|_| "num_lumps is invalid")?) as usize;
-        let dir_offset = u32::from_le_bytes(data[8..12].try_into().map_err(|_| "dir_offset is invalid")?) as usize;
+        let num_lumps = u32::from_le_bytes(data[4..8].try_into().unwrap()) as usize;
+        let dir_offset = u32::from_le_bytes(data[8..12].try_into().unwrap()) as usize;
 
         let mut parsed_lumps = Vec::with_capacity(num_lumps);
+        let mut maps: Vec<([u8; 8], [ParsedLump; 10])> = Vec::new();
+        
         let mut current_dir_pos = dir_offset;
-
         let dir_end = dir_offset + num_lumps * 16;
 
         while current_dir_pos < dir_end {
@@ -46,41 +48,34 @@ impl Wad {
                 break;
             }
 
-            let lump_offset = u32::from_le_bytes(data[current_dir_pos..current_dir_pos+4].try_into().unwrap()) as usize;
-            let lump_size = u32::from_le_bytes(data[current_dir_pos+4..current_dir_pos+8].try_into().unwrap()) as usize;
-            
-            let name_bytes = &data[current_dir_pos+8..current_dir_pos+16];
-            let name = String::from_utf8_lossy(name_bytes).trim_matches('\0').to_uppercase();
+            let offset = u32::from_le_bytes(data[current_dir_pos..current_dir_pos+4].try_into().unwrap()) as usize;
+            let size = u32::from_le_bytes(data[current_dir_pos+4..current_dir_pos+8].try_into().unwrap()) as usize;            
+            let name: [u8; 8] = data[current_dir_pos+8..current_dir_pos+16].try_into().unwrap();
+
+            parsed_lumps.push(ParsedLump { name, offset, size });
 
             current_dir_pos += 16;
-
-            let is_map = name.starts_with("MAP") || (name.starts_with('E') && name.chars().nth(2) == Some('M'));
             
-            if is_map {
-                parsed_lumps.push(ParsedLump { name: name.clone(), offset: lump_offset, size: lump_size });
+            let is_map = name.starts_with(b"MAP") || (name[0] == b'E' && name[2] == b'M');
+            if !is_map { continue; }
 
-                for _ in 0..10 {
-                    if current_dir_pos + 16 > data.len() { break; }
+            let mut map: ([u8; 8], [ParsedLump; 10]) = (name, [ParsedLump::default(); 10]);
 
-                    let maplump_offset = u32::from_le_bytes(data[current_dir_pos..current_dir_pos+4].try_into().unwrap()) as usize;
-                    let maplump_size = u32::from_le_bytes(data[current_dir_pos+4..current_dir_pos+8].try_into().unwrap()) as usize;
-                    
-                    let maplump_name_bytes = &data[current_dir_pos+8..current_dir_pos+16];
-                    let maplump_name = String::from_utf8_lossy(maplump_name_bytes).trim_matches('\0').to_uppercase();
+            for i in 0..10 {
+                if current_dir_pos + 16 > data.len() { break; }
 
-                    parsed_lumps.push(ParsedLump {
-                        name: format!("{}_{}", maplump_name, name),
-                        offset: maplump_offset,
-                        size: maplump_size,
-                    });
+                let offset = u32::from_le_bytes(data[current_dir_pos..current_dir_pos+4].try_into().unwrap()) as usize;
+                let size = u32::from_le_bytes(data[current_dir_pos+4..current_dir_pos+8].try_into().unwrap()) as usize;
+                let name: [u8; 8] = data[current_dir_pos+8..current_dir_pos+16].try_into().unwrap();
+                
+                map.1[i] = ParsedLump { name, offset, size };
 
-                    current_dir_pos += 16;
-                }
-            } else {
-                parsed_lumps.push(ParsedLump { name, offset: lump_offset, size: lump_size });
+                current_dir_pos += 16;
             }
+
+            maps.push(map);
         }
 
-        Ok((Wad { data, dir_offset, num_lumps }, parsed_lumps))
+        Ok((Wad { data, dir_offset, num_lumps }, parsed_lumps, maps))
     }
 }

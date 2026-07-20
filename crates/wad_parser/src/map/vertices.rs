@@ -1,113 +1,16 @@
-use crate::*;
+use crate::{DoomMap, MapLinedef, pack_name_to_u64};
 use renderer::{Vertex};
 use earcut::Earcut;
 use rustc_hash::{FxBuildHasher, FxHashMap};
-use std::ptr::read_unaligned;
-use std::mem::size_of;
-
-#[repr(C)]
-#[derive(Debug, Clone, Copy)]
-pub struct MapVertex
-{
-  x: i16,
-  y: i16,
-}
-
-#[repr(C)]
-#[derive(Debug, Clone, Copy)]
-pub struct MapSidedef
-{
-	pub textureoffset: i16,
-	pub rowoffset: i16,
-  	pub toptexture: [u8; 8],
-  	pub bottomtexture: [u8; 8],
-  	pub midtexture: [u8; 8],
-	pub sector: i16,
-}
-
-#[repr(C)]
-#[derive(Debug, Clone, Copy)]
-pub struct MapLinedef
-{
-	pub v1: i16,
-	pub v2: i16,
-	pub flags: i16,
-	pub special: i16,
-	pub tag: i16,
-	pub sidenum: [u16; 2]	
-}
-
-#[repr(C)]
-#[derive(Debug, Clone, Copy)]
-pub struct MapSector
-{
-	pub floorheight: i16,
-	pub ceilingheight: i16,
-  	pub floorpic: [u8; 8],
-  	pub ceilingpic:[u8; 8],
-	pub lightlevel: i16,
-	pub special: i16,
-	pub tag: i16,
-}
-
-#[derive(Debug, Clone)]
-pub struct Sector {
-	pub props: MapSector,
-	pub sound_traversed: u32,
-	pub lines: Vec<usize>
-}
-
-#[repr(C)]
-#[derive(Debug, Clone, Copy)]
-pub struct MapSubsector
-{
-	numsegs: i16,
-	firstseg: u16	
-}
-
-#[repr(C)]
-#[derive(Debug, Clone, Copy)]
-pub struct MapSegment
-{
-	v1: i16,
-	v2: i16,
-	angle: i16,
-	linedef: u16,
-	side: i16,
-	offset: i16,
-}
 
 pub const NF_SUBSECTOR: usize = 0x8000; 
 
-#[repr(C)]
-#[derive(Debug, Clone, Copy)]
-pub struct MapNode
-{
-	x: i16,
-	y: i16,
-	dx: i16,
-	dy: i16,
-	bbox: [[i16; 4]; 2],
-	children: [u16; 2],
-}
-
-#[repr(C)] 
-#[derive(Debug, Clone, Copy)]
-pub struct MapThing
-{
-	pub x: i16,
-	pub y: i16,
-	pub angle: i16,
-	pub type_: i16,
-	pub options: i16,
-}
-
 #[derive(Debug, Clone, Copy)]
 struct Aabb {
-    min_x: f32,
-    max_x: f32,
-    min_y: f32,
-    max_y: f32,
+    pub min_x: f32,
+    pub max_x: f32,
+    pub min_y: f32,
+    pub max_y: f32,
 }
 
 impl Aabb {
@@ -131,108 +34,7 @@ impl Aabb {
     }
 }
 
-#[derive(Debug, Default)]
-pub struct DoomMap {
-	pub map_num: u32,
-    pub vertices: Vec<MapVertex>,
-    pub linedefs: Vec<MapLinedef>,
-    pub sidedefs: Vec<MapSidedef>,
-    pub sectors: Vec<Sector>,
-    pub things: Vec<MapThing>,
-	pub subsectors: Vec<MapSubsector>,
-	pub segs: Vec<MapSegment>,
-	pub nodes: Vec<MapNode>
-}
-
 impl DoomMap {
-    pub fn from_wad(wad_manager: &WadManager, is_doom1: bool, map_num: u32) -> Result<Self, String> {
-		let mut map = DoomMap::default();
-
-		map.map_num = map_num;
-
-		let map_name = construct_map_name(is_doom1, map_num);
-
-    	let vertexes_bytes = wad_manager.get_data(&format!("VERTEXES_{}", map_name))?;
-		map.vertices = vertexes_bytes
-    		.chunks_exact(size_of::<MapVertex>())
-    		.map(|chunk| {
-    		    unsafe { read_unaligned(chunk.as_ptr() as *const MapVertex) }
-    		})
-    		.collect();
-
-		let linedefs_bytes = wad_manager.get_data(&format!("LINEDEFS_{}", map_name))?;
-		map.linedefs = linedefs_bytes
-    		.chunks_exact(size_of::<MapLinedef>())
-    		.map(|chunk| {
-    		    unsafe { read_unaligned(chunk.as_ptr() as *const MapLinedef) }
-    		})
-    		.collect();
-
-		let sidedefs_bytes = wad_manager.get_data(&format!("SIDEDEFS_{}", map_name))?;
-		map.sidedefs = sidedefs_bytes
-    		.chunks_exact(size_of::<MapSidedef>())
-    		.map(|chunk| {
-    		    unsafe { read_unaligned(chunk.as_ptr() as *const MapSidedef) }
-    		})
-    		.collect();
-
-		let sectors_bytes = wad_manager.get_data(&format!("SECTORS_{}", map_name))?;
-		map.sectors = sectors_bytes
-    		.chunks_exact(size_of::<MapSector>())
-    		.map(|chunk| {
-    		    unsafe { 
-					let props = read_unaligned(chunk.as_ptr() as *const MapSector);
-					Sector { props, sound_traversed: u32::MAX, lines: Vec::with_capacity(5) }
-				}
-    		})
-    		.collect();
-
-		for (line_idx, line) in map.linedefs.iter().enumerate() {
-		    if line.sidenum[0] != u16::MAX {
-		        let front_sector = map.sidedefs[line.sidenum[0] as usize].sector;
-		        map.sectors[front_sector as usize].lines.push(line_idx);
-		    }
-		    if line.sidenum[1] != u16::MAX {
-		        let back_sector = map.sidedefs[line.sidenum[1] as usize].sector;
-		        map.sectors[back_sector as usize].lines.push(line_idx);
-		    }
-		}
-
-		let things_bytes = wad_manager.get_data(&format!("THINGS_{}", map_name))?;
-		map.things = things_bytes
-    		.chunks_exact(size_of::<MapThing>())
-    		.map(|chunk| {
-    		    unsafe { read_unaligned(chunk.as_ptr() as *const MapThing) }
-    		})
-    		.collect();
-
-		let ssectors_bytes = wad_manager.get_data(&format!("SSECTORS_{}", map_name))?;
-		map.subsectors = ssectors_bytes
-    		.chunks_exact(size_of::<MapSubsector>())
-    		.map(|chunk| {
-    		    unsafe { read_unaligned(chunk.as_ptr() as *const MapSubsector) }
-    		})
-    		.collect();
-
-		let segs_bytes = wad_manager.get_data(&format!("SEGS_{}", map_name))?;
-		map.segs = segs_bytes
-    		.chunks_exact(size_of::<MapSegment>())
-    		.map(|chunk| {
-    		    unsafe { read_unaligned(chunk.as_ptr() as *const MapSegment) }
-    		})
-    		.collect();
-
-		let nodes_bytes = wad_manager.get_data(&format!("NODES_{}", map_name))?;
-		map.nodes = nodes_bytes
-    		.chunks_exact(size_of::<MapNode>())
-    		.map(|chunk| {
-    		    unsafe { read_unaligned(chunk.as_ptr() as *const MapNode) }
-    		})
-    		.collect();
-
-        Ok(map)
-    }
-
 	pub fn get_walls_vertices(&self, texture_ids: &FxHashMap<u64, (u32, u32, u32, bool)>) -> (Vec<Vertex>, Vec<u32>) {
 	    let mut vertices = Vec::new();
 	    let mut indices = Vec::new();
@@ -740,28 +542,4 @@ fn clean_polygon(poly: &[[f32; 2]]) -> Vec<[f32; 2]> {
         }
     }
     cleaned
-}
-
-fn construct_map_name(is_doom1: bool, num: u32) -> String {
-	if is_doom1 {
-		let map_idx = num - 1;
-        let episode = (map_idx / 9) + 1;
-        let map_num = (map_idx % 9) + 1;
-        format!("E{}M{}", episode, map_num)
-    } else {
-        format!("MAP{:02}", num)
-    }
-}
-
-pub fn pack_name_to_u64(name_bytes: &[u8]) -> u64 {
-    let mut buf = [0u8; 8];
-
-    for i in 0..8 {
-        if i >= name_bytes.len() || name_bytes[i] == 0 {
-            break;
-        }
-        buf[i] = name_bytes[i].to_ascii_uppercase();
-    }
-
-    u64::from_le_bytes(buf)
 }

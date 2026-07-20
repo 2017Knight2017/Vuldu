@@ -1,7 +1,6 @@
 use crate::*;
 use phf::{Map, phf_map};
 use rayon::prelude::*;
-use std::collections::{HashMap, HashSet};
 use std::ptr::read_unaligned;
 use std::mem::size_of;
 
@@ -164,27 +163,23 @@ pub static SPRITE_NAMES: Map<i16, Option<&'static str>> = phf_map! {
 
 impl WadManager {
 	pub fn bake_walls(&self) -> Result<(Vec<u64>, Vec<DoomPicture>, Vec<u64>, Vec<DoomPicture>, Vec<f32>), String> {
-		let all_patchnames_raw = self.get_data("PNAMES")?;
-		let patch_names: Vec<String> = all_patchnames_raw.get(4..)
+		let all_patchnames_raw = self.get_data(b"PNAMES")?;
+		let patch_names: Vec<&[u8]> = all_patchnames_raw.get(4..)
 			.ok_or_else(|| "Failed to get PNAMES data".to_string())?
 			.chunks_exact(8)
-			.map(|patchname| String::from_utf8_lossy(patchname)
-                .trim_matches('\0')
-                .to_uppercase()
-			)
 			.collect();
 
 		let mut texture_lumps = Vec::new();
-    	let texture1_raw = self.get_data("TEXTURE1")?;
+    	let texture1_raw = self.get_data(b"TEXTURE1")?;
     	let offsets1 = parse_texture_header(&texture1_raw, "TEXTURE1")?;
     	texture_lumps.push((texture1_raw, offsets1));
 
-    	if let Ok(texture2_raw) = self.get_data("TEXTURE2") {
+    	if let Ok(texture2_raw) = self.get_data(b"TEXTURE2") {
     	    let offsets2 = parse_texture_header(&texture2_raw, "TEXTURE2")?;
     	    texture_lumps.push((texture2_raw, offsets2));
     	}
 
-		let sky_names = HashSet::from([
+		let sky_names = [
 			pack_name_to_u64(b"RSKY1"),
 			pack_name_to_u64(b"RSKY1"),
 			pack_name_to_u64(b"RSKY2"),
@@ -192,25 +187,32 @@ impl WadManager {
 			pack_name_to_u64(b"SKY2"),
 			pack_name_to_u64(b"SKY3"),
 			pack_name_to_u64(b"SKY4")
-		]);
+		];
 
 		let mut all_map_textures = Vec::new();
     	for (texture_raw, offsets) in &texture_lumps {
     	    for &offset in offsets {
-    	        if let Ok(map_texture) = self.parse_texture_lump(texture_raw, offset as usize) {
-    	            all_map_textures.push(map_texture);
+    	        match self.parse_texture_lump(texture_raw, offset as usize) {
+    	            Ok(map_texture) => all_map_textures.push(map_texture),
+					Err(err) => return Err(err)
     	        }
     	    }
     	}
 
-		let cached_patches: Vec<Option<DoomPicture>> = patch_names
-    		.par_iter() 
-    		.map(|name| {
-    		    self.get_data(name)
-    		        .ok()
-    		        .and_then(|data| decode_column_picture(&data).ok())
-    		})
-    		.collect();
+		println!("[bake_walls] preparation is done");
+
+		let cached_patches = patch_names
+		    .par_iter()
+			.map(|name| {
+				let data = self.get_data(name);
+				match data {
+					Ok(data) => decode_column_picture(&data, name),
+					Err(err) => Err(err)
+				}
+			})
+		    .collect::<Result<Vec<DoomPicture>, String>>()?;
+
+		println!("[bake_walls] cached_patches are filled");
 
 		let baked_results: Vec<(u64, DoomPicture)> = all_map_textures
         	.into_par_iter()
@@ -226,50 +228,49 @@ impl WadManager {
 				    let patch_idx = wad_patch.patch as usize;
 				    if patch_idx >= cached_patches.len() { continue; }
 
-				    if let Some(ref patch_pic) = cached_patches[patch_idx] {
-				        let p_width = patch_pic.width as usize;
-                        let p_height = patch_pic.height as usize;
+				    let patch_pic = &cached_patches[patch_idx];
+				    let p_width = patch_pic.width as usize;
+                    let p_height = patch_pic.height as usize;
+                
+                    let origin_x = wad_patch.originx as i32;
+                    let origin_y = wad_patch.originy as i32;
+                
+                    let start_x = if origin_x < 0 { (-origin_x) as usize } else { 0 };
+                    let end_x = if origin_x + (p_width as i32) > width as i32 {
+                        (width as i32 - origin_x) as usize
+                    } else {
+                        p_width
+                    };
+                
+                    let start_y = if origin_y < 0 { (-origin_y) as usize } else { 0 };
+                    let end_y = if origin_y + (p_height as i32) > height as i32 {
+                        (height as i32 - origin_y) as usize
+                    } else {
+                        p_height
+                    };
+                
+                    if start_x >= end_x || start_y >= end_y { continue; }
+                
+                    for px in start_x..end_x {
+                        let dest_x = (origin_x + px as i32) as usize;
+                        let src_col_offset = px * p_height;
                     
-                        let origin_x = wad_patch.originx as i32;
-                        let origin_y = wad_patch.originy as i32;
-                    
-                        let start_x = if origin_x < 0 { (-origin_x) as usize } else { 0 };
-                        let end_x = if origin_x + (p_width as i32) > width as i32 {
-                            (width as i32 - origin_x) as usize
-                        } else {
-                            p_width
-                        };
-                    
-                        let start_y = if origin_y < 0 { (-origin_y) as usize } else { 0 };
-                        let end_y = if origin_y + (p_height as i32) > height as i32 {
-                            (height as i32 - origin_y) as usize
-                        } else {
-                            p_height
-                        };
-                    
-                        if start_x >= end_x || start_y >= end_y { continue; }
-                    
-                        for px in start_x..end_x {
-                            let dest_x = (origin_x + px as i32) as usize;
-                            let src_col_offset = px * p_height;
+                        for py in start_y..end_y {
+                            let color_idx = patch_pic.raw_pixels[src_col_offset + py];
                         
-                            for py in start_y..end_y {
-                                let color_idx = patch_pic.raw_pixels[src_col_offset + py];
-                            
-                                if color_idx != 0xFF {
-                                    let dest_y = (origin_y + py as i32) as usize;
-                                    let dest_idx = dest_y * width + dest_x;
-                                
-                                    unsafe {
-                                        *thread_local_buffer.get_unchecked_mut(dest_idx) = color_idx;
-                                    }
+                            if color_idx != 0xFF {
+                                let dest_y = (origin_y + py as i32) as usize;
+                                let dest_idx = dest_y * width + dest_x;
+
+                                unsafe {
+                                    *thread_local_buffer.get_unchecked_mut(dest_idx) = color_idx;
                                 }
                             }
                         }
 				    }
 				}
 
-				let final_wall_pixels = thread_local_buffer.clone();
+				let final_wall_pixels = std::mem::take(thread_local_buffer);
 			
     		    let tex_name_packed = pack_name_to_u64(&map_texture.name);
     		    (tex_name_packed, DoomPicture {
@@ -280,7 +281,9 @@ impl WadManager {
     		        top_offset: 0,
     		    })
     		})
-        .collect();
+        	.collect();
+
+		println!("[bake_walls] baked_results are filled");
 
 		let total_textures = texture_lumps.iter().map(|(_, offsets)| offsets.len()).sum();
 	    let mut baked_textures = Vec::with_capacity(total_textures);
@@ -299,46 +302,31 @@ impl WadManager {
 				baked_textures.push(picture);
 			}
     	}
+
 	    Ok((textures_names, baked_textures, sky_textures_names, baked_sky_textures, sky_widths))
 	}
 
 	pub fn parse_texture_lump(&self, lump_data: &[u8], offset: usize) -> Result<MapTexture, String> {
 	    let data = &lump_data[offset..];
 
-	    let name: [u8; 8] = data.get(0..8)
-    	    .ok_or_else(|| "Failed to read texture name: lump data is too short".to_string())?
-    	    .try_into()
-    	    .map_err(|_| "Failed to parse texture name: invalid buffer size for [u8; 8]".to_string())?;
+		if data.len() < 22 {
+			return Err(format!("Lump on position {} is too short (under 22 bytes)", offset));
+		}
 
-    	let masked = i32::from_le_bytes(data
-    	    .get(8..12).ok_or_else(|| "Failed to read masked flag: lump data is too short".to_string())?
-    	    .try_into()
-    	    .map_err(|_| "Failed to parse masked flag: expected 4 bytes for i32".to_string())?) != 0;
-
-    	let width = i16::from_le_bytes(data
-    	    .get(12..14).ok_or_else(|| "Failed to read texture width: lump data is too short".to_string())?
-    	    .try_into()
-    	    .map_err(|_| "Failed to parse texture width: expected 2 bytes for i16".to_string())?);
-
-    	let height = i16::from_le_bytes(data
-    	    .get(14..16).ok_or_else(|| "Failed to read texture height: lump data is too short".to_string())?
-    	    .try_into()
-    	    .map_err(|_| "Failed to parse texture height: expected 2 bytes for i16".to_string())?);
-
+	    let name: [u8; 8] = data[0..8].try_into().unwrap();
+    	let masked = i32::from_le_bytes(data[8..12].try_into().unwrap()) != 0;
+    	let width = i16::from_le_bytes(data[12..14].try_into().unwrap());
+    	let height = i16::from_le_bytes(data[14..16].try_into().unwrap());
     	// columndirectory, which is on 16..20, is obsolete
-
-    	let patchcount = i16::from_le_bytes(data
-    	    .get(20..22).ok_or_else(|| "Failed to read patch count: lump data is too short".to_string())?
-    	    .try_into()
-    	    .map_err(|_| "Failed to parse patch count: expected 2 bytes for i16".to_string())?);
+    	let patchcount = i16::from_le_bytes(data[20..22].try_into().unwrap());
 
     	let start_bytes: usize = 22;
     	let end_bytes = start_bytes + (patchcount as usize * 10);
 		
     	let patches_bytes = data.get(start_bytes..end_bytes)
     	    .ok_or_else(|| format!(
-    	        "Failed to read patch data: expected {} bytes for {} patches, but lump ended early", 
-    	        patchcount * 10, patchcount
+    	        "Failed to read patch data: expected {} bytes for {} patches, but lump on position {} ended early", 
+    	        patchcount * 10, patchcount, offset
     	    ))?;
 
 	    let wad_patches: Vec<MapPatch> = patches_bytes
@@ -370,7 +358,8 @@ impl WadManager {
 	}
 
 	pub fn bake_flats(&self) -> Result<(Vec<u64>, Vec<DoomPicture>), String> {
-		let mut flats_map = HashMap::new();
+		let mut flats_names = Vec::new();
+		let mut baked_flats = Vec::new();
 
 		for wad in self.wads.iter() {
             let chunks = wad.data[wad.dir_offset..].chunks_exact(16);
@@ -403,31 +392,25 @@ impl WadManager {
                     if lump_size == 0 { continue; }
 
                     let name_bytes = &chunk[8..16];
-
                     let pic_bytes = &wad.data[lump_offset..lump_offset + lump_size];
 
 					match decode_flat_picture(pic_bytes) {
-                        Ok(picture) => { let _ = flats_map.insert(name_bytes, picture); },
-						Err(err) => { eprintln!("{}: {}", String::from_utf8_lossy(name_bytes), err); }
+                        Ok(picture) => { 
+							flats_names.push(pack_name_to_u64(name_bytes));
+            				baked_flats.push(picture); 
+						},
+						Err(err) => { return Err(err); }
                     }
                 }
             }
 		}
-		if flats_map.is_empty() { return Err("No flats' pictures were baked!".to_string()); }
-
-        let mut flats_names = Vec::with_capacity(flats_map.len());
-        let mut baked_flats = Vec::with_capacity(flats_map.len());
-
-        for (name_bytes, picture) in flats_map {
-            flats_names.push(pack_name_to_u64(name_bytes));
-            baked_flats.push(picture);
-        }
 
 	    Ok((flats_names, baked_flats))
 	}
 
-	pub fn bake_objects(&self) -> Result<(Vec<String>, Vec<DoomPicture>), String> {
-		let mut objects_map = HashMap::new();
+	pub fn bake_objects(&self) -> Result<(Vec<&[u8]>, Vec<DoomPicture>), String> {
+		let mut objects_names = Vec::new();
+		let mut baked_objects = Vec::new();
 
 		for wad in self.wads.iter() {
             let chunks = wad.data[wad.dir_offset..].chunks_exact(16);
@@ -459,12 +442,11 @@ impl WadManager {
                     
                     if lump_size == 0 { continue; }
 
-                    let name_bytes = &chunk[8..16];
-                    let name = String::from_utf8_lossy(name_bytes).trim_matches('\0').to_uppercase();
+                    let name = &chunk[8..16];
 
                     let pic_bytes = &wad.data[lump_offset..lump_offset + lump_size];
 
-                    match decode_column_picture(pic_bytes) {
+                    match decode_column_picture(pic_bytes, name) {
                         Ok(col_picture) => { 
                     	    let w = col_picture.width as usize;
                     	    let h = col_picture.height as usize;
@@ -488,30 +470,21 @@ impl WadManager {
                     	        top_offset: col_picture.top_offset,
                     	    };
 
-                    	    let _ = objects_map.insert(name, row_picture); 
+							objects_names.push(name);
+							baked_objects.push(row_picture);
                     	},
-						Err(err) => { eprintln!("{}: {}", name, err); }
+						Err(err) => { return Err(err); }
                     }
                 }
             }
 		}
-		if objects_map.is_empty() { return Err("No objects' pictures were baked!".to_string()); }
-
-        let mut objects_names = Vec::with_capacity(objects_map.len());
-        let mut baked_objects = Vec::with_capacity(objects_map.len());
-
-        for (name, picture) in objects_map {
-            objects_names.push(name);
-            baked_objects.push(picture);
-        }
-
 	    Ok((objects_names, baked_objects))
 	}
 }
 
-pub fn decode_column_picture(pic_data: &[u8]) -> Result<DoomPicture, String> {
+pub fn decode_column_picture(pic_data: &[u8], name: &[u8]) -> Result<DoomPicture, String> {
     if pic_data.len() < 8 { 
-        return Err("Picture data is too short".to_string()); 
+        return Err(format!("Picture data for '{}' is too short", String::from_utf8_lossy(name))); 
     }
 
     let width = u16::from_le_bytes([pic_data[0], pic_data[1]]) as usize;
@@ -520,23 +493,28 @@ pub fn decode_column_picture(pic_data: &[u8]) -> Result<DoomPicture, String> {
     let top_offset = i16::from_le_bytes([pic_data[6], pic_data[7]]);
 
     let total_pixels = width * height;
-    let mut sprite_pixels = vec![0xFFu8; total_pixels];
-    
-    let total_columns_size = width * 4;
-    if pic_data.len() < 8 + total_columns_size {
-        return Err("Picture data truncated in column directory".to_string());
+    if total_pixels == 0 {
+        return Err("Zero width or height".to_string());
     }
+
+	let mut raw_pixels = vec![0xFFu8; total_pixels];
+
+    let total_columns_size = width * 4;
+	if pic_data.len() < 8 + total_columns_size {
+		eprintln!("[WARN] Picture data for '{}' is truncated: missing column pointers", String::from_utf8_lossy(name));
+		return Ok(DoomPicture { 
+    	    raw_pixels: Vec::new(), 
+    	    width: 0, 
+    	    height: 0, 
+    	    left_offset: 0, 
+    	    top_offset: 0 
+    	})
+	}
 
     let column_pointers = &pic_data[8..8 + total_columns_size];
 
-    for col_idx in 0..width {
-        let ptr_idx = col_idx * 4;
-        let col_offset = u32::from_le_bytes([
-            column_pointers[ptr_idx],
-            column_pointers[ptr_idx+1],
-            column_pointers[ptr_idx+2],
-            column_pointers[ptr_idx+3]
-        ]) as usize;
+    for (col_idx, chunk) in column_pointers.chunks_exact(4).enumerate() {
+        let col_offset = u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]) as usize;
 
         let mut pointer = col_offset;
 
@@ -562,7 +540,7 @@ pub fn decode_column_picture(pic_data: &[u8]) -> Result<DoomPicture, String> {
                 if row_idx < height {
                     let dest_index = dest_col_offset + row_idx;
                     unsafe {
-                        *sprite_pixels.get_unchecked_mut(dest_index) = color_index;
+                        *raw_pixels.get_unchecked_mut(dest_index) = color_index;
                     }
                 }
             }
@@ -572,7 +550,7 @@ pub fn decode_column_picture(pic_data: &[u8]) -> Result<DoomPicture, String> {
     }
 
     Ok(DoomPicture { 
-        raw_pixels: sprite_pixels, 
+        raw_pixels, 
         width: width as u32, 
         height: height as u32, 
         left_offset, 
