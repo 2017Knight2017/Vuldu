@@ -4,7 +4,7 @@ use toml;
 use rustc_hash::FxHashMap;
 use std::sync::OnceLock;
 use std::fs;
-use crate::{ActionFunc, AmmoType, MobjFlag, MobjNum, NUMMOBJTYPES, NUMSTATES, NUMWEAPONS, SFX, StateNum, WeaponType};
+use crate::{ActionFunc, AmmoType, MobjFlag, MobjNum, NUMMOBJTYPES, NUMSTATES, NUMWEAPONS, StateNum, WeaponType};
 
 #[derive(Debug, Deserialize)]
 pub struct MobjInfo {
@@ -12,25 +12,52 @@ pub struct MobjInfo {
     pub spawn_state: Option<StateNum>,
     pub spawn_health: i32,
     pub see_state: Option<StateNum>,
-    pub see_sound: Option<SFX>,
+    #[serde(default, deserialize_with = "parse_sfx_name")]
+    pub see_sound: Option<[u8; 8]>,
     pub reaction_time: u32,
-    pub attack_sound: Option<SFX>,
+    #[serde(default, deserialize_with = "parse_sfx_name")]
+    pub attack_sound: Option<[u8; 8]>,
     pub pain_state: Option<StateNum>,
     pub pain_chance: u8,
-    pub pain_sound: Option<SFX>,
+    #[serde(default, deserialize_with = "parse_sfx_name")]
+    pub pain_sound: Option<[u8; 8]>,
     pub melee_state: Option<StateNum>,
     pub missile_state: Option<StateNum>,
     pub death_state: Option<StateNum>,
     pub xdeath_state: Option<StateNum>,
-    pub death_sound: Option<SFX>,
+    #[serde(default, deserialize_with = "parse_sfx_name")]
+    pub death_sound: Option<[u8; 8]>,
     pub speed: f32,
     pub radius: f32,
     pub height: f32,
     pub mass: u32,
     pub damage: u32,
-    pub active_sound: Option<SFX>,
+    #[serde(default, deserialize_with = "parse_sfx_name")]
+    pub active_sound: Option<[u8; 8]>,
     pub flags: Vec<MobjFlag>,
     pub raise_state: Option<StateNum>,
+}
+
+fn parse_sfx_name<'de, D>(deserializer: D) -> Result<Option<[u8; 8]>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let opt = Option::<String>::deserialize(deserializer)?;
+
+    let s = match opt {
+        Some(s) => s,
+        None => return Ok(None),
+    };
+    
+    if s.len() > 8 {
+        return Err(serde::de::Error::custom(format!(
+            "SFX name must be 8 characters at most, got: '{}'", s
+        )));
+    }
+
+    let mut bytes = [0u8; 8];
+    bytes[..s.len()].copy_from_slice(s.as_bytes());
+    Ok(Some(bytes))
 }
 
 #[derive(Debug, Deserialize)]

@@ -180,13 +180,13 @@ impl WadManager {
     	}
 
 		let sky_names = [
-			pack_name_to_u64(b"RSKY1"),
-			pack_name_to_u64(b"RSKY1"),
-			pack_name_to_u64(b"RSKY2"),
-			pack_name_to_u64(b"SKY1"),
-			pack_name_to_u64(b"SKY2"),
-			pack_name_to_u64(b"SKY3"),
-			pack_name_to_u64(b"SKY4")
+			to_u64(b"RSKY1"),
+			to_u64(b"RSKY1"),
+			to_u64(b"RSKY2"),
+			to_u64(b"SKY1"),
+			to_u64(b"SKY2"),
+			to_u64(b"SKY3"),
+			to_u64(b"SKY4")
 		];
 
 		let mut all_map_textures = Vec::new();
@@ -272,7 +272,7 @@ impl WadManager {
 
 				let final_wall_pixels = std::mem::take(thread_local_buffer);
 			
-    		    let tex_name_packed = pack_name_to_u64(&map_texture.name);
+    		    let tex_name_packed = to_u64(&map_texture.name);
     		    (tex_name_packed, DoomPicture {
     		        raw_pixels: final_wall_pixels,
     		        width: width as u32,
@@ -396,7 +396,7 @@ impl WadManager {
 
 					match decode_flat_picture(pic_bytes) {
                         Ok(picture) => { 
-							flats_names.push(pack_name_to_u64(name_bytes));
+							flats_names.push(to_u64(name_bytes));
             				baked_flats.push(picture); 
 						},
 						Err(err) => { return Err(err); }

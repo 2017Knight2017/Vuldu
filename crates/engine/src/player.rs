@@ -1,6 +1,7 @@
-use crate::{NUMAMMO, NUMCARDS, NUMWEAPONS, PlayerRotation, PlayerShoot, PlayerState, Velocity};
+use crate::{NUMAMMO, NUMCARDS, NUMWEAPONS, PlayerRotation, PlayerShoot, PlayerState, SfxEvent, Velocity};
 use std::f64::consts::TAU;
 use hecs::{CommandBuffer, Entity, QueryBorrow};
+use wad_parser::to_u64;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PlayerCamera {
@@ -46,7 +47,8 @@ pub struct PlayerInput {
 pub fn handle_position_input(
     mut query: QueryBorrow<'_, (Entity, &mut Velocity, &PlayerRotation)>, 
     input: &PlayerInput,
-    command_buffer: &mut CommandBuffer
+    command_buffer: &mut CommandBuffer,
+    audio_buffer: &mut Vec<SfxEvent>
 ) {
     for (entity, velocity, rotation) in query.iter() {
         let mut move_forward = 0.0;
@@ -76,6 +78,7 @@ pub fn handle_position_input(
 
         if input.shoot{
             command_buffer.insert_one(entity, PlayerShoot);
+            audio_buffer.push(SfxEvent { sfx_id: to_u64(b"DSPISTOL"), position: None });
         }
     }
 }

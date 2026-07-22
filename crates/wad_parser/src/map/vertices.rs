@@ -1,4 +1,4 @@
-use crate::{DoomMap, MapLinedef, pack_name_to_u64};
+use crate::{DoomMap, MapLinedef, to_u64};
 use renderer::{Vertex};
 use earcut::Earcut;
 use rustc_hash::{FxBuildHasher, FxHashMap};
@@ -75,7 +75,7 @@ impl DoomMap {
             	let final_tex_name = if is_fake_wall { fake_flat_name } else { tex_name };
 				
             	let (tex_id, tex_width, tex_height, _) = *texture_ids
-    			    .get(&pack_name_to_u64(final_tex_name))
+    			    .get(&to_u64(final_tex_name))
     			    .unwrap_or(&(0, 64, 64, false));
 
     			let (final_tex_id, floor_tex_id) = if final_tex_name == b"F_SKY1\0\0" || 
@@ -388,8 +388,8 @@ impl DoomMap {
 	                continue; 
 	            }
 				
-	            let floor_texture_name = pack_name_to_u64(&map_sector.floorpic);
-	            let ceil_texture_name = pack_name_to_u64(&map_sector.ceilingpic);
+	            let floor_texture_name = to_u64(&map_sector.floorpic);
+	            let ceil_texture_name = to_u64(&map_sector.ceilingpic);
 
 	            let floor_texture_id = if &map_sector.floorpic == b"F_SKY1\0\0" {
 					(u16::MAX - 2) as u32

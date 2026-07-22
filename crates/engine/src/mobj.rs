@@ -95,7 +95,7 @@ pub fn spawn_mobj(
 			})
 			.add(MonsterRotation { 
 				move_dir: angle,
-				move_count: (random.p() % 15) as u32
+				move_count: (random.p() & 0xF) as u32
 			});
 	};
 

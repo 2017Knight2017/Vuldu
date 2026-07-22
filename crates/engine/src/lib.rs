@@ -10,6 +10,7 @@ pub mod weapons;
 pub mod sound;
 pub mod angles;
 pub mod action;
+pub mod sfx;
 
 pub use components::*;
 pub use enums::*;
@@ -23,3 +24,4 @@ pub use weapons::*;
 pub use sound::*;
 pub use angles::*;
 pub use action::*;
+pub use sfx::*;

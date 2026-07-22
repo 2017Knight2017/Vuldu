@@ -199,14 +199,14 @@ impl DoomMap {
     }
 }
 
-pub fn pack_name_to_u64(name_bytes: &[u8]) -> u64 {
+pub fn to_u64(name_bytes: &[u8]) -> u64 {
     let mut buf = [0u8; 8];
 
     for i in 0..8 {
         if i >= name_bytes.len() || name_bytes[i] == 0 {
             break;
         }
-        buf[i] = name_bytes[i].to_ascii_uppercase();
+        buf[i] = name_bytes[i];
     }
 
     u64::from_le_bytes(buf)

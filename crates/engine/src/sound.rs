@@ -1,6 +1,6 @@
 use hecs::{CommandBuffer, Entity, QueryBorrow};
-use wad_parser::{MapLinedef, MapSidedef, Sector};
-use crate::{Active, CurrentSector, DB, LinedefFlags, MobjType, PlayerShoot, Sleeping, SpriteAnimation};
+use wad_parser::{MapLinedef, MapSidedef, Sector, to_u64};
+use crate::{Active, CurrentSector, DB, LinedefFlags, MobjType, PlayerShoot, Position, Random, SfxEvent, Sleeping, SpriteAnimation};
 
 pub fn propagate_sound_system(
 	mut query: QueryBorrow<'_, (Entity, &CurrentSector, &PlayerShoot)>, 
@@ -65,26 +65,31 @@ fn propagate_sound_internal(
 }
 
 pub fn check_sound_system(
-	mut query: QueryBorrow<'_, (Entity, &CurrentSector, &SpriteAnimation, &MobjType, &Sleeping)>, 
+	mut query: QueryBorrow<'_, (Entity, &Position, &CurrentSector, &SpriteAnimation, &MobjType, &Sleeping)>, 
+	sectors: &Vec<Sector>,
+	random: &mut Random,
 	command_buffer: &mut CommandBuffer, 
-	sectors: &Vec<Sector>
+	audio_buffer: &mut Vec<SfxEvent>, 
 ) {
-	for (entity, current_sector, sprite_anim, mobj_type, _sleeping) in query.iter() {
+	for (entity, pos, current_sector, sprite_anim, mobj_type, _sleeping) in query.iter() {
 		if sectors[current_sector.0].sound_traversed == u32::MAX { continue; }
 
 		let db = DB.get().expect("DB has not been initialized!");
+		let mobj_info = db.mobjinfo.get(&mobj_type.0).unwrap();
 
-		if let Some(see_state_num) = db.mobjinfo.get(&mobj_type.0).unwrap().see_state {
+		if let (Some(see_state_num), Some(see_sound)) = (mobj_info.see_state, mobj_info.see_sound) {
 			let see_state = db.states.get(&see_state_num).unwrap();
 			let new_anim = SpriteAnimation {
                 current_state: Some(see_state_num),
-                tics_left: see_state.tics,
+                tics_left: see_state.tics + (random.p() & 0xF) as i32,
                 cached_rotations: see_state.cached_rotations.clone(),
                 top_offset_shift: sprite_anim.top_offset_shift
             };
 
             command_buffer.remove::<(Sleeping, SpriteAnimation)>(entity);
             command_buffer.insert(entity, (Active, new_anim));
+			
+			audio_buffer.push(SfxEvent { sfx_id: to_u64(&see_sound), position: Some((pos.x, pos.z)) })
 		} else {
             command_buffer.remove_one::<Sleeping>(entity);
             command_buffer.insert_one(entity, Active);

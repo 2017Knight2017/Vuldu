@@ -1,7 +1,10 @@
 mod prepare_for_renderer;
 mod parse_commandline;
+mod sound_player;
 
+use rodio::MixerDeviceSink;
 //use parse_commandline::Args;
+use sound_player::*;
 use renderer::*;
 use wad_parser::map::DoomMap;
 use wad_parser::*;
@@ -21,6 +24,7 @@ use raw_window_handle::{HasDisplayHandle, HasWindowHandle, RawDisplayHandle, Raw
 use rustc_hash::FxHashMap;
 use std::time::Instant;
 use std::process::exit;
+use std::f64::consts::TAU;
 
 const EYE_HEIGHT: f32 = 41.0;
 const FOV_ANGLE: f32 = 90.0;
@@ -36,7 +40,10 @@ struct App {
     map: DoomMap,
     random: Random,
     command_buffer: CommandBuffer,
+    audio_stream_handle: MixerDeviceSink,
+    audio_buffer: Vec<SfxEvent>,
     texture_data: FxHashMap<u64, (u32, u32, u32, bool)>,
+    audio_data: FxHashMap<u64, DoomSfx>,
     sprite_offsets: Vec<(i16, i16)>,
     is_shutting_down: bool,
     current_input: PlayerInput,
@@ -94,7 +101,7 @@ impl App {
             let interpolated_angle_u32 = rotation.prev_angle.wrapping_add_signed(interpolated_diff);
 
             let angle_normalized = interpolated_angle_u32 as f64 / u32::MAX as f64;
-            let angle_rad = (angle_normalized * std::f64::consts::TAU) as f32;
+            let angle_rad = (angle_normalized * TAU) as f32;
 
             let target_dir = glam::vec3(f32::sin(angle_rad), 0.0, f32::cos(angle_rad));
             let camera_target = interpolated_pos + target_dir;
@@ -123,6 +130,8 @@ impl ApplicationHandler for App {
             }
 
             self.window = Some(window);
+
+            self.audio_data = self.wad_manager.bake_sfx();
             
             self.renderer = Some(SafeRenderer::new());
 
@@ -401,7 +410,12 @@ impl ApplicationHandler for App {
                     let position_input_query = self.world.query::<(Entity, &mut Velocity, &PlayerRotation)>();
                     let animation_query = self.world.query::<&mut SpriteAnimation>();
                     micropool::join(
-                        || handle_position_input(position_input_query, &self.current_input, &mut self.command_buffer),
+                        || handle_position_input(
+                            position_input_query, 
+                            &self.current_input, 
+                            &mut self.command_buffer, 
+                            &mut self.audio_buffer
+                        ),
                         || animation_system(animation_query)
                     );
 
@@ -427,18 +441,28 @@ impl ApplicationHandler for App {
                     self.command_buffer.run_on(&mut self.world);
                     self.command_buffer.clear();
 
-                    let check_sound_query = self.world.query::<(Entity, &CurrentSector, &SpriteAnimation, &MobjType, &Sleeping)>();
-                    check_sound_system(check_sound_query, &mut self.command_buffer, &self.map.sectors);
+                    let check_sound_query = self.world.query::<(Entity, &Position, &CurrentSector, &SpriteAnimation, &MobjType, &Sleeping)>();
+                    check_sound_system(check_sound_query, &self.map.sectors, &mut self.random, &mut self.command_buffer, &mut self.audio_buffer);
 
                     self.command_buffer.run_on(&mut self.world);
                     self.command_buffer.clear();
 
-                    let chase_query = self.world.query::<(&mut MonsterRotation, &Position, &Active)>();
+                    let chase_query = self.world.query::<(&mut MonsterRotation, &Position, &MobjType, &SpriteAnimation,  &Active)>();
                     let player_query = self.world.query::<(&Position, &PlayerMarker)>();
-                    chase_system(chase_query, player_query);
+                    chase_system(chase_query, player_query, &mut self.random, &mut self.audio_buffer);
 
                     let movement_query = self.world.query::<(&mut Position, &mut CurrentSector, &Velocity, &Active)>();
                     movement_system(movement_query, &self.map);
+
+                    let mut audio_query = self.world.query::<&Position>();
+                    let pos = audio_query.iter().next().unwrap();
+
+                    audio_system(
+                        &mut self.audio_buffer, 
+                        &self.audio_data, 
+                        self.audio_stream_handle.mixer(), 
+                        (pos.x, pos.z)
+                    );
 
                     self.current_input.mouse_delta_x = 0.0;
                     self.time_accumulator -= TICK_TIME;
@@ -501,15 +525,18 @@ fn main() -> Result<(), String> {
     //let map = DoomMap::from_wad(&wad_manager, &args.map)?;
 
     wad_manager.add_wad("assets/DOOM2.WAD")?;
-    //wad_manager.add_wad("assets/oku2v31.wad")?;
-    wad_manager.add_wad("assets/nuts.wad")?;
+    wad_manager.add_wad("assets/oku2v31.wad")?;
+    //wad_manager.add_wad("assets/nuts.wad")?;
     //wad_manager.add_wad("assets/Sunder 2512.wad")?;
 
     let map = DoomMap::from_wad(&wad_manager, 1)?;
 
     let event_loop = EventLoop::new().unwrap();
-
     event_loop.set_control_flow(ControlFlow::Poll);
+
+    let mut audio_stream_handle = rodio::DeviceSinkBuilder::open_default_sink()
+        .map_err(|_| "Failed to create an audio stream handle".to_string())?;
+    audio_stream_handle.log_on_drop(false);
 
     let mut app = App {
         window: None,
@@ -518,8 +545,11 @@ fn main() -> Result<(), String> {
         world: World::new(),
         map,
         random: Random::default(),
+        audio_stream_handle,
+        audio_buffer: Vec::new(),
         command_buffer: CommandBuffer::new(),
         texture_data: FxHashMap::default(),
+        audio_data: FxHashMap::default(),
         sprite_offsets: Vec::new(),
         is_shutting_down: false,
         current_input: PlayerInput::default(),
