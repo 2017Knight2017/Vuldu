@@ -82,20 +82,13 @@ void VulkanRenderer::cleanup() {
 
     destroyResource(this->device, this->textureSampler, vkDestroySampler);
 
-
     for (size_t i = 0; i < this->textureImageViews.size(); i++) {
         vkDestroyImageView(this->device, this->textureImageViews[i], nullptr);
-    }
-    this->textureImageViews.clear();
-
-    for (size_t i = 0; i < this->textureImages.size(); i++) {
         vkDestroyImage(this->device, this->textureImages[i], nullptr);
-    }
-    this->textureImages.clear();
-
-    for (size_t i = 0; i < this->textureImageMemories.size(); i++) {
         vkFreeMemory(this->device, this->textureImageMemories[i], nullptr);
     }
+    this->textureImageViews.clear();
+    this->textureImages.clear();
     this->textureImageMemories.clear();
 
     for (size_t i = 0; i < this->skyWidths.size(); i++) {

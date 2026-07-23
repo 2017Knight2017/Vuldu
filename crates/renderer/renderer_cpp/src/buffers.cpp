@@ -1,6 +1,5 @@
 #include <cstring>
 #include <iostream>
-#include <math.h>
 #include "renderer.h"
 #include "renderer/src/bridge.rs.h"
 #include "utils.h"
@@ -111,14 +110,16 @@ void VulkanRenderer::uploadTextureArray(
     this->textureImages.resize(descriptor_count);
     this->textureImageViews.resize(descriptor_count);
     this->textureImageMemories.resize(descriptor_count);
-    this->mipLevels.resize(descriptor_count);
     for (size_t i = 0; i < descriptor_count; i++) {
-        this->mipLevels[i] = static_cast<uint32_t>(std::floor(std::log2(std::max(descriptors[i].width, descriptors[i].height)))) + 1;
-
-        createImage(descriptors[i].width, descriptors[i].height, this->mipLevels[i], VK_FORMAT_R8_UNORM, VK_IMAGE_TILING_OPTIMAL,
-                    VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
-                    this->textureImages[i], this->textureImageMemories[i]);
+        createImage(
+            descriptors[i].width, 
+            descriptors[i].height, 
+            VK_FORMAT_R8_UNORM,
+            VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
+            this->textureImages[i], 
+            this->textureImageMemories[i]
+        );
     }
     VkCommandBuffer commandBuffer = beginSingleTimeCommands();
     
@@ -132,7 +133,7 @@ void VulkanRenderer::uploadTextureArray(
         preCopyBarriers[i].image = this->textureImages[i];
         preCopyBarriers[i].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         preCopyBarriers[i].subresourceRange.baseMipLevel = 0;
-        preCopyBarriers[i].subresourceRange.levelCount = this->mipLevels[i];
+        preCopyBarriers[i].subresourceRange.levelCount = 1;
         preCopyBarriers[i].subresourceRange.baseArrayLayer = 0;
         preCopyBarriers[i].subresourceRange.layerCount = 1;
         preCopyBarriers[i].srcAccessMask = 0;
@@ -153,27 +154,34 @@ void VulkanRenderer::uploadTextureArray(
                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
     }
 
+    std::vector<VkImageMemoryBarrier> postCopyBarriers(descriptor_count);
     for (size_t i = 0; i < descriptor_count; i++) {
-        generateMipmaps(commandBuffer, this->textureImages[i], descriptors[i].width, descriptors[i].height, this->mipLevels[i]);
+        postCopyBarriers[i].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        postCopyBarriers[i].oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        postCopyBarriers[i].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        postCopyBarriers[i].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        postCopyBarriers[i].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        postCopyBarriers[i].image = this->textureImages[i];
+        postCopyBarriers[i].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        postCopyBarriers[i].subresourceRange.baseMipLevel = 0;
+        postCopyBarriers[i].subresourceRange.levelCount = 1;
+        postCopyBarriers[i].subresourceRange.baseArrayLayer = 0;
+        postCopyBarriers[i].subresourceRange.layerCount = 1;
+        postCopyBarriers[i].srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        postCopyBarriers[i].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
     }
-
+    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 
+                         0, 0, nullptr, 0, nullptr, static_cast<uint32_t>(postCopyBarriers.size()), postCopyBarriers.data());
+        
     endSingleTimeCommands(commandBuffer);
 
     for (size_t i = 0; i < descriptor_count; i++) {
-        VkImageViewCreateInfo viewInfo{};
-        viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        viewInfo.image = this->textureImages[i];
-        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        viewInfo.format = VK_FORMAT_R8_UNORM;
-        viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        viewInfo.subresourceRange.baseMipLevel = 0;
-        viewInfo.subresourceRange.levelCount = this->mipLevels[i];
-        viewInfo.subresourceRange.baseArrayLayer = 0;
-        viewInfo.subresourceRange.layerCount = 1;
-
-        if (vkCreateImageView(this->device, &viewInfo, nullptr, &this->textureImageViews[i]) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create texture image view!");
-        }
+        createImageView(
+            this->device, 
+            this->textureImages[i], 
+            VK_FORMAT_R8_UNORM, 
+            VK_IMAGE_ASPECT_COLOR_BIT
+        );
     }
 
     vkDestroyBuffer(this->device, pixelStagingBuffer, nullptr);
@@ -202,27 +210,17 @@ void VulkanRenderer::uploadTextureArray(
     std::cout << "Bound " << descriptor_count << " textures to Bindless Set" << std::endl;
 }
 
-void VulkanRenderer::createImage(
-    uint32_t width, 
-    uint32_t height, 
-    uint32_t mipLevels,
-    VkFormat format, 
-    VkImageTiling tiling, 
-    VkImageUsageFlags usage, 
-    VkMemoryPropertyFlags properties, 
-    VkImage& image, 
-    VkDeviceMemory& imageMemory
-) {
+void VulkanRenderer::createImage(uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory) {
     VkImageCreateInfo imageInfo{};
     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     imageInfo.imageType = VK_IMAGE_TYPE_2D;
     imageInfo.extent.width = width;
     imageInfo.extent.height = height;
     imageInfo.extent.depth = 1;
-    imageInfo.mipLevels = mipLevels;
+    imageInfo.mipLevels = 1;
     imageInfo.arrayLayers = 1;
     imageInfo.format = format;
-    imageInfo.tiling = tiling;
+    imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     imageInfo.usage = usage;
     imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -264,10 +262,10 @@ void VulkanRenderer::createTextureSamplers() {
 	textureSamplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
 	textureSamplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
 	textureSamplerInfo.unnormalizedCoordinates = VK_FALSE;
-	textureSamplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	textureSamplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
 	textureSamplerInfo.mipLodBias = 0.0f;
 	textureSamplerInfo.minLod = 0.0f;
-	textureSamplerInfo.maxLod = VK_LOD_CLAMP_NONE;
+	textureSamplerInfo.maxLod = 0.0f;
 	
 	VkResult textureSamplerResult = vkCreateSampler(this->device, &textureSamplerInfo, nullptr, &this->textureSampler);
 	if (textureSamplerResult != VK_SUCCESS) {

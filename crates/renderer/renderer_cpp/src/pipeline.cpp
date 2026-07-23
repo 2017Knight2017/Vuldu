@@ -65,8 +65,16 @@ std::vector<VkVertexInputAttributeDescription> getSpriteAttributes() {
 void VulkanRenderer::createDepthResources() {
 	VkFormat depthFormat = findDepthFormat();
 
-	createImage(this->swapChainExtent.width, this->swapChainExtent.height, 1, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, this->depthImage, this->depthImageMemory);
-	this->depthImageView = createImageView(this->device, this->depthImage, 1, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+	createImage(
+		this->swapChainExtent.width, 
+		this->swapChainExtent.height, 
+		depthFormat, 
+		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
+		this->depthImage, 
+		this->depthImageMemory
+	);
+	this->depthImageView = createImageView(this->device, this->depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
 void VulkanRenderer::updateLevelGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint32_t* indices_ptr, size_t index_count) {

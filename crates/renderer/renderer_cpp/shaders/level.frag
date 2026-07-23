@@ -68,7 +68,7 @@ void main() {
         float rawColor = textureLod(texSamplers[nonuniformEXT(lc.skyIndex)], vec2(skyU, skyV), 0.0).r;
         colorIndex = uint(rawColor * 255.0 + 0.5); 
     } else {
-        float rawColor = texture(texSamplers[nonuniformEXT(fragTexId)], fragTexCoord).r;
+        float rawColor = textureLod(texSamplers[nonuniformEXT(fragTexId)], fragTexCoord, 0.0).r;
         colorIndex = uint(rawColor * 255.0 + 0.5);
     }
 

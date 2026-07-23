@@ -146,7 +146,6 @@ private:
     uint32_t objectVertexCount = 0;
     uint32_t objectIndexCount = 0;
 
-    std::vector<uint32_t> mipLevels;
     std::vector<VkImage> textureImages;
     std::vector<VkDeviceMemory> textureImageMemories;
     std::vector<VkImageView> textureImageViews;
@@ -204,9 +203,7 @@ private:
     void createImage(
         uint32_t width, 
         uint32_t height, 
-        uint32_t mipLevels,
         VkFormat format, 
-        VkImageTiling tiling, 
         VkImageUsageFlags usage, 
         VkMemoryPropertyFlags properties, 
         VkImage& image, 
