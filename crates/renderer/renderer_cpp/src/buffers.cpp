@@ -180,7 +180,8 @@ void VulkanRenderer::uploadTextureArray(
             this->device, 
             this->textureImages[i], 
             VK_FORMAT_R8_UNORM, 
-            VK_IMAGE_ASPECT_COLOR_BIT
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            &this->textureImageViews[i]
         );
     }
 

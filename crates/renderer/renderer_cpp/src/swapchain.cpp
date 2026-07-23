@@ -98,6 +98,12 @@ void VulkanRenderer::createImageViews() {
     this->swapChainImageViews.resize(this->swapChainImages.size());
 
     for (size_t i = 0; i < this->swapChainImages.size(); i++) {
-        this->swapChainImageViews[i] = createImageView(this->device, this->swapChainImages[i], this->swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+        createImageView(
+            this->device, 
+            this->swapChainImages[i], 
+            this->swapChainImageFormat, 
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            &this->swapChainImageViews[i]
+        );
     }
 }

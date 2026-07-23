@@ -74,7 +74,13 @@ void VulkanRenderer::createDepthResources() {
 		this->depthImage, 
 		this->depthImageMemory
 	);
-	this->depthImageView = createImageView(this->device, this->depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+	createImageView(
+		this->device, 
+		this->depthImage, 
+		depthFormat, 
+		VK_IMAGE_ASPECT_DEPTH_BIT, 
+		&this->depthImageView
+	);
 }
 
 void VulkanRenderer::updateLevelGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint32_t* indices_ptr, size_t index_count) {

@@ -46,7 +46,13 @@ uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, Vk
 	throw std::runtime_error("failed to find suitable memory type!");
 }
 
-VkImageView createImageView(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags) {
+void createImageView(
+	VkDevice device, 
+	VkImage image, 
+	VkFormat format, 
+	VkImageAspectFlags aspectFlags,
+	VkImageView* dstView
+) {
     VkImageViewCreateInfo viewInfo{};
     viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     viewInfo.image = image;
@@ -58,12 +64,9 @@ VkImageView createImageView(VkDevice device, VkImage image, VkFormat format, VkI
     viewInfo.subresourceRange.baseArrayLayer = 0;
     viewInfo.subresourceRange.layerCount = 1;
 
-    VkImageView imageView;
-    if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
+    if (vkCreateImageView(device, &viewInfo, nullptr, dstView) != VK_SUCCESS) {
         throw std::runtime_error("failed to create image view!");
     }
-
-    return imageView;
 }
 
 void generateMipmaps(VkCommandBuffer commandBuffer, VkImage image, uint32_t width, uint32_t height, uint32_t mipLevels) {
