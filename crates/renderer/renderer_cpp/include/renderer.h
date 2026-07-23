@@ -77,7 +77,14 @@ public:
     void updateObjectInstances(const ObjectInstance* instances_ptr, size_t instances_count);
     void uploadPalettes(const float* palettes_ptr);
     void uploadColormap(const uint8_t* colormap_ptr);
-    void uploadTextureArray(const TextureDescriptor* descriptors_ptr, size_t descriptor_count, const uint8_t* all_pixels_ptr, size_t all_pixels_count, const float* sky_widths_ptr, size_t sky_widths_count);
+    void uploadTextureArray(
+        const TextureDescriptor* descriptors_ptr, 
+        size_t descriptor_count, 
+        const uint8_t* all_pixels_ptr, 
+        size_t all_pixels_count, 
+        const float* sky_widths_ptr, 
+        size_t sky_widths_count
+    );
     void setPaletteIndex(uint32_t idx);
     void setResolution(uint32_t width, uint32_t height);
     void setSkyIndex(uint32_t idx);
@@ -139,6 +146,7 @@ private:
     uint32_t objectVertexCount = 0;
     uint32_t objectIndexCount = 0;
 
+    std::vector<uint32_t> mipLevels;
     std::vector<VkImage> textureImages;
     std::vector<VkDeviceMemory> textureImageMemories;
     std::vector<VkImageView> textureImageViews;
@@ -193,8 +201,17 @@ private:
     void createBuffer(VkDeviceSize bufferSize, VkBufferUsageFlags usage, 
         VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
     void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
-    void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, 
-        VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
+    void createImage(
+        uint32_t width, 
+        uint32_t height, 
+        uint32_t mipLevels,
+        VkFormat format, 
+        VkImageTiling tiling, 
+        VkImageUsageFlags usage, 
+        VkMemoryPropertyFlags properties, 
+        VkImage& image, 
+        VkDeviceMemory& imageMemory
+    );
     
     VkCommandBuffer beginSingleTimeCommands();
     void endSingleTimeCommands(VkCommandBuffer commandBuffer);

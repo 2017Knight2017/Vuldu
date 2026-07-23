@@ -24,7 +24,7 @@ layout(location = 3) flat in uint fragColormapIdx;
 layout(location = 0) out vec4 outColor;
 
 void main() {
-    float rawColor = texture(texSamplers[nonuniformEXT(fragTexId)], fragTexCoord).r;
+    float rawColor = textureLod(texSamplers[nonuniformEXT(fragTexId)], fragTexCoord, 0.0).r;
     uint colorIndex = uint(rawColor * 255.0);
     
     if (colorIndex == 255) {

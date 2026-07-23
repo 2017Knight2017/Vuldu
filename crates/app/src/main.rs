@@ -525,8 +525,8 @@ fn main() -> Result<(), String> {
     //let map = DoomMap::from_wad(&wad_manager, &args.map)?;
 
     wad_manager.add_wad("assets/DOOM2.WAD")?;
-    wad_manager.add_wad("assets/oku2v31.wad")?;
-    //wad_manager.add_wad("assets/nuts.wad")?;
+    //wad_manager.add_wad("assets/oku2v31.wad")?;
+    wad_manager.add_wad("assets/nuts.wad")?;
     //wad_manager.add_wad("assets/Sunder 2512.wad")?;
 
     let map = DoomMap::from_wad(&wad_manager, 1)?;
