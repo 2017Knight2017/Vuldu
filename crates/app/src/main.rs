@@ -23,7 +23,6 @@ use raw_window_handle::{HasDisplayHandle, HasWindowHandle, RawDisplayHandle, Raw
 //use clap::Parser;
 use rustc_hash::FxHashMap;
 use std::time::Instant;
-use std::process::exit;
 use std::f64::consts::TAU;
 
 const EYE_HEIGHT: f32 = 41.0;
@@ -88,253 +87,294 @@ fn register_sprite(
     }
 }
 
+fn update_camera_from_player(view_matrix: &mut Mat4, world: &World, alpha: f32) {
+    for (position, rotation, _player) in world.query::<(&Position, &PlayerRotation, &PlayerMarker)>().iter() {
+
+        let prev_pos = glam::vec3(position.prev_x, position.prev_y + EYE_HEIGHT, position.prev_z);
+        let current_pos = glam::vec3(position.x, position.y + EYE_HEIGHT, position.z);
+        let interpolated_pos = prev_pos + (current_pos - prev_pos) * alpha;
+
+        let angle_diff = rotation.angle.wrapping_sub(rotation.prev_angle) as i32;
+        let interpolated_diff = (angle_diff as f64 * alpha as f64) as i32;
+        let interpolated_angle_u32 = rotation.prev_angle.wrapping_add_signed(interpolated_diff);
+
+        let angle_normalized = interpolated_angle_u32 as f64 / u32::MAX as f64;
+        let angle_rad = (angle_normalized * TAU) as f32;
+
+        let target_dir = glam::vec3(f32::sin(angle_rad), 0.0, f32::cos(angle_rad));
+        let camera_target = interpolated_pos + target_dir;
+
+        let camera_up = glam::vec3(0.0, 1.0, 0.0);
+
+        *view_matrix = glam::Mat4::look_at_rh(interpolated_pos, camera_target, camera_up);
+    }
+}
+
 impl App {
-    fn update_camera_from_player(&mut self, alpha: f32) {
-        for (position, rotation, _player) in self.world.query::<(&Position, &PlayerRotation, &PlayerMarker)>().iter() {
+    fn create_window(&self, event_loop: &ActiveEventLoop) -> Result<Window, Box<dyn std::error::Error>> {
+        let window_attributes = Window::default_attributes()
+            .with_inner_size(LogicalSize::new(1280, 720))
+            .with_title("Vuldu")
+            .with_visible(true);
 
-            let prev_pos = glam::vec3(position.prev_x, position.prev_y + EYE_HEIGHT, position.prev_z);
-            let current_pos = glam::vec3(position.x, position.y + EYE_HEIGHT, position.z);
-            let interpolated_pos = prev_pos + (current_pos - prev_pos) * alpha;
+        let window = event_loop.create_window(window_attributes)?;
+        window.set_cursor_visible(false);
 
-            let angle_diff = rotation.angle.wrapping_sub(rotation.prev_angle) as i32;
-            let interpolated_diff = (angle_diff as f64 * alpha as f64) as i32;
-            let interpolated_angle_u32 = rotation.prev_angle.wrapping_add_signed(interpolated_diff);
-
-            let angle_normalized = interpolated_angle_u32 as f64 / u32::MAX as f64;
-            let angle_rad = (angle_normalized * TAU) as f32;
-
-            let target_dir = glam::vec3(f32::sin(angle_rad), 0.0, f32::cos(angle_rad));
-            let camera_target = interpolated_pos + target_dir;
-
-            let camera_up = glam::vec3(0.0, 1.0, 0.0);
-
-            self.view_matrix = glam::Mat4::look_at_rh(interpolated_pos, camera_target, camera_up);
+        if let Err(err) = window.set_cursor_grab(CursorGrabMode::Locked) {
+            let _ = window.set_cursor_grab(CursorGrabMode::Confined);
+            eprintln!("Failed to lock cursor: {:?}", err);
         }
+
+        Ok(window)
+    }
+
+    fn load_and_upload_textures(&mut self, renderer: &mut SafeRenderer) -> Result<(), String> {
+        let (wall_names, wall_pics, sky_names, sky_pics, sky_widths) = 
+            self.wad_manager.bake_walls().map_err(|e| format!("Wall baking failed: {e}"))?;
+
+        let (flat_names, flat_pics) = 
+            self.wad_manager.bake_flats().map_err(|e| format!("Flat baking failed: {e}"))?;
+
+        let (obj_names, obj_pics) = 
+            self.wad_manager.bake_objects().map_err(|e| format!("Object baking failed: {e}"))?;
+
+        let total_textures = wall_pics.len() + flat_pics.len() + obj_pics.len() + MAX_SKY;
+        let total_pixels = 1 + sky_pics.iter()
+            .chain(&obj_pics)
+            .chain(&wall_pics)
+            .chain(&flat_pics)
+            .map(|p| p.raw_pixels.len())
+            .sum::<usize>();
+
+        let mut all_pixels = Vec::with_capacity(total_pixels);
+        let mut descriptors = Vec::with_capacity(total_textures);
+        let mut current_gpu_id = 0;
+
+        let mut sky_data: Vec<_> = sky_names.iter().zip(sky_pics).zip(sky_widths)
+            .map(|((n, p), w)| (n, p, w)).collect();
+        sky_data.sort_by_key(|trio| trio.0);
+        current_gpu_id += MAX_SKY as u32;
+
+        let mut sky_widths_no_name = Vec::with_capacity(sky_data.len());
+        for (_, pic, width) in sky_data {
+            descriptors.push(TextureDescriptor {
+                width: pic.width,
+                height: pic.height,
+                pixel_offset: all_pixels.len(),
+            });
+            all_pixels.extend_from_slice(&pic.raw_pixels);
+            sky_widths_no_name.push(width);
+        }
+
+        let padding_needed = MAX_SKY.saturating_sub(descriptors.len());                    
+        for _ in 0..padding_needed {
+            descriptors.push(TextureDescriptor {
+                width: 1, height: 1, pixel_offset: all_pixels.len(),
+            });
+        }
+        all_pixels.push(0);
+
+
+        self.sprite_offsets.reserve(obj_pics.len());
+        for (idx, pic) in obj_pics.iter().enumerate() {
+            let name = obj_names[idx];
+            self.sprite_offsets.push((pic.left_offset, pic.top_offset));
+            register_sprite(&mut self.texture_data, name, (current_gpu_id, pic.width, pic.height));
+            
+            descriptors.push(TextureDescriptor {
+                width: pic.width, height: pic.height, pixel_offset: all_pixels.len(),
+            });
+            all_pixels.extend_from_slice(&pic.raw_pixels);
+            current_gpu_id += 1;
+        }
+
+        for (tex_names, pics) in [(&wall_names, &wall_pics), (&flat_names, &flat_pics)] {
+            for (idx, pic) in pics.iter().enumerate() {
+                let name = tex_names[idx];
+                self.texture_data.insert(name, (current_gpu_id, pic.width, pic.height, false));
+                descriptors.push(TextureDescriptor {
+                    width: pic.width, height: pic.height, pixel_offset: all_pixels.len(),
+                });
+                all_pixels.extend_from_slice(&pic.raw_pixels);
+                current_gpu_id += 1;
+            }
+        }
+
+        renderer.upload_texture_array(&descriptors, &all_pixels, &sky_widths_no_name);
+
+        let map_name = construct_map_name(self.wad_manager.is_doom1, self.map.map_num);
+        let palettes = self.wad_manager.get_palettes(&map_name).map_err(|e| format!("PLAYPAL upload failed: {e}"))?;
+        renderer.upload_palettes(&palettes);
+
+        let colormap = self.wad_manager.get_colormap(&map_name).map_err(|e| format!("COLORMAP upload failed: {e}"))?;
+        renderer.upload_colormap(colormap);
+
+        Ok(())
+    }
+
+    fn setup_level_geometry(&mut self, renderer: &mut SafeRenderer) {
+        println!("Building map geometry...");
+        let (wall_vertices, wall_indices) = self.map.get_walls_vertices(&self.texture_data);
+        let (flat_vertices, flat_indices) = self.map.get_flats_vertices(&self.texture_data);
+        let (obj_vertices, obj_indices) = self.map.get_objects_vertices();
+
+        let mut level_vertices = wall_vertices;
+        let mut level_indices = wall_indices;
+
+        let vertex_offset = level_vertices.len() as u32; 
+        level_vertices.extend(flat_vertices);
+        for idx in flat_indices {
+            level_indices.push(vertex_offset + idx);
+        }
+
+        renderer.update_object_instances(&[]);
+        renderer.update_level_geometry(&level_vertices, &level_indices);
+        renderer.update_object_geometry(&obj_vertices, &obj_indices);
+    }
+
+    fn handle_fatal_error(&mut self, event_loop: &ActiveEventLoop, renderer: &mut SafeRenderer, msg: &str) {
+        eprintln!("[FATAL] {}", msg);
+        self.is_shutting_down = true;
+        renderer.shutdown();
+        event_loop.exit();
+    }
+
+    fn update_game_logic(&mut self) {
+        while self.time_accumulator >= TICK_TIME {
+            self.tick();
+            self.time_accumulator -= TICK_TIME;
+        }
+    }
+
+    fn tick(&mut self) {
+        let position_input_query = self.world.query::<(Entity, &mut Velocity, &PlayerRotation)>();
+        let animation_query = self.world.query::<&mut SpriteAnimation>();
+        micropool::join(
+            || handle_position_input(position_input_query, &self.current_input, &mut self.command_buffer, &mut self.audio_buffer),
+            || animation_system(animation_query),
+        );
+        self.flush_command_buffer();
+
+        let rotation_query = self.world.query::<&mut PlayerRotation>();
+        let friction_query = self.world.query::<&mut Velocity>();
+        micropool::join(
+            || handle_rotation_input(rotation_query, &self.current_input),
+            || friction_system(friction_query),
+        );
+
+        let propagate_sound_query = self.world.query::<(Entity, &CurrentSector, &PlayerShoot)>();
+        propagate_sound_system(propagate_sound_query, &mut self.command_buffer, &mut self.map.sectors, &self.map.linedefs, &self.map.sidedefs);
+        self.flush_command_buffer();
+
+        let check_sound_query = self.world.query::<(Entity, &Position, &CurrentSector, &SpriteAnimation, &MobjType, &Sleeping)>();
+        check_sound_system(check_sound_query, &self.map.sectors, &mut self.random, &mut self.command_buffer, &mut self.audio_buffer);
+        self.flush_command_buffer();
+
+        let chase_query = self.world.query::<(&mut MonsterRotation, &Position, &MobjType, &SpriteAnimation, &Active)>();
+        let player_query = self.world.query::<(&Position, &PlayerMarker)>();
+        chase_system(chase_query, player_query, &mut self.random, &mut self.audio_buffer);
+
+        let movement_query = self.world.query::<(&mut Position, &mut CurrentSector, &Velocity, &Active)>();
+        movement_system(movement_query, &self.map);
+
+        let mut audio_query = self.world.query::<&Position>();
+        if let Some(pos) = audio_query.iter().next() {
+            audio_system(&mut self.audio_buffer, &self.audio_data, self.audio_stream_handle.mixer(), (pos.x, pos.z));
+        }
+
+        self.current_input.mouse_delta_x = 0.0;
+    }
+
+    fn flush_command_buffer(&mut self) {
+        self.command_buffer.run_on(&mut self.world);
+        self.command_buffer.clear();
+    }
+
+    fn render(&mut self, alpha: f32) {
+        let instances = self.collect_object_instances(alpha);
+
+        let (renderer, window) = match (&mut self.renderer, &self.window) {
+            (Some(r), Some(w)) => (r, w),
+            _ => return,
+        };
+
+        renderer.update_object_instances(&instances);
+        
+        let size = window.inner_size();
+        if size.width == 0 || size.height == 0 {
+            return;
+        }
+
+        let aspect_ratio = size.width as f32 / size.height as f32;
+        let proj = Mat4::perspective_rh(FOV_ANGLE.to_radians(), aspect_ratio, 1.0, 10000.0);
+
+        update_camera_from_player(&mut self.view_matrix, &self.world, alpha);
+
+        let ubo = UniformBufferObject {
+            model: Mat4::IDENTITY.to_cols_array(),
+            view: self.view_matrix.to_cols_array(),
+            proj: proj.to_cols_array(),
+        };
+
+        renderer.start_frame(&ubo);
+        renderer.draw_level();
+        renderer.draw_objects();
+        renderer.end_frame();
     }
 }
 
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        if self.window.is_none() {
-            let window_attributes = Window::default_attributes()
-                .with_inner_size(LogicalSize::new(1280, 720))
-                .with_title("Vuldu")
-                .with_visible(true);
-            let window = event_loop.create_window(window_attributes).unwrap();
-            
-            window.set_cursor_visible(false);
+        if self.window.is_some() {
+            return;
+        }
 
-            if let Err(err) = window.set_cursor_grab(CursorGrabMode::Locked) {
-                let _ = window.set_cursor_grab(CursorGrabMode::Confined);
-                eprintln!("{:?}", err);
+        let window = match self.create_window(event_loop) {
+            Ok(win) => win,
+            Err(err) => {
+                eprintln!("Failed to create window: {:?}", err);
+                event_loop.exit();
+                return;
+            }
+        };
+        self.window = Some(window);
+
+        self.audio_data = self.wad_manager.bake_sfx();
+        let mut renderer = SafeRenderer::new();
+
+        let window_ref = self.window.as_ref().unwrap();
+        let display_handle = window_ref.display_handle().unwrap().as_raw();
+        let window_handle = window_ref.window_handle().unwrap().as_raw();
+
+        if let (RawDisplayHandle::Wayland(d), RawWindowHandle::Wayland(w)) = (display_handle, window_handle) {
+            let handles = WindowHandles {
+                display_ptr: d.display.as_ptr() as usize,
+                window_ptr: w.surface.as_ptr() as usize,
+            };
+
+            let window_raw_ptr = window_ref as *const Window as usize;
+            renderer.init(&handles, window_raw_ptr);
+            renderer.set_resolution(1280, 720);
+
+            let sky_idx = if self.wad_manager.is_doom1 { 
+                self.map.map_num as u32 / 9 
+            } else { 
+                get_sky_texture_index(self.map.map_num) 
+            };
+            renderer.set_sky_index(sky_idx);
+
+            if let Err(err) = self.load_and_upload_textures(&mut renderer) {
+                self.handle_fatal_error(event_loop, &mut renderer, &err);
+                return;
             }
 
-            self.window = Some(window);
+            self.setup_level_geometry(&mut renderer);
 
-            self.audio_data = self.wad_manager.bake_sfx();
-            
-            self.renderer = Some(SafeRenderer::new());
+            let _ = engine::populate_database(&self.texture_data).map_err(|e| eprintln!("{}", e));
+            engine::spawn_all_things(&mut self.world, &self.map, &mut self.random);
+            println!("Mobj spawning is done!");
 
-            let window_handle = self.window.as_ref().unwrap().window_handle().unwrap().as_raw();
-            let display_handle = self.window.as_ref().unwrap().display_handle().unwrap().as_raw();
-
-            if let (RawDisplayHandle::Wayland(d), RawWindowHandle::Wayland(w)) = (display_handle, window_handle) {
-                let handles = WindowHandles {
-                    display_ptr: d.display.as_ptr() as usize,
-                    window_ptr: w.surface.as_ptr() as usize,
-                };
-
-                if let Some(renderer) = &mut self.renderer {
-                    let window_raw_ptr = self.window.as_ref().unwrap() as *const Window as usize;
-
-                    renderer.init(&handles, window_raw_ptr);
-                    println!("Renderer's just initialized!");
-
-                    renderer.set_resolution(1280, 720);
-                    renderer.set_sky_index(if self.wad_manager.is_doom1 { 
-                            self.map.map_num as u32 / 9 
-                        } else { 
-                            get_sky_texture_index(self.map.map_num) 
-                        }
-                    );
-
-                    let (wall_texture_names, wall_pics, sky_texture_names, sky_pics, sky_widths): 
-                        (Vec<u64>, Vec<DoomPicture>, Vec<u64>, Vec<DoomPicture>, Vec<f32>);
-                    match self.wad_manager.bake_walls() {
-                        Ok(res) => { 
-                            (wall_texture_names, wall_pics, sky_texture_names, sky_pics, sky_widths) = res; 
-                        },
-                        Err(err) => {
-                            eprintln!("[FATAL] Wall baking failed: {}", err);
-                            self.is_shutting_down = true;
-                            renderer.shutdown();
-                            event_loop.exit();
-                            exit(1);
-                        }
-                    };
-                    println!("{} walls are baked!", wall_texture_names.len());
-
-                    let (flat_texture_names, flat_pics): (Vec<u64>, Vec<DoomPicture>);
-                    match self.wad_manager.bake_flats() {
-                        Ok(res) => { (flat_texture_names, flat_pics) = res; },
-                        Err(err) => {
-                            eprintln!("[FATAL] Flat baking failed: {}", err);
-                            self.is_shutting_down = true;
-                            renderer.shutdown();
-                            event_loop.exit();  
-                            exit(1);
-                        }
-                    };
-                    println!("{} flats are baked!", flat_texture_names.len());
-
-                    // We need to divide obj_texture_names later into mirrored and unmirrored versions,
-                    // so we don't pack them into u64 yet.
-                    let (obj_texture_names, obj_pics): (Vec<&[u8]>, Vec<DoomPicture>);
-                    match self.wad_manager.bake_objects() {
-                        Ok(res) => { (obj_texture_names, obj_pics) = res; },
-                        Err(err) => {
-                            eprintln!("[FATAL] Object baking failed: {}", err);
-                            self.is_shutting_down = true;
-                            renderer.shutdown();
-                            event_loop.exit(); 
-                            exit(1);
-                        }
-                    };
-                    println!("{} objects are baked!", obj_texture_names.len());
-
-                    let total_textures_count = wall_pics.len() + flat_pics.len() + obj_pics.len() + MAX_SKY;
-                    let total_pixels_capacity = 1 
-                        + sky_pics.iter().map(|p| p.raw_pixels.len()).sum::<usize>()
-                        + obj_pics.iter().map(|p| p.raw_pixels.len()).sum::<usize>()
-                        + wall_pics.iter().map(|p| p.raw_pixels.len()).sum::<usize>()
-                        + flat_pics.iter().map(|p| p.raw_pixels.len()).sum::<usize>();
-                    let mut all_pixels = Vec::with_capacity(total_pixels_capacity);
-                    let mut descriptors = Vec::with_capacity(total_textures_count);
-
-                    let mut current_gpu_id = 0;
-
-                    let mut sky_data: Vec<_> = sky_texture_names
-                        .iter()
-                        .zip(sky_pics)
-                        .zip(sky_widths)
-                        .map(|((name, pic), width)| (name, pic, width))
-                        .collect();
-
-                    sky_data.sort_by_key(|trio| trio.0);
-
-                    current_gpu_id += MAX_SKY as u32;
-
-                    let mut sky_widths_no_name = Vec::with_capacity(sky_data.len());
-
-                    for (_, pic, width) in sky_data {
-                        descriptors.push(TextureDescriptor {
-                            width: pic.width,
-                            height: pic.height,
-                            pixel_offset: all_pixels.len(),
-                        });
-                        all_pixels.extend_from_slice(&pic.raw_pixels);
-                        sky_widths_no_name.push(width);
-                    }
-
-                    let padding_needed = MAX_SKY.saturating_sub(descriptors.len());                    
-                    for _ in 0..padding_needed {
-                        descriptors.push(TextureDescriptor {
-                            width: 1,
-                            height: 1,
-                            pixel_offset: all_pixels.len(),
-                        });
-                    }
-                    all_pixels.push(0);
-                    println!("Skies are registered!");
-
-                    self.sprite_offsets.reserve(obj_pics.len());
-                    for (idx, pic) in obj_pics.iter().enumerate() {
-                        let name = obj_texture_names[idx];
-
-                        self.sprite_offsets.push((pic.left_offset, pic.top_offset));
-                        register_sprite(&mut self.texture_data, name, (current_gpu_id, pic.width, pic.height));
-                    
-                        descriptors.push(TextureDescriptor {
-                            width: pic.width,
-                            height: pic.height,
-                            pixel_offset: all_pixels.len(),
-                        });
-
-                        all_pixels.extend_from_slice(&pic.raw_pixels);
-                    
-                        current_gpu_id += 1;
-                    }
-                    println!("Objects are registered!");
-
-                    for (tex_names, pics) in [
-                        (wall_texture_names, wall_pics),
-                        (flat_texture_names, flat_pics)].iter() 
-                    {
-                        for (idx, pic) in pics.iter().enumerate() {
-                            let name = tex_names[idx];
-                            self.texture_data.insert(name, (current_gpu_id, pic.width, pic.height, false));
-                        
-                            descriptors.push(TextureDescriptor {
-                                width: pic.width,
-                                height: pic.height,
-                                pixel_offset: all_pixels.len(),
-                            });
-
-                            all_pixels.extend_from_slice(&pic.raw_pixels);
-                        
-                            current_gpu_id += 1;
-                        }
-                    }
-                    println!("Walls and Flats are registered!");
-
-                    renderer.upload_texture_array(descriptors.as_slice(), all_pixels.as_slice(), sky_widths_no_name.as_slice());
-
-                    let map_name = construct_map_name(self.wad_manager.is_doom1, self.map.map_num);
-                    match self.wad_manager.get_palettes(&map_name) {
-                        Ok(data) => renderer.upload_palettes(data.as_slice()),
-                        Err(err) => {
-                            eprintln!("[FATAL] PLAYPAL upload failed: {}", err);
-                            self.is_shutting_down = true;
-                            renderer.shutdown();
-                            event_loop.exit(); 
-                        }
-                    }
-                    match self.wad_manager.get_colormap(&map_name) {
-                        Ok(data) => renderer.upload_colormap(data),
-                        Err(err) => {
-                            eprintln!("[FATAL] COLORMAP upload failed: {}", err);
-                            self.is_shutting_down = true;
-                            renderer.shutdown();
-                            event_loop.exit(); 
-                        }
-                    }
-
-                    println!("Starting build the map's geometry...");
-                    let (wall_vertices, wall_indices) = self.map.get_walls_vertices(&self.texture_data);
-                    println!("Walls' geometry is built!");
-                    let (flat_vertices, flat_indices) = self.map.get_flats_vertices(&self.texture_data);
-                    println!("Flats' geometry is built!");
-                    let (obj_vertices, obj_indices) = self.map.get_objects_vertices();
-
-                    let mut level_vertices = wall_vertices;
-                    let mut level_indices = wall_indices;
-
-                    let vertex_offset = level_vertices.len() as u32; 
-                    level_vertices.extend(flat_vertices);
-
-                    for idx in flat_indices {
-                        level_indices.push(vertex_offset + idx);
-                    }
-
-                    renderer.update_object_instances(&[]);
-                    renderer.update_level_geometry(&level_vertices, &level_indices);
-                    renderer.update_object_geometry(&obj_vertices, &obj_indices);
-
-                    let _ = engine::populate_database(&self.texture_data).map_err(|err| eprintln!("{}", err));
-                    engine::spawn_all_things(&mut self.world, &self.map, &mut self.random);
-                    println!("Mobj spawning is done!");
-                }
-            }
+            self.renderer = Some(renderer);
         }
     }
 
@@ -397,110 +437,24 @@ impl ApplicationHandler for App {
             }
 
             WindowEvent::RedrawRequested => {
-                if self.is_shutting_down { return; }
-
+                if self.is_shutting_down { 
+                    return; 
+                }
+            
                 let current_time = std::time::Instant::now();
-                let delta_time = current_time.duration_since(self.last_frame_time).as_secs_f32();
+                let delta_time = current_time.duration_since(self.last_frame_time).as_secs_f32().min(0.25);
                 self.last_frame_time = current_time;
-
-                let delta_time = delta_time.min(0.25); 
                 self.time_accumulator += delta_time;
-
-                while self.time_accumulator >= TICK_TIME {
-                    let position_input_query = self.world.query::<(Entity, &mut Velocity, &PlayerRotation)>();
-                    let animation_query = self.world.query::<&mut SpriteAnimation>();
-                    micropool::join(
-                        || handle_position_input(
-                            position_input_query, 
-                            &self.current_input, 
-                            &mut self.command_buffer, 
-                            &mut self.audio_buffer
-                        ),
-                        || animation_system(animation_query)
-                    );
-
-                    self.command_buffer.run_on(&mut self.world);
-                    self.command_buffer.clear();
-
-                    let rotation_query = self.world.query::<&mut PlayerRotation>();
-                    let friction_query = self.world.query::<&mut Velocity>();
-                    micropool::join(
-                        || handle_rotation_input(rotation_query, &self.current_input),
-                        || friction_system(friction_query)
-                    );
-
-                    let propagate_sound_query = self.world.query::<(Entity, &CurrentSector, &PlayerShoot)>();
-                    propagate_sound_system(
-                        propagate_sound_query, 
-                        &mut self.command_buffer, 
-                        &mut self.map.sectors, 
-                        &self.map.linedefs,
-                        &self.map.sidedefs
-                    );
-
-                    self.command_buffer.run_on(&mut self.world);
-                    self.command_buffer.clear();
-
-                    let check_sound_query = self.world.query::<(Entity, &Position, &CurrentSector, &SpriteAnimation, &MobjType, &Sleeping)>();
-                    check_sound_system(check_sound_query, &self.map.sectors, &mut self.random, &mut self.command_buffer, &mut self.audio_buffer);
-
-                    self.command_buffer.run_on(&mut self.world);
-                    self.command_buffer.clear();
-
-                    let chase_query = self.world.query::<(&mut MonsterRotation, &Position, &MobjType, &SpriteAnimation,  &Active)>();
-                    let player_query = self.world.query::<(&Position, &PlayerMarker)>();
-                    chase_system(chase_query, player_query, &mut self.random, &mut self.audio_buffer);
-
-                    let movement_query = self.world.query::<(&mut Position, &mut CurrentSector, &Velocity, &Active)>();
-                    movement_system(movement_query, &self.map);
-
-                    let mut audio_query = self.world.query::<&Position>();
-                    let pos = audio_query.iter().next().unwrap();
-
-                    audio_system(
-                        &mut self.audio_buffer, 
-                        &self.audio_data, 
-                        self.audio_stream_handle.mixer(), 
-                        (pos.x, pos.z)
-                    );
-
-                    self.current_input.mouse_delta_x = 0.0;
-                    self.time_accumulator -= TICK_TIME;
-                }
-
+            
+                self.update_game_logic();
+            
                 let alpha = self.time_accumulator / TICK_TIME;
-                self.update_camera_from_player(alpha);
-
-                let instances = self.collect_object_instances(alpha);
-
-                if let (Some(renderer), Some(window)) = (&mut self.renderer, &self.window) {
-                    let size = window.inner_size();
-                    if size.width == 0 || size.height == 0 {
-                        return;
-                    }
-
-                    renderer.update_object_instances(&instances);
-
-                    let aspect_ratio = size.width as f32 / size.height as f32;
-                
-                    let proj = Mat4::perspective_rh(FOV_ANGLE.to_radians(), aspect_ratio, 1.0, 10000.0);
-                
-                    let ubo = UniformBufferObject {
-                        model: Mat4::IDENTITY.to_cols_array(),
-                        view: self.view_matrix.to_cols_array(),
-                        proj: proj.to_cols_array(),
-                    };
-                    
-                    renderer.start_frame(&ubo);
-                    renderer.draw_level();
-                    renderer.draw_objects();
-                    renderer.end_frame();
-                
-                    if let Some(window) = &self.window {
-                        window.request_redraw();
-                    }
+                self.render(alpha);
+            
+                if let Some(window) = &self.window {
+                    window.request_redraw();
                 }
-            },
+            }
 
             _ => (),
         }

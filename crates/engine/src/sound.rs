@@ -71,6 +71,7 @@ pub fn check_sound_system(
 	command_buffer: &mut CommandBuffer, 
 	audio_buffer: &mut Vec<SfxEvent>, 
 ) {
+	//! Must be called after propagate_sound_system
 	for (entity, pos, current_sector, sprite_anim, mobj_type, _sleeping) in query.iter() {
 		if sectors[current_sector.0].sound_traversed == u32::MAX { continue; }
 

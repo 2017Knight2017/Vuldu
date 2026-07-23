@@ -3,7 +3,8 @@ use wad_parser::DoomMap;
 use hecs::QueryBorrow;
 
 pub fn movement_system(mut query: QueryBorrow<'_, (&mut Position, &mut CurrentSector, &Velocity, &Active)>, map: &DoomMap) {
-	for (position, current_sector, velocity, _active) in query.iter() {
+    //! Must be called after friction_system
+    for (position, current_sector, velocity, _active) in query.iter() {
 		position.prev_x = position.x;
         position.prev_y = position.y;
 		position.prev_z = position.z;
@@ -16,6 +17,7 @@ pub fn movement_system(mut query: QueryBorrow<'_, (&mut Position, &mut CurrentSe
 }
 
 pub fn friction_system(mut query: QueryBorrow<'_, &mut Velocity>) {
+    //! Must be called after handle_position_input
     for velocity in query.iter() {
 		velocity.x *= FRICTION;
 		velocity.y *= 0.7;
