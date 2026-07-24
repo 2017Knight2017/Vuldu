@@ -479,10 +479,11 @@ fn main() -> Result<(), String> {
 
     wad_manager.add_wad("assets/DOOM2.WAD")?;
     //wad_manager.add_wad("assets/oku2v31.wad")?;
-    wad_manager.add_wad("assets/nuts.wad")?;
+    //wad_manager.add_wad("assets/nuts.wad")?;
     //wad_manager.add_wad("assets/Sunder 2512.wad")?;
+    //wad_manager.add_wad("assets/HR.WAD")?;
 
-    let map = DoomMap::from_wad(&wad_manager, 1)?;
+    let map = DoomMap::from_wad(&wad_manager, 2)?;
 
     let event_loop = EventLoop::new().unwrap();
     event_loop.set_control_flow(ControlFlow::Poll);

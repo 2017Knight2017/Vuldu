@@ -1,3 +1,5 @@
+use std::f32::consts::TAU;
+
 use crate::{DoomMap, MapLinedef, to_u64};
 use renderer::{Vertex};
 use earcut::Earcut;
@@ -236,22 +238,34 @@ impl DoomMap {
 	        let mut edges: Vec<([f32; 2], [f32; 2])> = Vec::with_capacity(sector_linedefs.len() * 2);
 
 	        for linedef in sector_linedefs {
+				let sector_front = if linedef.sidenum[0] != u16::MAX {
+    			    self.sidedefs.get(linedef.sidenum[0] as usize).map(|s| s.sector)
+    			} else {
+    			    None
+    			};
+			
+    			let sector_back = if linedef.sidenum[1] != u16::MAX {
+    			    self.sidedefs.get(linedef.sidenum[1] as usize).map(|s| s.sector)
+    			} else {
+    			    None
+    			};
+						
+    			if sector_front == Some(current_sector_id) && sector_back == Some(current_sector_id) {
+    			    continue;
+    			}
+
 	            let v1 = self.vertices[linedef.v1 as usize];
 	            let v2 = self.vertices[linedef.v2 as usize];
 	            let p1 = [v1.x as f32, v1.y as f32];
 	            let p2 = [v2.x as f32, v2.y as f32];
 
-	            if linedef.sidenum[0] != u16::MAX {
-	                if let Some(side) = self.sidedefs.get(linedef.sidenum[0] as usize) {
-	                    if side.sector == current_sector_id { edges.push((p1, p2)); }
-	                }
-	            }
+	            if sector_front == Some(current_sector_id) {
+    			    edges.push((p1, p2));
+    			}
 			
-	            if linedef.sidenum[1] != u16::MAX {
-	                if let Some(side) = self.sidedefs.get(linedef.sidenum[1] as usize) {
-	                    if side.sector == current_sector_id { edges.push((p2, p1)); }
-	                }
-	            }
+    			if sector_back == Some(current_sector_id) {
+    			    edges.push((p2, p1));
+    			}
 	        }
 
 	        if edges.is_empty() { continue; }
@@ -260,37 +274,54 @@ impl DoomMap {
 
 	        while !edges.is_empty() {
 	            let mut current_loop = Vec::new();
+
 	            let (p1, p2) = edges.swap_remove(0);
 	            current_loop.push(p1);
+
+				let start_point = p1;
+				let mut prev_point = p1;
 	            let mut current_tip = p2;
 
 	            let mut stuck = false;
-	            while !stuck && !edges.is_empty() {
-	                let mut found_idx = None;
-	                for (idx, edge) in edges.iter().enumerate() {
-	                    if (edge.0[0] - current_tip[0]).abs() < 0.1 && (edge.0[1] - current_tip[1]).abs() < 0.1 {
-	                        found_idx = Some(idx); 
-	                        break;
-	                    }
-	                }
 
-	                if let Some(idx) = found_idx {
-	                    let next_edge = edges.swap_remove(idx);
-	                    current_loop.push(current_tip);
-	                    current_tip = next_edge.1;
-	                } else {
-	                    stuck = true;
-	                }
-	            }
-	            current_loop.push(current_tip);
-	            current_loop.dedup_by(|a, b| (a[0] - b[0]).abs() < 0.1 && (a[1] - b[1]).abs() < 0.1);
+    			let max_steps = edges.len() + 2; 
+    			let mut steps = 0;
+
+    			while !stuck && steps < max_steps {
+    			    steps += 1;
+				
+    			    if (current_tip[0] - start_point[0]).abs() < 0.001 &&
+    			    	(current_tip[1] - start_point[1]).abs() < 0.001 
+    			    {
+    			        break;
+    			    }
+				
+    			    current_loop.push(current_tip);
+				
+    			    if let Some(idx) = find_next_edge_by_angle(prev_point, current_tip, &edges) {
+    			        let next_edge = edges.swap_remove(idx);
+    			        prev_point = current_tip;
+    			        current_tip = next_edge.1;
+    			    } else {
+    			        stuck = true;
+    			    }
+    			}
+
+    			if stuck {
+    			    current_loop.push(current_tip);
+    			    println!("Loop got stuck at tip: {:?}", current_tip);
+    			}
+
+	            current_loop.dedup_by(|a, b| (a[0] - b[0]).abs() < 0.001 && (a[1] - b[1]).abs() < 0.001);
 			
 	            if current_loop.len() >= 3 {
 	                let first = current_loop.first().unwrap();
 	                let last = current_loop.last().unwrap();
-	                if (first[0] - last[0]).abs() < 0.5 && (first[1] - last[1]).abs() < 0.5 {
+
+	                if (first[0] - last[0]).abs() < 0.001 && (first[1] - last[1]).abs() < 0.001 {
 	                    current_loop.pop();
 	                }
+
 	                if current_loop.len() >= 3 {
 	                    let cleaned = clean_polygon(&current_loop);
 	                    if cleaned.len() >= 3 {
@@ -391,13 +422,13 @@ impl DoomMap {
 	            let floor_texture_name = to_u64(&map_sector.floorpic);
 	            let ceil_texture_name = to_u64(&map_sector.ceilingpic);
 
-	            let floor_texture_id = if &map_sector.floorpic == b"F_SKY1\0\0" {
+	            let floor_texture_id = if map_sector.floorpic.starts_with(b"F_SKY1") {
 					(u16::MAX - 2) as u32
 				} else {
 					texture_ids.get(&floor_texture_name).unwrap_or(&(0,0,0,false)).0
 				};
 
-	            let ceil_texture_id = if &map_sector.ceilingpic == b"F_SKY1\0\0" {
+	            let ceil_texture_id = if map_sector.ceilingpic.starts_with(b"F_SKY1") {
 					(u16::MAX - 2) as u32
 				} else { 
 					texture_ids.get(&ceil_texture_name).unwrap_or(&(0,0,0,false)).0 
@@ -542,4 +573,41 @@ fn clean_polygon(poly: &[[f32; 2]]) -> Vec<[f32; 2]> {
         }
     }
     cleaned
+}
+
+fn find_next_edge_by_angle(
+    prev_point: [f32; 2],
+    current_tip: [f32; 2],
+    edges: &[([f32; 2], [f32; 2])],
+) -> Option<usize> {
+    let in_dir = [current_tip[0] - prev_point[0], current_tip[1] - prev_point[1]];
+    let in_angle = in_dir[1].atan2(in_dir[0]);
+
+    let mut best_idx = None;
+    let mut min_turn_angle = f32::MAX;
+
+    for (idx, edge) in edges.iter().enumerate() {
+        if (edge.0[0] - current_tip[0]).abs() < 0.1 && (edge.0[1] - current_tip[1]).abs() < 0.1 {
+            let next_point = edge.1;
+            
+            let out_dir = [next_point[0] - current_tip[0], next_point[1] - current_tip[1]];
+            let out_angle = out_dir[1].atan2(out_dir[0]);
+
+            let mut turn_angle = out_angle - in_angle;
+
+            while turn_angle < 0.0 {
+                turn_angle += TAU;
+            }
+            while turn_angle >= TAU {
+                turn_angle -= TAU;
+            }
+
+            if turn_angle < min_turn_angle {
+                min_turn_angle = turn_angle;
+                best_idx = Some(idx);
+            }
+        }
+    }
+
+    best_idx
 }
