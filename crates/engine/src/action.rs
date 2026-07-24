@@ -98,7 +98,7 @@ pub fn chase_system(
 		let db = DB.get().expect("DB has not been initialized!");
 		if let Some(active_sound) = db.mobjinfo[&mobj_type.0].active_sound {
 			if random.p() & 0xFF < 2 && sprite_anim.tics_left == 1 {
-				audio_buffer.push(SfxEvent { sfx_id: to_u64(&active_sound), position: Some((pos.x, pos.z)) })
+				audio_buffer.push(SfxEvent { sfx_id: to_u64(&active_sound), position: Some((pos.x, pos.y, pos.z)) })
 			}
 		}
 	}

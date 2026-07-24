@@ -39,7 +39,8 @@ struct App {
     map: DoomMap,
     random: Random,
     command_buffer: CommandBuffer,
-    audio_stream_handle: MixerDeviceSink,
+    _audio_stream_handle: MixerDeviceSink,
+    audio_player: DoomSfxPlayer,
     audio_buffer: Vec<SfxEvent>,
     texture_data: FxHashMap<u64, (u32, u32, u32, bool)>,
     audio_data: FxHashMap<u64, DoomSfx>,
@@ -277,10 +278,8 @@ impl App {
         let movement_query = self.world.query::<(&mut Position, &mut CurrentSector, &Velocity, &Active)>();
         movement_system(movement_query, &self.map);
 
-        let mut audio_query = self.world.query::<&Position>();
-        if let Some(pos) = audio_query.iter().next() {
-            audio_system(&mut self.audio_buffer, &self.audio_data, self.audio_stream_handle.mixer(), (pos.x, pos.z));
-        }
+        let audio_query = self.world.query::<(&Position, &PlayerRotation)>();
+        audio_system(audio_query, &mut self.audio_buffer, &mut self.audio_player, &self.audio_data);
 
         self.current_input.mouse_delta_x = 0.0;
     }
@@ -491,6 +490,7 @@ fn main() -> Result<(), String> {
     let mut audio_stream_handle = rodio::DeviceSinkBuilder::open_default_sink()
         .map_err(|_| "Failed to create an audio stream handle".to_string())?;
     audio_stream_handle.log_on_drop(false);
+    let audio_player = DoomSfxPlayer::new(&audio_stream_handle);
 
     let mut app = App {
         window: None,
@@ -499,7 +499,8 @@ fn main() -> Result<(), String> {
         world: World::new(),
         map,
         random: Random::default(),
-        audio_stream_handle,
+        _audio_stream_handle: audio_stream_handle,
+        audio_player,
         audio_buffer: Vec::new(),
         command_buffer: CommandBuffer::new(),
         texture_data: FxHashMap::default(),

@@ -90,7 +90,7 @@ pub fn check_sound_system(
             command_buffer.remove::<(Sleeping, SpriteAnimation)>(entity);
             command_buffer.insert(entity, (Active, new_anim));
 			
-			audio_buffer.push(SfxEvent { sfx_id: to_u64(&see_sound), position: Some((pos.x, pos.z)) })
+			audio_buffer.push(SfxEvent { sfx_id: to_u64(&see_sound), position: Some((pos.x, pos.y, pos.z)) })
 		} else {
             command_buffer.remove_one::<Sleeping>(entity);
             command_buffer.insert_one(entity, Active);

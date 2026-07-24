@@ -1,62 +1,123 @@
-use engine::SfxEvent;
+use engine::{Position, PlayerRotation, SfxEvent};
+use rodio::Source;
 use rustc_hash::FxHashMap;
 use wad_parser::DoomSfx;
 use rodio::{
-    buffer::SamplesBuffer, math::nz, mixer::Mixer, source::Source
+    MixerDeviceSink, SpatialPlayer, buffer::SamplesBuffer, math::nz
 };
 use std::num::NonZero;
+use std::f32::consts::TAU;
+use hecs::QueryBorrow;
 
-const CLOSE_DIST: f32 = 160.0;
-const CLIPPING_DIST: f32 = 1200.0;
-const MAX_CONCURRENT_SOUNDS_PER_TICK: usize = 8;
+pub struct DoomSfxPlayer {
+    spatial_players: Vec<SpatialPlayer>,
+    idx: usize
+}
 
-pub fn calculate_spatial_volume(listener_pos: (f32, f32), source_pos: (f32, f32)) -> f32 {
-    let dx = (listener_pos.0 - source_pos.0).abs();
-    let dy = (listener_pos.1 - source_pos.1).abs();
-    
-    let approx_dist = dx + dy - (dx.min(dy) * 0.5);
+const EAR_HALF_WIDTH: f32 = 0.08;
+const MAX_AUDIBLE_DIST: f32 = 600.0;
+const METERS_PER_UNIT: f32 = 0.03;
 
-    if approx_dist > CLIPPING_DIST {
-        return 0.0;
+impl DoomSfxPlayer {
+    pub fn new(handle: &MixerDeviceSink) -> Self {
+        DoomSfxPlayer {
+            spatial_players: Vec::from_iter([
+                SpatialPlayer::connect_new(handle.mixer(), [0.0; 3], [-EAR_HALF_WIDTH, 0.0, 0.0], [EAR_HALF_WIDTH, 0.0, 0.0]),
+                SpatialPlayer::connect_new(handle.mixer(), [0.0; 3], [-EAR_HALF_WIDTH, 0.0, 0.0], [EAR_HALF_WIDTH, 0.0, 0.0]),
+                SpatialPlayer::connect_new(handle.mixer(), [0.0; 3], [-EAR_HALF_WIDTH, 0.0, 0.0], [EAR_HALF_WIDTH, 0.0, 0.0]),
+                SpatialPlayer::connect_new(handle.mixer(), [0.0; 3], [-EAR_HALF_WIDTH, 0.0, 0.0], [EAR_HALF_WIDTH, 0.0, 0.0]),
+                SpatialPlayer::connect_new(handle.mixer(), [0.0; 3], [-EAR_HALF_WIDTH, 0.0, 0.0], [EAR_HALF_WIDTH, 0.0, 0.0]),
+                SpatialPlayer::connect_new(handle.mixer(), [0.0; 3], [-EAR_HALF_WIDTH, 0.0, 0.0], [EAR_HALF_WIDTH, 0.0, 0.0]),
+                SpatialPlayer::connect_new(handle.mixer(), [0.0; 3], [-EAR_HALF_WIDTH, 0.0, 0.0], [EAR_HALF_WIDTH, 0.0, 0.0]),
+                SpatialPlayer::connect_new(handle.mixer(), [0.0; 3], [-EAR_HALF_WIDTH, 0.0, 0.0], [EAR_HALF_WIDTH, 0.0, 0.0]),
+                
+                // the ninth one is reserved for sounds in player's head
+                SpatialPlayer::connect_new(handle.mixer(), [0.0; 3], [-EAR_HALF_WIDTH, 0.0, 0.0], [EAR_HALF_WIDTH, 0.0, 0.0]),
+            ]),
+            idx: 0
+        }
     }
 
-    if approx_dist < CLOSE_DIST {
-        return 1.0;
+    fn play(&mut self, src: SamplesBuffer, delta_pos: [f32; 3], left_ear: [f32; 3], right_ear: [f32; 3]) {
+        for _ in 0..8 {
+            if self.spatial_players[self.idx].empty() {
+                self.spatial_players[self.idx].set_emitter_position(delta_pos);
+                self.spatial_players[self.idx].set_left_ear_position(left_ear);
+                self.spatial_players[self.idx].set_right_ear_position(right_ear);
+                self.spatial_players[self.idx].append(src.amplify(22.0));
+                
+                self.idx = (self.idx + 1) & 0b111;
+                return;
+            }
+            self.idx = (self.idx + 1) & 0b111;
+        }
     }
 
-    (CLIPPING_DIST - approx_dist) / (CLIPPING_DIST - CLOSE_DIST)
+    fn play_head_sound(&mut self, src: SamplesBuffer) {
+        if !self.spatial_players[8].empty() {
+            return;
+        }
+
+        self.spatial_players[8].append(src);
+    }
 }
 
 pub fn audio_system(
+    mut audio_query: QueryBorrow<'_, (&Position, &PlayerRotation)>,
     audio_buffer: &mut Vec<SfxEvent>,
+    audio_player: &mut DoomSfxPlayer,
     sound_cache: &FxHashMap<u64, DoomSfx>,
-    mixer: &Mixer,
-    player_pos: (f32, f32),
 ) {
-    let mut played_counts: FxHashMap<u64, usize> = FxHashMap::default();
-    let mut total_played_this_tick = 0;
+    let (p_pos, p_rot) = match audio_query.iter().next() {
+        Some(player) => player,
+        None => return,
+    };
 
     for event in audio_buffer.drain(..) {
-        if total_played_this_tick >= MAX_CONCURRENT_SOUNDS_PER_TICK {
-            break;
-        }
+        let sound = match sound_cache.get(&event.sfx_id) {
+            Some(win) => win,
+            None => continue
+        };
 
-        let count = played_counts.entry(event.sfx_id).or_insert(0);
-        if *count >= 2 { continue; }
+        match event.position {
+            None => {
+                let source = SamplesBuffer::new(nz!(1), NonZero::new(sound.sample_rate).unwrap(), sound.samples.clone());
+                audio_player.play_head_sound(source);
+            },
+            Some(emitter_pos) => {
+                if audio_player.spatial_players[..8].iter().all(|p| !p.empty()) {
+                    continue;
+                }
 
-        if let Some(sound) = sound_cache.get(&event.sfx_id) {
-            let final_volume = match event.position {
-                Some(emitter_pos) => calculate_spatial_volume(player_pos, emitter_pos),
-                None => 1.0
-            };
+                let dx = (p_pos.x - emitter_pos.0).abs();
+                let dy = (p_pos.y - emitter_pos.1).abs();
+                let dz = (p_pos.z - emitter_pos.2).abs();
 
-            if final_volume <= 0.1 { continue; }
+                let approx_dist_xz = dx + dz - (dx.min(dz) * 0.5);
+                
+                let approx_dist = approx_dist_xz + (dy * 0.5);
 
-            let source = SamplesBuffer::new(nz!(1), NonZero::new(sound.sample_rate).unwrap(), sound.samples.clone()).amplify(final_volume);
+                if approx_dist > MAX_AUDIBLE_DIST {
+                    continue;
+                }
 
-            mixer.add(source);
-            *count += 1;
-            total_played_this_tick += 1;
+                let dx_m = (p_pos.x - emitter_pos.0) * METERS_PER_UNIT;
+                let dy_m = (p_pos.y - emitter_pos.1) * METERS_PER_UNIT;
+                let dz_m = (p_pos.z - emitter_pos.2) * METERS_PER_UNIT;
+
+                let source = SamplesBuffer::new(nz!(1), NonZero::new(sound.sample_rate).unwrap(), sound.samples.clone());
+
+                let p_angle = (p_rot.angle as f64 / u32::MAX as f64) as f32 * TAU;
+                let perp_x = p_angle.sin() * EAR_HALF_WIDTH;
+                let perp_z = -p_angle.cos() * EAR_HALF_WIDTH;
+
+                audio_player.play(
+                    source, 
+                    [dx_m, dy_m, dz_m], 
+                    [perp_x, 0.0, perp_z],
+                    [-perp_x, 0.0, -perp_z]
+                );
+            }
         }
     }
 }
