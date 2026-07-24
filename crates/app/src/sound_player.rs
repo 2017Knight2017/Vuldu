@@ -17,6 +17,8 @@ pub struct DoomSfxPlayer {
 const EAR_HALF_WIDTH: f32 = 0.08;
 const MAX_AUDIBLE_DIST: f32 = 600.0;
 const METERS_PER_UNIT: f32 = 0.03;
+const VOLUME_FAR: f32 = 22.0;
+const VOLUME_NEAR: f32 = 3.0;
 
 impl DoomSfxPlayer {
     pub fn new(handle: &MixerDeviceSink) -> Self {
@@ -38,13 +40,13 @@ impl DoomSfxPlayer {
         }
     }
 
-    fn play(&mut self, src: SamplesBuffer, delta_pos: [f32; 3], left_ear: [f32; 3], right_ear: [f32; 3]) {
+    fn play(&mut self, src: SamplesBuffer, delta_pos: [f32; 3], left_ear: [f32; 3], right_ear: [f32; 3], volume_factor: f32) {
         for _ in 0..8 {
             if self.spatial_players[self.idx].empty() {
                 self.spatial_players[self.idx].set_emitter_position(delta_pos);
                 self.spatial_players[self.idx].set_left_ear_position(left_ear);
                 self.spatial_players[self.idx].set_right_ear_position(right_ear);
-                self.spatial_players[self.idx].append(src.amplify(22.0));
+                self.spatial_players[self.idx].append(src.amplify(volume_factor));
                 
                 self.idx = (self.idx + 1) & 0b111;
                 return;
@@ -111,11 +113,15 @@ pub fn audio_system(
                 let perp_x = p_angle.sin() * EAR_HALF_WIDTH;
                 let perp_z = -p_angle.cos() * EAR_HALF_WIDTH;
 
+                let approx_dist = approx_dist_xz + (dy * 0.5);
+                let volume_factor = VOLUME_NEAR + approx_dist / MAX_AUDIBLE_DIST * (VOLUME_FAR - VOLUME_NEAR);
+
                 audio_player.play(
                     source, 
                     [dx_m, dy_m, dz_m], 
                     [perp_x, 0.0, perp_z],
-                    [-perp_x, 0.0, -perp_z]
+                    [-perp_x, 0.0, -perp_z],
+                    volume_factor
                 );
             }
         }

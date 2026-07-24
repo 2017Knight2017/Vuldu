@@ -206,7 +206,7 @@ pub fn to_u64(name_bytes: &[u8]) -> u64 {
         if i >= name_bytes.len() || name_bytes[i] == 0 {
             break;
         }
-        buf[i] = name_bytes[i];
+        buf[i] = name_bytes[i].to_ascii_uppercase();
     }
 
     u64::from_le_bytes(buf)
