@@ -1,6 +1,4 @@
-use std::f32::consts::TAU;
-
-use crate::{DoomMap, MapLinedef, to_u64};
+use crate::{DoomMap, MapLinedef, MapVertex, to_u64};
 use renderer::{Vertex};
 use earcut::Earcut;
 use rustc_hash::{FxBuildHasher, FxHashMap};
@@ -34,6 +32,13 @@ impl Aabb {
         self.min_x <= other.max_x && self.max_x >= other.min_x &&
         self.min_y <= other.max_y && self.max_y >= other.min_y
     }
+}
+
+#[derive(Clone, Copy, Debug)]
+struct Edge {
+    v1: MapVertex,
+    v2: MapVertex,
+    used: bool,
 }
 
 impl DoomMap {
@@ -235,7 +240,7 @@ impl DoomMap {
         	    Some(list) => list,
         	    None => continue,
         	};
-	        let mut edges: Vec<([f32; 2], [f32; 2])> = Vec::with_capacity(sector_linedefs.len() * 2);
+	        let mut edges: Vec<Edge> = Vec::with_capacity(sector_linedefs.len() * 2);
 
 	        for linedef in sector_linedefs {
 				let sector_front = if linedef.sidenum[0] != u16::MAX {
@@ -256,78 +261,65 @@ impl DoomMap {
 
 	            let v1 = self.vertices[linedef.v1 as usize];
 	            let v2 = self.vertices[linedef.v2 as usize];
-	            let p1 = [v1.x as f32, v1.y as f32];
-	            let p2 = [v2.x as f32, v2.y as f32];
 
 	            if sector_front == Some(current_sector_id) {
-    			    edges.push((p1, p2));
+    			    edges.push(Edge { v1, v2, used: false });
     			}
 			
     			if sector_back == Some(current_sector_id) {
-    			    edges.push((p2, p1));
+    			    edges.push(Edge { v1: v2, v2: v1, used: false });
     			}
 	        }
 
 	        if edges.is_empty() { continue; }
 
+			let mut adjacency: FxHashMap<MapVertex, Vec<usize>> =
+            	FxHashMap::with_capacity_and_hasher(edges.len(), FxBuildHasher::default());
+
+			for (idx, edge) in edges.iter().enumerate() {
+        	    adjacency.entry(edge.v1).or_default().push(idx);
+        	}
+
 	        let mut polygon_loops: Vec<Vec<[f32; 2]>> = Vec::new();
 
-	        while !edges.is_empty() {
+	        for i in 0..edges.len() {
+				if edges[i].used {
+					continue
+				}
+
+				edges[i].used = true;
+            	let start_edge = edges[i];
+
 	            let mut current_loop = Vec::new();
+	            current_loop.push([start_edge.v1.x as f32, start_edge.v1.y as f32]);
 
-	            let (p1, p2) = edges.swap_remove(0);
-	            current_loop.push(p1);
-
-				let start_point = p1;
-				let mut prev_point = p1;
-	            let mut current_tip = p2;
+				let start_point = start_edge.v1;
+				let mut prev_point = start_edge.v1;
+	            let mut current_tip = start_edge.v2;
 
 	            let mut stuck = false;
 
-    			let max_steps = edges.len() + 2; 
-    			let mut steps = 0;
-
-    			while !stuck && steps < max_steps {
-    			    steps += 1;
+    			while current_tip != start_point {
+    			    current_loop.push([current_tip.x as f32, current_tip.y as f32]);
 				
-    			    if (current_tip[0] - start_point[0]).abs() < 0.001 &&
-    			    	(current_tip[1] - start_point[1]).abs() < 0.001 
-    			    {
-    			        break;
-    			    }
-				
-    			    current_loop.push(current_tip);
-				
-    			    if let Some(idx) = find_next_edge_by_angle(prev_point, current_tip, &edges) {
-    			        let next_edge = edges.swap_remove(idx);
+    			    if let Some(next_idx) = find_next_edge_by_angle(prev_point, current_tip, &edges, &adjacency) {
+    			        edges[next_idx].used = true;
     			        prev_point = current_tip;
-    			        current_tip = next_edge.1;
+    			        current_tip = edges[next_idx].v2;
     			    } else {
     			        stuck = true;
+						break;
     			    }
     			}
 
-    			if stuck {
-    			    current_loop.push(current_tip);
+    			if stuck || current_loop.len() < 3 {
     			    println!("Loop got stuck at tip: {:?}", current_tip);
+					continue;
     			}
-
-	            current_loop.dedup_by(|a, b| (a[0] - b[0]).abs() < 0.001 && (a[1] - b[1]).abs() < 0.001);
 			
-	            if current_loop.len() >= 3 {
-	                let first = current_loop.first().unwrap();
-	                let last = current_loop.last().unwrap();
-
-	                if (first[0] - last[0]).abs() < 0.001 && (first[1] - last[1]).abs() < 0.001 {
-	                    current_loop.pop();
-	                }
-
-	                if current_loop.len() >= 3 {
-	                    let cleaned = clean_polygon(&current_loop);
-	                    if cleaned.len() >= 3 {
-	                        polygon_loops.push(cleaned);
-	                    }
-	                }
+	            let cleaned = clean_polygon(&current_loop);
+	            if cleaned.len() >= 3 {
+	                polygon_loops.push(cleaned);
 	            }
 	        }
 
@@ -336,17 +328,20 @@ impl DoomMap {
 	        let calc_true_area = |poly: &Vec<[f32; 2]>| -> f32 {
 	            let len = poly.len();
 	            if len < 3 { return 0.0; }
+
 	            let mut area = 0.0;
 	            for i in 0..len {
 	                let next = (i + 1) % len;
 	                area += poly[i][0] * poly[next][1] - poly[next][0] * poly[i][1];
 	            }
+				
 	            area.abs()
 	        };
 
 	        polygon_loops.sort_by(|a, b| {
 	            let area_a = calc_true_area(a);
 	            let area_b = calc_true_area(b);
+
 	            area_b.partial_cmp(&area_a).unwrap_or(std::cmp::Ordering::Equal)
 	        });
 
@@ -356,6 +351,7 @@ impl DoomMap {
 	        for poly_loop in polygon_loops.iter().cloned() {
 				let poly_aabb = Aabb::from_polygon(&poly_loop);
 	            let mut is_hole = false;
+
 	            for (outer, outer_aabb) in &outer_sectors {
             	    if poly_aabb.intersects(outer_aabb) {
             	        if poly_loop.iter().any(|&pt| point_in_polygon(pt, outer)) {
@@ -384,9 +380,14 @@ impl DoomMap {
 	                let next = (i + 1) % o_len;
 	                outer_area += outer_loop[i][0] * outer_loop[next][1] - outer_loop[next][0] * outer_loop[i][1];
 	            }
-	            if outer_area < 0.0 { outer_loop.reverse(); }
 
-	            for pt in &outer_loop { flat_points.push(*pt); }
+	            if outer_area < 0.0 { 
+					outer_loop.reverse(); 
+				}
+
+	            for pt in &outer_loop { 
+					flat_points.push(*pt); 
+				}
 
 	            for hole in &hole_loops {
 					let hole_aabb = Aabb::from_polygon(hole);
@@ -406,8 +407,14 @@ impl DoomMap {
 	                    let next = (i + 1) % h_len;
 	                    h_area += hole_copy[i][0] * hole_copy[next][1] - hole_copy[next][0] * hole_copy[i][1];
 	                }
-	                if h_area > 0.0 { hole_copy.reverse(); }
-	                for pt in hole_copy { flat_points.push(pt); }
+
+	                if h_area > 0.0 { 
+						hole_copy.reverse(); 
+					}
+
+	                for pt in hole_copy { 
+						flat_points.push(pt); 
+					}
 	            }
 			
 	            let mut sector_indices: Vec<u32> = Vec::new();
@@ -549,26 +556,46 @@ impl DoomMap {
 fn point_in_polygon(point: [f32; 2], poly: &[[f32; 2]]) -> bool {
     let mut inside = false;
     let mut j = poly.len() - 1;
+
     for i in 0..poly.len() {
-        if (poly[i][1] > point[1]) != (poly[j][1] > point[1]) &&
-           (point[0] < (poly[j][0] - poly[i][0]) * (point[1] - poly[i][1]) / (poly[j][1] - poly[i][1]) + poly[i][0]) {
-            inside = !inside;
-        }
+		let pi = poly[i];
+		let pj = poly[j];
+
+		let crosses_y_span = (pi[1] > point[1]) != (pj[1] > point[1]);
+
+		if crosses_y_span {
+			let x_intersection = (pj[0] - pi[0]) * (point[1] - pi[1]) / (pj[1] - pi[1]) + pi[0];
+
+        	if point[0] < x_intersection {
+        	    inside = !inside;
+        	}
+		}
         j = i;
     }
     inside
 }
 
 fn clean_polygon(poly: &[[f32; 2]]) -> Vec<[f32; 2]> {
-    if poly.len() < 3 { return poly.to_vec(); }
-    let mut cleaned = Vec::new();
+	let len = poly.len();
+    if len < 3 { 
+		return Vec::new(); 
+	}
+
+    let mut cleaned = Vec::with_capacity(len);
+
     for i in 0..poly.len() {
         let prev = poly[(i + poly.len() - 1) % poly.len()];
         let curr = poly[i];
         let next = poly[(i + 1) % poly.len()];
 
-        let area = (curr[0] - prev[0]) * (next[1] - prev[1]) - (next[0] - prev[0]) * (curr[1] - prev[1]);
-        if area.abs() > 0.001 { 
+		let dx1 = curr[0] - prev[0];
+        let dy1 = curr[1] - prev[1];
+        let dx2 = next[0] - curr[0];
+        let dy2 = next[1] - curr[1];
+
+		let cross = dx1 * dy2 - dy1 * dx2;
+
+        if cross.abs() > 0.001 { 
             cleaned.push(curr);
         }
     }
@@ -576,36 +603,55 @@ fn clean_polygon(poly: &[[f32; 2]]) -> Vec<[f32; 2]> {
 }
 
 fn find_next_edge_by_angle(
-    prev_point: [f32; 2],
-    current_tip: [f32; 2],
-    edges: &[([f32; 2], [f32; 2])],
+    prev_point: MapVertex,
+    current_tip: MapVertex,
+    edges: &[Edge],
+	adjacency: &FxHashMap<MapVertex, Vec<usize>>,
 ) -> Option<usize> {
-    let in_dir = [current_tip[0] - prev_point[0], current_tip[1] - prev_point[1]];
-    let in_angle = in_dir[1].atan2(in_dir[0]);
+	let pseudo_angle = |dx: f32, dy: f32| -> f32 {
+	    let sum = dx.abs() + dy.abs();
+	    if sum == 0.0 {
+	        return 0.0;
+	    }
+	    let p = dx / sum;
+	    if dy >= 0.0 {
+	        1.0 - p  // [0.0, 2.0]
+	    } else {
+	        3.0 + p  // [2.0, 4.0]
+	    }
+	};
+
+	let candidate_indices = adjacency.get(&current_tip)?;
+
+    let in_dir = [
+		(current_tip.x - prev_point.x) as f32, 
+		(current_tip.y - prev_point.y) as f32,
+	];
+    let in_angle = pseudo_angle(in_dir[0], in_dir[1]);
 
     let mut best_idx = None;
     let mut min_turn_angle = f32::MAX;
 
-    for (idx, edge) in edges.iter().enumerate() {
-        if (edge.0[0] - current_tip[0]).abs() < 0.1 && (edge.0[1] - current_tip[1]).abs() < 0.1 {
-            let next_point = edge.1;
+    for &idx in candidate_indices {
+		let edge = &edges[idx];
+        if edge.used {
+            continue;
+        }
             
-            let out_dir = [next_point[0] - current_tip[0], next_point[1] - current_tip[1]];
-            let out_angle = out_dir[1].atan2(out_dir[0]);
+        let out_dir = [
+			(edge.v2.x - current_tip.x) as f32, 
+			(edge.v2.y - current_tip.y) as f32
+		];
+        let out_angle = pseudo_angle(out_dir[0], out_dir[1]);
 
-            let mut turn_angle = out_angle - in_angle;
+        let mut turn_angle = out_angle - in_angle;
+        if turn_angle < 0.0 {
+            turn_angle += 4.0;
+        }
 
-            while turn_angle < 0.0 {
-                turn_angle += TAU;
-            }
-            while turn_angle >= TAU {
-                turn_angle -= TAU;
-            }
-
-            if turn_angle < min_turn_angle {
-                min_turn_angle = turn_angle;
-                best_idx = Some(idx);
-            }
+        if turn_angle < min_turn_angle {
+            min_turn_angle = turn_angle;
+            best_idx = Some(idx);
         }
     }
 

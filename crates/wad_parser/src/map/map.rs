@@ -3,7 +3,7 @@ use std::ptr::read_unaligned;
 use std::mem::size_of;
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MapVertex
 {
 	pub x: i16,

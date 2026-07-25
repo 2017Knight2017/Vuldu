@@ -216,7 +216,9 @@ impl App {
     fn setup_level_geometry(&mut self, renderer: &mut SafeRenderer) {
         println!("Building map geometry...");
         let (wall_vertices, wall_indices) = self.map.get_walls_vertices(&self.texture_data);
+        println!("Walls geometry is has been built");
         let (flat_vertices, flat_indices) = self.map.get_flats_vertices(&self.texture_data);
+        println!("Flats geometry is has been built");
         let (obj_vertices, obj_indices) = self.map.get_objects_vertices();
 
         let mut level_vertices = wall_vertices;
@@ -478,12 +480,12 @@ fn main() -> Result<(), String> {
     //let map = DoomMap::from_wad(&wad_manager, &args.map)?;
 
     wad_manager.add_wad("assets/DOOM2.WAD")?;
-    //wad_manager.add_wad("assets/oku2v31.wad")?;
+    wad_manager.add_wad("assets/oku2v31.wad")?;
     //wad_manager.add_wad("assets/nuts.wad")?;
     //wad_manager.add_wad("assets/Sunder 2512.wad")?;
     //wad_manager.add_wad("assets/HR.WAD")?;
 
-    let map = DoomMap::from_wad(&wad_manager, 2)?;
+    let map = DoomMap::from_wad(&wad_manager, 1)?;
 
     let event_loop = EventLoop::new().unwrap();
     event_loop.set_control_flow(ControlFlow::Poll);
