@@ -4,6 +4,8 @@ use earcut::Earcut;
 use rustc_hash::{FxBuildHasher, FxHashMap};
 
 pub const NF_SUBSECTOR: usize = 0x8000; 
+pub const ML_DONTPEGTOP: i16 = 0b1000;
+pub const ML_DONTPEGBOTTOM: i16 = 0b10000;
 
 #[derive(Debug, Clone, Copy)]
 struct Aabb {
@@ -72,8 +74,16 @@ impl DoomMap {
 	        let dy = (v2.y - v1.y) as f32;
 	        let wall_length = (dx * dx + dy * dy).sqrt();
 	        let tex_offset = front_sidedef.textureoffset as f32;
+			let row_offset = front_sidedef.rowoffset as f32;
 
-	        let mut add_wall_quad = |y_low: f32, y_high: f32, tex_name: &[u8], v_top_align: bool, fake_flat_name: &[u8], other_sector_ceilingpic: &[u8]| {
+	        let mut add_wall_quad = |
+				y_low: f32, 
+				y_high: f32, 
+				tex_name: &[u8], 
+				v_offset: f32, 
+				fake_flat_name: &[u8], 
+				other_sector_ceilingpic: &[u8]
+			| {
             	let wall_height = y_high - y_low;
             	if wall_height <= 0.0 { return; }
 
@@ -85,8 +95,9 @@ impl DoomMap {
     			    .get(&to_u64(final_tex_name))
     			    .unwrap_or(&(0, 64, 64, false));
 
-    			let (final_tex_id, floor_tex_id) = if final_tex_name == b"F_SKY1\0\0" || 
-					(other_sector_ceilingpic == b"F_SKY1\0\0" && fake_flat_name == b"F_SKY1\0\0") {
+    			let (final_tex_id, floor_tex_id) = if final_tex_name.starts_with(b"F_SKY1") || 
+					(other_sector_ceilingpic.starts_with(b"F_SKY1") && fake_flat_name.starts_with(b"F_SKY1")) 
+				{
 					((u16::MAX - 1) as u32, 0)
 				} else if is_fake_wall {
     			    (u16::MAX as u32, tex_id)
@@ -109,13 +120,9 @@ impl DoomMap {
             	    u_start = (seg.offset as f32 + tex_offset) / tex_width as f32;
             	    u_end = u_start + (wall_length / tex_width as f32);
 
-            	    if v_top_align {
-            	        v_start = 0.0;
-            	        v_end = wall_height / tex_height as f32;
-            	    } else {
-            	        v_start = -(wall_height / tex_height as f32);
-            	        v_end = 0.0;
-            	    }
+            	    let f_tex_height = tex_height as f32;
+                	v_start = (v_offset + row_offset) / f_tex_height;
+                	v_end = v_start + (wall_height / f_tex_height);
             	}
 
 	            let start_idx = vertices.len() as u32;
@@ -169,44 +176,83 @@ impl DoomMap {
 	            indices.push(start_idx + 3);
 	        };
 
+			let dont_peg_top = (linedef.flags & ML_DONTPEGTOP) != 0;
+        	let dont_peg_bottom = (linedef.flags & ML_DONTPEGBOTTOM) != 0;
+
 	        match back_sector {
         	    None => {
+					let (_, _, tex_height, _) = *texture_ids
+                	    .get(&to_u64(&front_sidedef.midtexture))
+                	    .unwrap_or(&(0, 64, 64, false));
+					let tex_h = tex_height as f32;
+                
+                	let v_offset = if dont_peg_bottom {
+                	    let offset = (front_sector.ceilingheight - front_sector.floorheight) as f32;
+                	    tex_h - offset
+                	} else {
+                	    0.0
+                	};
+
         	        add_wall_quad(
 						front_sector.floorheight as f32, 
 						front_sector.ceilingheight as f32, 
 						&front_sidedef.midtexture, 
-						true, 
+						v_offset, 
 						&front_sector.floorpic,
 						&[]
 					);
         	    },
         	    Some((_, b_sector)) => {
         	        if front_sector.ceilingheight > b_sector.ceilingheight {
-        	            add_wall_quad(
+						let (_, _, tex_height, _) = *texture_ids
+                            .get(&to_u64(&front_sidedef.toptexture))
+                            .unwrap_or(&(0, 64, 64, false));
+						let tex_h = tex_height as f32;
+
+						let v_offset = if dont_peg_top {
+							0.0
+                        } else {
+							let offset = (b_sector.ceilingheight - front_sector.ceilingheight) as f32;
+                            offset - tex_h
+                        };
+
+						add_wall_quad(
 							b_sector.ceilingheight as f32, 
 							front_sector.ceilingheight as f32, 
 							&front_sidedef.toptexture, 
-							true, 
+							v_offset, 
 							&front_sector.ceilingpic,
 							&b_sector.ceilingpic
 						);
         	        }
 
         	        if front_sector.floorheight < b_sector.floorheight {
+                    	let (_, _, tex_height, _) = *texture_ids
+                    	    .get(&to_u64(&front_sidedef.bottomtexture))
+                    	    .unwrap_or(&(0, 64, 64, false));
+						let tex_h = tex_height as f32;
+
+						let v_offset = if dont_peg_bottom {
+    						let offset = (front_sector.ceilingheight - b_sector.floorheight) as f32;
+							offset - tex_h
+                    	} else {
+							0.0 
+                    	};
+
         	            add_wall_quad(
 							front_sector.floorheight as f32, 
 							b_sector.floorheight as f32, 
 							&front_sidedef.bottomtexture, 
-							false, 
+							v_offset,
 							&b_sector.floorpic,
 							&front_sector.ceilingpic
 						);
         	        }
 
         	        if front_sidedef.midtexture[0] != 0x2d {
-        	            let mid_low = f32::max(front_sector.floorheight as f32, b_sector.floorheight as f32);
-        	            let mid_high = f32::min(front_sector.ceilingheight as f32, b_sector.ceilingheight as f32);
-        	            add_wall_quad(mid_low, mid_high, &front_sidedef.midtexture, true, &front_sector.floorpic, &b_sector.ceilingpic);
+        	            let mid_low = i16::max(front_sector.floorheight, b_sector.floorheight) as f32;
+        	            let mid_high = i16::min(front_sector.ceilingheight, b_sector.ceilingheight) as f32;
+        	            add_wall_quad(mid_low, mid_high, &front_sidedef.midtexture, 0.0, &front_sector.floorpic, &b_sector.ceilingpic);
         	        }
         	    }
         	}
@@ -654,6 +700,7 @@ fn find_next_edge_by_angle(
     best_idx
 }
 
+#[inline]
 fn pseudo_angle(dx: f32, dy: f32) -> f32 {
     let sum = dx.abs() + dy.abs();
     if sum == 0.0 {
