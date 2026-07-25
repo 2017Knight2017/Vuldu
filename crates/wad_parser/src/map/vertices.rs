@@ -299,7 +299,16 @@ impl DoomMap {
 
 	            let mut stuck = false;
 
+				let max_steps = edges.len() + 1;
+				let mut steps = 0;
+
     			while current_tip != start_point {
+					steps += 1;
+    				if steps > max_steps {
+    				    stuck = true;
+    				    break;
+    				}
+
     			    current_loop.push([current_tip.x as f32, current_tip.y as f32]);
 				
     			    if let Some(next_idx) = find_next_edge_by_angle(prev_point, current_tip, &edges, &adjacency) {
@@ -608,19 +617,6 @@ fn find_next_edge_by_angle(
     edges: &[Edge],
 	adjacency: &FxHashMap<MapVertex, Vec<usize>>,
 ) -> Option<usize> {
-	let pseudo_angle = |dx: f32, dy: f32| -> f32 {
-	    let sum = dx.abs() + dy.abs();
-	    if sum == 0.0 {
-	        return 0.0;
-	    }
-	    let p = dx / sum;
-	    if dy >= 0.0 {
-	        1.0 - p  // [0.0, 2.0]
-	    } else {
-	        3.0 + p  // [2.0, 4.0]
-	    }
-	};
-
 	let candidate_indices = adjacency.get(&current_tip)?;
 
     let in_dir = [
@@ -656,4 +652,18 @@ fn find_next_edge_by_angle(
     }
 
     best_idx
+}
+
+fn pseudo_angle(dx: f32, dy: f32) -> f32 {
+    let sum = dx.abs() + dy.abs();
+    if sum == 0.0 {
+        return 0.0;
+    }
+
+    let p = dx / sum;
+    if dy >= 0.0 {
+        1.0 - p  // [0.0, 2.0]
+    } else {
+        3.0 + p  // [2.0, 4.0]
+    }
 }
