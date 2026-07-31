@@ -1351,3 +1351,33 @@ bitflags! {
     	const MAPPED = 1 << 8;
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumIter)]
+pub enum Direction {
+    East,
+    NorthEast,
+    North,
+    NorthWest,
+    West,
+    SouthWest,
+    South,
+    SouthEast,
+}
+
+impl TryFrom<u32> for Direction {
+    type Error = ();
+
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Direction::East),
+            1 => Ok(Direction::NorthEast),
+            2 => Ok(Direction::North),
+            3 => Ok(Direction::NorthWest),
+            4 => Ok(Direction::West),
+            5 => Ok(Direction::SouthWest),
+            6 => Ok(Direction::South),
+            7 => Ok(Direction::SouthEast),
+            _ => Err(()),
+        }
+    }
+}

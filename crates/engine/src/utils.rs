@@ -1,4 +1,8 @@
-use crate::{MELEERANGE, MobjFlags, MobjNum, MobjType, MonsterRotation, Position, Random, point_to_angle};
+use hecs::{Entity, World};
+use strum::IntoEnumIterator;
+use wad_parser::DoomMap;
+
+use crate::{DIAGS, Direction, InstantMoveIntent, MELEERANGE, MobjFlags, MobjInfo, MobjNum, MobjType, MonsterRotation, OPPOSITE, Position, Random, WorldEvent, p_move, point_to_angle};
 
 pub fn aprox_xz_distance(src: (f32, f32), dst: (f32, f32)) -> f32 {
 	let dx = (src.0 - dst.0).abs();
@@ -12,13 +16,18 @@ pub fn aprox_xyz_distance(src: (f32, f32, f32), dst: (f32, f32, f32)) -> f32 {
 }
 
 pub fn in_fov(pos: &Position, rot: &MonsterRotation, player_pos: &Position) -> bool {
-	let angle_to_player = point_to_angle(pos.x - player_pos.x, pos.z - player_pos.z) >> 29;
+    if rot.move_dir.is_none() {
+        return false
+    }
 
-    return angle_to_player == (rot.move_dir.wrapping_sub(2) & 0b111) 
-        || angle_to_player == (rot.move_dir.wrapping_sub(1) & 0b111) 
-        || angle_to_player == rot.move_dir 
-        || angle_to_player == ((rot.move_dir + 1) & 0b111) 
-        || angle_to_player == ((rot.move_dir + 2) & 0b111);
+    let move_dir = rot.move_dir.unwrap() as u32;
+	let angle_to_player = point_to_angle(-(player_pos.x - pos.x), player_pos.z - pos.z) >> 29;
+
+    return angle_to_player == (move_dir.wrapping_sub(2) & 0b111) 
+        || angle_to_player == (move_dir.wrapping_sub(1) & 0b111) 
+        || angle_to_player == move_dir 
+        || angle_to_player == ((move_dir + 1) & 0b111) 
+        || angle_to_player == ((move_dir + 2) & 0b111);
 }
 
 pub fn p_check_melee_range(pos: &Position, target_pos: &Position, target_radius: f32) -> bool {
@@ -80,21 +89,117 @@ pub fn p_check_missile_range(
     return (random.p() as f32) >= dist;
 }
 
-pub fn p_new_chase_dir(pos: &Position, rot: &mut MonsterRotation, target_pos: &Position, random: &mut Random) {
-    let delta_x = target_pos.x - pos.x;
-    let delta_y = target_pos.z - pos.z;
+pub fn p_new_chase_dir(
+    ent: Entity,
+    pos: &Position,
+    rot: &mut MonsterRotation,
+    mobj_type: &mut MobjType,
+    mobj_info: &MobjInfo,
+    imi: &mut InstantMoveIntent,
+    target_pos: &Position,
+    map: &DoomMap,
+    world: &World,
+    random: &mut Random,
+    blocklists: &[Vec<Entity>],
+    world_events: &mut Vec<WorldEvent>
+) {
+    let old_dir = rot.move_dir;
+    let turnaround = match old_dir {
+        Some(dir) => Some(OPPOSITE[dir as usize]),
+        None => None
+    };
+    
+    let dx = target_pos.x - pos.x;
+    let dz = target_pos.z - pos.z;
 
-    let d1 = if delta_x > 10.0 {
-        if delta_y > 10.0 { 1 } else if delta_y < -10.0 { 7 } else { 0 }
-    } else if delta_x < -10.0 {
-        if delta_y > 10.0 { 3 } else if delta_y < -10.0 { 5 } else { 4 } 
+    let mut dir: [Option<Direction>; 3] = [None; 3];
+
+    if dx > 10.0 {
+        dir[1] = Some(Direction::East);
+    } else if dx < -10.0 {
+        dir[1] = Some(Direction::West);
     } else {
-        if delta_y > 10.0 { 2 } else if delta_y < -10.0 { 6 } else { 2 } 
+        dir[1] = None;
+    }
+
+    if dz < -10.0 {
+        dir[2] = Some(Direction::South);
+    } else if dz > 10.0 {
+        dir[2] = Some(Direction::North);
+    } else {
+        dir[2] = None;
+    }
+
+    // because of borrow checker
+    let random1 = random.p();
+    let random2 = random.p();
+
+    let mut try_walk = |dir: Option<Direction>, rot: &mut MonsterRotation| -> bool {
+        rot.move_dir = dir;
+        p_move(
+            ent,
+            pos,
+            rot,
+            mobj_type,
+            mobj_info,
+            imi,
+            map,
+            world,
+            random,
+            blocklists,
+            world_events,
+        )
     };
 
-    if d1 != 8 && random.p() & 0b1 != 0 {
-        rot.move_dir = d1;
-    } else {
-        rot.move_dir = (random.p() & 0b111) as u32;
+    if dir[1].is_some() && dir[2].is_some() {
+        let idx = (((dz < 0.0) as usize) << 1) + ((dx > 0.0) as usize);
+        let diag_dir = Some(DIAGS[idx]);
+
+        if diag_dir != turnaround && try_walk(diag_dir, rot) {
+            return;
+        }
     }
+
+    if random1 > 200 || dz.abs() > dx.abs() {
+        dir.swap(1, 2);
+    }
+
+    if dir[1] == turnaround {
+        dir[1] = None;
+    }
+    if dir[2] == turnaround {
+        dir[2] = None;
+    }
+
+    if dir[1].is_some() && try_walk(dir[1], rot) {
+        return;
+    }
+
+    if dir[2].is_some() && try_walk(dir[2], rot) {
+        return;
+    }
+
+    if try_walk(old_dir, rot) {
+        return;
+    }
+
+    if random2 & 0b1 != 0 {
+        for tdir in Direction::iter() {
+            if Some(tdir) != turnaround && try_walk(Some(tdir), rot) {
+                return;
+            }
+        }
+    } else {
+        for tdir in Direction::iter().rev() {
+            if Some(tdir) != turnaround && try_walk(Some(tdir), rot) {
+                return;
+            }
+        }
+    }
+
+    if try_walk(turnaround, rot) {
+        return;
+    }
+
+    rot.move_dir = None;
 }

@@ -21,11 +21,9 @@ pub fn spawn_mobj(
 		None => return
 	};
 
-	let angle = if mobj_type == MobjNum::Player {
-		(angle_raw + 270) as u32 % 360 / 45 * ANG45
-	} else { 
-		angle_raw as u32 / 45 // move_dir, to be exact
-	};
+	let angle = (angle_raw + 270) as u32 % 360 / 45 * ANG45;
+		
+	let move_dir = Direction::try_from(angle_raw as u32 / 45).expect("Error while parsing move_dir");
 
 	let db = DB.get().unwrap();
 	let mobj_info = db.mobjinfo.get(&mobj_type)
@@ -71,7 +69,8 @@ pub fn spawn_mobj(
 				.iter()
 				.map(|&a| MobjFlags::from(a))
 				.collect() 
-			});
+			})
+		.add(Health(mobj_info.spawn_health));
 
 	if mobj_type == MobjNum::Player {
 		entity_builder
@@ -99,8 +98,8 @@ pub fn spawn_mobj(
 				top_offset_shift
 			})
 			.add(MonsterRotation { 
-				move_dir: angle,
-				move_count: (random.p() & 0b111) as i32
+				move_dir: Some(move_dir),
+				move_count: (random.p() & 0xF) as i32
 			})
 			.add(MobjAi {
 				current_state: spawn_state,

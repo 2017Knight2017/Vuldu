@@ -1,15 +1,15 @@
-use hecs::{CommandBuffer, Entity, QueryBorrow};
+use hecs::{CommandBuffer, Entity, QueryBorrow, With};
 use wad_parser::{MapLinedef, MapSidedef, to_u64};
 use crate::{Active, CurrentSector, Database, DynSector, Idle, LinedefFlags, MobjAi, MobjNum, MobjType, PlayerShoot, Position, Random, SfxEvent, SpriteAnimation, Target};
 
 pub fn propagate_sound_system(
-	mut query: QueryBorrow<'_, (Entity, &CurrentSector, &PlayerShoot)>, 
+	mut query: QueryBorrow<'_, With<(Entity, &CurrentSector), &PlayerShoot>>, 
 	command_buffer: &mut CommandBuffer,
 	sectors: &mut [DynSector],
 	linedefs: &[MapLinedef],
 	sidedefs: &[MapSidedef]
 ) {
-	for (entity, current_sector, _player_shoot) in query.iter() {
+	for (entity, current_sector) in query.iter() {
 		propagate_sound_internal(current_sector.0, 0, sectors, linedefs, sidedefs, entity);
 
 		command_buffer.remove_one::<PlayerShoot>(entity);

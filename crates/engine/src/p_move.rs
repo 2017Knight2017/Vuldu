@@ -15,8 +15,14 @@ pub fn p_move(
     blocklists: &[Vec<Entity>], 
     world_events: &mut Vec<WorldEvent>
 ) -> bool {
-    let try_x = pos.x + mobj_info.speed * XSPEED[rot.move_dir as usize];
-    let try_z = pos.z + mobj_info.speed * YSPEED[rot.move_dir as usize];
+    if rot.move_dir.is_none() {
+        return false;
+    }
+
+    let move_dir = rot.move_dir.unwrap();
+
+    let try_x = pos.x + mobj_info.speed * XSPEED[move_dir as usize];
+    let try_z = pos.z + mobj_info.speed * YSPEED[move_dir as usize];
 
     let goal_sector_idx = map.get_sector_by_pos(try_x, try_z);
 
@@ -133,7 +139,7 @@ pub fn p_try_move(
 
     imi.dx = goal_pos.0 - pos.x;
     imi.dz = goal_pos.2 - pos.z;
-    imi.new_sector = Some(map.get_sector_by_pos(goal_pos.0, goal_pos.2));
+    imi.new_sector = Some(map.get_sector_by_pos(-goal_pos.0, goal_pos.2));
 
     (true, true)
 }

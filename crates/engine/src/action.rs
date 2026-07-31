@@ -273,7 +273,10 @@ pub fn chase_system(
         if mobj_type.flags.contains(MobjFlags::JUST_ATTACKED) {
             mobj_type.flags.remove(MobjFlags::JUST_ATTACKED);
             if game_skill != SkillLevel::Nightmare && !fast_monsters {
-                p_new_chase_dir(pos, rot, target_pos, random);
+                p_new_chase_dir(
+    			    ent, pos, rot, mobj_type, mobj_info, imi, 
+    			    target_pos, map, world, random, blocklists, world_events
+    			);
             }
             continue;
         }
@@ -317,19 +320,15 @@ pub fn chase_system(
 
         rot.move_count -= 1;
         if rot.move_count < 0 || !p_move(
-			ent,
-			pos,
-			rot,
-			mobj_type,
-			mobj_info,
-			imi,
-			map,
-			world,
-			random,
-			blocklists,
-			world_events
+			ent, pos, rot, mobj_type, mobj_info, imi,
+			map, world, random, blocklists, world_events
 		) {
-            p_new_chase_dir(pos, rot, target_pos, random);
+            p_new_chase_dir(
+    		    ent, pos, rot, mobj_type, mobj_info, imi, 
+    		    target_pos, map, world, random, blocklists, world_events
+    		);
+		
+    		rot.move_count = (random.p() & 15) as i32;
         }
 
         if let Some(active_sound) = &mobj_info.active_sound {
@@ -340,5 +339,6 @@ pub fn chase_system(
             	});
             }
         }
+
     }
 }

@@ -272,7 +272,7 @@ impl App {
             || friction_system(friction_query),
         );
 
-        let propagate_sound_query = self.world.query::<(Entity, &CurrentSector, &PlayerShoot)>();
+        let propagate_sound_query = self.world.query::<(Entity, &CurrentSector)>().with::<&PlayerShoot>();
         propagate_sound_system(
             propagate_sound_query, 
             &mut self.command_buffer, 

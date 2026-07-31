@@ -8,10 +8,10 @@ impl App {
 	pub fn collect_object_instances(&self, alpha: f32) -> Vec<ObjectInstance> {
 	    let mut player_pos = Vec3::ZERO;
 	
-	    for (position, _player_marker) in self.world.query::<(&Position, &PlayerMarker)>().iter() {
-	        let lerped_x = position.prev_x * (1.0 - alpha) + position.x * alpha;
-	        let lerped_y = position.prev_y * (1.0 - alpha) + position.y * alpha;
-	        let lerped_z = position.prev_z * (1.0 - alpha) + position.z * alpha;
+	    for pos in self.world.query::<&Position>().with::<&PlayerMarker>().iter() {
+	        let lerped_x = pos.prev_x * (1.0 - alpha) + pos.x * alpha;
+	        let lerped_y = pos.prev_y * (1.0 - alpha) + pos.y * alpha;
+	        let lerped_z = pos.prev_z * (1.0 - alpha) + pos.z * alpha;
 	        player_pos = Vec3::new(lerped_x, lerped_y, lerped_z);
 	    }
 
@@ -26,14 +26,17 @@ impl App {
 		let nested_instances = entities_to_process 
         	.par_iter()
         	.with_thread_pool(micropool::split_by_threads())
-        	.map(|(position, rotation, sector_idx, anim)| {
-				let lerped_x = position.prev_x * (1.0 - alpha) + position.x * alpha;
-	    	    let lerped_y = position.prev_y * (1.0 - alpha) + position.y * alpha;
-	    	    let lerped_z = position.prev_z * (1.0 - alpha) + position.z * alpha;	
+        	.map(|(pos, rot, sector_idx, anim)| {
+				let lerped_x = pos.prev_x * (1.0 - alpha) + pos.x * alpha;
+	    	    let lerped_y = pos.prev_y * (1.0 - alpha) + pos.y * alpha;
+	    	    let lerped_z = pos.prev_z * (1.0 - alpha) + pos.z * alpha;	
 			
 	    	    let monster_pos = Vec3::new(lerped_x, lerped_y, lerped_z);
 
-	    	    let monster_angle = rotation.move_dir << 29;
+	    	    let monster_angle = match rot.move_dir {
+					Some(dir) => (dir as u32) << 29,
+					None => 0
+				};
 
 	    	    let to_player = player_pos - monster_pos;
 				let angle_to_player = point_to_angle(-to_player.x, to_player.z);

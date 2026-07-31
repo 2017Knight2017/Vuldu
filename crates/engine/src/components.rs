@@ -1,5 +1,5 @@
 use hecs::Entity;
-use crate::{ActionFunc, CachedStateSprite, MobjFlags, MobjNum, StateNum};
+use crate::{ActionFunc, CachedStateSprite, Direction, MobjFlags, MobjNum, StateNum};
 
 macro_rules! define_markers {
     ($($name:ident);* $(;)?) => {
@@ -36,7 +36,7 @@ pub struct PlayerRotation {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MonsterRotation {
     // move_dir's range = 0..=7
-	pub move_dir: u32,
+	pub move_dir: Option<Direction>,
     pub move_count: i32,
 }
 

@@ -1,5 +1,5 @@
 use phf::{Map, phf_map};
-use crate::MobjNum;
+use crate::{Direction, MobjNum};
 
 pub	const NUMAMMO: usize = 4;
 pub	const NUMPOWERS: usize = 6;
@@ -29,6 +29,24 @@ pub const MAXRADIUS: f32 = 32.0;
 pub const XSPEED: [f32; 8] = [1.0, 0.7171, 0.0, -0.7171, -1.0, -0.7171, 0.0, 0.7171];
 pub const YSPEED: [f32; 8] = [0.0, 0.7171, 1.0, 0.7171, 0.0, -0.7171, -1.0, -0.7171];
 pub const FLOATSPEED: f32 = 4.0;
+
+pub const DIAGS: [Direction; 4] = [
+	Direction::NorthWest,
+	Direction::NorthEast,
+	Direction::SouthWest,
+	Direction::SouthEast
+];
+
+pub const OPPOSITE: [Direction; 8] = [
+    Direction::West, 
+    Direction::SouthWest, 
+    Direction::South, 
+    Direction::SouthEast, 
+    Direction::East, 
+    Direction::NorthEast, 
+    Direction::North, 
+    Direction::NorthWest, 
+];
 
 pub const NUMQUITMESSAGES: usize = 21;
 pub const ENDMESSAGE: [&'static str; NUMQUITMESSAGES] = [
