@@ -4,7 +4,7 @@ use toml;
 use rustc_hash::FxHashMap;
 use std::sync::OnceLock;
 use std::fs;
-use crate::{ActionFunc, AmmoType, MobjFlag, MobjNum, NUMMOBJTYPES, NUMSTATES, NUMWEAPONS, StateNum, WeaponType};
+use crate::{ActionFunc, AmmoType, MobjFlagNum, MobjNum, NUMMOBJTYPES, NUMSTATES, NUMWEAPONS, StateNum, WeaponType};
 
 #[derive(Debug, Deserialize)]
 pub struct MobjInfo {
@@ -34,7 +34,7 @@ pub struct MobjInfo {
     pub damage: u32,
     #[serde(default, deserialize_with = "parse_sfx_name")]
     pub active_sound: Option<[u8; 8]>,
-    pub flags: Vec<MobjFlag>,
+    pub flags: Vec<MobjFlagNum>,
     pub raise_state: Option<StateNum>,
 }
 

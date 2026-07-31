@@ -27,7 +27,7 @@ pub fn spawn_mobj(
 		angle_raw as u32 / 45 // move_dir, to be exact
 	};
 
-	let db = DB.get().expect("DB has not been initialized!");
+	let db = DB.get().unwrap();
 	let mobj_info = db.mobjinfo.get(&mobj_type)
 		.expect(&format!("[FATAL] mobj_info with {:?} was not found!", mobj_type));
 
@@ -44,13 +44,13 @@ pub fn spawn_mobj(
 	let mut top_offset_shift: i16 = 0;
 	if m_len > 0 {
 		top_offset_shift = match mobj_info.flags[m_len-1] {
-			MobjFlag::VertOffsetM1 => -1,
-			MobjFlag::VertOffsetM2 => -2,
-			MobjFlag::VertOffset1 => 1,
-			MobjFlag::VertOffset2 => 2,
-			MobjFlag::VertOffset3 => 3,
-			MobjFlag::VertOffset4 => 4,
-			MobjFlag::VertOffset5 => 5,
+			MobjFlagNum::VertOffsetM1 => -1,
+			MobjFlagNum::VertOffsetM2 => -2,
+			MobjFlagNum::VertOffset1 => 1,
+			MobjFlagNum::VertOffset2 => 2,
+			MobjFlagNum::VertOffset3 => 3,
+			MobjFlagNum::VertOffset4 => 4,
+			MobjFlagNum::VertOffset5 => 5,
 			_ => 0
 		}
 	}
@@ -65,7 +65,13 @@ pub fn spawn_mobj(
 		.add(Position { x, y, z, prev_x: x, prev_y: y, prev_z: z })
 		.add(CurrentSector(sector_idx))
 		.add(Velocity::default())
-		.add(MobjType(mobj_type));
+		.add(MobjType { 
+			type_: mobj_type, 
+			flags: mobj_info.flags
+				.iter()
+				.map(|&a| MobjFlags::from(a))
+				.collect() 
+			});
 
 	if mobj_type == MobjNum::Player {
 		entity_builder
@@ -86,31 +92,32 @@ pub fn spawn_mobj(
         	.add(WeaponOverlay { state_idx: 0, tics: 0, sx: 0.0, sy: 0.0 });
 	} else {
 		entity_builder
-			.add(Sleeping)
+			.add(Idle)
+			.add(InstantMoveIntent { dx: 0.0, dy: 0.0, dz: 0.0, new_sector: None })
 			.add(SpriteAnimation {
-				current_state: mobj_info.spawn_state, 
-				tics_left, 
 				cached_rotations, 
 				top_offset_shift
 			})
 			.add(MonsterRotation { 
 				move_dir: angle,
-				move_count: (random.p() & 0xF) as u32
+				move_count: (random.p() & 0b111) as i32
+			})
+			.add(MobjAi {
+				current_state: spawn_state,
+    			tics_left,
+    			action: spawn_state_data.action,
+    			threshold: 0,
+				reaction_time: mobj_info.reaction_time,
 			});
 	};
 
 	for flag in &mobj_info.flags {
 		match flag {
-			MobjFlag::Solid => entity_builder.add(Solid),
-			MobjFlag::CountKill => entity_builder.add(CountKill),
-			MobjFlag::Shootable => {
-				entity_builder
-					.add(Shootable)
-					.add(Sleeping)
-			},
-			MobjFlag::CountItem => entity_builder.add(CountItem),
-			MobjFlag::Special => entity_builder.add(Special),
-			MobjFlag::Pickup => entity_builder.add(Pickup),
+			MobjFlagNum::Solid => entity_builder.add(Solid),
+			MobjFlagNum::CountKill => entity_builder.add(CountKill),
+			MobjFlagNum::CountItem => entity_builder.add(CountItem),
+			MobjFlagNum::Special => entity_builder.add(Special),
+			MobjFlagNum::Pickup => entity_builder.add(Pickup),
 			_ => { continue; }
 		};
 	}
@@ -129,10 +136,10 @@ pub fn spawn_all_things(world: &mut World, map: &DoomMap, random: &mut Random) {
 		}
 
 		let sector_idx = map.get_sector_by_pos(thing.x as f32, thing.y as f32);
-		let sector = map.sectors[sector_idx].props;
+		let sector = map.sectors[sector_idx];
 
-		if let Some(thing_type) =  MOBJTYPE_BY_DOOMEDNUM.get(&thing.type_) {
+		if let Some(thing_type) = MOBJTYPE_BY_DOOMEDNUM.get(&thing.type_) {
 			spawn_mobj(world, random, *thing_type, sector_idx, -thing.x, sector.floorheight, thing.y, thing.angle);
 		}
-	};
+	}
 }

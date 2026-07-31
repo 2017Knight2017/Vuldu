@@ -19,6 +19,17 @@ pub const INVISTICS: u32 = 60;
 pub const INFRATICS: u32 = 120;
 pub const IRONTICS: u32 = 60;
 
+pub const USERANGE: f32 = 64.0;
+pub const MELEERANGE: f32 = 64.0;
+pub const MISSILERANGE: f32 = 2048.0;
+
+pub const PLAYERHEIGHT: f32 = 56.0;
+pub const MAXRADIUS: f32 = 32.0;
+
+pub const XSPEED: [f32; 8] = [1.0, 0.7171, 0.0, -0.7171, -1.0, -0.7171, 0.0, 0.7171];
+pub const YSPEED: [f32; 8] = [0.0, 0.7171, 1.0, 0.7171, 0.0, -0.7171, -1.0, -0.7171];
+pub const FLOATSPEED: f32 = 4.0;
+
 pub const NUMQUITMESSAGES: usize = 21;
 pub const ENDMESSAGE: [&'static str; NUMQUITMESSAGES] = [
 	"please don't leave, there's more\ndemons to toast!",

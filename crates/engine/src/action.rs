@@ -1,7 +1,7 @@
-use hecs::QueryBorrow;
+use hecs::{CommandBuffer, Entity, QueryBorrow, With, World};
 use serde::Deserialize;
-use wad_parser::to_u64;
-use crate::{ANG45, Active, DB, MobjType, MonsterRotation, PlayerMarker, Position, Random, SfxEvent, SpriteAnimation, point_to_angle};
+use wad_parser::{DoomMap, to_u64};
+use crate::{CurrentSector, DB, DynMap, Health, Idle, InstantMoveIntent, MobjAi, MobjFlags, MobjType, MonsterRotation, PLAYERHEIGHT, PlayerMarker, Position, Random, SfxEvent, SkillLevel, SpriteAnimation, Target, WorldEvent, in_fov, p_check_melee_range, p_check_missile_range, p_check_sight, p_move, p_new_chase_dir, wake_up_monster};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub enum ActionFunc {
@@ -81,25 +81,264 @@ pub enum ActionFunc {
 	BrainExplode,
 }
 
-pub fn chase_system(
-	mut query: QueryBorrow<'_, (&mut MonsterRotation, &Position, &MobjType, &SpriteAnimation, &Active)>, 
-	mut player_query: QueryBorrow<'_, (&Position, &PlayerMarker)>,
-	random: &mut Random,
-	audio_buffer: &mut Vec<SfxEvent>
+/// Must be called before animation_system
+pub fn ai_system(
+	mut query: QueryBorrow<'_, &mut MobjAi>
 ) {
-	for (rot, pos, mobj_type, sprite_anim, _active) in query.iter() {
-		let (player_pos, _) = player_query.iter().next().unwrap();
-		let dx = player_pos.x - pos.x;
-		let dy = player_pos.z - pos.z;
+	for ai in query.iter() {
+		if ai.tics_left <= 0 {
+			continue;
+		}
 
-		let angle = point_to_angle(-dx, dy);
-		rot.move_dir = ((angle.wrapping_add(ANG45/2)) >> 29) & 0b111;
+		ai.tics_left -= 1;
+		if ai.tics_left == 0 {
+			let db = DB.get().unwrap();
 
-		let db = DB.get().expect("DB has not been initialized!");
-		if let Some(active_sound) = db.mobjinfo[&mobj_type.0].active_sound {
-			if random.p() & 0xFF < 2 && sprite_anim.tics_left == 1 {
-				audio_buffer.push(SfxEvent { sfx_id: to_u64(&active_sound), position: Some((pos.x, pos.y, pos.z)) })
+			let current_state = db.states[&ai.current_state];
+
+			if let Some(next_state_num) = current_state.next_state {
+				let next_state = db.states[&next_state_num];
+
+				ai.current_state = next_state_num;
+				ai.tics_left = next_state.tics;
+				ai.action = next_state.action;
 			}
 		}
 	}
+}
+
+/// Must be called after propagate_sound_system
+pub fn check_sound_system(
+	mut query: QueryBorrow<'_, With<(Entity, &mut SpriteAnimation, &mut MobjAi, &Position, &CurrentSector, &MobjType), &Idle>>, 
+	world: &World,
+	map: &DoomMap,
+	dyn_map: &mut DynMap,
+	random: &mut Random,
+	command_buffer: &mut CommandBuffer, 
+	audio_buffer: &mut Vec<SfxEvent>, 
+) {
+	let db = DB.get().unwrap();
+	for (entity, sprite_anim, ai, pos, current_sector, mobj_type) in query.iter() {
+        let sector = &dyn_map.sectors[current_sector.0];
+
+        if sector.sound_traversed == u32::MAX {
+            continue;
+        }
+
+        if let Some(sound_target_entity) = sector.sound_target {            
+            if mobj_type.flags.contains(MobjFlags::AMBUSH) {
+				let mut target_query = world.query_one::<(&Position, &CurrentSector)>(entity);
+
+                match target_query.get() {
+                    Ok((target_pos, target_sector)) => {
+						if !p_check_sight( 
+							pos, 
+							current_sector,
+							db.mobjinfo[&mobj_type.type_].height,
+							target_pos,
+							target_sector,
+							PLAYERHEIGHT,
+							map,
+							&mut dyn_map.linedefs,
+							&mut dyn_map.valid_count
+						) {
+                	        continue;
+                	    }
+					}
+					Err(_) => continue
+                } 
+            }
+
+            wake_up_monster(
+                entity, 
+                pos, 
+                mobj_type, 
+				sound_target_entity,
+				sprite_anim,
+				ai, 
+                random, 
+                command_buffer, 
+                audio_buffer,
+                db
+            );
+        }
+    }
+}
+
+pub fn check_sight_system(
+	mut query: QueryBorrow<'_, With<(Entity, &mut SpriteAnimation, &mut MobjAi, &Position, &CurrentSector, &MonsterRotation, &MobjType), &Idle>>, 
+	mut players_query: QueryBorrow<'_, With<(Entity, &Position, &CurrentSector, &MobjType), &PlayerMarker>>, 
+	map: &DoomMap,
+	dyn_map: &mut DynMap,
+	random: &mut Random,
+	command_buffer: &mut CommandBuffer, 
+	audio_buffer: &mut Vec<SfxEvent>, 
+) {
+	let db = DB.get().unwrap();
+	for (entity, sprite_anim, ai, pos, current_sector, rot, mobj_type) in query.iter() {
+        for (player_entity, player_pos, player_sector, player_flags) in players_query.iter() {
+            
+            if !player_flags.flags.contains(MobjFlags::SHOOTABLE) {
+                continue;
+            }
+
+            if !in_fov(&pos, &rot, &player_pos) {
+                continue;
+            }
+
+            if p_check_sight( 
+				pos, 
+				current_sector,
+				db.mobjinfo[&mobj_type.type_].height,
+				player_pos,
+				player_sector,
+				PLAYERHEIGHT,
+				map,
+				&mut dyn_map.linedefs,
+				&mut dyn_map.valid_count
+			) {
+            	wake_up_monster(
+            	    entity, 
+            	    pos, 
+            	    mobj_type, 
+					player_entity,
+					sprite_anim,
+					ai, 
+            	    random, 
+            	    command_buffer, 
+            	    audio_buffer,
+            	    db
+            	);
+			}
+        }
+    }
+}
+
+pub fn chase_system(
+	mut query: QueryBorrow<'_, (
+		Entity,
+        &mut MonsterRotation,
+        &mut MobjType,
+		&mut MobjAi,
+		&mut InstantMoveIntent,
+		&Position,
+        &Target,
+    )>,
+	world: &World,
+    random: &mut Random,
+    map: &DoomMap,
+    game_skill: SkillLevel,
+    fast_monsters: bool,
+    audio_buffer: &mut Vec<SfxEvent>,
+	blocklists: &[Vec<Entity>],
+	world_events: &mut Vec<WorldEvent>
+) {
+    let db = DB.get().unwrap();
+
+    for (ent, rot, mobj_type, ai, imi, pos, target) in query.iter() {
+        let mobj_info = &db.mobjinfo[&mobj_type.type_];
+
+        if ai.reaction_time > 0 {
+            ai.reaction_time -= 1;
+        }
+
+		let mut target_query = world.query_one::<(&Health, &Position)>(target.0);
+		let (target_hp, target_pos) = match target_query.get() {
+			Ok(data) => data,
+			Err(_) => {
+				if let Some(spawn_state) = mobj_info.spawn_state {
+					ai.current_state = spawn_state;
+                	ai.tics_left = db.states[&spawn_state].tics;
+            	}
+            	continue;
+			}
+		};
+
+		if target_hp.0 <= 0 {
+            if let Some(spawn_state) = mobj_info.spawn_state {
+				ai.current_state = spawn_state;
+                ai.tics_left = db.states[&spawn_state].tics;
+            }
+            continue;
+        }
+
+        if ai.threshold > 0 {
+            if target_hp.0 <= 0 {
+                ai.threshold = 0;
+            } else {
+                ai.threshold -= 1;
+            }
+        }
+
+        if mobj_type.flags.contains(MobjFlags::JUST_ATTACKED) {
+            mobj_type.flags.remove(MobjFlags::JUST_ATTACKED);
+            if game_skill != SkillLevel::Nightmare && !fast_monsters {
+                p_new_chase_dir(pos, rot, target_pos, random);
+            }
+            continue;
+        }
+
+        if let Some(melee_state) = mobj_info.melee_state {
+            if p_check_melee_range(pos, target_pos, mobj_info.radius) {
+                if let Some(attack_sound) = &mobj_info.attack_sound {
+                    audio_buffer.push(SfxEvent {
+                        sfx_id: to_u64(attack_sound),
+                        pos: Some((pos.x, pos.y, pos.z)),
+                    });
+                }
+
+				ai.current_state = melee_state;
+                ai.tics_left = db.states[&melee_state].tics;
+
+                continue;
+            }
+        }
+
+        let mut check_missile = true;
+
+        if let Some(missile_state) = mobj_info.missile_state {
+            if game_skill != SkillLevel::Nightmare && !fast_monsters && rot.move_count != 0 {
+                check_missile = false;
+            }
+
+            if check_missile && p_check_missile_range(
+				pos, 
+				mobj_type, 
+				target_pos, 
+				random, 
+				mobj_info.melee_state.is_none()
+			) {
+				ai.current_state = missile_state;
+                ai.tics_left = db.states[&missile_state].tics;
+				mobj_type.flags.insert(MobjFlags::JUST_ATTACKED); 
+                continue;
+            }
+        }
+
+        rot.move_count -= 1;
+        if rot.move_count < 0 || !p_move(
+			ent,
+			pos,
+			rot,
+			mobj_type,
+			mobj_info,
+			imi,
+			map,
+			world,
+			random,
+			blocklists,
+			world_events
+		) {
+            p_new_chase_dir(pos, rot, target_pos, random);
+        }
+
+        if let Some(active_sound) = &mobj_info.active_sound {
+            if random.p() < 3 {
+                audio_buffer.push(SfxEvent {
+            	    sfx_id: to_u64(active_sound),
+            	    pos: Some((pos.x, pos.y, pos.z)),
+            	});
+            }
+        }
+    }
 }

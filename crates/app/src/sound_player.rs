@@ -1,4 +1,4 @@
-use engine::{Position, PlayerRotation, SfxEvent};
+use engine::{PlayerRotation, Position, SfxEvent, aprox_xyz_distance};
 use rodio::Source;
 use rustc_hash::FxHashMap;
 use wad_parser::DoomSfx;
@@ -81,7 +81,7 @@ pub fn audio_system(
             None => continue
         };
 
-        match event.position {
+        match event.pos {
             None => {
                 let source = SamplesBuffer::new(nz!(1), NonZero::new(sound.sample_rate).unwrap(), sound.samples.clone());
                 audio_player.play_head_sound(source);
@@ -90,15 +90,8 @@ pub fn audio_system(
                 if audio_player.spatial_players[..8].iter().all(|p| !p.empty()) {
                     continue;
                 }
-
-                let dx = (p_pos.x - emitter_pos.0).abs();
-                let dy = (p_pos.y - emitter_pos.1).abs();
-                let dz = (p_pos.z - emitter_pos.2).abs();
-
-                let approx_dist_xz = dx + dz - (dx.min(dz) * 0.5);
                 
-                let approx_dist = approx_dist_xz + (dy * 0.5);
-
+                let approx_dist = aprox_xyz_distance((p_pos.x, p_pos.y, p_pos.z), emitter_pos);
                 if approx_dist > MAX_AUDIBLE_DIST {
                     continue;
                 }
@@ -113,7 +106,6 @@ pub fn audio_system(
                 let perp_x = p_angle.sin() * EAR_HALF_WIDTH;
                 let perp_z = -p_angle.cos() * EAR_HALF_WIDTH;
 
-                let approx_dist = approx_dist_xz + (dy * 0.5);
                 let volume_factor = VOLUME_NEAR + approx_dist / MAX_AUDIBLE_DIST * (VOLUME_FAR - VOLUME_NEAR);
 
                 audio_player.play(

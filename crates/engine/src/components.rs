@@ -1,4 +1,5 @@
-use crate::{CachedStateSprite, MobjNum, StateNum};
+use hecs::Entity;
+use crate::{ActionFunc, CachedStateSprite, MobjFlags, MobjNum, StateNum};
 
 macro_rules! define_markers {
     ($($name:ident);* $(;)?) => {
@@ -19,6 +20,13 @@ pub struct Position {
 	pub prev_z: f32,
 }
 
+pub struct InstantMoveIntent {
+    pub dx: f32,
+    pub dy: f32,
+    pub dz: f32,
+    pub new_sector: Option<usize>
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PlayerRotation {
 	pub angle: u32,
@@ -29,7 +37,7 @@ pub struct PlayerRotation {
 pub struct MonsterRotation {
     // move_dir's range = 0..=7
 	pub move_dir: u32,
-    pub move_count: u32,
+    pub move_count: i32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -47,10 +55,16 @@ pub struct ReactionTime(pub u32);
 
 #[derive(Debug, Clone, Copy)]
 pub struct SpriteAnimation {
-    pub current_state: Option<StateNum>, 
-    pub tics_left: i32,
     pub cached_rotations: [CachedStateSprite; 9],
     pub top_offset_shift: i16
+}
+
+pub struct MobjAi {
+    pub current_state: StateNum,
+    pub tics_left: i32,
+    pub action: Option<ActionFunc>,
+    pub threshold: u32,
+    pub reaction_time: u32
 }
 
 define_markers! {
@@ -82,7 +96,7 @@ define_markers! {
     NotDMatch;
 
     Active;
-    Sleeping;
+    Idle;
     Corpse;
 
     PlayerShoot;
@@ -100,4 +114,10 @@ pub struct WeaponOverlay {
 pub struct CurrentSector(pub usize);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct MobjType(pub MobjNum);
+pub struct MobjType {
+    pub type_: MobjNum,
+    pub flags: MobjFlags,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Target(pub Entity);

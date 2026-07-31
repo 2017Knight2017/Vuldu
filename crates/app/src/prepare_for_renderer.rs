@@ -63,7 +63,7 @@ impl App {
         		    final_left_offset = tex_width as f32 - final_left_offset;
         		}
 
-				let sector = sectors[sector_idx.0].props;
+				let sector = sectors[sector_idx.0];
 
 				let clamped_light = sector.lightlevel.clamp(0, 255) as f32;
 	    	    let modern_light = clamped_light / 255.0;

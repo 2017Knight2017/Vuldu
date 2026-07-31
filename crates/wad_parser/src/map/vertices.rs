@@ -8,14 +8,14 @@ pub const ML_DONTPEGTOP: i16 = 0b1000;
 pub const ML_DONTPEGBOTTOM: i16 = 0b10000;
 
 #[derive(Debug, Clone, Copy)]
-struct Aabb {
+pub struct AABB {
     pub min_x: f32,
     pub max_x: f32,
     pub min_y: f32,
     pub max_y: f32,
 }
 
-impl Aabb {
+impl AABB {
     fn from_polygon(poly: &[[f32; 2]]) -> Self {
         let mut min_x = f32::MAX;
         let mut max_x = f32::MIN;
@@ -27,7 +27,7 @@ impl Aabb {
             if pt[1] < min_y { min_y = pt[1]; }
             if pt[1] > max_y { max_y = pt[1]; }
         }
-        Aabb { min_x, max_x, min_y, max_y }
+        AABB { min_x, max_x, min_y, max_y }
     }
 
     fn intersects(&self, other: &Self) -> bool {
@@ -55,17 +55,17 @@ impl DoomMap {
 	        let v2 = self.vertices[seg.v2 as usize];
 	        let linedef = self.linedefs[seg.linedef as usize];
 
-	        let front_side_idx = if seg.side == 0 { linedef.sidenum[0] as u16 } else { linedef.sidenum[1] as u16 };
-	        let back_side_idx = if seg.side == 0 { linedef.sidenum[1] as u16 } else { linedef.sidenum[0] as u16 };
+	        let front_side_idx = if seg.side == 0 { linedef.sidenum[0] } else { linedef.sidenum[1] };
+	        let back_side_idx = if seg.side == 0 { linedef.sidenum[1] } else { linedef.sidenum[0] };
 
 	        if front_side_idx == u16::MAX { continue; }
 	        let front_sidedef = self.sidedefs[front_side_idx as usize];
 	        let front_sector_id = front_sidedef.sector;
-	        let front_sector = self.sectors[front_sector_id as usize].props;
+	        let front_sector = self.sectors[front_sector_id as usize];
 
 	        let back_sector = if back_side_idx != u16::MAX {
 	            let back_sidedef = self.sidedefs[back_side_idx as usize];
-	            Some((back_sidedef, self.sectors[back_sidedef.sector as usize].props))
+	            Some((back_sidedef, self.sectors[back_sidedef.sector as usize]))
 	        } else {
 	            None
 	        };
@@ -280,7 +280,6 @@ impl DoomMap {
     	}
 
 	    for (sector_id, sector) in self.sectors.iter().enumerate() {
-			let map_sector = sector.props;
 	        let current_sector_id = sector_id as i16;
 			let sector_linedefs = match sector_to_linedefs.get(&current_sector_id) {
         	    Some(list) => list,
@@ -400,11 +399,11 @@ impl DoomMap {
 	            area_b.partial_cmp(&area_a).unwrap_or(std::cmp::Ordering::Equal)
 	        });
 
-	        let mut outer_sectors: Vec<(Vec<[f32; 2]>, Aabb)> = Vec::new();
+	        let mut outer_sectors: Vec<(Vec<[f32; 2]>, AABB)> = Vec::new();
 	        let mut hole_loops: Vec<Vec<[f32; 2]>> = Vec::new();
 
 	        for poly_loop in polygon_loops.iter().cloned() {
-				let poly_aabb = Aabb::from_polygon(&poly_loop);
+				let poly_aabb = AABB::from_polygon(&poly_loop);
 	            let mut is_hole = false;
 
 	            for (outer, outer_aabb) in &outer_sectors {
@@ -445,7 +444,7 @@ impl DoomMap {
 				}
 
 	            for hole in &hole_loops {
-					let hole_aabb = Aabb::from_polygon(hole);
+					let hole_aabb = AABB::from_polygon(hole);
                 	if !outer_aabb.intersects(&hole_aabb) { continue; }
 
 	                if !hole.iter().any(|&pt| point_in_polygon(pt, &outer_loop)) { continue; }
@@ -481,29 +480,29 @@ impl DoomMap {
 	                continue; 
 	            }
 				
-	            let floor_texture_name = to_u64(&map_sector.floorpic);
-	            let ceil_texture_name = to_u64(&map_sector.ceilingpic);
+	            let floor_texture_name = to_u64(&sector.floorpic);
+	            let ceil_texture_name = to_u64(&sector.ceilingpic);
 
-	            let floor_texture_id = if map_sector.floorpic.starts_with(b"F_SKY1") {
+	            let floor_texture_id = if sector.floorpic.starts_with(b"F_SKY1") {
 					(u16::MAX - 2) as u32
 				} else {
 					texture_ids.get(&floor_texture_name).unwrap_or(&(0,0,0,false)).0
 				};
 
-	            let ceil_texture_id = if map_sector.ceilingpic.starts_with(b"F_SKY1") {
+	            let ceil_texture_id = if sector.ceilingpic.starts_with(b"F_SKY1") {
 					(u16::MAX - 2) as u32
 				} else { 
 					texture_ids.get(&ceil_texture_name).unwrap_or(&(0,0,0,false)).0 
 				};
 
-	            let clamped_light = map_sector.lightlevel.clamp(0, 255) as f32;
+	            let clamped_light = sector.lightlevel.clamp(0, 255) as f32;
 	            let modern_light = clamped_light / 255.0;
 	            let colormap_idx = 31 - ((clamped_light / 8.0).floor() as u32).clamp(0, 31);
 
 	            let floor_start_idx = vertices.len() as u32;
 	            for pt in &flat_points {
 	                vertices.push(Vertex { 
-	                    pos: [-(pt[0]), map_sector.floorheight.into(), pt[1]],
+	                    pos: [-(pt[0]), sector.floorheight.into(), pt[1]],
 	                    texture_pos: [pt[0] / 64.0, pt[1] / 64.0],
 						light_level: modern_light,
 	                    texture_id: floor_texture_id,
@@ -520,7 +519,7 @@ impl DoomMap {
 	            let ceil_start_idx = vertices.len() as u32;
 	            for pt in &flat_points {
 	                vertices.push(Vertex { 
-	                    pos: [-(pt[0]), map_sector.ceilingheight.into(), pt[1]],
+	                    pos: [-(pt[0]), sector.ceilingheight.into(), pt[1]],
 	                    texture_pos: [pt[0] / 64.0, pt[1] / 64.0],
 						light_level: modern_light,
 	                    texture_id: ceil_texture_id,

@@ -1,3 +1,4 @@
+use bitflags::bitflags;
 use serde::Deserialize;
 use strum::EnumIter;
 
@@ -1130,7 +1131,7 @@ pub enum SkillLevel {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
-pub enum MobjFlag {
+pub enum MobjFlagNum {
     // Call P_SpecialThing when touched.
     Special,
     // Blocks.
@@ -1218,6 +1219,73 @@ pub enum MobjFlag {
     VertOffsetM2,
 }
 
+bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+    pub struct MobjFlags: u32 {
+        const NONE          = 0;
+        const SPECIAL       = 1 << 0;
+        const SOLID         = 1 << 1;
+        const SHOOTABLE     = 1 << 2;
+        const NO_SECTOR     = 1 << 3;
+        const NO_BLOCKMAP   = 1 << 4;
+        const AMBUSH        = 1 << 5;
+        const JUST_HIT      = 1 << 6;
+        const JUST_ATTACKED = 1 << 7;
+        const SPAWN_CEILING = 1 << 8;
+        const NO_GRAVITY    = 1 << 9;
+        const DROP_OFF      = 1 << 10;
+        const PICKUP        = 1 << 11;
+        const NO_CLIP       = 1 << 12;
+        const SLIDE         = 1 << 13;
+        const FLOAT         = 1 << 14;
+        const TELEPORT      = 1 << 15;
+        const MISSILE       = 1 << 16;
+        const DROPPED       = 1 << 17;
+        const SHADOW        = 1 << 18;
+        const NO_BLOOD      = 1 << 19;
+        const CORPSE        = 1 << 20;
+        const IN_FLOAT      = 1 << 21;
+        const COUNT_KILL    = 1 << 22;
+        const COUNT_ITEM    = 1 << 23;
+        const SKULL_FLY     = 1 << 24;
+        const NOT_DMATCH    = 1 << 25;
+    }
+}
+
+impl From<MobjFlagNum> for MobjFlags {
+    fn from(flag: MobjFlagNum) -> Self {
+        match flag {
+            MobjFlagNum::Special => MobjFlags::SPECIAL,
+            MobjFlagNum::Solid => MobjFlags::SOLID,
+            MobjFlagNum::Shootable => MobjFlags::SHOOTABLE,
+            MobjFlagNum::NoSector => MobjFlags::NO_SECTOR,
+            MobjFlagNum::NoBlockmap => MobjFlags::NO_BLOCKMAP,
+            MobjFlagNum::Ambush => MobjFlags::AMBUSH,
+            MobjFlagNum::JustHit => MobjFlags::JUST_HIT,
+            MobjFlagNum::JustAttacked => MobjFlags::JUST_ATTACKED,
+            MobjFlagNum::SpawnCeiling => MobjFlags::SPAWN_CEILING,
+            MobjFlagNum::NoGravity => MobjFlags::NO_GRAVITY,
+            MobjFlagNum::DropOff => MobjFlags::DROP_OFF,
+            MobjFlagNum::Pickup => MobjFlags::PICKUP,
+            MobjFlagNum::NoClip => MobjFlags::NO_CLIP,
+            MobjFlagNum::Slide => MobjFlags::SLIDE,
+            MobjFlagNum::Float => MobjFlags::FLOAT,
+            MobjFlagNum::Teleport => MobjFlags::TELEPORT,
+            MobjFlagNum::Missile => MobjFlags::MISSILE,
+            MobjFlagNum::Dropped => MobjFlags::DROPPED,
+            MobjFlagNum::Shadow => MobjFlags::SHADOW,
+            MobjFlagNum::NoBlood => MobjFlags::NO_BLOOD,
+            MobjFlagNum::Corpse => MobjFlags::CORPSE,
+            MobjFlagNum::InFloat => MobjFlags::IN_FLOAT,
+            MobjFlagNum::CountKill => MobjFlags::COUNT_KILL,
+            MobjFlagNum::CountItem => MobjFlags::COUNT_ITEM,
+            MobjFlagNum::SkullFly => MobjFlags::SKULL_FLY,
+            MobjFlagNum::NotDMatch => MobjFlags::NOT_DMATCH,
+            _ => MobjFlags::NONE
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter)]
 pub enum WeaponType {
     Fist,
@@ -1269,15 +1337,17 @@ pub enum Card {
     RedSkull,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LinedefFlags {
-	Blocking,
-	BlockMonster,
-	TwoSided,
-	DontPegTop,
-	DontPegBottom,
-	Secret,
-	SoundBlock,
-	DontDraw,
-	Mapped,
+bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct LinedefFlags: u32 {
+    	const BLOCKING = 1 << 0;
+    	const BLOCK_MONSTER = 1 << 1;
+    	const TWO_SIDED = 1 << 2;
+    	const DONT_PEG_TOP = 1 << 3;
+    	const DONT_PEG_BOTTOM = 1 << 4;
+    	const SECRET = 1 << 5;
+    	const SOUND_BLOCK = 1 << 6;
+    	const DONTDRAW = 1 << 7;
+    	const MAPPED = 1 << 8;
+    }
 }

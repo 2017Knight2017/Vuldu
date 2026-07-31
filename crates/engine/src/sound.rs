@@ -1,16 +1,16 @@
 use hecs::{CommandBuffer, Entity, QueryBorrow};
-use wad_parser::{MapLinedef, MapSidedef, Sector, to_u64};
-use crate::{Active, CurrentSector, DB, LinedefFlags, MobjType, PlayerShoot, Position, Random, SfxEvent, Sleeping, SpriteAnimation};
+use wad_parser::{MapLinedef, MapSidedef, to_u64};
+use crate::{Active, CurrentSector, Database, DynSector, Idle, LinedefFlags, MobjAi, MobjNum, MobjType, PlayerShoot, Position, Random, SfxEvent, SpriteAnimation, Target};
 
 pub fn propagate_sound_system(
 	mut query: QueryBorrow<'_, (Entity, &CurrentSector, &PlayerShoot)>, 
 	command_buffer: &mut CommandBuffer,
-	sectors: &mut Vec<Sector>,
-	linedefs: &Vec<MapLinedef>,
-	sidedefs: &Vec<MapSidedef>
+	sectors: &mut [DynSector],
+	linedefs: &[MapLinedef],
+	sidedefs: &[MapSidedef]
 ) {
 	for (entity, current_sector, _player_shoot) in query.iter() {
-		propagate_sound_internal(current_sector.0, 0, sectors, linedefs, sidedefs);
+		propagate_sound_internal(current_sector.0, 0, sectors, linedefs, sidedefs, entity);
 
 		command_buffer.remove_one::<PlayerShoot>(entity);
 	}
@@ -19,9 +19,10 @@ pub fn propagate_sound_system(
 fn propagate_sound_internal(
 	current_sector_idx: usize,
 	times_blocked: u32,
-	sectors: &mut Vec<Sector>,
+	sectors: &mut [DynSector],
 	linedefs: &[MapLinedef],
-	sidedefs: &[MapSidedef]
+	sidedefs: &[MapSidedef],
+	sound_target: Entity
 ) {
 	if times_blocked >= 2 || times_blocked >= sectors[current_sector_idx].sound_traversed { 
 		return; 
@@ -29,14 +30,14 @@ fn propagate_sound_internal(
 
 	if times_blocked < sectors[current_sector_idx].sound_traversed {
         sectors[current_sector_idx].sound_traversed = times_blocked;
+		sectors[current_sector_idx].sound_target = Some(sound_target);
     } else {
         return;
     }
 
 	let lines = sectors[current_sector_idx].lines.clone();
 	lines.iter().for_each(|&i| {
-		let twosided_flag = 1 << LinedefFlags::TwoSided as u32;
-		if linedefs[i].flags & twosided_flag == 0 {
+		if linedefs[i].flags & LinedefFlags::TWO_SIDED.bits() as i16 == 0 {
 			return;
 		} 
 			
@@ -55,45 +56,51 @@ fn propagate_sound_internal(
 
 		if is_shut { return; }
 
-		let soundblock_flag = 1 << LinedefFlags::SoundBlock as u32;
-		if linedefs[i].flags & soundblock_flag != 0 {
-			propagate_sound_internal(other_sector_idx, times_blocked + 1, sectors, linedefs, sidedefs);
+		if linedefs[i].flags & LinedefFlags::SOUND_BLOCK.bits() as i16 == 1 {
+			propagate_sound_internal(other_sector_idx, times_blocked + 1, sectors, linedefs, sidedefs, sound_target);
 		} else {
-			propagate_sound_internal(other_sector_idx, times_blocked, sectors, linedefs, sidedefs);
+			propagate_sound_internal(other_sector_idx, times_blocked, sectors, linedefs, sidedefs, sound_target);
 		}
 	});
 }
 
-pub fn check_sound_system(
-	mut query: QueryBorrow<'_, (Entity, &Position, &CurrentSector, &SpriteAnimation, &MobjType, &Sleeping)>, 
-	sectors: &Vec<Sector>,
+pub fn wake_up_monster(
+	entity: Entity,
+	pos: &Position,
+	mobj_type: &MobjType,
+	sound_target: Entity,
+	sprite_anim: &mut SpriteAnimation,
+	ai: &mut MobjAi,
 	random: &mut Random,
 	command_buffer: &mut CommandBuffer, 
 	audio_buffer: &mut Vec<SfxEvent>, 
+	db: &Database
 ) {
-	//! Must be called after propagate_sound_system
-	for (entity, pos, current_sector, sprite_anim, mobj_type, _sleeping) in query.iter() {
-		if sectors[current_sector.0].sound_traversed == u32::MAX { continue; }
+	let mobj_info = db.mobjinfo.get(&mobj_type.type_).unwrap();
 
-		let db = DB.get().expect("DB has not been initialized!");
-		let mobj_info = db.mobjinfo.get(&mobj_type.0).unwrap();
+	if let (Some(see_state_num), Some(mut see_sound)) = (mobj_info.see_state, mobj_info.see_sound) {
+		let see_state = db.states.get(&see_state_num).unwrap();
+		
+		ai.current_state = see_state_num;
+		ai.action = see_state.action;
+		ai.tics_left = see_state.tics + (random.p() & 0b111) as i32;
+		sprite_anim.cached_rotations = see_state.cached_rotations.clone();
+		
+		if see_sound.starts_with(b"DSPOSIT") {
+			see_sound[7] = random.p() % 3 + b'1';
+		} else if see_sound.starts_with(b"DSBGSIT") {
+			see_sound[7] = random.p() % 2 + b'1';
+		}
 
-		if let (Some(see_state_num), Some(see_sound)) = (mobj_info.see_state, mobj_info.see_sound) {
-			let see_state = db.states.get(&see_state_num).unwrap();
-			let new_anim = SpriteAnimation {
-                current_state: Some(see_state_num),
-                tics_left: see_state.tics + (random.p() & 0xF) as i32,
-                cached_rotations: see_state.cached_rotations.clone(),
-                top_offset_shift: sprite_anim.top_offset_shift
-            };
-
-            command_buffer.remove::<(Sleeping, SpriteAnimation)>(entity);
-            command_buffer.insert(entity, (Active, new_anim));
-			
-			audio_buffer.push(SfxEvent { sfx_id: to_u64(&see_sound), position: Some((pos.x, pos.y, pos.z)) })
+		let pos = if mobj_type.type_ == MobjNum::Spider || mobj_type.type_ == MobjNum::Cyborg {
+			None
 		} else {
-            command_buffer.remove_one::<Sleeping>(entity);
-            command_buffer.insert_one(entity, Active);
-        }
+			Some((pos.x, pos.y, pos.z))
+		};
+			
+		audio_buffer.push(SfxEvent { sfx_id: to_u64(&see_sound), pos })
 	}
+
+	command_buffer.remove_one::<Idle>(entity);
+    command_buffer.insert(entity, (Target(sound_target), Active));
 }

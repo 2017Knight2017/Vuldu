@@ -37,7 +37,10 @@ struct App {
     wad_manager: WadManager,
     world: World,
     map: DoomMap,
+    dyn_map: DynMap,
+    blocklists: Vec<Vec<Entity>>,
     random: Random,
+    world_events: Vec<WorldEvent>,
     command_buffer: CommandBuffer,
     _audio_stream_handle: MixerDeviceSink,
     audio_player: DoomSfxPlayer,
@@ -250,12 +253,16 @@ impl App {
     }
 
     fn tick(&mut self) {
+        let ai_query = self.world.query::<&mut MobjAi>();
+        ai_system(ai_query);
+
         let position_input_query = self.world.query::<(Entity, &mut Velocity, &PlayerRotation)>();
-        let animation_query = self.world.query::<&mut SpriteAnimation>();
+        let animation_query = self.world.query::<(&mut SpriteAnimation, &MobjAi)>();
         micropool::join(
             || handle_position_input(position_input_query, &self.current_input, &mut self.command_buffer, &mut self.audio_buffer),
             || animation_system(animation_query),
         );
+
         self.flush_command_buffer();
 
         let rotation_query = self.world.query::<&mut PlayerRotation>();
@@ -266,22 +273,82 @@ impl App {
         );
 
         let propagate_sound_query = self.world.query::<(Entity, &CurrentSector, &PlayerShoot)>();
-        propagate_sound_system(propagate_sound_query, &mut self.command_buffer, &mut self.map.sectors, &self.map.linedefs, &self.map.sidedefs);
+        propagate_sound_system(
+            propagate_sound_query, 
+            &mut self.command_buffer, 
+            &mut self.dyn_map.sectors, 
+            &self.map.linedefs, 
+            &self.map.sidedefs
+        );
+
         self.flush_command_buffer();
 
-        let check_sound_query = self.world.query::<(Entity, &Position, &CurrentSector, &SpriteAnimation, &MobjType, &Sleeping)>();
-        check_sound_system(check_sound_query, &self.map.sectors, &mut self.random, &mut self.command_buffer, &mut self.audio_buffer);
+        let check_sound_query = self.world
+            .query::<(Entity, &mut SpriteAnimation, &mut MobjAi, &Position, &CurrentSector, &MobjType)>()
+            .with::<&Idle>();
+        check_sound_system(
+            check_sound_query, 
+            &self.world, 
+            &self.map, 
+            &mut self.dyn_map,
+            &mut self.random, 
+            &mut self.command_buffer, 
+            &mut self.audio_buffer
+        );
+
+        //let check_sight_query = self.world
+        //    .query::<(Entity, &mut SpriteAnimation, &mut MobjAi, &Position, &CurrentSector, &MonsterRotation, &MobjType)>()
+        //    .with::<&Idle>();
+        //let players_query = self.world
+        //    .query::<(Entity, &Position, &CurrentSector, &MobjType)>()
+        //    .with::<&PlayerMarker>();
+        //check_sight_system(
+        //    check_sight_query, 
+        //    players_query, 
+        //    &self.map, 
+        //    &mut self.dyn_map,
+        //    &mut self.random, 
+        //    &mut self.command_buffer, 
+        //    &mut self.audio_buffer
+        //);
+
         self.flush_command_buffer();
 
-        let chase_query = self.world.query::<(&mut MonsterRotation, &Position, &MobjType, &SpriteAnimation, &Active)>();
-        let player_query = self.world.query::<(&Position, &PlayerMarker)>();
-        chase_system(chase_query, player_query, &mut self.random, &mut self.audio_buffer);
+        let chase_query = self.world.query::<(Entity, &mut MonsterRotation, &mut MobjType, &mut MobjAi, &mut InstantMoveIntent, &Position, &Target)>();
+        chase_system(
+            chase_query, 
+            &self.world, 
+            &mut self.random, 
+            &self.map, 
+            SkillLevel::Hard, 
+            true, 
+            &mut self.audio_buffer, 
+            &self.blocklists, 
+            &mut self.world_events
+        );
 
-        let movement_query = self.world.query::<(&mut Position, &mut CurrentSector, &Velocity, &Active)>();
-        movement_system(movement_query, &self.map);
+        let monster_movement_query = self.world
+            .query::<(Entity, &mut Position, &mut CurrentSector, &mut InstantMoveIntent, &mut Velocity, &MobjType)>()
+            .with::<&Active>();
+        monster_movement_system(
+            monster_movement_query, 
+            &self.map,
+            &self.world,
+            &mut self.random,
+            &mut self.blocklists,
+            &mut self.world_events
+        );
+
+        let player_movement_query = self.world
+            .query::<(&mut Position, &Velocity, &mut CurrentSector)>()
+            .with::<&PlayerMarker>();
+        player_movement_system(player_movement_query, &self.map);
 
         let audio_query = self.world.query::<(&Position, &PlayerRotation)>();
-        audio_system(audio_query, &mut self.audio_buffer, &mut self.audio_player, &self.audio_data);
+        micropool::join(
+            || audio_system(audio_query, &mut self.audio_buffer, &mut self.audio_player, &self.audio_data),
+            || execute_events_system(&mut self.world_events)
+        );
 
         self.current_input.mouse_delta_x = 0.0;
     }
@@ -340,6 +407,17 @@ impl ApplicationHandler for App {
         };
         self.window = Some(window);
 
+        for (line_idx, line) in self.map.linedefs.iter().enumerate() {
+		    if line.sidenum[0] != u16::MAX {
+		        let front_sector = self.map.sidedefs[line.sidenum[0] as usize].sector;
+		        self.dyn_map.sectors[front_sector as usize].lines.push(line_idx);
+		    }
+		    if line.sidenum[1] != u16::MAX {
+		        let back_sector = self.map.sidedefs[line.sidenum[1] as usize].sector;
+		        self.dyn_map.sectors[back_sector as usize].lines.push(line_idx);
+		    }
+		}
+
         self.audio_data = self.wad_manager.bake_sfx();
         let mut renderer = SafeRenderer::new();
 
@@ -358,7 +436,7 @@ impl ApplicationHandler for App {
             renderer.set_resolution(1280, 720);
 
             let sky_idx = if self.wad_manager.is_doom1 { 
-                self.map.map_num as u32 / 9 
+                (self.map.map_num as u32 - 1) / 9 
             } else { 
                 get_sky_texture_index(self.map.map_num) 
             };
@@ -479,13 +557,14 @@ fn main() -> Result<(), String> {
     //
     //let map = DoomMap::from_wad(&wad_manager, &args.map)?;
 
-    wad_manager.add_wad("assets/DOOM2.WAD")?;
-    wad_manager.add_wad("assets/oku2v31.wad")?;
+    wad_manager.add_wad("assets/DOOM.WAD")?;
+    //wad_manager.add_wad("assets/oku2v31.wad")?;
     //wad_manager.add_wad("assets/nuts.wad")?;
     //wad_manager.add_wad("assets/Sunder 2512.wad")?;
     //wad_manager.add_wad("assets/HR.WAD")?;
 
     let map = DoomMap::from_wad(&wad_manager, 1)?;
+    let dyn_map = DynMap::from(&map);
 
     let event_loop = EventLoop::new().unwrap();
     event_loop.set_control_flow(ControlFlow::Poll);
@@ -500,8 +579,11 @@ fn main() -> Result<(), String> {
         renderer: None,
         wad_manager: wad_manager,
         world: World::new(),
+        blocklists: vec![Vec::new(); map.blockmap.row_num * map.blockmap.col_num],
         map,
+        dyn_map,
         random: Random::default(),
+        world_events: Vec::new(),
         _audio_stream_handle: audio_stream_handle,
         audio_player,
         audio_buffer: Vec::new(),

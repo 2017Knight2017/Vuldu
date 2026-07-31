@@ -78,7 +78,7 @@ pub fn handle_position_input(
 
         if input.shoot{
             command_buffer.insert_one(entity, PlayerShoot);
-            audio_buffer.push(SfxEvent { sfx_id: to_u64(b"DSPISTOL"), position: None });
+            audio_buffer.push(SfxEvent { sfx_id: to_u64(b"DSPISTOL"), pos: None });
         }
     }
 }
