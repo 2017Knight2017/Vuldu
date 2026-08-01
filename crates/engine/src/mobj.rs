@@ -75,7 +75,6 @@ pub fn spawn_mobj(
 	if mobj_type == MobjNum::Player {
 		entity_builder
 			.add(PlayerMarker)
-			.add(Active)
 			.add(PlayerRotation { angle, prev_angle: angle })
         	.add(PlayerCamera { view_z: 41.0, view_height: 41.0, delta_view_height: 0.0, bob: 0.0 })
         	.add(PlayerStats::default())

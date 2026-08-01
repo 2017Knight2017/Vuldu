@@ -1,19 +1,29 @@
 use hecs::{Entity, World};
 use wad_parser::{AABB, DoomMap};
-use crate::{DB, FLOATSPEED, InstantMoveIntent, LinedefFlags, MAXRADIUS, MobjFlags, MobjInfo, MobjNum, MobjType, MonsterRotation, Position, Random, Target, WorldEvent, XSPEED, YSPEED};
+use crate::{DB, FLOATSPEED, InstantMoveIntent, LinedefFlags, MAXRADIUS, MAXSPECHIT, MobjFlagCommand, MobjFlags, MobjInfo, MobjNum, MobjType, MonsterRotation, Position, Random, Target, WorldEvent, XSPEED, YSPEED, p_box_on_line_side};
+
+#[derive(Debug, Clone)]
+struct MoveContext {
+    ceilingline_idx: Option<usize>, 
+    ceiling_y: f32, 
+    floor_y: f32, 
+    dropoff_y: f32, 
+    spec_hit: Vec<usize>,
+}
 
 pub fn p_move(
     ent: Entity,
 	pos: &Position,
 	rot: &MonsterRotation,
-    mobj_type: &mut MobjType,
+    mobj_type: &MobjType,
     mobj_info: &MobjInfo,
 	imi: &mut InstantMoveIntent,
     map: &DoomMap,
     world: &World,
     random: &mut Random,
     blocklists: &[Vec<Entity>], 
-    world_events: &mut Vec<WorldEvent>
+    world_events: &mut Vec<WorldEvent>,
+    mobj_flag_buffer: &mut Vec<MobjFlagCommand>
 ) -> bool {
     if rot.move_dir.is_none() {
         return false;
@@ -24,15 +34,12 @@ pub fn p_move(
     let try_x = pos.x + mobj_info.speed * XSPEED[move_dir as usize];
     let try_z = pos.z + mobj_info.speed * YSPEED[move_dir as usize];
 
-    let goal_sector_idx = map.get_sector_by_pos(try_x, try_z);
-
     let (try_ok, float_ok) = p_try_move(
         ent,
         pos, 
         (try_x, pos.y, try_z), 
         mobj_type, 
         mobj_info, 
-        goal_sector_idx, 
         imi, 
         map,
         world,
@@ -40,7 +47,6 @@ pub fn p_move(
         blocklists,
         world_events
     );
-
     
     if let Some(new_sector) = imi.new_sector {
         if !try_ok {
@@ -51,7 +57,7 @@ pub fn p_move(
                     imi.dy -= FLOATSPEED;
                 }
 
-                mobj_type.flags.insert(MobjFlags::IN_FLOAT);
+                mobj_flag_buffer.push(MobjFlagCommand::Add { ent, flag: MobjFlags::IN_FLOAT });
                 return true;
             }
 
@@ -69,7 +75,7 @@ pub fn p_move(
             //
             //return good;
         } else {
-            mobj_type.flags.remove(MobjFlags::IN_FLOAT);
+            mobj_flag_buffer.push(MobjFlagCommand::Remove { ent, flag: MobjFlags::IN_FLOAT });
         }
 
         if !mobj_type.flags.contains(MobjFlags::FLOAT) {
@@ -86,7 +92,6 @@ pub fn p_try_move(
     goal_pos: (f32, f32, f32),
 	mobj_type: &MobjType,
 	mobj_info: &MobjInfo,
-	goal_sector_idx: usize,
     imi: &mut InstantMoveIntent,
 	map: &DoomMap, 
     world: &World,
@@ -96,12 +101,20 @@ pub fn p_try_move(
 ) -> (bool, bool) {
 	// (try_ok, float_ok)
 
+    let mut ctx = MoveContext { 
+        ceilingline_idx: None, 
+        ceiling_y: f32::MAX, 
+        floor_y: f32::MIN, 
+        dropoff_y: f32::MAX, 
+        spec_hit: Vec::with_capacity(MAXSPECHIT) 
+    };
+
 	if !p_check_pos(
+        &mut ctx,
         ent,
         mobj_type,
         goal_pos,
         mobj_info,
-        //imi,
         map,
         world,
         random,
@@ -111,30 +124,28 @@ pub fn p_try_move(
 		return (false, false)
 	}
 
-    let sector = map.sectors[goal_sector_idx];
-
 	if !mobj_type.flags.contains(MobjFlags::NO_CLIP) {
-		if ((sector.ceilingheight - sector.floorheight) as f32) < mobj_info.height {
+		if ((ctx.ceiling_y - ctx.floor_y) as f32) < mobj_info.height {
             return (false, false);
         }
 
         if !mobj_type.flags.contains(MobjFlags::TELEPORT) &&
-            sector.ceilingheight as f32 - pos.y < mobj_info.height
+            ctx.ceiling_y - pos.y < mobj_info.height
         {
             return (false, true);
         }
 
         if !mobj_type.flags.contains(MobjFlags::TELEPORT) &&
-            sector.floorheight as f32 - pos.y > 24.0 
+            ctx.floor_y - pos.y > 24.0 
         {
             return (false, true);
         }
 
-        //if !mobj_type.flags.intersects(MobjFlags::DROP_OFF | MobjFlags::FLOAT) &&
-        //    sector.floorheight - dropoff > 24.0
-        //{
-        //    return (false, true);
-        //}
+        if !mobj_type.flags.intersects(MobjFlags::DROP_OFF | MobjFlags::FLOAT) &&
+            ctx.floor_y - ctx.dropoff_y > 24.0
+        {
+            return (false, true);
+        }
 	}
 
     imi.dx = goal_pos.0 - pos.x;
@@ -144,12 +155,12 @@ pub fn p_try_move(
     (true, true)
 }
 
-pub fn p_check_pos(
+fn p_check_pos(
+    ctx: &mut MoveContext,
     ent: Entity,
     mobj_type: &MobjType,
     goal_pos: (f32, f32, f32),
     mobj_info: &MobjInfo,
-    //imi: &mut InstantMoveIntent,
     map: &DoomMap,
     world: &World,
     random: &mut Random,
@@ -174,7 +185,11 @@ pub fn p_check_pos(
         for c in min_col..=max_col {
             let idx = r * map.blockmap.col_num + c;
 
-            for &other_entity in &blocklists[idx] {
+            for &other_entity in blocklists[idx].iter() {
+                if other_entity == ent {
+                    continue;
+                }
+
                 let mut query = world.query_one::<(&MobjType, &Position, Option<&Target>)>(other_entity);
                 if let Ok((other_type, other_pos, raw_target)) = query.get() {
                     if !pit_check_thing(ent, mobj_type, goal_pos, raw_target, other_entity, other_type, other_pos, random, world_events) {
@@ -183,8 +198,8 @@ pub fn p_check_pos(
                 }
             }
 
-            for &line_idx in &map.blockmap.blocklists[idx] {
-                if !pit_check_line(mobj_type, bbox, line_idx, map) {
+            for &line_idx in map.blockmap.blocklists[idx].iter() {
+                if !pit_check_line(ctx, mobj_type, bbox, line_idx, map) {
                     return false;
                 }
             }
@@ -194,7 +209,7 @@ pub fn p_check_pos(
     true
 }
 
-pub fn pit_check_thing(
+fn pit_check_thing(
 	ent: Entity,
 	mobj_type: &MobjType,
 	pos: (f32, f32, f32),
@@ -295,11 +310,11 @@ pub fn pit_check_thing(
     !other_type.flags.contains(MobjFlags::SOLID)
 }
 
-pub fn pit_check_line(
+fn pit_check_line(
+    ctx: &mut MoveContext,
     mobj_type: &MobjType,
     bbox: AABB,
     line_idx: usize,
-    //imi: &mut InstantMoveIntent,
     map: &DoomMap,
 ) -> bool {
     let line = map.linedefs[line_idx];
@@ -312,61 +327,60 @@ pub fn pit_check_line(
     let vmin_y = v1.y.min(v2.y) as f32;
     let vmax_y = v1.y.max(v2.y) as f32;
     
-    if bbox.max_x <= vmin_x
-        || bbox.min_x >= vmax_x
-        || bbox.max_y <= vmin_y
-        || bbox.min_y >= vmax_y
+    if bbox.max_x < vmin_x
+        || bbox.min_x > vmax_x
+        || bbox.max_y < vmin_y
+        || bbox.min_y > vmax_y
     {
         return true;
     }
 
-    //if p_box_on_line_side(&ctx.tmbbox, line) != -1 {
-    //    return true;
-    //}
+    if p_box_on_line_side(&bbox, &line, map) != -1 {
+        return true;
+    }
 
     if !mobj_type.flags.contains(MobjFlags::MISSILE) {
-        if (line.flags & LinedefFlags::BLOCKING.bits() as i16) == 1 {
+        if (line.flags & LinedefFlags::BLOCKING.bits() as i16) != 0 {
             return false;
         }
 
-        if mobj_type.type_ != MobjNum::Player && (line.flags & LinedefFlags::BLOCK_MONSTER.bits() as i16) == 1 {
+        if mobj_type.type_ != MobjNum::Player && (line.flags & LinedefFlags::BLOCK_MONSTER.bits() as i16) != 0 {
             return false;
         }
     }
 
-	//if line.sidenum[0] == u16::MAX { return false; }
-	//let front_sidedef = map.sidedefs[line.sidenum[0] as usize];
-	//let front_sector_idx = front_sidedef.sector;
-	//let front = map.sectors[front_sector_idx as usize];
-//
-	//let back = if line.sidenum[1] != u16::MAX {
-	//	map.sectors[map.sidedefs[line.sidenum[1] as usize].sector as usize]
-	//} else {
-    //    return false;
-    //};
+	if line.sidenum[0] == u16::MAX || line.sidenum[1] == u16::MAX { 
+        return false; 
+    }
 
-    //let open_top = front.ceilingheight.min(back.ceilingheight);
-    //let open_bottom = front.floorheight.max(back.floorheight);
-    //let lowfloor = front.floorheight.min(back.floorheight);
+	let front_sidedef = map.sidedefs[line.sidenum[0] as usize];
+    let back_sidedef = map.sidedefs[line.sidenum[1] as usize];
 
-    //if open_top < ctx.tmceilingz {
-    //    ctx.tmceilingz = open_top;
-    //    ctx.ceilingline_idx = Some(line_idx);
-    //}
-//
-    //if open_bottom > ctx.tmfloorz {
-    //    ctx.tmfloorz = open_bottom;
-    //}
-//
-    //if lowfloor < ctx.tmdropoffz {
-    //    ctx.tmdropoffz = lowfloor;
-    //}
-//
-    //if line.special != 0 {
-    //    if ctx.spechit.len() < 8 {
-    //        ctx.spechit.push(line_idx);
-    //    }
-    //}
+    let front = map.sectors[front_sidedef.sector as usize];
+    let back = map.sectors[back_sidedef.sector as usize];
+
+    let open_top = front.ceilingheight.min(back.ceilingheight) as f32;
+    let floor_high = front.floorheight.max(back.floorheight) as f32;
+    let floor_low = front.floorheight.min(back.floorheight) as f32;
+
+    if open_top < ctx.ceiling_y {
+        ctx.ceiling_y = open_top;
+        ctx.ceilingline_idx = Some(line_idx);
+    }
+
+    if floor_high > ctx.floor_y {
+        ctx.floor_y = floor_high;
+    }
+
+    if floor_low < ctx.dropoff_y {
+        ctx.dropoff_y = floor_low;
+    }
+
+    if line.special != 0 {
+        if ctx.spec_hit.len() < 8 {
+            ctx.spec_hit.push(line_idx);
+        }
+    }
 
     true
 }

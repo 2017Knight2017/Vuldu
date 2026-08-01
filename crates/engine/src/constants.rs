@@ -30,6 +30,8 @@ pub const XSPEED: [f32; 8] = [1.0, 0.7171, 0.0, -0.7171, -1.0, -0.7171, 0.0, 0.7
 pub const YSPEED: [f32; 8] = [0.0, 0.7171, 1.0, 0.7171, 0.0, -0.7171, -1.0, -0.7171];
 pub const FLOATSPEED: f32 = 4.0;
 
+pub const MAXSPECHIT: usize = 8;
+
 pub const DIAGS: [Direction; 4] = [
 	Direction::NorthWest,
 	Direction::NorthEast,

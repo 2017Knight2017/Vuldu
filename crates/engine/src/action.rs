@@ -1,7 +1,7 @@
 use hecs::{CommandBuffer, Entity, QueryBorrow, With, World};
 use serde::Deserialize;
 use wad_parser::{DoomMap, to_u64};
-use crate::{CurrentSector, DB, DynMap, Health, Idle, InstantMoveIntent, MobjAi, MobjFlags, MobjType, MonsterRotation, PLAYERHEIGHT, PlayerMarker, Position, Random, SfxEvent, SkillLevel, SpriteAnimation, Target, WorldEvent, in_fov, p_check_melee_range, p_check_missile_range, p_check_sight, p_move, p_new_chase_dir, wake_up_monster};
+use crate::{CurrentSector, DB, DynMap, Health, Idle, InstantMoveIntent, MobjAi, MobjFlagCommand, MobjFlags, MobjType, MonsterRotation, PLAYERHEIGHT, PlayerMarker, Position, Random, SfxEvent, SkillLevel, SpriteAnimation, Target, WorldEvent, in_fov, p_check_melee_range, p_check_missile_range, p_check_sight, p_move, p_new_chase_dir, wake_up_monster};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub enum ActionFunc {
@@ -218,9 +218,9 @@ pub fn chase_system(
 	mut query: QueryBorrow<'_, (
 		Entity,
         &mut MonsterRotation,
-        &mut MobjType,
 		&mut MobjAi,
 		&mut InstantMoveIntent,
+		&MobjType,
 		&Position,
         &Target,
     )>,
@@ -231,11 +231,12 @@ pub fn chase_system(
     fast_monsters: bool,
     audio_buffer: &mut Vec<SfxEvent>,
 	blocklists: &[Vec<Entity>],
-	world_events: &mut Vec<WorldEvent>
+	world_events: &mut Vec<WorldEvent>,
+	mobj_flag_buffer: &mut Vec<MobjFlagCommand>
 ) {
     let db = DB.get().unwrap();
 
-    for (ent, rot, mobj_type, ai, imi, pos, target) in query.iter() {
+    for (ent, rot, ai, imi, mobj_type, pos, target) in query.iter() {
         let mobj_info = &db.mobjinfo[&mobj_type.type_];
 
         if ai.reaction_time > 0 {
@@ -271,11 +272,11 @@ pub fn chase_system(
         }
 
         if mobj_type.flags.contains(MobjFlags::JUST_ATTACKED) {
-            mobj_type.flags.remove(MobjFlags::JUST_ATTACKED);
+            mobj_flag_buffer.push(MobjFlagCommand::Remove { ent, flag: MobjFlags::JUST_ATTACKED });
             if game_skill != SkillLevel::Nightmare && !fast_monsters {
                 p_new_chase_dir(
-    			    ent, pos, rot, mobj_type, mobj_info, imi, 
-    			    target_pos, map, world, random, blocklists, world_events
+    			    ent, pos, rot, mobj_type, mobj_info, imi, target_pos,
+    			    map, world, random, blocklists, world_events, mobj_flag_buffer
     			);
             }
             continue;
@@ -305,27 +306,29 @@ pub fn chase_system(
             }
 
             if check_missile && p_check_missile_range(
+				ent,
 				pos, 
 				mobj_type, 
 				target_pos, 
 				random, 
-				mobj_info.melee_state.is_none()
+				mobj_info.melee_state.is_none(),
+				mobj_flag_buffer
 			) {
 				ai.current_state = missile_state;
                 ai.tics_left = db.states[&missile_state].tics;
-				mobj_type.flags.insert(MobjFlags::JUST_ATTACKED); 
+				mobj_flag_buffer.push(MobjFlagCommand::Add { ent, flag: MobjFlags::JUST_ATTACKED }); 
                 continue;
             }
         }
 
         rot.move_count -= 1;
         if rot.move_count < 0 || !p_move(
-			ent, pos, rot, mobj_type, mobj_info, imi,
-			map, world, random, blocklists, world_events
+			ent, pos, rot, mobj_type, mobj_info, imi, map, world,
+			random, blocklists, world_events, mobj_flag_buffer
 		) {
             p_new_chase_dir(
-    		    ent, pos, rot, mobj_type, mobj_info, imi, 
-    		    target_pos, map, world, random, blocklists, world_events
+    		    ent, pos, rot, mobj_type, mobj_info, imi, target_pos,
+    		    map, world, random, blocklists, world_events, mobj_flag_buffer
     		);
 		
     		rot.move_count = (random.p() & 15) as i32;

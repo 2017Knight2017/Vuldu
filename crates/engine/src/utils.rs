@@ -2,7 +2,7 @@ use hecs::{Entity, World};
 use strum::IntoEnumIterator;
 use wad_parser::DoomMap;
 
-use crate::{DIAGS, Direction, InstantMoveIntent, MELEERANGE, MobjFlags, MobjInfo, MobjNum, MobjType, MonsterRotation, OPPOSITE, Position, Random, WorldEvent, p_move, point_to_angle};
+use crate::{DIAGS, Direction, InstantMoveIntent, MELEERANGE, MobjFlagCommand, MobjFlags, MobjInfo, MobjNum, MobjType, MonsterRotation, OPPOSITE, Position, Random, WorldEvent, p_move, point_to_angle};
 
 pub fn aprox_xz_distance(src: (f32, f32), dst: (f32, f32)) -> f32 {
 	let dx = (src.0 - dst.0).abs();
@@ -39,16 +39,18 @@ pub fn p_check_melee_range(pos: &Position, target_pos: &Position, target_radius:
 }
 
 pub fn p_check_missile_range(
+    ent: Entity,
     pos: &Position,
-    mobj_type: &mut MobjType,
+    mobj_type: &MobjType,
     target_pos: &Position, 
     random: &mut Random,
     is_melee_state_none: bool,
+    mobj_flag_buffer: &mut Vec<MobjFlagCommand>
 ) -> bool {
     // TODO: if !p_check_sight(...) { return false; }
 	
     if mobj_type.flags.contains(MobjFlags::JUST_HIT) {
-        mobj_type.flags.remove(MobjFlags::JUST_HIT);
+        mobj_flag_buffer.push(MobjFlagCommand::Remove { ent, flag: MobjFlags::JUST_HIT });
         return true;
     }
 
@@ -93,7 +95,7 @@ pub fn p_new_chase_dir(
     ent: Entity,
     pos: &Position,
     rot: &mut MonsterRotation,
-    mobj_type: &mut MobjType,
+    mobj_type: &MobjType,
     mobj_info: &MobjInfo,
     imi: &mut InstantMoveIntent,
     target_pos: &Position,
@@ -101,7 +103,8 @@ pub fn p_new_chase_dir(
     world: &World,
     random: &mut Random,
     blocklists: &[Vec<Entity>],
-    world_events: &mut Vec<WorldEvent>
+    world_events: &mut Vec<WorldEvent>,
+    mobj_flag_buffer: &mut Vec<MobjFlagCommand>
 ) {
     let old_dir = rot.move_dir;
     let turnaround = match old_dir {
@@ -134,7 +137,7 @@ pub fn p_new_chase_dir(
     let random1 = random.p();
     let random2 = random.p();
 
-    let mut try_walk = |dir: Option<Direction>, rot: &mut MonsterRotation| -> bool {
+    let mut try_walk = |dir: Option<Direction>| -> bool {
         rot.move_dir = dir;
         p_move(
             ent,
@@ -148,6 +151,7 @@ pub fn p_new_chase_dir(
             random,
             blocklists,
             world_events,
+            mobj_flag_buffer,
         )
     };
 
@@ -155,7 +159,7 @@ pub fn p_new_chase_dir(
         let idx = (((dz < 0.0) as usize) << 1) + ((dx > 0.0) as usize);
         let diag_dir = Some(DIAGS[idx]);
 
-        if diag_dir != turnaround && try_walk(diag_dir, rot) {
+        if diag_dir != turnaround && try_walk(diag_dir) {
             return;
         }
     }
@@ -171,33 +175,33 @@ pub fn p_new_chase_dir(
         dir[2] = None;
     }
 
-    if dir[1].is_some() && try_walk(dir[1], rot) {
+    if try_walk(dir[1]) {
         return;
     }
 
-    if dir[2].is_some() && try_walk(dir[2], rot) {
+    if try_walk(dir[2]) {
         return;
     }
 
-    if try_walk(old_dir, rot) {
+    if try_walk(old_dir) {
         return;
     }
 
     if random2 & 0b1 != 0 {
         for tdir in Direction::iter() {
-            if Some(tdir) != turnaround && try_walk(Some(tdir), rot) {
+            if Some(tdir) != turnaround && try_walk(Some(tdir)) {
                 return;
             }
         }
     } else {
         for tdir in Direction::iter().rev() {
-            if Some(tdir) != turnaround && try_walk(Some(tdir), rot) {
+            if Some(tdir) != turnaround && try_walk(Some(tdir)) {
                 return;
             }
         }
     }
 
-    if try_walk(turnaround, rot) {
+    if try_walk(turnaround) {
         return;
     }
 

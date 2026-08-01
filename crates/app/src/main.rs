@@ -45,6 +45,7 @@ struct App {
     _audio_stream_handle: MixerDeviceSink,
     audio_player: DoomSfxPlayer,
     audio_buffer: Vec<SfxEvent>,
+    mobj_flag_buffer: Vec<MobjFlagCommand>,
     texture_data: FxHashMap<u64, (u32, u32, u32, bool)>,
     audio_data: FxHashMap<u64, DoomSfx>,
     sprite_offsets: Vec<(i16, i16)>,
@@ -256,21 +257,16 @@ impl App {
         let ai_query = self.world.query::<&mut MobjAi>();
         ai_system(ai_query);
 
-        let position_input_query = self.world.query::<(Entity, &mut Velocity, &PlayerRotation)>();
         let animation_query = self.world.query::<(&mut SpriteAnimation, &MobjAi)>();
-        micropool::join(
-            || handle_position_input(position_input_query, &self.current_input, &mut self.command_buffer, &mut self.audio_buffer),
-            || animation_system(animation_query),
-        );
-
-        self.flush_command_buffer();
+        animation_system(animation_query);
 
         let rotation_query = self.world.query::<&mut PlayerRotation>();
-        let friction_query = self.world.query::<&mut Velocity>();
-        micropool::join(
-            || handle_rotation_input(rotation_query, &self.current_input),
-            || friction_system(friction_query),
-        );
+        handle_rotation_input(rotation_query, &self.current_input);
+        
+        let position_input_query = self.world.query::<(Entity, &mut Velocity, &PlayerRotation)>();
+        handle_position_input(position_input_query, &self.current_input, &mut self.command_buffer, &mut self.audio_buffer);
+
+        self.flush_command_buffer();
 
         let propagate_sound_query = self.world.query::<(Entity, &CurrentSector)>().with::<&PlayerShoot>();
         propagate_sound_system(
@@ -314,7 +310,7 @@ impl App {
 
         self.flush_command_buffer();
 
-        let chase_query = self.world.query::<(Entity, &mut MonsterRotation, &mut MobjType, &mut MobjAi, &mut InstantMoveIntent, &Position, &Target)>();
+        let chase_query = self.world.query::<(Entity, &mut MonsterRotation, &mut MobjAi, &mut InstantMoveIntent, &MobjType, &Position, &Target)>();
         chase_system(
             chase_query, 
             &self.world, 
@@ -324,14 +320,18 @@ impl App {
             true, 
             &mut self.audio_buffer, 
             &self.blocklists, 
-            &mut self.world_events
+            &mut self.world_events,
+            &mut self.mobj_flag_buffer,
         );
 
-        let monster_movement_query = self.world
-            .query::<(Entity, &mut Position, &mut CurrentSector, &mut InstantMoveIntent, &mut Velocity, &MobjType)>()
+        let friction_query = self.world.query::<&mut Velocity>();
+        friction_system(friction_query);
+
+        let try_move_query = self.world
+            .query::<(Entity, &mut InstantMoveIntent, &mut Velocity, &Position, &MobjType)>()
             .with::<&Active>();
-        monster_movement_system(
-            monster_movement_query, 
+        let pending_moves = try_move_system(
+            try_move_query, 
             &self.map,
             &self.world,
             &mut self.random,
@@ -342,13 +342,18 @@ impl App {
         let player_movement_query = self.world
             .query::<(&mut Position, &Velocity, &mut CurrentSector)>()
             .with::<&PlayerMarker>();
-        player_movement_system(player_movement_query, &self.map);
+        apply_player_movement_system(player_movement_query, &self.map);
+
+        let apply_query = self.world
+            .query::<(Entity, &mut Position, &mut CurrentSector)>()
+            .with::<&Active>();
+        apply_monster_movement_system(apply_query, pending_moves, &self.map, &mut self.blocklists);
+
+        execute_events_system(&mut self.world_events);
+        apply_mobj_flags_system(&mut self.mobj_flag_buffer, &self.world);
 
         let audio_query = self.world.query::<(&Position, &PlayerRotation)>();
-        micropool::join(
-            || audio_system(audio_query, &mut self.audio_buffer, &mut self.audio_player, &self.audio_data),
-            || execute_events_system(&mut self.world_events)
-        );
+        audio_system(audio_query, &mut self.audio_buffer, &mut self.audio_player, &self.audio_data);
 
         self.current_input.mouse_delta_x = 0.0;
     }
@@ -557,7 +562,7 @@ fn main() -> Result<(), String> {
     //
     //let map = DoomMap::from_wad(&wad_manager, &args.map)?;
 
-    wad_manager.add_wad("assets/DOOM.WAD")?;
+    wad_manager.add_wad("assets/DOOM2.WAD")?;
     //wad_manager.add_wad("assets/oku2v31.wad")?;
     //wad_manager.add_wad("assets/nuts.wad")?;
     //wad_manager.add_wad("assets/Sunder 2512.wad")?;
@@ -588,6 +593,7 @@ fn main() -> Result<(), String> {
         audio_player,
         audio_buffer: Vec::new(),
         command_buffer: CommandBuffer::new(),
+        mobj_flag_buffer: Vec::new(),
         texture_data: FxHashMap::default(),
         audio_data: FxHashMap::default(),
         sprite_offsets: Vec::new(),
