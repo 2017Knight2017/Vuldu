@@ -39,7 +39,7 @@ impl App {
 				};
 
 	    	    let to_player = player_pos - monster_pos;
-				let angle_to_player = point_to_angle(-to_player.x, to_player.z);
+				let angle_to_player = point_to_angle(to_player.x, to_player.z);
 
 				let view_angle = angle_to_player.wrapping_sub(monster_angle);
 

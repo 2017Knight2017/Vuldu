@@ -150,7 +150,7 @@ pub fn p_try_move(
 
     imi.dx = goal_pos.0 - pos.x;
     imi.dz = goal_pos.2 - pos.z;
-    imi.new_sector = Some(map.get_sector_by_pos(-goal_pos.0, goal_pos.2));
+    imi.new_sector = Some(map.get_sector_by_pos(goal_pos.0, goal_pos.2));
 
     (true, true)
 }

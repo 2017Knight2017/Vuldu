@@ -132,7 +132,7 @@ impl DoomMap {
 	            let colormap_idx = 31 - ((clamped_light / 8.0).floor() as u32).clamp(0, 31);
 
 	            vertices.push(Vertex { 
-	                pos: [-(v1.x as f32), y_low, v1.y as f32],
+	                pos: [v1.x as f32, y_low, v1.y as f32],
 	                texture_pos: [u_start, v_end],
 					light_level: modern_light,
 	                texture_id: final_tex_id,
@@ -141,7 +141,7 @@ impl DoomMap {
 	            });
 
 	            vertices.push(Vertex { 
-	                pos: [-(v2.x as f32), y_low, v2.y as f32],
+	                pos: [v2.x as f32, y_low, v2.y as f32],
 	                texture_pos: [u_end, v_end],
 					light_level: modern_light,
 	                texture_id: final_tex_id,
@@ -150,7 +150,7 @@ impl DoomMap {
 	            });
 
 	            vertices.push(Vertex { 
-	                pos: [-(v1.x as f32), y_high, v1.y as f32],
+	                pos: [v1.x as f32, y_high, v1.y as f32],
 	                texture_pos: [u_start, v_start],
 					light_level: modern_light,
 	                texture_id: final_tex_id,
@@ -159,7 +159,7 @@ impl DoomMap {
 	            });
 
 	            vertices.push(Vertex { 
-	                pos: [-(v2.x as f32), y_high, v2.y as f32],
+	                pos: [v2.x as f32, y_high, v2.y as f32],
 	                texture_pos: [u_end, v_start],
 					light_level: modern_light,
 	                texture_id: final_tex_id,
@@ -502,7 +502,7 @@ impl DoomMap {
 	            let floor_start_idx = vertices.len() as u32;
 	            for pt in &flat_points {
 	                vertices.push(Vertex { 
-	                    pos: [-(pt[0]), sector.floorheight.into(), pt[1]],
+	                    pos: [pt[0], sector.floorheight.into(), pt[1]],
 	                    texture_pos: [pt[0] / 64.0, pt[1] / 64.0],
 						light_level: modern_light,
 	                    texture_id: floor_texture_id,
@@ -519,7 +519,7 @@ impl DoomMap {
 	            let ceil_start_idx = vertices.len() as u32;
 	            for pt in &flat_points {
 	                vertices.push(Vertex { 
-	                    pos: [-(pt[0]), sector.ceilingheight.into(), pt[1]],
+	                    pos: [pt[0], sector.ceilingheight.into(), pt[1]],
 	                    texture_pos: [pt[0] / 64.0, pt[1] / 64.0],
 						light_level: modern_light,
 	                    texture_id: ceil_texture_id,
@@ -581,10 +581,10 @@ impl DoomMap {
 
 	pub fn get_objects_vertices(&self) -> (Vec<Vertex>, Vec<u32>) {
 	    let corners = [
-		    ([0.0, 0.0, 0.0], [0.0, 1.0]),
-		    ([1.0, 0.0, 0.0], [1.0, 1.0]),
-		    ([1.0, 1.0, 0.0], [1.0, 0.0]),
-		    ([0.0, 1.0, 0.0], [0.0, 0.0]),
+		    ([0.0, 0.0, 0.0], [1.0, 1.0]),
+		    ([1.0, 0.0, 0.0], [0.0, 1.0]),
+		    ([1.0, 1.0, 0.0], [0.0, 0.0]),
+		    ([0.0, 1.0, 0.0], [1.0, 0.0]),
 		];
 
 	    let vertices: Vec<Vertex> = corners
@@ -601,7 +601,7 @@ impl DoomMap {
 	        })
 	        .collect();
 
-	    let indices = vec![0, 1, 2, 0, 2, 3];
+	    let indices = vec![0, 3, 2, 0, 2, 1];
 
 	    (vertices, indices)
 	}
@@ -699,7 +699,6 @@ fn find_next_edge_by_angle(
     best_idx
 }
 
-#[inline]
 fn pseudo_angle(dx: f32, dy: f32) -> f32 {
     let sum = dx.abs() + dy.abs();
     if sum == 0.0 {

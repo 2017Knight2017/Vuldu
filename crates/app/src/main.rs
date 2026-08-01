@@ -25,7 +25,6 @@ use rustc_hash::FxHashMap;
 use std::time::Instant;
 use std::f64::consts::TAU;
 
-const EYE_HEIGHT: f32 = 41.0;
 const FOV_ANGLE: f32 = 90.0;
 const TICKRATE: u32 = 35;
 const TICK_TIME: f32 = 1.0 / TICKRATE as f32;
@@ -95,8 +94,8 @@ fn register_sprite(
 fn update_camera_from_player(view_matrix: &mut Mat4, world: &World, alpha: f32) {
     for (position, rotation, _player) in world.query::<(&Position, &PlayerRotation, &PlayerMarker)>().iter() {
 
-        let prev_pos = glam::vec3(position.prev_x, position.prev_y + EYE_HEIGHT, position.prev_z);
-        let current_pos = glam::vec3(position.x, position.y + EYE_HEIGHT, position.z);
+        let prev_pos = glam::vec3(position.prev_x, position.prev_y + EYEHEIGHT, position.prev_z);
+        let current_pos = glam::vec3(position.x, position.y + EYEHEIGHT, position.z);
         let interpolated_pos = prev_pos + (current_pos - prev_pos) * alpha;
 
         let angle_diff = rotation.angle.wrapping_sub(rotation.prev_angle) as i32;
@@ -254,12 +253,6 @@ impl App {
     }
 
     fn tick(&mut self) {
-        let ai_query = self.world.query::<&mut MobjAi>();
-        ai_system(ai_query);
-
-        let animation_query = self.world.query::<(&mut SpriteAnimation, &MobjAi)>();
-        animation_system(animation_query);
-
         let rotation_query = self.world.query::<&mut PlayerRotation>();
         handle_rotation_input(rotation_query, &self.current_input);
         
@@ -354,6 +347,12 @@ impl App {
 
         let audio_query = self.world.query::<(&Position, &PlayerRotation)>();
         audio_system(audio_query, &mut self.audio_buffer, &mut self.audio_player, &self.audio_data);
+
+        let ai_query = self.world.query::<&mut MobjAi>();
+        ai_system(ai_query);
+
+        let animation_query = self.world.query::<(&mut SpriteAnimation, &MobjAi)>();
+        animation_system(animation_query);
 
         self.current_input.mouse_delta_x = 0.0;
     }
@@ -562,13 +561,13 @@ fn main() -> Result<(), String> {
     //
     //let map = DoomMap::from_wad(&wad_manager, &args.map)?;
 
-    wad_manager.add_wad("assets/DOOM2.WAD")?;
+    wad_manager.add_wad("assets/PLUTONIA.WAD")?;
     //wad_manager.add_wad("assets/oku2v31.wad")?;
     //wad_manager.add_wad("assets/nuts.wad")?;
     //wad_manager.add_wad("assets/Sunder 2512.wad")?;
     //wad_manager.add_wad("assets/HR.WAD")?;
 
-    let map = DoomMap::from_wad(&wad_manager, 1)?;
+    let map = DoomMap::from_wad(&wad_manager, 12)?;
     let dyn_map = DynMap::from(&map);
 
     let event_loop = EventLoop::new().unwrap();

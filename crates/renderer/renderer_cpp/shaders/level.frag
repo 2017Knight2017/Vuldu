@@ -55,7 +55,7 @@ void main() {
     // sky walls or sky ceilings
     } else if (fragTexId == 65534 || fragTexId == 65533) {
         vec3 forward = normalize(vec3(ubo.proj[0][2], ubo.proj[1][2], ubo.proj[2][2]));
-        float cameraYaw = atan(forward.z, forward.x);
+        float cameraYaw = atan(forward.x, forward.z);
 
         float widthFactor = 1024.0 / lc.skyWidth;
 

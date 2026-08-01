@@ -24,6 +24,7 @@ pub const MELEERANGE: f32 = 64.0;
 pub const MISSILERANGE: f32 = 2048.0;
 
 pub const PLAYERHEIGHT: f32 = 56.0;
+pub const EYEHEIGHT: f32 = 41.0;
 pub const MAXRADIUS: f32 = 32.0;
 
 pub const XSPEED: [f32; 8] = [1.0, 0.7171, 0.0, -0.7171, -1.0, -0.7171, 0.0, 0.7171];

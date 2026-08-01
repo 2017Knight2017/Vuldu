@@ -57,8 +57,8 @@ pub fn handle_position_input(
 
         if input.move_forward  { move_forward += 1.0; }
         if input.move_backward { move_forward -= 1.0; }
-        if input.move_left     { move_sideways += 1.0; }
-        if input.move_right    { move_sideways -= 1.0; }
+        if input.move_right    { move_sideways += 1.0; }
+        if input.move_left     { move_sideways -= 1.0; }
         if input.move_up       { move_vertically += 1.0; }
         if input.move_down     { move_vertically -= 1.0; }
 
@@ -86,7 +86,7 @@ pub fn handle_position_input(
 pub fn handle_rotation_input(mut query: QueryBorrow<'_, &mut PlayerRotation>, input: &PlayerInput) {
     for rotation in query.iter() {
         let sensitivity = 0.008; 
-        let angle_delta_rad = -input.mouse_delta_x * sensitivity;
+        let angle_delta_rad = input.mouse_delta_x * sensitivity;
         let factor = (angle_delta_rad as f64) / TAU;
 
         let angle_delta = (factor * u32::MAX as f64) as i32;

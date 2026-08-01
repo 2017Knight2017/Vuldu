@@ -94,6 +94,7 @@ void VulkanRenderer::updateUniformBuffer(const UniformBufferObject* ubo_ptr, uin
 	
 	auto* ubo = reinterpret_cast<UniformBufferObject*>(this->uniformBuffersMapped[currentImage]);
     ubo->proj[5] *= -1.0f;
+    ubo->proj[0] *= -1.0f;
 }
 
 void VulkanRenderer::updateObjectInstances(const ObjectInstance* instances_ptr, size_t instances_count) {

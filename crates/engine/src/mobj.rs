@@ -76,7 +76,7 @@ pub fn spawn_mobj(
 		entity_builder
 			.add(PlayerMarker)
 			.add(PlayerRotation { angle, prev_angle: angle })
-        	.add(PlayerCamera { view_z: 41.0, view_height: 41.0, delta_view_height: 0.0, bob: 0.0 })
+        	.add(PlayerCamera { view_z: EYEHEIGHT, view_height: EYEHEIGHT, delta_view_height: 0.0, bob: 0.0 })
         	.add(PlayerStats::default())
         	.add(PlayerInventory { 
         	    ready_weapon: 1, 
@@ -137,7 +137,7 @@ pub fn spawn_all_things(world: &mut World, map: &DoomMap, random: &mut Random) {
 		let sector = map.sectors[sector_idx];
 
 		if let Some(thing_type) = MOBJTYPE_BY_DOOMEDNUM.get(&thing.type_) {
-			spawn_mobj(world, random, *thing_type, sector_idx, -thing.x, sector.floorheight, thing.y, thing.angle);
+			spawn_mobj(world, random, *thing_type, sector_idx, thing.x, sector.floorheight, thing.y, thing.angle);
 		}
 	}
 }
