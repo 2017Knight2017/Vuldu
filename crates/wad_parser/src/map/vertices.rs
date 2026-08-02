@@ -1,11 +1,22 @@
 use crate::{DoomMap, MapLinedef, MapVertex, to_u64};
-use renderer::{Vertex};
 use earcut::Earcut;
 use rustc_hash::{FxBuildHasher, FxHashMap};
 
 pub const NF_SUBSECTOR: usize = 0x8000; 
 pub const ML_DONTPEGTOP: i16 = 0b1000;
 pub const ML_DONTPEGBOTTOM: i16 = 0b10000;
+
+
+// GpuVertex MUST equal to renderer::Vertex
+#[repr(C)]
+pub struct GpuVertex {
+    pub pos: [f32; 3],
+    pub texture_pos: [f32; 2],
+    pub light_level: f32,
+    pub texture_id: u32,
+    pub colormap_idx: u32,
+    pub floor_tex_id: u32,
+}
 
 #[derive(Debug, Clone, Copy)]
 pub struct AABB {
@@ -44,7 +55,7 @@ struct Edge {
 }
 
 impl DoomMap {
-	pub fn get_walls_vertices(&self, texture_ids: &FxHashMap<u64, (u32, u32, u32, bool)>) -> (Vec<Vertex>, Vec<u32>) {
+	pub fn get_walls_vertices(&self, texture_ids: &FxHashMap<u64, (u32, u32, u32, bool)>) -> (Vec<GpuVertex>, Vec<u32>) {
 	    let mut vertices = Vec::new();
 	    let mut indices = Vec::new();
 
@@ -131,7 +142,7 @@ impl DoomMap {
 	            let modern_light = clamped_light / 255.0;
 	            let colormap_idx = 31 - ((clamped_light / 8.0).floor() as u32).clamp(0, 31);
 
-	            vertices.push(Vertex { 
+	            vertices.push(GpuVertex { 
 	                pos: [v1.x as f32, y_low, v1.y as f32],
 	                texture_pos: [u_start, v_end],
 					light_level: modern_light,
@@ -140,7 +151,7 @@ impl DoomMap {
 					floor_tex_id
 	            });
 
-	            vertices.push(Vertex { 
+	            vertices.push(GpuVertex { 
 	                pos: [v2.x as f32, y_low, v2.y as f32],
 	                texture_pos: [u_end, v_end],
 					light_level: modern_light,
@@ -149,7 +160,7 @@ impl DoomMap {
 					floor_tex_id
 	            });
 
-	            vertices.push(Vertex { 
+	            vertices.push(GpuVertex { 
 	                pos: [v1.x as f32, y_high, v1.y as f32],
 	                texture_pos: [u_start, v_start],
 					light_level: modern_light,
@@ -158,7 +169,7 @@ impl DoomMap {
 					floor_tex_id
 	            });
 
-	            vertices.push(Vertex { 
+	            vertices.push(GpuVertex { 
 	                pos: [v2.x as f32, y_high, v2.y as f32],
 	                texture_pos: [u_end, v_start],
 					light_level: modern_light,
@@ -261,8 +272,8 @@ impl DoomMap {
 	    (vertices, indices)
 	}
 
-	pub fn get_flats_vertices(&self, texture_ids: &FxHashMap<u64, (u32, u32, u32, bool)>) -> (Vec<Vertex>, Vec<u32>) {
-	    let mut vertices: Vec<Vertex> = Vec::new();
+	pub fn get_flats_vertices(&self, texture_ids: &FxHashMap<u64, (u32, u32, u32, bool)>) -> (Vec<GpuVertex>, Vec<u32>) {
+	    let mut vertices: Vec<GpuVertex> = Vec::new();
 	    let mut indices: Vec<u32> = Vec::new();
 
 		let mut sector_to_linedefs: FxHashMap<i16, Vec<&MapLinedef>> = FxHashMap::with_capacity_and_hasher(self.sectors.len(), FxBuildHasher::default());
@@ -501,7 +512,7 @@ impl DoomMap {
 
 	            let floor_start_idx = vertices.len() as u32;
 	            for pt in &flat_points {
-	                vertices.push(Vertex { 
+	                vertices.push(GpuVertex { 
 	                    pos: [pt[0], sector.floorheight.into(), pt[1]],
 	                    texture_pos: [pt[0] / 64.0, pt[1] / 64.0],
 						light_level: modern_light,
@@ -518,7 +529,7 @@ impl DoomMap {
 
 	            let ceil_start_idx = vertices.len() as u32;
 	            for pt in &flat_points {
-	                vertices.push(Vertex { 
+	                vertices.push(GpuVertex { 
 	                    pos: [pt[0], sector.ceilingheight.into(), pt[1]],
 	                    texture_pos: [pt[0] / 64.0, pt[1] / 64.0],
 						light_level: modern_light,
@@ -579,7 +590,7 @@ impl DoomMap {
         }
     }
 
-	pub fn get_objects_vertices(&self) -> (Vec<Vertex>, Vec<u32>) {
+	pub fn get_objects_vertices(&self) -> (Vec<GpuVertex>, Vec<u32>) {
 	    let corners = [
 		    ([0.0, 0.0, 0.0], [1.0, 1.0]),
 		    ([1.0, 0.0, 0.0], [0.0, 1.0]),
@@ -587,9 +598,9 @@ impl DoomMap {
 		    ([0.0, 1.0, 0.0], [1.0, 0.0]),
 		];
 
-	    let vertices: Vec<Vertex> = corners
+	    let vertices: Vec<GpuVertex> = corners
 	        .iter()
-	        .map(|&(pos, uv)| Vertex {
+	        .map(|&(pos, uv)| GpuVertex {
 	            pos,
 	            texture_pos: uv,
 

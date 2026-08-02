@@ -55,6 +55,17 @@ struct App {
     time_accumulator: f32,
 }
 
+fn vertex_to_vertex(vertex: GpuVertex) -> Vertex {
+    Vertex { 
+        pos: vertex.pos, 
+        texture_pos: vertex.texture_pos, 
+        light_level: vertex.light_level, 
+        texture_id: vertex.texture_id, 
+        colormap_idx: vertex.colormap_idx, 
+        floor_tex_id: vertex.floor_tex_id 
+    }
+}
+
 fn get_sky_texture_index(map: u8) -> u32 {
     if map <= 11 {
         0
@@ -224,18 +235,20 @@ impl App {
         println!("Flats geometry is has been built");
         let (obj_vertices, obj_indices) = self.map.get_objects_vertices();
 
-        let mut level_vertices = wall_vertices;
+        let mut level_vertices: Vec<Vertex> = wall_vertices.into_iter().map(|v| vertex_to_vertex(v)).collect();
         let mut level_indices = wall_indices;
 
         let vertex_offset = level_vertices.len() as u32; 
-        level_vertices.extend(flat_vertices);
+        level_vertices.extend(flat_vertices.into_iter().map(|v| vertex_to_vertex(v)));
         for idx in flat_indices {
             level_indices.push(vertex_offset + idx);
         }
 
+        let object_vertices: Vec<Vertex> = obj_vertices.into_iter().map(|v| vertex_to_vertex(v)).collect();
+
         renderer.update_object_instances(&[]);
         renderer.update_level_geometry(&level_vertices, &level_indices);
-        renderer.update_object_geometry(&obj_vertices, &obj_indices);
+        renderer.update_object_geometry(&object_vertices, &obj_indices);
     }
 
     fn handle_fatal_error(&mut self, event_loop: &ActiveEventLoop, renderer: &mut SafeRenderer, msg: &str) {
