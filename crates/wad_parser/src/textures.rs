@@ -4,8 +4,6 @@ use rayon::prelude::*;
 use std::ptr::read_unaligned;
 use std::mem::size_of;
 
-const MAX_SKY: usize = 16;
-
 #[repr(C)]
 #[derive(Clone, Copy)]
 struct MapPatch {
@@ -162,7 +160,7 @@ pub static SPRITE_NAMES: Map<i16, Option<&'static str>> = phf_map! {
 };
 
 impl WadManager {
-	pub fn bake_walls(&self) -> Result<(Vec<u64>, Vec<DoomPicture>, Vec<u64>, Vec<DoomPicture>, Vec<f32>), String> {
+	pub fn bake_walls(&self, max_sky: usize) -> Result<(Vec<u64>, Vec<DoomPicture>, Vec<u64>, Vec<DoomPicture>, Vec<f32>), String> {
 		let all_patchnames_raw = self.get_data(b"PNAMES")?;
 		let patch_names: Vec<&[u8]> = all_patchnames_raw.get(4..)
 			.ok_or_else(|| "Failed to get PNAMES data".to_string())?
@@ -288,9 +286,9 @@ impl WadManager {
 		let total_textures = texture_lumps.iter().map(|(_, offsets)| offsets.len()).sum();
 	    let mut baked_textures = Vec::with_capacity(total_textures);
 		let mut textures_names = Vec::with_capacity(total_textures);
-		let mut baked_sky_textures = Vec::with_capacity(MAX_SKY);
-		let mut sky_textures_names = Vec::with_capacity(MAX_SKY);
-		let mut sky_widths = Vec::with_capacity(MAX_SKY);
+		let mut baked_sky_textures = Vec::with_capacity(max_sky);
+		let mut sky_textures_names = Vec::with_capacity(max_sky);
+		let mut sky_widths = Vec::with_capacity(max_sky);
 
 		for (name, picture) in baked_results {
     	    if sky_names.contains(&name) {
@@ -584,7 +582,7 @@ fn parse_texture_header(raw_data: &[u8], lump_name: &str) -> Result<Vec<u32>, St
     let offsets: Vec<u32> = offsets_bytes
         .chunks_exact(std::mem::size_of::<u32>())
         .map(|chunk| {
-            unsafe { std::ptr::read_unaligned(chunk.as_ptr() as *const u32) }
+            unsafe { read_unaligned(chunk.as_ptr() as *const u32) }
         })
         .collect();
 

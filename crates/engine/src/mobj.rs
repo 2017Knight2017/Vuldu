@@ -109,17 +109,6 @@ pub fn spawn_mobj(
 			});
 	};
 
-	for flag in &mobj_info.flags {
-		match flag {
-			MobjFlagNum::Solid => entity_builder.add(Solid),
-			MobjFlagNum::CountKill => entity_builder.add(CountKill),
-			MobjFlagNum::CountItem => entity_builder.add(CountItem),
-			MobjFlagNum::Special => entity_builder.add(Special),
-			MobjFlagNum::Pickup => entity_builder.add(Pickup),
-			_ => { continue; }
-		};
-	}
-
     world.spawn(entity_builder.build());
 }
 

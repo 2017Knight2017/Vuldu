@@ -130,13 +130,16 @@ pub fn apply_mobj_flags_system(
     for command in mobj_flag_buffer.drain(..) {
         match command {
             MobjFlagCommand::Remove { ent, flag } => {
-                // SAFETY: MobjType is given to each entity on spawn and is never removed 
-                let mobj_type = unsafe { world.get_unchecked::<&mut MobjType>(ent).unwrap() };
-                mobj_type.flags.remove(flag);
+                world.get::<&mut MobjType>(ent)
+                    .unwrap()
+                    .flags
+                    .remove(flag);
             },
             MobjFlagCommand::Add { ent, flag } => {
-                let mobj_type = unsafe { world.get_unchecked::<&mut MobjType>(ent).unwrap() };
-                mobj_type.flags.insert(flag);
+                world.get::<&mut MobjType>(ent)
+                    .unwrap()
+                    .flags
+                    .insert(flag);
             } 
         }
     }

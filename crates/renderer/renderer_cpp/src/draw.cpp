@@ -121,6 +121,10 @@ void VulkanRenderer::setSkyIndex(uint32_t idx) {
 	this->currentSkyIndex = idx % MAX_SKY;
 }
 
+size_t getMaxSky() {
+    return MAX_SKY;
+}
+
 void VulkanRenderer::startFrame(const UniformBufferObject* ubo_ptr) {
 	VkCommandBuffer currentCommandBuffer = this->commandBuffers[this->currentFrame];
 	vkWaitForFences(this->device, 1, &this->inFlightFences[this->currentFrame], VK_TRUE, UINT64_MAX);

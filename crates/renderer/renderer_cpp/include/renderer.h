@@ -225,3 +225,4 @@ private:
 };
 
 std::unique_ptr<VulkanRenderer> createRenderer();
+size_t getMaxSky();

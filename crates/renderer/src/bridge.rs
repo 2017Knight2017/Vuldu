@@ -67,6 +67,7 @@ pub(crate) mod ffi {
         fn setPaletteIndex(self: Pin<&mut VulkanRenderer>, idx: u32);
         fn setResolution(self: Pin<&mut VulkanRenderer>, width: u32, height: u32);
         fn setSkyIndex(self: Pin<&mut VulkanRenderer>, idx: u32);
+        fn getMaxSky() -> usize;
     }
 }
 

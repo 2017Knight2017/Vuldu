@@ -127,7 +127,7 @@ pub fn check_sound_system(
 
         if let Some(sound_target_entity) = sector.sound_target {            
             if mobj_type.flags.contains(MobjFlags::AMBUSH) {
-				let mut target_query = world.query_one::<(&Position, &CurrentSector)>(entity);
+				let mut target_query = world.query_one::<(&Position, &CurrentSector)>(sound_target_entity);
 
                 match target_query.get() {
                     Ok((target_pos, target_sector)) => {

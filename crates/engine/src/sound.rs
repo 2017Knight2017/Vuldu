@@ -56,7 +56,7 @@ fn propagate_sound_internal(
 
 		if is_shut { return; }
 
-		if linedefs[i].flags & LinedefFlags::SOUND_BLOCK.bits() as i16 == 1 {
+		if linedefs[i].flags & LinedefFlags::SOUND_BLOCK.bits() as i16 != 0 {
 			propagate_sound_internal(other_sector_idx, times_blocked + 1, sectors, linedefs, sidedefs, sound_target);
 		} else {
 			propagate_sound_internal(other_sector_idx, times_blocked, sectors, linedefs, sidedefs, sound_target);

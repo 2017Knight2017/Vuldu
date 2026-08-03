@@ -69,36 +69,8 @@ pub struct MobjAi {
 
 define_markers! {
     PlayerMarker;
-    Special;
-    Solid;
-    Shootable;
-    NoSector;
-    NoBlockmap;
-    Ambush;
-    JustHit;
-    JustAttacked;
-    SpawnCeiling;
-    NoGravity;
-    DropOff;
-    Pickup;
-    NoClip;
-    Slide;
-    Float;
-    Teleport;
-    Missile;
-    Dropped;
-    Shadow;
-    NoBlood;
-    InFloat;
-    CountKill;
-    CountItem;
-    SkullFly;
-    NotDMatch;
-
     Active;
     Idle;
-    Corpse;
-
     PlayerShoot;
 }
 

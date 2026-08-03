@@ -1,7 +1,7 @@
 mod bridge; 
 
 pub use bridge::ffi::{WindowHandles, WindowSize, Vertex, UniformBufferObject, TextureDescriptor, ObjectInstance};
-use bridge::ffi::{VulkanRenderer, createRenderer};
+use bridge::ffi::{VulkanRenderer, createRenderer, getMaxSky};
 use std::pin::Pin;
 use cxx::UniquePtr;
 
@@ -54,6 +54,10 @@ impl SafeRenderer {
 
     pub fn set_sky_index(&mut self, idx: u32) {
         self.pin_mut().setSkyIndex(idx);
+    }
+
+    pub fn get_max_sky() -> usize {
+        getMaxSky()
     }
 
     pub fn update_level_geometry(&mut self, vertices: &[Vertex], indices: &[u32]) {

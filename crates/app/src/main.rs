@@ -24,11 +24,12 @@ use raw_window_handle::{HasDisplayHandle, HasWindowHandle, RawDisplayHandle, Raw
 use rustc_hash::FxHashMap;
 use std::time::Instant;
 use std::f64::consts::TAU;
+use std::sync::OnceLock;
 
 const FOV_ANGLE: f32 = 90.0;
 const TICKRATE: u32 = 35;
 const TICK_TIME: f32 = 1.0 / TICKRATE as f32;
-pub const MAX_SKY: usize = 16;
+static MAX_SKY: OnceLock<usize> = OnceLock::new();
 
 struct App {
     window: Option<Window>,
@@ -144,8 +145,9 @@ impl App {
     }
 
     fn load_and_upload_textures(&mut self, renderer: &mut SafeRenderer) -> Result<(), String> {
+        let max_sky = *MAX_SKY.get().unwrap();
         let (wall_names, wall_pics, sky_names, sky_pics, sky_widths) = 
-            self.wad_manager.bake_walls().map_err(|e| format!("Wall baking failed: {e}"))?;
+            self.wad_manager.bake_walls(max_sky).map_err(|e| format!("Wall baking failed: {e}"))?;
 
         let (flat_names, flat_pics) = 
             self.wad_manager.bake_flats().map_err(|e| format!("Flat baking failed: {e}"))?;
@@ -153,7 +155,7 @@ impl App {
         let (obj_names, obj_pics) = 
             self.wad_manager.bake_objects().map_err(|e| format!("Object baking failed: {e}"))?;
 
-        let total_textures = wall_pics.len() + flat_pics.len() + obj_pics.len() + MAX_SKY;
+        let total_textures = wall_pics.len() + flat_pics.len() + obj_pics.len() + max_sky;
         let total_pixels = 1 + sky_pics.iter()
             .chain(&obj_pics)
             .chain(&wall_pics)
@@ -168,7 +170,7 @@ impl App {
         let mut sky_data: Vec<_> = sky_names.iter().zip(sky_pics).zip(sky_widths)
             .map(|((n, p), w)| (n, p, w)).collect();
         sky_data.sort_by_key(|trio| trio.0);
-        current_gpu_id += MAX_SKY as u32;
+        current_gpu_id += max_sky as u32;
 
         let mut sky_widths_no_name = Vec::with_capacity(sky_data.len());
         for (_, pic, width) in sky_data {
@@ -181,7 +183,7 @@ impl App {
             sky_widths_no_name.push(width);
         }
 
-        let padding_needed = MAX_SKY.saturating_sub(descriptors.len());                    
+        let padding_needed = max_sky.saturating_sub(descriptors.len());                    
         for _ in 0..padding_needed {
             descriptors.push(TextureDescriptor {
                 width: 1, height: 1, pixel_offset: all_pixels.len(),
@@ -564,6 +566,8 @@ impl ApplicationHandler for App {
 }
 
 fn main() -> Result<(), String> {
+    let _ = MAX_SKY.set(SafeRenderer::get_max_sky());
+
     //let args = Args::parse();
     let mut wad_manager = WadManager::new();
 
