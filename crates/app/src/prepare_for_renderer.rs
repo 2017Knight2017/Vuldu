@@ -1,5 +1,5 @@
-use crate::{App, MAX_SKY};
-use renderer::ObjectInstance;
+use crate::App;
+use renderer::{ObjectInstance, MAX_SKY};
 use engine::{CurrentSector, PlayerMarker, Position, MonsterRotation, SpriteAnimation, point_to_angle};
 use glam::Vec3;
 use micropool::iter::*;

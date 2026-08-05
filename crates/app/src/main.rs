@@ -24,12 +24,10 @@ use raw_window_handle::{HasDisplayHandle, HasWindowHandle, RawDisplayHandle, Raw
 use rustc_hash::FxHashMap;
 use std::time::Instant;
 use std::f64::consts::TAU;
-use std::sync::OnceLock;
 
 const FOV_ANGLE: f32 = 90.0;
 const TICKRATE: u32 = 35;
 const TICK_TIME: f32 = 1.0 / TICKRATE as f32;
-static MAX_SKY: OnceLock<usize> = OnceLock::new();
 
 struct App {
     window: Option<Window>,
@@ -566,8 +564,6 @@ impl ApplicationHandler for App {
 }
 
 fn main() -> Result<(), String> {
-    let _ = MAX_SKY.set(SafeRenderer::get_max_sky());
-
     //let args = Args::parse();
     let mut wad_manager = WadManager::new();
 
