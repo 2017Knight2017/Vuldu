@@ -1,14 +1,14 @@
 use hecs::{Entity, World};
-use wad_parser::{AABB, DoomMap};
-use crate::{DB, FLOATSPEED, InstantMoveIntent, LinedefFlags, MAXRADIUS, MAXSPECHIT, MobjFlagCommand, MobjFlags, MobjInfo, MobjNum, MobjType, MonsterRotation, Position, Random, Target, WorldEvent, XSPEED, YSPEED, p_box_on_line_side};
+use wad_parser::{AABB, Level, LineFlags, LineId};
+use crate::{DB, FLOATSPEED, InstantMoveIntent, MAXRADIUS, MAXSPECHIT, MobjFlagCommand, MobjFlags, MobjInfo, MobjNum, MobjType, MonsterRotation, Position, Random, Target, WorldEvent, XSPEED, YSPEED, p_box_on_line_side};
 
 #[derive(Debug, Clone)]
 struct MoveContext {
-    ceilingline_idx: Option<usize>, 
+    ceilingline_idx: Option<LineId>, 
     ceiling_y: f32, 
     floor_y: f32, 
     dropoff_y: f32, 
-    spec_hit: Vec<usize>,
+    spec_hit: Vec<LineId>,
 }
 
 pub fn p_move(
@@ -18,7 +18,7 @@ pub fn p_move(
     mobj_type: &MobjType,
     mobj_info: &MobjInfo,
 	imi: &mut InstantMoveIntent,
-    map: &DoomMap,
+    level: &Level,
     world: &World,
     random: &mut Random,
     blocklists: &[Vec<Entity>], 
@@ -41,7 +41,7 @@ pub fn p_move(
         mobj_type, 
         mobj_info, 
         imi, 
-        map,
+        level,
         world,
         random, 
         blocklists,
@@ -51,7 +51,7 @@ pub fn p_move(
     if let Some(new_sector) = imi.new_sector {
         if !try_ok {
             if mobj_type.flags.contains(MobjFlags::FLOAT) && float_ok {
-                if pos.y < map.sectors[new_sector].floorheight as f32 {
+                if pos.y < level.state.sectors[new_sector.0].floor_h {
                     imi.dy += FLOATSPEED;
                 } else {
                     imi.dy -= FLOATSPEED;
@@ -79,7 +79,7 @@ pub fn p_move(
         }
 
         if !mobj_type.flags.contains(MobjFlags::FLOAT) {
-            imi.dy = map.sectors[new_sector].floorheight as f32 - pos.y;
+            imi.dy = level.state.sectors[new_sector.0].floor_h - pos.y;
         }
     }
 
@@ -93,7 +93,7 @@ pub fn p_try_move(
 	mobj_type: &MobjType,
 	mobj_info: &MobjInfo,
     imi: &mut InstantMoveIntent,
-	map: &DoomMap, 
+	map: &Level, 
     world: &World,
     random: &mut Random,
     blocklists: &[Vec<Entity>],
@@ -161,7 +161,7 @@ fn p_check_pos(
     mobj_type: &MobjType,
     goal_pos: (f32, f32, f32),
     mobj_info: &MobjInfo,
-    map: &DoomMap,
+    level: &Level,
     world: &World,
     random: &mut Random,
     blocklists: &[Vec<Entity>],
@@ -178,12 +178,12 @@ fn p_check_pos(
         max_y: goal_pos.2 + mobj_info.radius,
     };
 
-	let (min_col, min_row) = map.blockmap.world_to_grid(bbox.min_x - MAXRADIUS, bbox.min_y - MAXRADIUS);
-    let (max_col, max_row) = map.blockmap.world_to_grid(bbox.max_x + MAXRADIUS, bbox.max_y + MAXRADIUS);
+	let (min_col, min_row) = level.geom.blockmap.world_to_grid(bbox.min_x - MAXRADIUS, bbox.min_y - MAXRADIUS);
+    let (max_col, max_row) = level.geom.blockmap.world_to_grid(bbox.max_x + MAXRADIUS, bbox.max_y + MAXRADIUS);
 
     for r in min_row..=max_row {
         for c in min_col..=max_col {
-            let idx = r * map.blockmap.col_num + c;
+            let idx = r * level.geom.blockmap.col_num + c;
 
             for &other_entity in blocklists[idx].iter() {
                 if other_entity == ent {
@@ -198,8 +198,8 @@ fn p_check_pos(
                 }
             }
 
-            for &line_idx in map.blockmap.blocklists[idx].iter() {
-                if !pit_check_line(ctx, mobj_type, bbox, line_idx, map) {
+            for &line_idx in level.geom.blockmap.blocklists[idx].iter() {
+                if !pit_check_line(ctx, mobj_type, bbox, line_idx, level) {
                     return false;
                 }
             }
@@ -314,72 +314,50 @@ fn pit_check_line(
     ctx: &mut MoveContext,
     mobj_type: &MobjType,
     bbox: AABB,
-    line_idx: usize,
-    map: &DoomMap,
+    line_id: LineId,
+    level: &Level,
 ) -> bool {
-    let line = map.linedefs[line_idx];
+    let line = &level.geom.lines[line_id.0];
 
-    let v1 = map.vertices[line.v1 as usize];
-    let v2 = map.vertices[line.v2 as usize];
-
-    let vmin_x = v1.x.min(v2.x) as f32;
-    let vmax_x = v1.x.max(v2.x) as f32;
-    let vmin_y = v1.y.min(v2.y) as f32;
-    let vmax_y = v1.y.max(v2.y) as f32;
-    
-    if bbox.max_x < vmin_x
-        || bbox.min_x > vmax_x
-        || bbox.max_y < vmin_y
-        || bbox.min_y > vmax_y
-    {
+    if !line.bbox.intersects(&bbox) {
         return true;
     }
 
-    if p_box_on_line_side(&bbox, &line, map) != -1 {
+    if p_box_on_line_side(&bbox, &line, level) != -1 {
         return true;
     }
 
     if !mobj_type.flags.contains(MobjFlags::MISSILE) {
-        if (line.flags & LinedefFlags::BLOCKING.bits() as i16) != 0 {
+        if line.flags.contains(LineFlags::BLOCKING) {
             return false;
         }
 
-        if mobj_type.type_ != MobjNum::Player && (line.flags & LinedefFlags::BLOCK_MONSTER.bits() as i16) != 0 {
+        if mobj_type.type_ != MobjNum::Player && line.flags.contains(LineFlags::BLOCK_MONSTER) {
             return false;
         }
     }
 
-	if line.sidenum[0] == u16::MAX || line.sidenum[1] == u16::MAX { 
+	if let Some(open) = level.get_opening(line_id) {
+        if open.top < ctx.ceiling_y {
+            ctx.ceiling_y = open.top;
+            ctx.ceilingline_idx = Some(line_id);
+        }
+
+        if open.floor_high > ctx.floor_y {
+            ctx.floor_y = open.floor_high;
+        }
+
+        if open.floor_low < ctx.dropoff_y {
+            ctx.dropoff_y = open.floor_low;
+        }
+
+        if line.special != 0 {
+            if ctx.spec_hit.len() < 8 {
+                ctx.spec_hit.push(line_id);
+            }
+        }
+    } else {
         return false; 
-    }
-
-	let front_sidedef = map.sidedefs[line.sidenum[0] as usize];
-    let back_sidedef = map.sidedefs[line.sidenum[1] as usize];
-
-    let front = map.sectors[front_sidedef.sector as usize];
-    let back = map.sectors[back_sidedef.sector as usize];
-
-    let open_top = front.ceilingheight.min(back.ceilingheight) as f32;
-    let floor_high = front.floorheight.max(back.floorheight) as f32;
-    let floor_low = front.floorheight.min(back.floorheight) as f32;
-
-    if open_top < ctx.ceiling_y {
-        ctx.ceiling_y = open_top;
-        ctx.ceilingline_idx = Some(line_idx);
-    }
-
-    if floor_high > ctx.floor_y {
-        ctx.floor_y = floor_high;
-    }
-
-    if floor_low < ctx.dropoff_y {
-        ctx.dropoff_y = floor_low;
-    }
-
-    if line.special != 0 {
-        if ctx.spec_hit.len() < 8 {
-            ctx.spec_hit.push(line_idx);
-        }
     }
 
     true

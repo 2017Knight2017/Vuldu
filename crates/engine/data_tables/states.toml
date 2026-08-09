@@ -7010,25 +7010,25 @@ frame = 0
 tics = -1
 
 
-[[states]]		# HangtLookDn
+[[states]]		# HangTLookDn
 sprite = "HDB3"
 frame = 0
 tics = -1
 
 
-[[states]]		# HangtSkull
+[[states]]		# HangTSkull
 sprite = "HDB4"
 frame = 0
 tics = -1
 
 
-[[states]]		# HangtLookUp
+[[states]]		# HangTLookUp
 sprite = "HDB5"
 frame = 0
 tics = -1
 
 
-[[states]]		# HangtNoBrain
+[[states]]		# HangTNoBrain
 sprite = "HDB6"
 frame = 0
 tics = -1

@@ -1,6 +1,6 @@
 use hecs::{Entity, World};
 use strum::IntoEnumIterator;
-use wad_parser::DoomMap;
+use wad_parser::Level;
 
 use crate::{DIAGS, Direction, InstantMoveIntent, MELEERANGE, MobjFlagCommand, MobjFlags, MobjInfo, MobjNum, MobjType, MonsterRotation, OPPOSITE, Position, Random, WorldEvent, p_move, point_to_angle};
 
@@ -99,7 +99,7 @@ pub fn p_new_chase_dir(
     mobj_info: &MobjInfo,
     imi: &mut InstantMoveIntent,
     target_pos: &Position,
-    map: &DoomMap,
+    map: &Level,
     world: &World,
     random: &mut Random,
     blocklists: &[Vec<Entity>],

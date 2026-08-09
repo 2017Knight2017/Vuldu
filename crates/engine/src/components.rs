@@ -1,4 +1,5 @@
 use hecs::Entity;
+use wad_parser::SectorId;
 use crate::{ActionFunc, CachedStateSprite, Direction, MobjFlags, MobjNum, StateNum};
 
 macro_rules! define_markers {
@@ -24,7 +25,7 @@ pub struct InstantMoveIntent {
     pub dx: f32,
     pub dy: f32,
     pub dz: f32,
-    pub new_sector: Option<usize>
+    pub new_sector: Option<SectorId>
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -83,7 +84,7 @@ pub struct WeaponOverlay {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct CurrentSector(pub usize);
+pub struct CurrentSector(pub SectorId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MobjType {

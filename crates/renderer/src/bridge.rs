@@ -10,6 +10,7 @@ pub(crate) mod ffi {
         pub height: u32,
     }
     
+    // Vertex MUST equal to wad_parser::GpuVertex
     pub struct Vertex {
         pub pos: [f32; 3],
         pub texture_pos: [f32; 2],

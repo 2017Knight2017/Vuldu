@@ -1736,7 +1736,7 @@ radius = 20.0
 height = 52.0
 mass = 100
 damage = 0
-flags = ["SpawnCeiling","NoGravity"]
+flags = ["SpawnCeiling","NoGravity", "VertOffsetM31"]
 
 
 [[objects]]		# MT_MISC59
@@ -2016,7 +2016,7 @@ radius = 16.0
 height = 88.0
 mass = 100
 damage = 0
-flags = ["Solid","SpawnCeiling","NoGravity"]
+flags = ["Solid","SpawnCeiling","NoGravity", "VertOffset4"]
 
 
 [[objects]]		# MT_MISC79
@@ -2030,12 +2030,12 @@ radius = 16.0
 height = 88.0
 mass = 100
 damage = 0
-flags = ["Solid","SpawnCeiling","NoGravity"]
+flags = ["Solid","SpawnCeiling","NoGravity", "VertOffset4"]
 
 
 [[objects]]		# MT_MISC80
 doomed_num = 75
-spawn_state = "HangtLookDn"
+spawn_state = "HangTLookDn"
 spawn_health = 1000
 reaction_time = 8
 pain_chance = 0
@@ -2044,12 +2044,12 @@ radius = 16.0
 height = 64.0
 mass = 100
 damage = 0
-flags = ["Solid","SpawnCeiling","NoGravity"]
+flags = ["Solid","SpawnCeiling","NoGravity", "VertOffset4"]
 
 
 [[objects]]		# MT_MISC81
 doomed_num = 76
-spawn_state = "HangtSkull"
+spawn_state = "HangTSkull"
 spawn_health = 1000
 reaction_time = 8
 pain_chance = 0
@@ -2058,12 +2058,12 @@ radius = 16.0
 height = 64.0
 mass = 100
 damage = 0
-flags = ["Solid","SpawnCeiling","NoGravity"]
+flags = ["Solid","SpawnCeiling","NoGravity", "VertOffset4"]
 
 
 [[objects]]		# MT_MISC82
 doomed_num = 77
-spawn_state = "HangtLookUp"
+spawn_state = "HangTLookUp"
 spawn_health = 1000
 reaction_time = 8
 pain_chance = 0
@@ -2072,12 +2072,12 @@ radius = 16.0
 height = 64.0
 mass = 100
 damage = 0
-flags = ["Solid","SpawnCeiling","NoGravity"]
+flags = ["Solid","SpawnCeiling","NoGravity", "VertOffset4"]
 
 
 [[objects]]		# MT_MISC83
 doomed_num = 78
-spawn_state = "HangtNoBrain"
+spawn_state = "HangTNoBrain"
 spawn_health = 1000
 reaction_time = 8
 pain_chance = 0
@@ -2086,7 +2086,7 @@ radius = 16.0
 height = 64.0
 mass = 100
 damage = 0
-flags = ["Solid","SpawnCeiling","NoGravity"]
+flags = ["Solid","SpawnCeiling","NoGravity", "VertOffset4"]
 
 
 [[objects]]		# MT_MISC84

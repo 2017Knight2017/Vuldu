@@ -2,6 +2,7 @@ use serde::{Deserialize, Deserializer};
 use strum::IntoEnumIterator;
 use toml;
 use rustc_hash::FxHashMap;
+use wad_parser::TextureId;
 use std::sync::OnceLock;
 use std::fs;
 use crate::{ActionFunc, AmmoType, MobjFlagNum, MobjNum, NUMMOBJTYPES, NUMSTATES, NUMWEAPONS, StateNum, WeaponType};
@@ -104,7 +105,7 @@ pub struct State {
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct CachedStateSprite {
-    pub tex_id: u32,
+    pub tex_id: TextureId,
     pub width: u32,
     pub height: u32,
     pub need_flip: bool,
@@ -139,7 +140,7 @@ pub struct Database {
 
 pub static DB: OnceLock<Database> = OnceLock::new();
 
-pub fn populate_database(texture_data: &FxHashMap<u64, (u32, u32, u32, bool)>) -> Result<(), Box<dyn std::error::Error>> {
+pub fn populate_database(texture_data: &FxHashMap<u64, (TextureId, u32, u32, bool)>) -> Result<(), Box<dyn std::error::Error>> {
     let states_content = fs::read_to_string("crates/engine/data_tables/states.toml")?;
     let state_config: StateConfig = toml::from_str(&states_content)?;
 
@@ -183,7 +184,7 @@ pub fn populate_database(texture_data: &FxHashMap<u64, (u32, u32, u32, bool)>) -
         let mut key_0 = pack_sprite_u64(&tex_prefix, frame_letter, 0);
         if !texture_data.contains_key(&key_0) { key_0 = pack_sprite_u64(&tex_prefix, frame_letter, 1); }
 
-        let &(tex_id, width, height, need_flip) = texture_data.get(&key_0).unwrap_or(&(0, 64, 64, false));
+        let &(tex_id, width, height, need_flip) = texture_data.get(&key_0).unwrap_or(&(TextureId(0), 64, 64, false));
         cached_rotations[0] = CachedStateSprite { tex_id, width, height, need_flip };
 
         for rot in 1..=8 as usize {
@@ -192,7 +193,7 @@ pub fn populate_database(texture_data: &FxHashMap<u64, (u32, u32, u32, bool)>) -
             if !texture_data.contains_key(&lookup_key) {
                 cached_rotations[rot] = cached_rotations[0];
             } else {
-                let &(tex_id, width, height, need_flip) = texture_data.get(&lookup_key).unwrap_or(&(0, 64, 64, false));
+                let &(tex_id, width, height, need_flip) = texture_data.get(&lookup_key).unwrap_or(&(TextureId(0), 64, 64, false));
                 cached_rotations[rot] = CachedStateSprite { tex_id, width, height, need_flip };
             }
         }

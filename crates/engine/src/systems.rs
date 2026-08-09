@@ -1,10 +1,10 @@
 use crate::{Active, CurrentSector, DB, FRICTION, InstantMoveIntent, MobjAi, MobjFlags, MobjType, PlayerMarker, Position, Random, SpriteAnimation, Velocity, WorldEvent, p_try_move};
 use rustc_hash::FxHashMap;
-use wad_parser::DoomMap;
+use wad_parser::{Level, SectorId};
 use hecs::{Entity, QueryBorrow, With, World};
 
 type PendingMoves = 
-    FxHashMap<Entity, (f32, f32, f32, f32, f32, f32, usize, usize, usize, usize, Option<usize>)>;
+    FxHashMap<Entity, (f32, f32, f32, f32, f32, f32, usize, usize, usize, usize, Option<SectorId>)>;
 
 /// Must be called after friction_system
 pub fn try_move_system(
@@ -15,7 +15,7 @@ pub fn try_move_system(
         &Position, 
         &MobjType,
     ), &Active>>, 
-    map: &DoomMap,
+    level: &Level,
     world: &World,
     random: &mut Random,
     blocklists: &mut [Vec<Entity>],
@@ -32,7 +32,7 @@ pub fn try_move_system(
             mobj_type, 
             &db.mobjinfo[&mobj_type.type_], 
             imi, 
-            map, 
+            level, 
             world, 
             random, 
             blocklists, 
@@ -40,7 +40,7 @@ pub fn try_move_system(
         ).0;
 
         if can_move {
-            let (prev_col, prev_row) = map.blockmap.world_to_grid(pos.x, pos.z);
+            let (prev_col, prev_row) = level.geom.blockmap.world_to_grid(pos.x, pos.z);
 
             let prev_x = pos.x + imi.dx;
             let prev_y = pos.y + imi.dy;
@@ -50,7 +50,7 @@ pub fn try_move_system(
             let new_y = prev_y + velocity.y;
             let new_z = prev_z + velocity.z;
 
-            let (new_col, new_row) = map.blockmap.world_to_grid(new_x, new_z);
+            let (new_col, new_row) = level.geom.blockmap.world_to_grid(new_x, new_z);
 
             pending_moves.insert(ent, (
                 prev_x, prev_y, prev_z,
@@ -82,7 +82,7 @@ pub fn apply_monster_movement_system(
         &mut CurrentSector, 
     ), &Active>>,
     pending_moves: PendingMoves,
-    map: &DoomMap,
+    level: &Level,
     blocklists: &mut [Vec<Entity>],
 ) {
     for (ent, pos, current_sector) in apply_query.iter() {
@@ -105,8 +105,8 @@ pub fn apply_monster_movement_system(
         pos.z = new_z;
 
         if prev_col != new_col || prev_row != new_row {
-            let prev_idx = prev_row * map.blockmap.col_num + prev_col;
-            let new_idx = new_row * map.blockmap.col_num + new_col;
+            let prev_idx = prev_row * level.geom.blockmap.col_num + prev_col;
+            let new_idx = new_row * level.geom.blockmap.col_num + new_col;
 
             blocklists[prev_idx].retain(|&e| e != ent);
             blocklists[new_idx].push(ent);
@@ -147,7 +147,7 @@ pub fn apply_mobj_flags_system(
 
 pub fn apply_player_movement_system(
     mut query: QueryBorrow<'_, With<(&mut Position, &Velocity, &mut CurrentSector), &PlayerMarker>>,
-    map: &DoomMap
+    map: &Level
 ) {
     for (pos, velocity, current_sector) in query.iter() {
         pos.prev_x = pos.x;

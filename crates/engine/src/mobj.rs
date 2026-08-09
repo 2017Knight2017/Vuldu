@@ -1,19 +1,17 @@
 use crate::*;
 use hecs::World;
-use wad_parser::map::DoomMap;
+use wad_parser::map::Level;
 
 pub fn spawn_mobj(
+	level: &Level,
 	world: &mut World, 
 	random: &mut Random,
 	mobj_type_raw: Option<MobjNum>, 
-	sector_idx: usize,
 	x_raw: i16, 
-	y_raw: i16, 
 	z_raw: i16, 
 	angle_raw: i16
 ) {
 	let x = x_raw as f32;
-	let y = y_raw as f32;
 	let z = z_raw as f32;
 	
 	let mobj_type = match mobj_type_raw {
@@ -42,16 +40,29 @@ pub fn spawn_mobj(
 	let mut top_offset_shift: i16 = 0;
 	if m_len > 0 {
 		top_offset_shift = match mobj_info.flags[m_len-1] {
-			MobjFlagNum::VertOffsetM1 => -1,
+			MobjFlagNum::VertOffsetM31 => -31,
 			MobjFlagNum::VertOffsetM2 => -2,
+			MobjFlagNum::VertOffsetM1 => -1,
 			MobjFlagNum::VertOffset1 => 1,
 			MobjFlagNum::VertOffset2 => 2,
 			MobjFlagNum::VertOffset3 => 3,
 			MobjFlagNum::VertOffset4 => 4,
 			MobjFlagNum::VertOffset5 => 5,
 			_ => 0
-		}
+		};
 	}
+
+	let flags = mobj_info.flags
+		.iter()
+		.map(|&a| MobjFlags::from(a))
+		.collect::<MobjFlags>();
+
+	let sector_idx = level.get_sector_by_pos(x, z);
+	let y = if flags.contains(MobjFlags::SPAWN_CEILING) {
+		level.state.sectors[sector_idx.0].ceil_h - mobj_info.height
+	} else {
+		level.state.sectors[sector_idx.0].floor_h
+	};
 
 	let tics_left = if spawn_state_data.tics > 0 {
 		1 + (random.p() as i32) % spawn_state_data.tics
@@ -63,13 +74,7 @@ pub fn spawn_mobj(
 		.add(Position { x, y, z, prev_x: x, prev_y: y, prev_z: z })
 		.add(CurrentSector(sector_idx))
 		.add(Velocity::default())
-		.add(MobjType { 
-			type_: mobj_type, 
-			flags: mobj_info.flags
-				.iter()
-				.map(|&a| MobjFlags::from(a))
-				.collect() 
-			})
+		.add(MobjType { type_: mobj_type, flags })
 		.add(Health(mobj_info.spawn_health));
 
 	if mobj_type == MobjNum::Player {
@@ -112,9 +117,9 @@ pub fn spawn_mobj(
     world.spawn(entity_builder.build());
 }
 
-pub fn spawn_all_things(world: &mut World, map: &DoomMap, random: &mut Random) {
+pub fn spawn_all_things(world: &mut World, level: &Level, random: &mut Random) {
 	let mut player_spawned = false;
-	for thing in map.things.iter() {
+	for thing in level.things.iter() {
 		if thing.type_ == 1 {
             if player_spawned {
                 continue;
@@ -122,11 +127,8 @@ pub fn spawn_all_things(world: &mut World, map: &DoomMap, random: &mut Random) {
             player_spawned = true;
 		}
 
-		let sector_idx = map.get_sector_by_pos(thing.x as f32, thing.y as f32);
-		let sector = map.sectors[sector_idx];
-
 		if let Some(thing_type) = MOBJTYPE_BY_DOOMEDNUM.get(&thing.type_) {
-			spawn_mobj(world, random, *thing_type, sector_idx, thing.x, sector.floorheight, thing.y, thing.angle);
+			spawn_mobj(level, world, random, *thing_type, thing.x, thing.y, thing.angle);
 		}
 	}
 }

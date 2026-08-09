@@ -1,67 +1,109 @@
 use hecs::{CommandBuffer, Entity, QueryBorrow, With};
-use wad_parser::{MapLinedef, MapSidedef, to_u64};
-use crate::{Active, CurrentSector, Database, DynSector, Idle, LinedefFlags, MobjAi, MobjNum, MobjType, PlayerShoot, Position, Random, SfxEvent, SpriteAnimation, Target};
+use wad_parser::{Level, LineFlags, LineId, SectorId, to_u64};
+use crate::{Active, CurrentSector, Database, Idle, MAXSOUNDBLOCKS, MobjAi, MobjNum, MobjType, PlayerShoot, Position, Random, SfxEvent, SpriteAnimation, Target};
+
+pub struct Traversal {
+    generation: u32,
+    lines: Vec<u32>, 
+    sectors: Vec<u32>, 
+    sector_cost: Vec<u8>, 
+}
+
+impl Traversal {
+    pub fn for_level(level: &Level) -> Self {
+        Self {
+            generation:  0,
+            lines: vec![0; level.geom.lines.len()],
+            sectors: vec![0; level.state.sectors.len()],
+            sector_cost: vec![0; level.state.sectors.len()],
+        }
+    }
+
+    pub fn begin(&mut self) -> Pass<'_> {
+        self.generation = self.generation.wrapping_add(1);
+        if self.generation == 0 { 
+            self.lines.fill(0);
+            self.sectors.fill(0);
+            self.generation = 1;
+        }
+        Pass { traversal: self }
+    }
+}
+pub struct Pass<'a> { traversal: &'a mut Traversal }
+
+impl Pass<'_> {
+    pub fn visit_line(&mut self, l: LineId) -> bool {
+        let slot = &mut self.traversal.lines[l.0 as usize];
+
+        if *slot == self.traversal.generation { 
+			false 
+		} else { 
+			*slot = self.traversal.generation; 
+			true 
+		}
+    }
+
+    pub fn improve_sector(&mut self, sector_id: SectorId, cost: u8) -> bool {
+        let i = sector_id.0 as usize;
+
+        if self.traversal.sectors[i] != self.traversal.generation {
+            self.traversal.sectors[i] = self.traversal.generation;
+            self.traversal.sector_cost[i] = cost;
+            true
+        } else if cost < self.traversal.sector_cost[i] {
+            self.traversal.sector_cost[i] = cost;
+            true
+        } else {
+            false
+        }
+    }
+}
+
+pub fn propagate_sound(
+    level: &Level,
+    traversal: &mut Traversal,
+    sound_targets: &mut [Option<Entity>],
+    from: SectorId,
+    emitter: Entity,
+) {
+    let mut pass = traversal.begin();
+    let mut stack = vec![(from, 0u8)];
+
+    while let Some((sector_id, blocks)) = stack.pop() {
+        if blocks > MAXSOUNDBLOCKS { continue; }
+        if !pass.improve_sector(sector_id, blocks) { continue; }
+
+        sound_targets[sector_id.0] = Some(emitter);
+
+        for &line_id in level.geom.sector_lines[sector_id.0].iter() {
+            let open = match level.get_opening(line_id) {
+				Some(opening) => opening,
+				None => continue
+			};
+
+            if open.top <= open.floor_high { continue; }
+
+            let line = &level.geom.lines[line_id.0];
+			if let Some(other_sector) = level.get_other_sector(line_id, sector_id) {
+				let next_blocks = blocks + line.flags.contains(LineFlags::SOUND_BLOCK) as u8;
+				stack.push((other_sector, next_blocks));
+			}
+        }
+    }
+}
 
 pub fn propagate_sound_system(
 	mut query: QueryBorrow<'_, With<(Entity, &CurrentSector), &PlayerShoot>>, 
-	command_buffer: &mut CommandBuffer,
-	sectors: &mut [DynSector],
-	linedefs: &[MapLinedef],
-	sidedefs: &[MapSidedef]
+	level: &Level,
+	sound_targets: &mut [Option<Entity>],
+	traversal: &mut Traversal,
+	command_buffer: &mut CommandBuffer
 ) {
-	for (entity, current_sector) in query.iter() {
-		propagate_sound_internal(current_sector.0, 0, sectors, linedefs, sidedefs, entity);
+	for (ent, current_sector) in query.iter() {
+		propagate_sound(level, traversal, sound_targets, current_sector.0, ent);
 
-		command_buffer.remove_one::<PlayerShoot>(entity);
+		command_buffer.remove_one::<PlayerShoot>(ent);
 	}
-}
-
-fn propagate_sound_internal(
-	current_sector_idx: usize,
-	times_blocked: u32,
-	sectors: &mut [DynSector],
-	linedefs: &[MapLinedef],
-	sidedefs: &[MapSidedef],
-	sound_target: Entity
-) {
-	if times_blocked >= 2 || times_blocked >= sectors[current_sector_idx].sound_traversed { 
-		return; 
-	}
-
-	if times_blocked < sectors[current_sector_idx].sound_traversed {
-        sectors[current_sector_idx].sound_traversed = times_blocked;
-		sectors[current_sector_idx].sound_target = Some(sound_target);
-    } else {
-        return;
-    }
-
-	let lines = sectors[current_sector_idx].lines.clone();
-	lines.iter().for_each(|&i| {
-		if linedefs[i].flags & LinedefFlags::TWO_SIDED.bits() as i16 == 0 {
-			return;
-		} 
-			
-		let front_sector_idx = sidedefs[linedefs[i].sidenum[0] as usize].sector;
-		let back_sector_idx = sidedefs[linedefs[i].sidenum[1] as usize].sector;
-		let other_sector_idx = if current_sector_idx as i16 == front_sector_idx {
-			back_sector_idx as usize
-		} else {
-			front_sector_idx as usize
-		};
-
-		let current_sector_props = sectors[current_sector_idx].props;
-		let other_sector_props = sectors[other_sector_idx as usize].props;
-		let is_shut = current_sector_props.ceilingheight - current_sector_props.floorheight == 0
-			|| other_sector_props.ceilingheight - other_sector_props.floorheight == 0;
-
-		if is_shut { return; }
-
-		if linedefs[i].flags & LinedefFlags::SOUND_BLOCK.bits() as i16 != 0 {
-			propagate_sound_internal(other_sector_idx, times_blocked + 1, sectors, linedefs, sidedefs, sound_target);
-		} else {
-			propagate_sound_internal(other_sector_idx, times_blocked, sectors, linedefs, sidedefs, sound_target);
-		}
-	});
 }
 
 pub fn wake_up_monster(

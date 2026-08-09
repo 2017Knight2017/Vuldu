@@ -4,7 +4,6 @@
 /.vscode
 /cache
 compile_commands.json
-Cargo.lock
 doomdata.h
 assets/*.WAD
 assets/*.wad

@@ -956,10 +956,10 @@ pub enum StateNum {
     RTorchShrt4,
     HangNoGuts,
     HangBNoBrain,
-    HangtLookDn,
-    HangtSkull,
-    HangtLookUp,
-    HangtNoBrain,
+    HangTLookDn,
+    HangTSkull,
+    HangTLookUp,
+    HangTNoBrain,
     ColonGibs,
     SmallPool,
     BrainStem,
@@ -1217,6 +1217,7 @@ pub enum MobjFlagNum {
     VertOffset5,
     VertOffsetM1,
     VertOffsetM2,
+    VertOffsetM31,
 }
 
 bitflags! {
@@ -1335,21 +1336,6 @@ pub enum Card {
     BlueSkull,
     YellowSkull,
     RedSkull,
-}
-
-bitflags! {
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub struct LinedefFlags: u32 {
-    	const BLOCKING = 1 << 0;
-    	const BLOCK_MONSTER = 1 << 1;
-    	const TWO_SIDED = 1 << 2;
-    	const DONT_PEG_TOP = 1 << 3;
-    	const DONT_PEG_BOTTOM = 1 << 4;
-    	const SECRET = 1 << 5;
-    	const SOUND_BLOCK = 1 << 6;
-    	const DONTDRAW = 1 << 7;
-    	const MAPPED = 1 << 8;
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, EnumIter)]

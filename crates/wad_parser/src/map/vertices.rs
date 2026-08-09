@@ -1,11 +1,8 @@
-use crate::{DoomMap, MapLinedef, MapVertex, to_u64};
+use crate::{Level, LineFlags, LineId, SectorId, SubsectorId, TextureId, to_u64};
 use earcut::Earcut;
 use rustc_hash::{FxBuildHasher, FxHashMap};
 
 pub const NF_SUBSECTOR: usize = 0x8000; 
-pub const ML_DONTPEGTOP: i16 = 0b1000;
-pub const ML_DONTPEGBOTTOM: i16 = 0b10000;
-
 
 // GpuVertex MUST equal to renderer::Vertex
 #[repr(C)]
@@ -41,51 +38,58 @@ impl AABB {
         AABB { min_x, max_x, min_y, max_y }
     }
 
-    fn intersects(&self, other: &Self) -> bool {
-        self.min_x <= other.max_x && self.max_x >= other.min_x &&
-        self.min_y <= other.max_y && self.max_y >= other.min_y
+    pub fn intersects(&self, other: &Self) -> bool {
+        self.min_x < other.max_x && self.max_x > other.min_x &&
+        self.min_y < other.max_y && self.max_y > other.min_y
     }
 }
 
 #[derive(Clone, Copy, Debug)]
 struct Edge {
-    v1: MapVertex,
-    v2: MapVertex,
+    v1: (i32, i32),
+    v2: (i32, i32),
     used: bool,
 }
 
-impl DoomMap {
-	pub fn get_walls_vertices(&self, texture_ids: &FxHashMap<u64, (u32, u32, u32, bool)>) -> (Vec<GpuVertex>, Vec<u32>) {
-	    let mut vertices = Vec::new();
-	    let mut indices = Vec::new();
+impl Level {
+	pub fn get_walls_vertices(&self, texture_ids: &FxHashMap<u64, (TextureId, u32, u32, bool)>) -> (Vec<GpuVertex>, Vec<u32>) {
+	    let mut gpu_vertices = Vec::new();
+	    let mut gpu_indices = Vec::new();
 
-	    for seg in self.segs.iter() {
+		let segs = &self.geom.segs;
+		let vertices = &self.geom.vertices;
+		let sides_geom = &self.geom.sides;
+		let sides_state = &self.state.sides;
+		let lines = &self.geom.lines;
+		let sectors = &self.state.sectors;
+		
+	    for seg in segs.iter() {
 	        if seg.linedef == u16::MAX { continue; }
 
-	        let v1 = self.vertices[seg.v1 as usize];
-	        let v2 = self.vertices[seg.v2 as usize];
-	        let linedef = self.linedefs[seg.linedef as usize];
+	        let v1 = vertices[seg.v1 as usize];
+	        let v2 = vertices[seg.v2 as usize];
+	        let line = &lines[seg.linedef as usize];
 
-	        let front_side_idx = if seg.side == 0 { linedef.sidenum[0] } else { linedef.sidenum[1] };
-	        let back_side_idx = if seg.side == 0 { linedef.sidenum[1] } else { linedef.sidenum[0] };
+	        let front_side_idx_opt = if seg.side == 0 { line.sides.0 } else { line.sides.1 };
+	        let back_side_idx_opt = if seg.side == 0 { line.sides.1 } else { line.sides.0 };
 
-	        if front_side_idx == u16::MAX { continue; }
-	        let front_sidedef = self.sidedefs[front_side_idx as usize];
-	        let front_sector_id = front_sidedef.sector;
-	        let front_sector = self.sectors[front_sector_id as usize];
+	        let front_side_idx = match front_side_idx_opt {
+				None => continue,
+				Some(idx) => idx,
+			};
+			
+			let front_side = &sides_state[front_side_idx.0];
+	        let front_sector = &sectors[sides_geom[front_side_idx.0].sector.0];
+	        let back_sector = match back_side_idx_opt {
+				Some(idx) => Some((&sides_geom[idx.0], &sectors[sides_geom[idx.0].sector.0])),
+				None => None
+			};
 
-	        let back_sector = if back_side_idx != u16::MAX {
-	            let back_sidedef = self.sidedefs[back_side_idx as usize];
-	            Some((back_sidedef, self.sectors[back_sidedef.sector as usize]))
-	        } else {
-	            None
-	        };
-
-	        let dx = (v2.x - v1.x) as f32;
-	        let dy = (v2.y - v1.y) as f32;
+	        let dx = (v2.0 - v1.0) as f32;
+	        let dy = (v2.1 - v1.1) as f32;
 	        let wall_length = (dx * dx + dy * dy).sqrt();
-	        let tex_offset = front_sidedef.textureoffset as f32;
-			let row_offset = front_sidedef.rowoffset as f32;
+	        let tex_offset = front_side.col_offset as f32;
+			let row_offset = front_side.row_offset as f32;
 
 	        let mut add_wall_quad = |
 				y_low: f32, 
@@ -104,16 +108,16 @@ impl DoomMap {
 				
             	let (tex_id, tex_width, tex_height, _) = *texture_ids
     			    .get(&to_u64(final_tex_name))
-    			    .unwrap_or(&(0, 64, 64, false));
+    			    .unwrap_or(&(TextureId(0), 64, 64, false));
 
     			let (final_tex_id, floor_tex_id) = if final_tex_name.starts_with(b"F_SKY1") || 
 					(other_sector_ceilingpic.starts_with(b"F_SKY1") && fake_flat_name.starts_with(b"F_SKY1")) 
 				{
-					((u16::MAX - 1) as u32, 0)
+					(TextureId((u16::MAX - 1) as u32), TextureId(0))
 				} else if is_fake_wall {
-    			    (u16::MAX as u32, tex_id)
+    			    (TextureId(u16::MAX as u32), tex_id)
 				} else {
-    			    (tex_id, 0)
+    			    (tex_id, TextureId(0))
     			};
 
             	let (u_start, u_end, v_start, v_end);
@@ -122,11 +126,11 @@ impl DoomMap {
             	    let f_width = tex_width as f32;
             	    let f_height = tex_height as f32;
 
-            	    u_start = -(v1.x as f32) / f_width;
-            	    u_end = -(v2.x as f32) / f_width;
+            	    u_start = -v1.0 / f_width;
+            	    u_end = -v2.0 / f_width;
 
-            	    v_start = (v1.y as f32) / f_height;
-            	    v_end = (v2.y as f32) / f_height;
+            	    v_start = v1.0 / f_height;
+            	    v_end = v2.1 / f_height;
             	} else {
             	    u_start = (seg.offset as f32 + tex_offset) / tex_width as f32;
             	    u_end = u_start + (wall_length / tex_width as f32);
@@ -136,200 +140,202 @@ impl DoomMap {
                 	v_end = v_start + (wall_height / f_tex_height);
             	}
 
-	            let start_idx = vertices.len() as u32;
+	            let start_idx = gpu_vertices.len() as u32;
 
-	            let clamped_light = front_sector.lightlevel.clamp(0, 255) as f32;
+	            let clamped_light = front_sector.light.clamp(0, 255) as f32;
 	            let modern_light = clamped_light / 255.0;
 	            let colormap_idx = 31 - ((clamped_light / 8.0).floor() as u32).clamp(0, 31);
 
-	            vertices.push(GpuVertex { 
-	                pos: [v1.x as f32, y_low, v1.y as f32],
+	            gpu_vertices.push(GpuVertex { 
+	                pos: [v1.0, y_low, v1.1],
 	                texture_pos: [u_start, v_end],
 					light_level: modern_light,
-	                texture_id: final_tex_id,
+	                texture_id: final_tex_id.0,
 	                colormap_idx,
-					floor_tex_id
+					floor_tex_id: floor_tex_id.0
 	            });
 
-	            vertices.push(GpuVertex { 
-	                pos: [v2.x as f32, y_low, v2.y as f32],
+	            gpu_vertices.push(GpuVertex { 
+	                pos: [v2.0, y_low, v2.1],
 	                texture_pos: [u_end, v_end],
 					light_level: modern_light,
-	                texture_id: final_tex_id,
+	                texture_id: final_tex_id.0,
 	                colormap_idx,
-					floor_tex_id
+					floor_tex_id: floor_tex_id.0
 	            });
 
-	            vertices.push(GpuVertex { 
-	                pos: [v1.x as f32, y_high, v1.y as f32],
+	            gpu_vertices.push(GpuVertex { 
+	                pos: [v1.0, y_high, v1.1],
 	                texture_pos: [u_start, v_start],
 					light_level: modern_light,
-	                texture_id: final_tex_id,
+	                texture_id: final_tex_id.0,
 	                colormap_idx,
-					floor_tex_id
+					floor_tex_id: floor_tex_id.0
 	            });
 
-	            vertices.push(GpuVertex { 
-	                pos: [v2.x as f32, y_high, v2.y as f32],
+	            gpu_vertices.push(GpuVertex { 
+	                pos: [v2.0, y_high, v2.1],
 	                texture_pos: [u_end, v_start],
 					light_level: modern_light,
-	                texture_id: final_tex_id,
+	                texture_id: final_tex_id.0,
 	                colormap_idx,
-					floor_tex_id
+					floor_tex_id: floor_tex_id.0
 	            });
 			
-	            indices.push(start_idx + 0);
-	            indices.push(start_idx + 1);
-	            indices.push(start_idx + 2);
+	            gpu_indices.push(start_idx + 0);
+	            gpu_indices.push(start_idx + 1);
+	            gpu_indices.push(start_idx + 2);
 
-	            indices.push(start_idx + 2);
-	            indices.push(start_idx + 1);
-	            indices.push(start_idx + 3);
+	            gpu_indices.push(start_idx + 2);
+	            gpu_indices.push(start_idx + 1);
+	            gpu_indices.push(start_idx + 3);
 	        };
 
-			let dont_peg_top = (linedef.flags & ML_DONTPEGTOP) != 0;
-        	let dont_peg_bottom = (linedef.flags & ML_DONTPEGBOTTOM) != 0;
+			let dont_peg_top = line.flags.contains(LineFlags::DONT_PEG_TOP);
+        	let dont_peg_bottom = line.flags.contains(LineFlags::DONT_PEG_BOTTOM);
 
 	        match back_sector {
         	    None => {
-					let (_, _, tex_height, _) = *texture_ids
-                	    .get(&to_u64(&front_sidedef.midtexture))
-                	    .unwrap_or(&(0, 64, 64, false));
-					let tex_h = tex_height as f32;
+					let tex_h = match texture_ids.get(&to_u64(&front_side.midtexture)) {
+						Some(tex) => tex.2 as f32,
+						None => 64.0
+					};
                 
                 	let v_offset = if dont_peg_bottom {
-                	    let offset = (front_sector.ceilingheight - front_sector.floorheight) as f32;
+                	    let offset = front_sector.ceil_h - front_sector.floor_h;
                 	    tex_h - offset
                 	} else {
                 	    0.0
                 	};
 
         	        add_wall_quad(
-						front_sector.floorheight as f32, 
-						front_sector.ceilingheight as f32, 
-						&front_sidedef.midtexture, 
+						front_sector.floor_h, 
+						front_sector.ceil_h, 
+						&front_side.midtexture, 
 						v_offset, 
 						&front_sector.floorpic,
 						&[]
 					);
         	    },
         	    Some((_, b_sector)) => {
-        	        if front_sector.ceilingheight > b_sector.ceilingheight {
-						let (_, _, tex_height, _) = *texture_ids
-                            .get(&to_u64(&front_sidedef.toptexture))
-                            .unwrap_or(&(0, 64, 64, false));
-						let tex_h = tex_height as f32;
+        	        if front_sector.ceil_h > b_sector.ceil_h {
+						let tex_h = match texture_ids.get(&to_u64(&front_side.toptexture)) {
+							Some(tex) => tex.2 as f32,
+							None => 64.0
+						};
 
 						let v_offset = if dont_peg_top {
 							0.0
                         } else {
-							let offset = (b_sector.ceilingheight - front_sector.ceilingheight) as f32;
+							let offset = b_sector.ceil_h - front_sector.ceil_h;
                             offset - tex_h
                         };
 
 						add_wall_quad(
-							b_sector.ceilingheight as f32, 
-							front_sector.ceilingheight as f32, 
-							&front_sidedef.toptexture, 
+							b_sector.ceil_h, 
+							front_sector.ceil_h, 
+							&front_side.toptexture, 
 							v_offset, 
 							&front_sector.ceilingpic,
 							&b_sector.ceilingpic
 						);
         	        }
 
-        	        if front_sector.floorheight < b_sector.floorheight {
-                    	let (_, _, tex_height, _) = *texture_ids
-                    	    .get(&to_u64(&front_sidedef.bottomtexture))
-                    	    .unwrap_or(&(0, 64, 64, false));
-						let tex_h = tex_height as f32;
+        	        if front_sector.floor_h < b_sector.floor_h {
+						let tex_h = match texture_ids.get(&to_u64(&front_side.bottomtexture)) {
+							Some(tex) => tex.2 as f32,
+							None => 64.0
+						};
 
 						let v_offset = if dont_peg_bottom {
-    						let offset = (front_sector.ceilingheight - b_sector.floorheight) as f32;
+    						let offset = front_sector.ceil_h - b_sector.floor_h;
 							offset - tex_h
                     	} else {
 							0.0 
                     	};
 
         	            add_wall_quad(
-							front_sector.floorheight as f32, 
-							b_sector.floorheight as f32, 
-							&front_sidedef.bottomtexture, 
+							front_sector.floor_h, 
+							b_sector.floor_h, 
+							&front_side.bottomtexture, 
 							v_offset,
 							&b_sector.floorpic,
 							&front_sector.ceilingpic
 						);
         	        }
 
-        	        if front_sidedef.midtexture[0] != 0x2d {
-        	            let mid_low = i16::max(front_sector.floorheight, b_sector.floorheight) as f32;
-        	            let mid_high = i16::min(front_sector.ceilingheight, b_sector.ceilingheight) as f32;
-        	            add_wall_quad(mid_low, mid_high, &front_sidedef.midtexture, 0.0, &front_sector.floorpic, &b_sector.ceilingpic);
+        	        if front_side.midtexture[0] != 0x2d {
+        	            let mid_low = front_sector.floor_h.max(b_sector.floor_h);
+        	            let mid_high = front_sector.ceil_h.min(b_sector.ceil_h);
+        	            add_wall_quad(mid_low, mid_high, &front_side.midtexture, 0.0, &front_sector.floorpic, &b_sector.ceilingpic);
         	        }
         	    }
         	}
 	    }
 
-	    (vertices, indices)
+	    (gpu_vertices, gpu_indices)
 	}
 
-	pub fn get_flats_vertices(&self, texture_ids: &FxHashMap<u64, (u32, u32, u32, bool)>) -> (Vec<GpuVertex>, Vec<u32>) {
-	    let mut vertices: Vec<GpuVertex> = Vec::new();
-	    let mut indices: Vec<u32> = Vec::new();
+	pub fn get_flats_vertices(&mut self, texture_ids: &FxHashMap<u64, (TextureId, u32, u32, bool)>) -> (Vec<GpuVertex>, Vec<u32>) {
+	    let mut gpu_vertices: Vec<GpuVertex> = Vec::new();
+	    let mut gpu_indices: Vec<u32> = Vec::new();
 
-		let mut sector_to_linedefs: FxHashMap<i16, Vec<&MapLinedef>> = FxHashMap::with_capacity_and_hasher(self.sectors.len(), FxBuildHasher::default());
-    	for linedef in self.linedefs.iter() {
-    	    if linedef.sidenum[0] != u16::MAX {
-    	        if let Some(side) = self.sidedefs.get(linedef.sidenum[0] as usize) {
-    	            sector_to_linedefs.entry(side.sector).or_default().push(linedef);
-    	        }
+		let lines = &self.geom.lines;
+		let sides = &self.geom.sides;
+		let sectors = &self.state.sectors;
+		let vertices = &self.geom.vertices;
+
+		let sector_lines = &mut self.geom.sector_lines;
+    	for (i, line) in lines.iter().enumerate() {
+    	    if let Some(front_side) = line.sides.0 {
+				let sector_idx = sides[front_side.0].sector.0;
+
+    	    	sector_lines[sector_idx].push(LineId(i));
     	    }
-    	    if linedef.sidenum[1] != u16::MAX {
-    	        if let Some(side) = self.sidedefs.get(linedef.sidenum[1] as usize) {
-    	            sector_to_linedefs.entry(side.sector).or_default().push(linedef);
-    	        }
+
+    	    if let Some(back_side) = line.sides.1 {
+				let sector_idx = sides[back_side.0].sector.0;
+
+    	        sector_lines[sector_idx].push(LineId(i));
     	    }
     	}
 
-	    for (sector_id, sector) in self.sectors.iter().enumerate() {
-	        let current_sector_id = sector_id as i16;
-			let sector_linedefs = match sector_to_linedefs.get(&current_sector_id) {
-        	    Some(list) => list,
-        	    None => continue,
-        	};
-	        let mut edges: Vec<Edge> = Vec::with_capacity(sector_linedefs.len() * 2);
+	    for (sector_id, sector) in sectors.iter().enumerate() {
+			let current_sector_lines = &sector_lines[sector_id];
+	        let mut edges: Vec<Edge> = Vec::with_capacity(current_sector_lines.len() * 2);
 
-	        for linedef in sector_linedefs {
-				let sector_front = if linedef.sidenum[0] != u16::MAX {
-    			    self.sidedefs.get(linedef.sidenum[0] as usize).map(|s| s.sector)
-    			} else {
-    			    None
-    			};
+	        for line_id in current_sector_lines {
+				let line = &lines[line_id.0];
+
+				let sector_front = match line.sides.0 {
+					Some(side_id) => Some(sides[side_id.0].sector.0),
+					None => None
+				};
 			
-    			let sector_back = if linedef.sidenum[1] != u16::MAX {
-    			    self.sidedefs.get(linedef.sidenum[1] as usize).map(|s| s.sector)
-    			} else {
-    			    None
-    			};
+    			let sector_back = match line.sides.1 {
+					Some(side_id) => Some(sides[side_id.0].sector.0),
+					None => None
+				};
 						
-    			if sector_front == Some(current_sector_id) && sector_back == Some(current_sector_id) {
+    			if sector_front == Some(sector_id) && sector_back == Some(sector_id) {
     			    continue;
     			}
 
-	            let v1 = self.vertices[linedef.v1 as usize];
-	            let v2 = self.vertices[linedef.v2 as usize];
+	            let v1 = (vertices[line.v1.0].0 as i32, vertices[line.v1.0].1 as i32);
+	            let v2 = (vertices[line.v2.0].0 as i32, vertices[line.v2.0].1 as i32);
 
-	            if sector_front == Some(current_sector_id) {
+	            if sector_front == Some(sector_id) {
     			    edges.push(Edge { v1, v2, used: false });
     			}
 			
-    			if sector_back == Some(current_sector_id) {
+    			if sector_back == Some(sector_id) {
     			    edges.push(Edge { v1: v2, v2: v1, used: false });
     			}
 	        }
 
 	        if edges.is_empty() { continue; }
 
-			let mut adjacency: FxHashMap<MapVertex, Vec<usize>> =
+			let mut adjacency: FxHashMap<(i32, i32), Vec<usize>> =
             	FxHashMap::with_capacity_and_hasher(edges.len(), FxBuildHasher::default());
 
 			for (idx, edge) in edges.iter().enumerate() {
@@ -347,7 +353,7 @@ impl DoomMap {
             	let start_edge = edges[i];
 
 	            let mut current_loop = Vec::new();
-	            current_loop.push([start_edge.v1.x as f32, start_edge.v1.y as f32]);
+	            current_loop.push([start_edge.v1.0 as f32, start_edge.v1.1 as f32]);
 
 				let start_point = start_edge.v1;
 				let mut prev_point = start_edge.v1;
@@ -365,7 +371,7 @@ impl DoomMap {
     				    break;
     				}
 
-    			    current_loop.push([current_tip.x as f32, current_tip.y as f32]);
+    			    current_loop.push([current_tip.0 as f32, current_tip.1 as f32]);
 				
     			    if let Some(next_idx) = find_next_edge_by_angle(prev_point, current_tip, &edges, &adjacency) {
     			        edges[next_idx].used = true;
@@ -495,98 +501,87 @@ impl DoomMap {
 	            let ceil_texture_name = to_u64(&sector.ceilingpic);
 
 	            let floor_texture_id = if sector.floorpic.starts_with(b"F_SKY1") {
-					(u16::MAX - 2) as u32
+					TextureId((u16::MAX - 2) as u32)
 				} else {
-					texture_ids.get(&floor_texture_name).unwrap_or(&(0,0,0,false)).0
+					texture_ids.get(&floor_texture_name).unwrap_or(&(TextureId(0),0,0,false)).0
 				};
 
 	            let ceil_texture_id = if sector.ceilingpic.starts_with(b"F_SKY1") {
-					(u16::MAX - 2) as u32
+					TextureId((u16::MAX - 2) as u32)
 				} else { 
-					texture_ids.get(&ceil_texture_name).unwrap_or(&(0,0,0,false)).0 
+					texture_ids.get(&ceil_texture_name).unwrap_or(&(TextureId(0),0,0,false)).0 
 				};
 
-	            let clamped_light = sector.lightlevel.clamp(0, 255) as f32;
+	            let clamped_light = sector.light.clamp(0, 255) as f32;
 	            let modern_light = clamped_light / 255.0;
 	            let colormap_idx = 31 - ((clamped_light / 8.0).floor() as u32).clamp(0, 31);
 
-	            let floor_start_idx = vertices.len() as u32;
+	            let floor_start_idx = gpu_vertices.len() as u32;
 	            for pt in &flat_points {
-	                vertices.push(GpuVertex { 
-	                    pos: [pt[0], sector.floorheight.into(), pt[1]],
+	                gpu_vertices.push(GpuVertex { 
+	                    pos: [pt[0], sector.floor_h, pt[1]],
 	                    texture_pos: [pt[0] / 64.0, pt[1] / 64.0],
 						light_level: modern_light,
-	                    texture_id: floor_texture_id,
+	                    texture_id: floor_texture_id.0,
 	                    colormap_idx,
 						floor_tex_id: 0,
 	                });
 	            }
 	            for chunk in sector_indices.chunks_exact(3) {
-	                indices.push(floor_start_idx + chunk[0]);
-	                indices.push(floor_start_idx + chunk[1]);
-	                indices.push(floor_start_idx + chunk[2]);
+	                gpu_indices.push(floor_start_idx + chunk[0]);
+	                gpu_indices.push(floor_start_idx + chunk[1]);
+	                gpu_indices.push(floor_start_idx + chunk[2]);
 	            }
 
-	            let ceil_start_idx = vertices.len() as u32;
+	            let ceil_start_idx = gpu_vertices.len() as u32;
 	            for pt in &flat_points {
-	                vertices.push(GpuVertex { 
-	                    pos: [pt[0], sector.ceilingheight.into(), pt[1]],
+	                gpu_vertices.push(GpuVertex { 
+	                    pos: [pt[0], sector.ceil_h, pt[1]],
 	                    texture_pos: [pt[0] / 64.0, pt[1] / 64.0],
 						light_level: modern_light,
-	                    texture_id: ceil_texture_id,
+	                    texture_id: ceil_texture_id.0,
 	                    colormap_idx,
 						floor_tex_id: 0,
 	                });
 	            }
 	            for chunk in sector_indices.chunks_exact(3) {
-	                indices.push(ceil_start_idx + chunk[0]);
-	                indices.push(ceil_start_idx + chunk[2]);
-	                indices.push(ceil_start_idx + chunk[1]);
+	                gpu_indices.push(ceil_start_idx + chunk[0]);
+	                gpu_indices.push(ceil_start_idx + chunk[2]);
+	                gpu_indices.push(ceil_start_idx + chunk[1]);
 	            }
 	        }
 	    }
-	    (vertices, indices)
+	    (gpu_vertices, gpu_indices)
 	}
 
-	pub fn get_sector_by_pos(&self, x: f32, y: f32) -> usize {
-        if self.nodes.is_empty() {
-            return 0;
-        }
-        
-        let root_node_idx = self.nodes.len() - 1;
-        let subsector_idx = self.find_subsector_by_pos(root_node_idx, x, y);
-        let subsector = &self.subsectors[subsector_idx];
-        
-        let first_seg_idx = subsector.firstseg as usize;
-        let seg = &self.segs[first_seg_idx];
-        
-        if seg.linedef != u16::MAX {
-            let linedef = &self.linedefs[seg.linedef as usize];
-            let side = linedef.sidenum[seg.side as usize];
-            if side != u16::MAX {
-                return self.sidedefs[side as usize].sector as usize;
-            }
+	pub fn get_sector_by_pos(&self, x: f32, z: f32) -> SectorId {
+		if self.geom.nodes.is_empty() {
+            return SectorId(0);
         }
 
-        0
+		let root_node_idx = self.geom.nodes.len() - 1;
+        let subsector_id = self.find_subsector_by_pos(root_node_idx, x, z);
+
+        self.geom.subsector_sector[subsector_id.0]
     }
 
-    fn find_subsector_by_pos(&self, node_idx: usize, x: f32, y: f32) -> usize {
+    fn find_subsector_by_pos(&self, node_idx: usize, x: f32, z: f32) -> SubsectorId {
+		dbg!(node_idx);
         if (node_idx & NF_SUBSECTOR) != 0 {
-            return node_idx & !NF_SUBSECTOR;
+            return SubsectorId(node_idx & !NF_SUBSECTOR);
         }
 
-        let node = &self.nodes[node_idx];
+        let node = &self.geom.nodes[node_idx];
 
         let dx = x - node.x as f32;
-        let dy = y - node.y as f32;
+        let dz = z - node.y as f32;
 
-        let is_left = (dx * node.dy as f32) - (dy * node.dx as f32) <= 0.0;
+        let is_left = (dx * node.dy as f32) - (dz * node.dx as f32) <= 0.0;
 
         if is_left {
-            self.find_subsector_by_pos(node.children[1] as usize, x, y)
+            self.find_subsector_by_pos(node.children[1] as usize, x, z)
         } else {
-            self.find_subsector_by_pos(node.children[0] as usize, x, y)
+            self.find_subsector_by_pos(node.children[0] as usize, x, z)
         }
     }
 
@@ -668,16 +663,16 @@ fn clean_polygon(poly: &[[f32; 2]]) -> Vec<[f32; 2]> {
 }
 
 fn find_next_edge_by_angle(
-    prev_point: MapVertex,
-    current_tip: MapVertex,
+    prev_point: (i32, i32),
+    current_tip: (i32, i32),
     edges: &[Edge],
-	adjacency: &FxHashMap<MapVertex, Vec<usize>>,
+	adjacency: &FxHashMap<(i32, i32), Vec<usize>>,
 ) -> Option<usize> {
 	let candidate_indices = adjacency.get(&current_tip)?;
 
     let in_dir = [
-		(current_tip.x - prev_point.x) as f32, 
-		(current_tip.y - prev_point.y) as f32,
+		(current_tip.0 - prev_point.0) as f32, 
+		(current_tip.1 - prev_point.1) as f32,
 	];
     let in_angle = pseudo_angle(in_dir[0], in_dir[1]);
 
@@ -691,8 +686,8 @@ fn find_next_edge_by_angle(
         }
             
         let out_dir = [
-			(edge.v2.x - current_tip.x) as f32, 
-			(edge.v2.y - current_tip.y) as f32
+			(edge.v2.0 - current_tip.0) as f32, 
+			(edge.v2.1 - current_tip.1) as f32
 		];
         let out_angle = pseudo_angle(out_dir[0], out_dir[1]);
 

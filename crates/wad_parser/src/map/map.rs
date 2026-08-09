@@ -1,94 +1,13 @@
-use crate::{AABB, WadManager};
+use crate::{AABB, WadManager, wad_types::*};
 use std::ptr::read_unaligned;
 use std::mem::size_of;
 
-#[repr(C)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct MapVertex
-{
-	pub x: i16,
-	pub y: i16,
-}
-
-#[repr(C)]
-#[derive(Debug, Clone, Copy)]
-pub struct MapSidedef
-{
-	pub textureoffset: i16,
-	pub rowoffset: i16,
-  	pub toptexture: [u8; 8],
-  	pub bottomtexture: [u8; 8],
-  	pub midtexture: [u8; 8],
-	pub sector: i16,
-}
-
-#[repr(C)]
-#[derive(Debug, Clone, Copy)]
-pub struct MapLinedef
-{
-	pub v1: i16,
-	pub v2: i16,
-	pub flags: i16,
-	pub special: i16,
-	pub tag: i16,
-	pub sidenum: [u16; 2]	
-}
-
-#[repr(C)]
-#[derive(Debug, Clone, Copy)]
-pub struct MapSector
-{
-	pub floorheight: i16,
-	pub ceilingheight: i16,
-  	pub floorpic: [u8; 8],
-  	pub ceilingpic:[u8; 8],
-	pub lightlevel: i16,
-	pub special: i16,
-	pub tag: i16,
-}
-
-#[repr(C)]
-#[derive(Debug, Clone, Copy)]
-pub struct MapSubsector
-{
-	pub numsegs: i16,
-	pub firstseg: u16	
-}
-
-#[repr(C)]
-#[derive(Debug, Clone, Copy)]
-pub struct MapSegment
-{
-	pub v1: i16,
-	pub v2: i16,
-	pub angle: i16,
-	pub linedef: u16,
-	pub side: i16,
-	pub offset: i16,
-}
-
-#[repr(C)]
-#[derive(Debug, Clone, Copy)]
-pub struct MapNode
-{
-	pub x: i16,
-	pub y: i16,
-	pub dx: i16,
-	pub dy: i16,
-	pub bbox: [[i16; 4]; 2],
-	pub children: [u16; 2],
-}
-
-#[repr(C)] 
-#[derive(Debug, Clone, Copy)]
-pub struct MapThing
-{
-	pub x: i16,
-	pub y: i16,
-	pub angle: i16,
-	pub type_: i16,
-	pub options: i16,
-}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] pub struct VertexId(pub usize);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)] pub struct SectorId(pub usize);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] pub struct LineId(pub usize);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] pub struct SideId(pub usize);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] pub struct SubsectorId(pub usize);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)] pub struct TextureId(pub u32);
 
 #[derive(Debug, Clone, Default)]
 pub struct Blockmap {
@@ -96,105 +15,273 @@ pub struct Blockmap {
 	pub origin_y: i16,
 	pub col_num: usize,
 	pub row_num: usize,
-	pub blocklists: Vec<Vec<usize>>
+	pub blocklists: Vec<Vec<LineId>>
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct RejectTable(pub Option<Vec<u8>>);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SlopeType {
+    Horizontal,
+    Vertical,
+    Positive,
+    Negative,
+}
+
+fn get_slope_type(dx: f32, dy: f32) -> SlopeType {
+    if dx == 0.0 {
+        SlopeType::Vertical
+    } else if dy == 0.0 {
+        SlopeType::Horizontal
+    } else if (dx > 0.0 && dy > 0.0) || (dx < 0.0 && dy < 0.0) {
+        SlopeType::Positive
+    } else {
+        SlopeType::Negative
+    }
+}
+
+bitflags::bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct LineFlags: u16 {
+		const NONE = 0;
+    	const BLOCKING = 1 << 0;
+    	const BLOCK_MONSTER = 1 << 1;
+    	const TWO_SIDED = 1 << 2;
+    	const DONT_PEG_TOP = 1 << 3;
+    	const DONT_PEG_BOTTOM = 1 << 4;
+    	const SECRET = 1 << 5;
+    	const SOUND_BLOCK = 1 << 6;
+    	const DONT_DRAW = 1 << 7;
+    	const MAPPED = 1 << 8;
+    }
+}
+
+#[derive(Debug)]
+pub struct Line {
+    pub v1: VertexId, 
+	pub v2: VertexId,
+    pub flags: LineFlags, 
+    pub special: u16, 
+	pub tag: u16,
+    pub sides: (Option<SideId>, Option<SideId>), 
+    pub delta: (f32, f32), 
+    pub bbox: AABB, 
+    pub slope: SlopeType, 
+}
+
 #[derive(Debug, Default)]
-pub struct DoomMap {
-	pub map_num: u8,
-    pub vertices: Vec<MapVertex>,
-    pub linedefs: Vec<MapLinedef>,
-    pub sidedefs: Vec<MapSidedef>,
-    pub sectors: Vec<MapSector>,
-    pub things: Vec<MapThing>,
+pub struct Side {
+	pub sector: SectorId,
+}
+
+#[derive(Debug, Default)]
+pub struct Geometry {
+    pub vertices: Vec<(f32, f32)>,
+    pub lines: Vec<Line>,
+    pub sides: Vec<Side>,
 	pub subsectors: Vec<MapSubsector>,
 	pub segs: Vec<MapSegment>,
 	pub nodes: Vec<MapNode>,
 	pub reject_table: RejectTable,
-	pub blockmap: Blockmap
+	pub blockmap: Blockmap,
+	pub sector_lines: Vec<Vec<LineId>>, 
+    pub subsector_sector: Vec<SectorId>, 
 }
 
-impl DoomMap {
-    pub fn from_wad(wad_manager: &WadManager, map_num: u8) -> Result<Self, String> {
-		let mut map = DoomMap::default();
-		map.map_num = map_num;
+#[derive(Debug, Default)]
+pub struct SectorState {
+    pub floor_h: f32, 
+	pub ceil_h: f32,
+    pub light: u16,
+    pub floor_tex: Option<TextureId>, 
+	pub ceil_tex: Option<TextureId>, 
+	pub(crate) floorpic: [u8; 8],
+  	pub(crate) ceilingpic:[u8; 8],
+    pub special: u16, 
+	pub tag: u16,
+}
+
+#[derive(Debug, Default)]
+pub struct SideState {
+    pub col_offset: i16,
+	pub row_offset: i16,
+  	pub top_tex: Option<TextureId>,
+  	pub bottom_tex: Option<TextureId>,
+  	pub mid_tex: Option<TextureId>,
+	pub(crate) toptexture: [u8; 8],
+	pub(crate) bottomtexture: [u8; 8],
+	pub(crate) midtexture: [u8; 8],
+}
+
+#[derive(Debug, Default)]
+pub struct LevelState {
+    pub sectors: Vec<SectorState>,
+    pub sides: Vec<SideState>,
+    //lines: Vec<LineState>,
+    //effects: ActiveEffects,
+}
+
+#[derive(Debug, Default)]
+pub struct Level {
+	pub map_num: u8,
+	pub geom: Geometry,
+	pub state: LevelState,
+	pub things: Vec<MapThing>
+}
+
+pub struct Opening {
+	pub top: f32,
+	pub floor_high: f32,
+	pub floor_low: f32
+}
+
+impl Level {
+    pub fn load(wad_manager: &WadManager, map_num: u8) -> Result<Self, String> {
+		let mut level = Level::default();
+		level.map_num = map_num;
 
 		let map_name = construct_map_name(wad_manager.is_doom1, map_num);
 
     	let vertexes_bytes = wad_manager.get_map_data(b"VERTEXES", &map_name)?;
-		map.vertices = vertexes_bytes
+		level.geom.vertices = vertexes_bytes
     		.chunks_exact(size_of::<MapVertex>())
     		.map(|chunk| {
-    		    unsafe { read_unaligned(chunk.as_ptr() as *const MapVertex) }
+				let v = unsafe { read_unaligned(chunk.as_ptr() as *const MapVertex) };
+				(v.x as f32, v.y as f32)
     		})
     		.collect();
 
 		let linedefs_bytes = wad_manager.get_map_data(b"LINEDEFS", &map_name)?;
-		map.linedefs = linedefs_bytes
+		level.geom.lines = linedefs_bytes
     		.chunks_exact(size_of::<MapLinedef>())
     		.map(|chunk| {
-    		    unsafe { read_unaligned(chunk.as_ptr() as *const MapLinedef) }
+    		    let l = unsafe { read_unaligned(chunk.as_ptr() as *const MapLinedef) };
+				let (v1_x, v1_y) = level.geom.vertices[l.v1 as usize];
+				let (v2_x, v2_y) = level.geom.vertices[l.v2 as usize];
+				Line { 
+					v1: VertexId(l.v1 as usize), 
+					v2: VertexId(l.v2 as usize), 
+					flags: LineFlags::from_bits(l.flags).unwrap(), 
+					special: l.special, 
+					tag: l.tag, 
+					sides: (
+						if l.sidenum[0] == u16::MAX { None } else { Some(SideId(l.sidenum[0] as usize)) },
+						if l.sidenum[1] == u16::MAX { None } else { Some(SideId(l.sidenum[1] as usize)) }
+					), 
+					delta: (v1_x - v2_x, v1_y - v2_y),
+					bbox: AABB { 
+						min_x: v1_x.min(v2_x), 
+						max_x: v1_x.max(v2_x), 
+						min_y: v1_y.min(v2_y), 
+						max_y: v1_y.max(v2_y) 
+					}, 
+					slope: get_slope_type(v1_x - v2_x, v1_y - v2_y) 
+				}
     		})
     		.collect();
 
 		let sidedefs_bytes = wad_manager.get_map_data(b"SIDEDEFS", &map_name)?;
-		map.sidedefs = sidedefs_bytes
+		let sides_num = sidedefs_bytes.len() / size_of::<MapSidedef>();
+		level.geom.sides.resize_with(sides_num, || Side::default());
+		level.state.sides.resize_with(sides_num, || SideState::default());
+		
+		sidedefs_bytes
     		.chunks_exact(size_of::<MapSidedef>())
-    		.map(|chunk| {
-    		    unsafe { read_unaligned(chunk.as_ptr() as *const MapSidedef) }
-    		})
-    		.collect();
-
-		let sectors_bytes = wad_manager.get_map_data(b"SECTORS\0", &map_name)?;
-		map.sectors = sectors_bytes
-    		.chunks_exact(size_of::<MapSector>())
-    		.map(|chunk| {
-    		    unsafe { read_unaligned(chunk.as_ptr() as *const MapSector) }
-    		})
-    		.collect();
-
-		let raw_reject_table = wad_manager.get_map_data(b"REJECT\0\0", &map_name)?;
-		map.reject_table = if raw_reject_table.is_empty() || raw_reject_table.iter().all(|byte| *byte == 0) {
-			RejectTable(None)
-		} else {
-			RejectTable(Some(raw_reject_table.to_vec()))
-		};
-
-		let things_bytes = wad_manager.get_map_data(b"THINGS\0\0", &map_name)?;
-		map.things = things_bytes
-    		.chunks_exact(size_of::<MapThing>())
-    		.map(|chunk| {
-    		    unsafe { read_unaligned(chunk.as_ptr() as *const MapThing) }
-    		})
-    		.collect();
-
-		let ssectors_bytes = wad_manager.get_map_data(b"SSECTORS", &map_name)?;
-		map.subsectors = ssectors_bytes
-    		.chunks_exact(size_of::<MapSubsector>())
-    		.map(|chunk| {
-    		    unsafe { read_unaligned(chunk.as_ptr() as *const MapSubsector) }
-    		})
-    		.collect();
+			.enumerate()
+    		.for_each(|(idx, chunk)| {
+				let s = unsafe { read_unaligned(chunk.as_ptr() as *const MapSidedef) };
+				
+				level.geom.sides[idx] = Side { sector: SectorId(s.sector as usize) };
+				level.state.sides[idx] = SideState { 
+					col_offset: s.textureoffset, 
+					row_offset: s.rowoffset, 
+					top_tex: None, 
+					bottom_tex: None, 
+					mid_tex: None,
+					toptexture: s.toptexture,
+					midtexture: s.midtexture,
+					bottomtexture: s.bottomtexture,
+				};
+    		});
 
 		let segs_bytes = wad_manager.get_map_data(b"SEGS\0\0\0\0", &map_name)?;
-		map.segs = segs_bytes
+		level.geom.segs = segs_bytes
     		.chunks_exact(size_of::<MapSegment>())
     		.map(|chunk| {
     		    unsafe { read_unaligned(chunk.as_ptr() as *const MapSegment) }
     		})
     		.collect();
 
+		let ssectors_bytes = wad_manager.get_map_data(b"SSECTORS", &map_name)?;
+		level.geom.subsectors = ssectors_bytes
+    		.chunks_exact(size_of::<MapSubsector>())
+    		.map(|chunk| {
+    		    unsafe { read_unaligned(chunk.as_ptr() as *const MapSubsector) }
+    		})
+    		.collect();
+
+		level.geom.subsector_sector = level.geom.subsectors
+			.iter()
+			.map(|subsector| {
+				let sides = &level.geom.sides;
+				let segs = &level.geom.segs;
+				let lines = &level.geom.lines;
+
+				let seg = &segs[subsector.firstseg as usize];
+				let line = &lines[seg.linedef as usize];
+				if seg.side == 0 {
+					sides[line.sides.0.unwrap().0].sector
+				} else {
+					sides[line.sides.1.unwrap().0].sector
+				}
+			})
+			.collect();
+
+		let sectors_bytes = wad_manager.get_map_data(b"SECTORS\0", &map_name)?;
+		let sectors_num = sectors_bytes.len() / size_of::<MapSector>();
+		level.geom.sector_lines.resize_with(sectors_num, || Vec::new());
+
+		level.state.sectors = sectors_bytes
+    		.chunks_exact(size_of::<MapSector>())
+    		.map(|chunk| {
+    		    let s = unsafe { read_unaligned(chunk.as_ptr() as *const MapSector) };
+				SectorState { 
+					floor_h: s.floorheight as f32, 
+					ceil_h: s.ceilingheight as f32, 
+					light: s.lightlevel, 
+					floor_tex: None, 
+					ceil_tex: None, 
+					floorpic: s.floorpic,
+					ceilingpic: s.ceilingpic,
+					special: s.special, 
+					tag: s.tag,
+				}
+    		})
+    		.collect::<Vec<SectorState>>();
+
+		let raw_reject_table = wad_manager.get_map_data(b"REJECT\0\0", &map_name)?;
+		level.geom.reject_table = if raw_reject_table.is_empty() || raw_reject_table.iter().all(|byte| *byte == 0) {
+			RejectTable(None)
+		} else {
+			RejectTable(Some(raw_reject_table.to_vec()))
+		};
+
+		let things_bytes = wad_manager.get_map_data(b"THINGS\0\0", &map_name)?;
+		level.things = things_bytes
+    		.chunks_exact(size_of::<MapThing>())
+    		.map(|chunk| {
+    		    unsafe { read_unaligned(chunk.as_ptr() as *const MapThing) }
+    		})
+    		.collect();
+
 		let nodes_bytes = wad_manager.get_map_data(b"NODES\0\0\0", &map_name)?;
-		map.nodes = nodes_bytes
+		level.geom.nodes = nodes_bytes
     		.chunks_exact(size_of::<MapNode>())
     		.map(|chunk| {
     		    unsafe { read_unaligned(chunk.as_ptr() as *const MapNode) }
     		})
     		.collect();
-
 		
 		let blockmap_bytes = wad_manager.get_map_data(b"BLOCKMAP", &map_name)?;
 		let origin_x = i16::from_le_bytes(blockmap_bytes
@@ -247,12 +334,12 @@ impl DoomMap {
 		            break;
 		        }
 			
-		        blocklists[block_idx].push(line_idx as usize);
+		        blocklists[block_idx].push(LineId(line_idx as usize));
 		        byte_offset += 2;
 		    }
 		}
 
-		map.blockmap = Blockmap {
+		level.geom.blockmap = Blockmap {
 			origin_x,
 			origin_y,
 			col_num,
@@ -260,9 +347,56 @@ impl DoomMap {
 			blocklists
 		};
 		
-
-        Ok(map)
+        Ok(level)
     }
+
+	pub fn get_opening(&self, line_id: LineId) -> Option<Opening> {
+		let line = &self.geom.lines[line_id.0];
+
+		let (front_side_id_opt, back_side_id_opt) = line.sides;
+
+		let (front_ceil, front_floor) = match front_side_id_opt {
+			Some(id) => {
+				let side = &self.geom.sides[id.0];
+				let sector = &self.state.sectors[side.sector.0];
+				(sector.ceil_h, sector.floor_h)
+			}
+			None => return None
+		};
+
+		let (back_ceil, back_floor) = match back_side_id_opt {
+			Some(id) => {
+				let side = &self.geom.sides[id.0];
+				let sector = &self.state.sectors[side.sector.0];
+				(sector.ceil_h, sector.floor_h)
+			}
+			None => return None
+		};
+
+    	let top = front_ceil.min(back_ceil);
+    	let floor_high = front_floor.max(back_floor);
+		let floor_low = front_floor.min(back_floor);
+
+		Some(Opening { top, floor_high, floor_low })
+	}
+
+	pub fn get_other_sector(&self, line_id: LineId, sector_id: SectorId) -> Option<SectorId> {
+		let line = &self.geom.lines[line_id.0];
+
+		match line.sides {
+			(Some(front_side_id), Some(back_side_id)) => {
+				let front_sector = self.geom.sides[front_side_id.0].sector;
+				let back_sector = self.geom.sides[back_side_id.0].sector;
+				
+				if front_sector == sector_id {
+					Some(back_sector)
+				} else {
+					Some(front_sector)
+				}
+			},
+			_ => None
+		}
+	}
 }
 
 pub fn to_u64(name_bytes: &[u8]) -> u64 {
@@ -292,16 +426,16 @@ pub fn construct_map_name(is_doom1: bool, num: u8) -> [u8; 8] {
 }
 
 impl RejectTable {
-	pub fn is_rejected(&self, src_sector: usize, target_sector: usize, num_sectors: usize) -> bool {
+	pub fn is_rejected(&self, src_sector: SectorId, target_sector: SectorId, num_sectors: usize) -> bool {
         let Some(ref reject) = self.0 else {
             return false;
         };
 
-        if src_sector >= num_sectors || target_sector >= num_sectors {
+        if src_sector.0 >= num_sectors || target_sector.0 >= num_sectors {
             return false;
         }
 
-        let bit_index = src_sector * num_sectors + target_sector;
+        let bit_index = src_sector.0 * num_sectors + target_sector.0;
         let byte_index = bit_index >> 3;
         let bit_offset = bit_index & 0b111;
 
@@ -328,7 +462,7 @@ impl Blockmap {
 
     pub fn for_each_line_in_aabb<F>(&self, bbox: &AABB, mut callback: F) -> bool
     where
-        F: FnMut(usize) -> bool,
+        F: FnMut(LineId) -> bool,
     {
         let (min_col, min_row) = self.world_to_grid(bbox.min_x, bbox.min_y);
         let (max_col, max_row) = self.world_to_grid(bbox.max_x, bbox.max_y);
