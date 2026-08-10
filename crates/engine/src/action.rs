@@ -1,7 +1,7 @@
-use hecs::{CommandBuffer, Entity, QueryBorrow, World};
+use hecs::{CommandBuffer, Entity, World};
 use serde::Deserialize;
 use wad_parser::{Level, to_u64};
-use crate::{CurrentSector, DB, Health, Idle, InstantMoveIntent, MobjAi, MobjFlagCommand, MobjFlags, MobjType, MonsterRotation, PlayerMarker, Position, Random, SfxEvent, SkillLevel, SpriteAnimation, Target, Traversal, WorldEvent, in_fov, p_check_melee_range, p_check_missile_range, p_check_sight, p_move, p_new_chase_dir, wake_up_monster};
+use crate::{CurrentSector, DB, Health, Idle, InstantMoveIntent, MobjAi, MobjFlagCommand, MobjFlags, MobjType, MonsterRotation, PlayerMarker, Position, Random, SfxEvent, SkillLevel, SpriteAnimation, StateNum, Target, Traversal, WorldEvent, in_fov, p_check_melee_range, p_check_missile_range, p_check_sight, p_move, p_new_chase_dir, wake_up_monster};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub enum ActionFunc {
@@ -82,9 +82,9 @@ pub enum ActionFunc {
 }
 
 /// Must be called before animation_system
-pub fn ai_system(world: &World) {
-	let mut query = world.query::<&mut MobjAi>();
-	for ai in query.iter() {
+pub fn ai_system(world: &World, action_buffer: &mut Vec<(Entity, ActionFunc)>) {
+	let mut query = world.query::<(Entity, &mut MobjAi, &mut SpriteAnimation)>();
+	for (ent, ai, anim) in query.iter() {
 		if ai.tics_left <= 0 {
 			continue;
 		}
@@ -96,11 +96,59 @@ pub fn ai_system(world: &World) {
 			let current_state = db.states[&ai.current_state];
 
 			if let Some(next_state_num) = current_state.next_state {
-				let next_state = db.states[&next_state_num];
+				set_mobj_state(ent, ai, anim, next_state_num, action_buffer);
+			}
+		}
+	}
+}
 
-				ai.current_state = next_state_num;
-				ai.tics_left = next_state.tics;
-				ai.action = next_state.action;
+pub fn set_mobj_state(ent: Entity, ai: &mut MobjAi, anim: &mut SpriteAnimation, state_num: StateNum, action_buffer: &mut Vec<(Entity, ActionFunc)>) {
+	let db = DB.get().unwrap();
+
+	ai.current_state = state_num;
+
+	let state = db.states[&state_num];
+	ai.tics_left = state.tics;
+	anim.cached_rotations = state.cached_rotations;
+
+	if let Some(action) = state.action {
+		action_buffer.push((ent, action));
+	}
+}
+
+pub fn action_system(
+	world: &World, 
+    action_buffer: &mut Vec<(Entity, ActionFunc)>,
+    random: &mut Random,
+    level: &Level,
+    game_skill: SkillLevel,
+    fast_monsters: bool,
+    audio_buffer: &mut Vec<SfxEvent>,
+    blocklists: &[Vec<Entity>],
+    world_events: &mut Vec<WorldEvent>,
+    mobj_flag_buffer: &mut Vec<MobjFlagCommand>,
+) {
+	let mut local_queue = Vec::new();
+
+	while !action_buffer.is_empty() {
+		std::mem::swap(action_buffer, &mut local_queue);
+
+		for (ent, action) in local_queue.drain(..) {
+			match action {
+				ActionFunc::Chase => chase(
+					world,
+					ent,
+					random,
+					level,
+					game_skill,
+					fast_monsters,
+					audio_buffer,
+					blocklists,
+					world_events,
+					mobj_flag_buffer,
+					action_buffer
+				),
+				_ => {}
 			}
 		}
 	}
@@ -168,7 +216,6 @@ pub fn check_sight_system(
 	command_buffer: &mut CommandBuffer, 
 	audio_buffer: &mut Vec<SfxEvent>, 
 ) {
-	
 	let db = DB.get().unwrap();
 
 	let mut query = world
@@ -215,17 +262,9 @@ pub fn check_sight_system(
     }
 }
 
-pub fn chase_system(
-	mut query: QueryBorrow<'_, (
-		Entity,
-        &mut MonsterRotation,
-		&mut MobjAi,
-		&mut InstantMoveIntent,
-		&MobjType,
-		&Position,
-        &Target,
-    )>,
+pub fn chase(
 	world: &World,
+	ent: Entity,
     random: &mut Random,
     map: &Level,
     game_skill: SkillLevel,
@@ -233,116 +272,125 @@ pub fn chase_system(
     audio_buffer: &mut Vec<SfxEvent>,
 	blocklists: &[Vec<Entity>],
 	world_events: &mut Vec<WorldEvent>,
-	mobj_flag_buffer: &mut Vec<MobjFlagCommand>
+	mobj_flag_buffer: &mut Vec<MobjFlagCommand>,
+	action_buffer: &mut Vec<(Entity, ActionFunc)>
 ) {
     let db = DB.get().unwrap();
 
-    for (ent, rot, ai, imi, mobj_type, pos, target) in query.iter() {
-        let mobj_info = &db.mobjinfo[&mobj_type.type_];
+	let mut query = world.query_one::<(
+		&mut MonsterRotation, 
+		&mut MobjAi, 
+		&mut InstantMoveIntent, 
+		&mut SpriteAnimation,
+		&MobjType, 
+		&Position, 
+		&Target
+	)>(ent);
+    let (rot, ai, imi, anim, mobj_type, pos, target) = match query.get() {
+        Ok(components) => components,
+        Err(_) => return,
+    };
+    
+	let mobj_info = &db.mobjinfo[&mobj_type.type_];
 
-        if ai.reaction_time > 0 {
-            ai.reaction_time -= 1;
+    if ai.reaction_time > 0 {
+        ai.reaction_time -= 1;
+		return;
+    }
+
+	let mut target_query = world.query_one::<(&Health, &Position)>(target.0);
+	let (target_hp, target_pos) = match target_query.get() {
+		Ok(data) => data,
+		Err(_) => {
+			if let Some(spawn_state) = mobj_info.spawn_state {
+				set_mobj_state(ent, ai, anim, spawn_state, action_buffer);
+        	}
+        	return;
+		}
+	};
+
+	if target_hp.0 <= 0 {
+        if let Some(spawn_state) = mobj_info.spawn_state {
+			set_mobj_state(ent, ai, anim, spawn_state, action_buffer);
         }
+        return;
+    }
 
-		let mut target_query = world.query_one::<(&Health, &Position)>(target.0);
-		let (target_hp, target_pos) = match target_query.get() {
-			Ok(data) => data,
-			Err(_) => {
-				if let Some(spawn_state) = mobj_info.spawn_state {
-					ai.current_state = spawn_state;
-                	ai.tics_left = db.states[&spawn_state].tics;
-            	}
-            	continue;
-			}
-		};
-
-		if target_hp.0 <= 0 {
-            if let Some(spawn_state) = mobj_info.spawn_state {
-				ai.current_state = spawn_state;
-                ai.tics_left = db.states[&spawn_state].tics;
-            }
-            continue;
+    if ai.threshold > 0 {
+        if target_hp.0 <= 0 {
+            ai.threshold = 0;
+        } else {
+            ai.threshold -= 1;
         }
+    }
 
-        if ai.threshold > 0 {
-            if target_hp.0 <= 0 {
-                ai.threshold = 0;
-            } else {
-                ai.threshold -= 1;
-            }
-        }
-
-        if mobj_type.flags.contains(MobjFlags::JUST_ATTACKED) {
-            mobj_flag_buffer.push(MobjFlagCommand::Remove { ent, flag: MobjFlags::JUST_ATTACKED });
-            if game_skill != SkillLevel::Nightmare && !fast_monsters {
-                p_new_chase_dir(
-    			    ent, pos, rot, mobj_type, mobj_info, imi, target_pos,
-    			    map, world, random, blocklists, world_events, mobj_flag_buffer
-    			);
-            }
-            continue;
-        }
-
-        if let Some(melee_state) = mobj_info.melee_state {
-            if p_check_melee_range(pos, target_pos, mobj_info.radius) {
-                if let Some(attack_sound) = &mobj_info.attack_sound {
-                    audio_buffer.push(SfxEvent {
-                        sfx_id: to_u64(attack_sound),
-                        pos: Some((pos.x, pos.y, pos.z)),
-                    });
-                }
-
-				ai.current_state = melee_state;
-                ai.tics_left = db.states[&melee_state].tics;
-
-                continue;
-            }
-        }
-
-        let mut check_missile = true;
-
-        if let Some(missile_state) = mobj_info.missile_state {
-            if game_skill != SkillLevel::Nightmare && !fast_monsters && rot.move_count != 0 {
-                check_missile = false;
-            }
-
-            if check_missile && p_check_missile_range(
-				ent,
-				pos, 
-				mobj_type, 
-				target_pos, 
-				random, 
-				mobj_info.melee_state.is_none(),
-				mobj_flag_buffer
-			) {
-				ai.current_state = missile_state;
-                ai.tics_left = db.states[&missile_state].tics;
-				mobj_flag_buffer.push(MobjFlagCommand::Add { ent, flag: MobjFlags::JUST_ATTACKED }); 
-                continue;
-            }
-        }
-
-        rot.move_count -= 1;
-        if rot.move_count < 0 || !p_move(
-			ent, pos, rot, mobj_type, mobj_info, imi, map, world,
-			random, blocklists, world_events, mobj_flag_buffer
-		) {
+    if mobj_type.flags.contains(MobjFlags::JUST_ATTACKED) {
+        mobj_flag_buffer.push(MobjFlagCommand::Remove { ent, flag: MobjFlags::JUST_ATTACKED });
+        if game_skill != SkillLevel::Nightmare && !fast_monsters {
             p_new_chase_dir(
-    		    ent, pos, rot, mobj_type, mobj_info, imi, target_pos,
-    		    map, world, random, blocklists, world_events, mobj_flag_buffer
+    			ent, pos, rot, mobj_type, mobj_info, imi, target_pos,
+    			map, world, random, blocklists, world_events, mobj_flag_buffer
     		);
-		
-    		rot.move_count = (random.p() & 15) as i32;
         }
+        return;
+    }
 
-        if let Some(active_sound) = &mobj_info.active_sound {
-            if random.p() < 3 {
+    if let Some(melee_state) = mobj_info.melee_state {
+        if p_check_melee_range(pos, target_pos, mobj_info.radius) {
+            if let Some(attack_sound) = &mobj_info.attack_sound {
                 audio_buffer.push(SfxEvent {
-            	    sfx_id: to_u64(active_sound),
-            	    pos: Some((pos.x, pos.y, pos.z)),
-            	});
+                    sfx_id: to_u64(attack_sound),
+                    pos: Some((pos.x, pos.y, pos.z)),
+                });
             }
+
+			set_mobj_state(ent, ai, anim, melee_state, action_buffer);
+
+            return;
+        }
+    }
+
+    let mut check_missile = true;
+
+    if let Some(missile_state) = mobj_info.missile_state {
+        if game_skill != SkillLevel::Nightmare && !fast_monsters && rot.move_count != 0 {
+            check_missile = false;
         }
 
+        if check_missile && p_check_missile_range(
+			ent,
+			pos, 
+			mobj_type, 
+			target_pos, 
+			random, 
+			mobj_info.melee_state.is_none(),
+			mobj_flag_buffer
+		) {
+			set_mobj_state(ent, ai, anim, missile_state, action_buffer);
+			mobj_flag_buffer.push(MobjFlagCommand::Add { ent, flag: MobjFlags::JUST_ATTACKED }); 
+            return;
+        }
+    }
+
+    rot.move_count -= 1;
+    if rot.move_count < 0 || !p_move(
+		ent, pos, rot, mobj_type, mobj_info, imi, map, world,
+		random, blocklists, world_events, mobj_flag_buffer
+	) {
+        p_new_chase_dir(
+    	    ent, pos, rot, mobj_type, mobj_info, imi, target_pos,
+    	    map, world, random, blocklists, world_events, mobj_flag_buffer
+    	);
+		
+    	rot.move_count = (random.p() & 15) as i32;
+    }
+
+    if let Some(active_sound) = &mobj_info.active_sound {
+        if random.p() < 3 {
+            audio_buffer.push(SfxEvent {
+        	    sfx_id: to_u64(active_sound),
+        	    pos: Some((pos.x, pos.y, pos.z)),
+        	});
+        }
     }
 }

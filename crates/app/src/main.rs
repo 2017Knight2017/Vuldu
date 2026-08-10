@@ -33,6 +33,7 @@ struct GameContext {
     sound_targets: Vec<Option<Entity>>,
     world_events: Vec<WorldEvent>,
     mobj_flag_buffer: Vec<MobjFlagCommand>,
+    action_buffer: Vec<(Entity, ActionFunc)>,
     command_buffer: CommandBuffer,
     traversal: Traversal
 }
@@ -60,7 +61,8 @@ impl GameContext {
             level, 
             world_events: Vec::new(), 
             mobj_flag_buffer: Vec::new(), 
-            command_buffer: CommandBuffer::new() 
+            command_buffer: CommandBuffer::new(),
+            action_buffer: Vec::new()
         }
     }
 
@@ -70,64 +72,28 @@ impl GameContext {
 
         self.flush_command_buffer();
 
-        propagate_sound_system(
-            &self.world, 
-            &self.level,
-            &mut self.sound_targets,
-            &mut self.traversal,
-            &mut self.command_buffer, 
-        );
+        propagate_sound_system(&self.world, &self.level, &mut self.sound_targets,
+            &mut self.traversal, &mut self.command_buffer);
 
         self.flush_command_buffer();
 
-        check_sound_system(
-            &self.world, 
-            &mut self.level, 
-            random, 
-            &mut self.command_buffer, 
-            &mut self.sound_targets,
-            &mut self.traversal,
-            &mut audio.buffer,
+        check_sound_system(&self.world, &mut self.level, random, &mut self.command_buffer,
+            &mut self.sound_targets, &mut self.traversal, &mut audio.buffer,
         );
 
-        //check_sight_system(
-        //    check_sight_query, 
-        //    players_query, 
-        //    &self.level, 
-        //    &mut self.traversal,
-        //    &mut self.random, 
-        //    &mut self.command_buffer, 
-        //    &mut self.audio.buffer
-        //);
+        //check_sight_system(&self.world, &self.level, &mut self.traversal,
+        //    random, &mut self.command_buffer, &mut audio.buffer);
 
         self.flush_command_buffer();
 
-        let chase_query = self.world.query::<(
-            Entity, &mut MonsterRotation, &mut MobjAi,  
-            &mut InstantMoveIntent, &MobjType, &Position, &Target
-        )>();
-        chase_system(
-            chase_query, 
-            &self.world, 
-            random, 
-            &self.level, 
-            SkillLevel::Hard, 
-            true, 
-            &mut audio.buffer, 
-            &self.blocklists, 
-            &mut self.world_events,
-            &mut self.mobj_flag_buffer,
-        );
+        ai_system(&self.world, &mut self.action_buffer);
+        action_system(&self.world, &mut self.action_buffer, random, &self.level, SkillLevel::Hard, 
+            false, &mut audio.buffer, &self.blocklists, &mut self.world_events, &mut self.mobj_flag_buffer);
 
         friction_system(&self.world);
 
-        let pending_moves = try_move_system(
-            &self.world,
-            &self.level,
-            random,
-            &mut self.blocklists,
-            &mut self.world_events
-        );
+        let pending_moves = try_move_system(&self.world, &self.level,
+            random, &mut self.blocklists, &mut self.world_events);
 
         apply_player_movement_system(&self.world, &self.level);
         apply_monster_movement_system(&self.world, pending_moves, &self.level, &mut self.blocklists);
@@ -136,7 +102,6 @@ impl GameContext {
         apply_mobj_flags_system(&mut self.mobj_flag_buffer, &self.world);
 
         audio.system(&self.world);
-        ai_system(&self.world);
         animation_system(&self.world);
 
         current_input.mouse_delta_x = 0.0;
@@ -346,14 +311,14 @@ fn main() -> Result<(), String> {
     //
     //let map = Level::from_wad(&wad_manager, &args.map)?;
 
-    wad_manager.add_wad("assets/DOOM2.WAD")?;
+    wad_manager.add_wad("assets/PLUTONIA.WAD")?;
     //wad_manager.add_wad("assets/test.wad")?;
     //wad_manager.add_wad("assets/oku2v31.wad")?;
     //wad_manager.add_wad("assets/nuts.wad")?;
     //wad_manager.add_wad("assets/Sunder 2512.wad")?;
     //wad_manager.add_wad("assets/HR.WAD")?;
 
-    let level = Level::load(&wad_manager, 1)?;
+    let level = Level::load(&wad_manager, 12)?;
 
     let event_loop = EventLoop::new().unwrap();
     event_loop.set_control_flow(ControlFlow::Poll);

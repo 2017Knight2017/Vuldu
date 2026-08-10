@@ -127,7 +127,7 @@ pub fn wake_up_monster(
 		ai.current_state = see_state_num;
 		ai.action = see_state.action;
 		ai.tics_left = see_state.tics + (random.p() & 0b111) as i32;
-		sprite_anim.cached_rotations = see_state.cached_rotations.clone();
+		sprite_anim.cached_rotations = see_state.cached_rotations;
 		
 		if see_sound.starts_with(b"DSPOSIT") {
 			see_sound[7] = random.p() % 3 + b'1';
