@@ -38,8 +38,8 @@ pub fn p_box_on_line_side(bbox: &AABB, line: &Line, level: &Level) -> i32 {
     
     match line.slope {
         SlopeType::Horizontal => {
-            p1 = if bbox.max_y > v1.1 { 1 } else { 0 };
-            p2 = if bbox.min_y > v1.1 { 1 } else { 0 };
+            p1 = if bbox.max_z > v1.1 { 1 } else { 0 };
+            p2 = if bbox.min_z > v1.1 { 1 } else { 0 };
 
             if line.delta.0 < 0.0 {
                 let p1_flipped = p1 ^ 1;
@@ -64,12 +64,12 @@ pub fn p_box_on_line_side(bbox: &AABB, line: &Line, level: &Level) -> i32 {
             }
         }
         SlopeType::Positive => {
-            p1 = p_point_on_line_side(bbox.min_x, bbox.max_y, line, level);
-            p2 = p_point_on_line_side(bbox.max_x, bbox.min_y, line, level);
+            p1 = p_point_on_line_side(bbox.min_x, bbox.max_z, line, level);
+            p2 = p_point_on_line_side(bbox.max_x, bbox.min_z, line, level);
         }
         SlopeType::Negative => {
-            p1 = p_point_on_line_side(bbox.max_x, bbox.max_y, line, level);
-            p2 = p_point_on_line_side(bbox.min_x, bbox.min_y, line, level);
+            p1 = p_point_on_line_side(bbox.max_x, bbox.max_z, line, level);
+            p2 = p_point_on_line_side(bbox.min_x, bbox.min_z, line, level);
         }
     }
 

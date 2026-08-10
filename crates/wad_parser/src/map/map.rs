@@ -1,6 +1,7 @@
 use crate::{AABB, WadManager, wad_types::*};
 use std::ptr::read_unaligned;
 use std::mem::size_of;
+use rayon::prelude::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] pub struct VertexId(pub usize);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)] pub struct SectorId(pub usize);
@@ -12,7 +13,7 @@ use std::mem::size_of;
 #[derive(Debug, Clone, Default)]
 pub struct Blockmap {
 	pub origin_x: i16,
-	pub origin_y: i16,
+	pub origin_z: i16,
 	pub col_num: usize,
 	pub row_num: usize,
 	pub blocklists: Vec<Vec<LineId>>
@@ -169,12 +170,12 @@ impl Level {
 						if l.sidenum[0] == u16::MAX { None } else { Some(SideId(l.sidenum[0] as usize)) },
 						if l.sidenum[1] == u16::MAX { None } else { Some(SideId(l.sidenum[1] as usize)) }
 					), 
-					delta: (v1_x - v2_x, v1_y - v2_y),
+					delta: (v2_x - v1_x, v2_y - v1_y),
 					bbox: AABB { 
 						min_x: v1_x.min(v2_x), 
 						max_x: v1_x.max(v2_x), 
-						min_y: v1_y.min(v2_y), 
-						max_y: v1_y.max(v2_y) 
+						min_z: v1_y.min(v2_y), 
+						max_z: v1_y.max(v2_y) 
 					}, 
 					slope: get_slope_type(v1_x - v2_x, v1_y - v2_y) 
 				}
@@ -289,7 +290,7 @@ impl Level {
 			.ok_or_else(|| format!("Invalid origin_x of blockmap in {}", String::from_utf8_lossy(&map_name)))?
 			.try_into().unwrap()
 		);
-		let origin_y = i16::from_le_bytes(blockmap_bytes
+		let origin_z = i16::from_le_bytes(blockmap_bytes
 			.get(2..4)
 			.ok_or_else(|| format!("Invalid origin_y of blockmap in {}", String::from_utf8_lossy(&map_name)))?
 			.try_into().unwrap()
@@ -305,47 +306,31 @@ impl Level {
 			.try_into().unwrap()
 		) as usize;
 
-		let offsets: Vec<usize> = blockmap_bytes
-			.get(8..8 + 2 * (col_num * row_num))
-			.ok_or_else(|| format!("Invalid offsets of blockmap in {}", String::from_utf8_lossy(&map_name)))?
-			.chunks_exact(2)
-			.map(|chunk| u16::from_le_bytes(chunk.try_into().unwrap()) as usize)
-			.collect();
-
-		let mut blocklists = vec![Vec::new(); col_num * row_num];
-		for (block_idx, &u16_offset) in offsets.iter().enumerate() {
-		    let mut byte_offset = u16_offset * 2;
-
-		    if byte_offset >= blockmap_bytes.len() {
-		        continue;
-		    }
-		
-		    if byte_offset + 2 <= blockmap_bytes.len() {
-		        let start_zero = u16::from_le_bytes(blockmap_bytes[byte_offset..byte_offset + 2].try_into().unwrap());
-		        if start_zero == 0 {
-		            byte_offset += 2;
-		        }
-		    }
-		
-		    while byte_offset + 2 <= blockmap_bytes.len() {
-		        let line_idx = u16::from_le_bytes(blockmap_bytes[byte_offset..byte_offset + 2].try_into().unwrap());
-			
-		        if line_idx == u16::MAX {
-		            break;
-		        }
-			
-		        blocklists[block_idx].push(LineId(line_idx as usize));
-		        byte_offset += 2;
-		    }
-		}
-
 		level.geom.blockmap = Blockmap {
 			origin_x,
-			origin_y,
+			origin_z,
 			col_num,
 			row_num,
-			blocklists
+			blocklists: vec![Vec::new(); col_num * row_num]
 		};
+
+		let line_block_pairs: Vec<(usize, LineId)> = level.geom.lines
+		    .par_iter()
+		    .enumerate()
+		    .flat_map_iter(|(line_idx, line)| {
+		        let v1 = level.geom.vertices[line.v1.0];
+		        let v2 = level.geom.vertices[line.v2.0];
+		        let line_id = LineId(line_idx);
+			
+		        let block_indices = level.geom.blockmap.get_line_blocklist(line, v1, v2);
+			
+		        block_indices.into_iter().map(move |block_idx| (block_idx, line_id))
+		    })
+		    .collect();
+		
+		for (block_idx, line_id) in line_block_pairs {
+		    level.geom.blockmap.blocklists[block_idx].push(line_id);
+		}
 		
         Ok(level)
     }
@@ -450,9 +435,51 @@ impl RejectTable {
 pub const MAPBLOCKSIZE: f32 = 128.0;
 
 impl Blockmap {
-	pub fn world_to_grid(&self, x: f32, y: f32) -> (usize, usize) {
+	pub fn get_line_blocklist(&self, line: &Line, v1: (f32, f32), v2: (f32, f32)) -> Vec<usize>{
+		let mut result = Vec::new();
+        let origin_x = self.origin_x as f32;
+        let origin_z = self.origin_z as f32;
+
+        let min_block_x = ((line.bbox.min_x - origin_x) / MAPBLOCKSIZE).floor() as i32;
+        let max_block_x = ((line.bbox.max_x - origin_x) / MAPBLOCKSIZE).floor() as i32;
+        let min_block_z = ((line.bbox.min_z - origin_z) / MAPBLOCKSIZE).floor() as i32;
+        let max_block_z = ((line.bbox.max_z - origin_z) / MAPBLOCKSIZE).floor() as i32;
+
+        if max_block_x < 0 || min_block_x >= self.col_num as i32 
+        || max_block_z < 0 || min_block_z >= self.row_num as i32 {
+            return result;
+        }
+
+        let start_col = min_block_x.clamp(0, self.col_num as i32 - 1) as usize;
+        let end_col = max_block_x.clamp(0, self.col_num as i32 - 1) as usize;
+        let start_row = min_block_z.clamp(0, self.row_num as i32 - 1) as usize;
+        let end_row = max_block_z.clamp(0, self.row_num as i32 - 1) as usize;
+
+        for row in start_row..=end_row {
+            for col in start_col..=end_col {
+                if start_col == end_col || start_row == end_row {
+                    result.push(row * self.col_num + col);
+                } else {
+                    let block_aabb = AABB {
+                        min_x: origin_x + (col as f32) * MAPBLOCKSIZE,
+                        max_x: origin_x + ((col + 1) as f32) * MAPBLOCKSIZE,
+                        min_z: origin_z + (row as f32) * MAPBLOCKSIZE,
+                        max_z: origin_z + ((row + 1) as f32) * MAPBLOCKSIZE,
+                    };
+
+                    if block_aabb.intersects_line(&line.bbox, v1, v2) {
+                        result.push(row * self.col_num + col);
+                    }
+                }
+            }
+        }
+
+		result
+    }
+
+	pub fn world_to_grid(&self, x: f32, z: f32) -> (usize, usize) {
         let col = ((x - self.origin_x as f32) / MAPBLOCKSIZE).floor() as i32;
-        let row = ((y - self.origin_y as f32) / MAPBLOCKSIZE).floor() as i32;
+        let row = ((z - self.origin_z as f32) / MAPBLOCKSIZE).floor() as i32;
 		
 		let safe_col = col.clamp(0, (self.col_num - 1) as i32) as usize;
     	let safe_row = row.clamp(0, (self.row_num - 1) as i32) as usize;
@@ -464,8 +491,8 @@ impl Blockmap {
     where
         F: FnMut(LineId) -> bool,
     {
-        let (min_col, min_row) = self.world_to_grid(bbox.min_x, bbox.min_y);
-        let (max_col, max_row) = self.world_to_grid(bbox.max_x, bbox.max_y);
+        let (min_col, min_row) = self.world_to_grid(bbox.min_x, bbox.min_z);
+        let (max_col, max_row) = self.world_to_grid(bbox.max_x, bbox.max_z);
 
         for row in min_row..=max_row {
             for col in min_col..=max_col {

@@ -174,12 +174,12 @@ fn p_check_pos(
     let bbox = AABB {
         min_x: goal_pos.0 - mobj_info.radius,
         max_x: goal_pos.0 + mobj_info.radius,
-        min_y: goal_pos.2 - mobj_info.radius,
-        max_y: goal_pos.2 + mobj_info.radius,
+        min_z: goal_pos.2 - mobj_info.radius,
+        max_z: goal_pos.2 + mobj_info.radius,
     };
 
-	let (min_col, min_row) = level.geom.blockmap.world_to_grid(bbox.min_x - MAXRADIUS, bbox.min_y - MAXRADIUS);
-    let (max_col, max_row) = level.geom.blockmap.world_to_grid(bbox.max_x + MAXRADIUS, bbox.max_y + MAXRADIUS);
+	let (min_col, min_row) = level.geom.blockmap.world_to_grid(bbox.min_x - MAXRADIUS, bbox.min_z - MAXRADIUS);
+    let (max_col, max_row) = level.geom.blockmap.world_to_grid(bbox.max_x + MAXRADIUS, bbox.max_z + MAXRADIUS);
 
     for r in min_row..=max_row {
         for c in min_col..=max_col {
@@ -319,7 +319,7 @@ fn pit_check_line(
 ) -> bool {
     let line = &level.geom.lines[line_id.0];
 
-    if !line.bbox.intersects(&bbox) {
+    if !line.bbox.intersects_aabb(&bbox) {
         return true;
     }
 

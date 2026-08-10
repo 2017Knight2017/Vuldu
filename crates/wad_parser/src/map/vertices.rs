@@ -19,29 +19,51 @@ pub struct GpuVertex {
 pub struct AABB {
     pub min_x: f32,
     pub max_x: f32,
-    pub min_y: f32,
-    pub max_y: f32,
+    pub min_z: f32,
+    pub max_z: f32,
 }
 
 impl AABB {
     fn from_polygon(poly: &[[f32; 2]]) -> Self {
         let mut min_x = f32::MAX;
         let mut max_x = f32::MIN;
-        let mut min_y = f32::MAX;
-        let mut max_y = f32::MIN;
+        let mut min_z = f32::MAX;
+        let mut max_z = f32::MIN;
         for pt in poly {
             if pt[0] < min_x { min_x = pt[0]; }
             if pt[0] > max_x { max_x = pt[0]; }
-            if pt[1] < min_y { min_y = pt[1]; }
-            if pt[1] > max_y { max_y = pt[1]; }
+            if pt[1] < min_z { min_z = pt[1]; }
+            if pt[1] > max_z { max_z = pt[1]; }
         }
-        AABB { min_x, max_x, min_y, max_y }
+        AABB { min_x, max_x, min_z, max_z }
     }
 
-    pub fn intersects(&self, other: &Self) -> bool {
+    pub fn intersects_aabb(&self, other: &Self) -> bool {
         self.min_x < other.max_x && self.max_x > other.min_x &&
-        self.min_y < other.max_y && self.max_y > other.min_y
+        self.min_z < other.max_z && self.max_z > other.min_z
     }
+
+	pub fn intersects_line(&self, line_bbox: &AABB, v1: (f32, f32), v2: (f32, f32)) -> bool {
+	    if line_bbox.intersects_aabb(self) {
+			return true;
+		}
+
+	    let a = v2.1 - v1.1;
+	    let b = v1.0 - v2.0;
+	    let c = v2.0 * v1.1 - v1.0 * v2.1;
+
+	    let f1 = a * self.min_x + b * self.min_z + c;
+	    let f2 = a * self.max_x + b * self.min_z + c;
+	    let f3 = a * self.min_x + b * self.max_z + c;
+	    let f4 = a * self.max_x + b * self.max_z + c;
+
+	    if (f1 > 0.0 && f2 > 0.0 && f3 > 0.0 && f4 > 0.0) 
+	    || (f1 < 0.0 && f2 < 0.0 && f3 < 0.0 && f4 < 0.0) {
+	        return false;
+	    }
+
+	    true
+	}
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -424,7 +446,7 @@ impl Level {
 	            let mut is_hole = false;
 
 	            for (outer, outer_aabb) in &outer_sectors {
-            	    if poly_aabb.intersects(outer_aabb) {
+            	    if poly_aabb.intersects_aabb(outer_aabb) {
             	        if poly_loop.iter().any(|&pt| point_in_polygon(pt, outer)) {
             	            is_hole = true;
             	            break;
@@ -462,7 +484,7 @@ impl Level {
 
 	            for hole in &hole_loops {
 					let hole_aabb = AABB::from_polygon(hole);
-                	if !outer_aabb.intersects(&hole_aabb) { continue; }
+                	if !outer_aabb.intersects_aabb(&hole_aabb) { continue; }
 
 	                if !hole.iter().any(|&pt| point_in_polygon(pt, &outer_loop)) { continue; }
 
@@ -566,7 +588,6 @@ impl Level {
     }
 
     fn find_subsector_by_pos(&self, node_idx: usize, x: f32, z: f32) -> SubsectorId {
-		dbg!(node_idx);
         if (node_idx & NF_SUBSECTOR) != 0 {
             return SubsectorId(node_idx & !NF_SUBSECTOR);
         }
