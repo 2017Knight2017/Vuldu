@@ -1,32 +1,28 @@
-mod prepare_for_renderer;
+mod graphics;
 mod parse_commandline;
 mod sound_player;
 
-use rodio::MixerDeviceSink;
 //use parse_commandline::Args;
 use sound_player::*;
 use renderer::*;
 use wad_parser::map::Level;
 use wad_parser::*;
 use engine::*;
-use glam::Mat4;
 use hecs::{CommandBuffer, Entity, World};
 use winit::{
-    event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
-    application::ApplicationHandler,
-    event::{WindowEvent, ElementState, DeviceEvent, DeviceId, MouseButton},
-    window::{Window, WindowId, CursorGrabMode},
-    keyboard::{PhysicalKey, KeyCode},
-    dpi::LogicalSize
+    application::ApplicationHandler, 
+    dpi::LogicalSize, 
+    error::OsError, 
+    event::{DeviceEvent, DeviceId, ElementState, MouseButton, WindowEvent}, 
+    event_loop::{ActiveEventLoop, ControlFlow, EventLoop}, 
+    keyboard::{KeyCode, PhysicalKey}, 
+    window::{CursorGrabMode, Window, WindowId}
 };
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle, RawDisplayHandle, RawWindowHandle};
 //use clap::Parser;
-use rustc_hash::FxHashMap;
-use std::{error::Error, time::Instant};
-use std::f64::consts::TAU;
-use crate::prepare_for_renderer::GraphicsContext;
+use std::time::Instant;
+use crate::graphics::GraphicsContext;
 
-const FOV_ANGLE: f32 = 90.0;
 const TICKRATE: u32 = 35;
 const TICK_TIME: f32 = 1.0 / TICKRATE as f32;
 
@@ -39,13 +35,6 @@ struct GameContext {
     mobj_flag_buffer: Vec<MobjFlagCommand>,
     command_buffer: CommandBuffer,
     traversal: Traversal
-}
-
-struct AudioContext {
-    _audio_stream_handle: MixerDeviceSink,
-    data: FxHashMap<u64, DoomSfx>,
-    buffer: Vec<SfxEvent>,
-    player: DoomSfxPlayer,
 }
 
 struct App {
@@ -61,17 +50,6 @@ struct App {
     time_accumulator: f32,
 }
 
-fn vertex_to_vertex(vertex: GpuVertex) -> Vertex {
-    Vertex { 
-        pos: vertex.pos, 
-        texture_pos: vertex.texture_pos, 
-        light_level: vertex.light_level, 
-        texture_id: vertex.texture_id, 
-        colormap_idx: vertex.colormap_idx, 
-        floor_tex_id: vertex.floor_tex_id 
-    }
-}
-
 fn get_sky_texture_index(map: u8) -> u32 {
     if map <= 11 {
         0
@@ -82,57 +60,137 @@ fn get_sky_texture_index(map: u8) -> u32 {
     }
 }
 
-fn register_sprite(
-    texture_data_map: &mut FxHashMap<u64, (TextureId, u32, u32, bool)>, 
-    lump_name: &[u8], 
-    texture_tuple: (TextureId, u32, u32)
-) {
-    let (id, w, h) = texture_tuple;
-
-    let last_non_zero = lump_name.iter().rposition(|&b| b != 0).unwrap();
-    let normed_name = &lump_name[..=last_non_zero];
-
-    let prefix = &normed_name[..4];
-    let frame1 = normed_name[4] as char;
-    let view1 = normed_name[5] - b'0';
-
-    let key1 = pack_sprite_u64(prefix, frame1, view1);
-    texture_data_map.insert(key1, (id, w, h, false));
-
-    if normed_name.len() == 8 {
-        let frame2 = normed_name[6] as char;
-        let view2 = normed_name[7] - b'0';
-
-        let key2 = pack_sprite_u64(prefix, frame2, view2);
-        texture_data_map.insert(key2, (id, w, h, true));
+impl GameContext {
+    fn new(level: Level) -> Self {
+        Self { 
+            world: World::new(), 
+            sound_targets: vec![None; level.state.sectors.len()],
+            blocklists: vec![Vec::new(); level.geom.blockmap.row_num * level.geom.blockmap.col_num], 
+            traversal: Traversal::for_level(&level),
+            level, 
+            world_events: Vec::new(), 
+            mobj_flag_buffer: Vec::new(), 
+            command_buffer: CommandBuffer::new() 
+        }
     }
-}
 
-fn update_camera_from_player(view_matrix: &mut Mat4, world: &World, alpha: f32) {
-    for (position, rotation, _player) in world.query::<(&Position, &PlayerRotation, &PlayerMarker)>().iter() {
+    fn tick(&mut self, audio: &mut AudioContext, current_input: &mut PlayerInput, random: &mut Random) {
+        let rotation_query = self.world.query::<&mut PlayerRotation>();
+        handle_rotation_input(rotation_query, current_input);
+        
+        let position_input_query = self.world.query::<(Entity, &mut Velocity, &PlayerRotation)>();
+        handle_position_input(position_input_query, current_input, &mut self.command_buffer, &mut audio.buffer);
 
-        let prev_pos = glam::vec3(position.prev_x, position.prev_y + EYEHEIGHT, position.prev_z);
-        let current_pos = glam::vec3(position.x, position.y + EYEHEIGHT, position.z);
-        let interpolated_pos = prev_pos + (current_pos - prev_pos) * alpha;
+        self.flush_command_buffer();
 
-        let angle_diff = rotation.angle.wrapping_sub(rotation.prev_angle) as i32;
-        let interpolated_diff = (angle_diff as f64 * alpha as f64) as i32;
-        let interpolated_angle_u32 = rotation.prev_angle.wrapping_add_signed(interpolated_diff);
+        let propagate_sound_query = self.world.query::<(Entity, &CurrentSector)>().with::<&PlayerShoot>();
+        propagate_sound_system(
+            propagate_sound_query,
+            &self.level,
+            &mut self.sound_targets,
+            &mut self.traversal,
+            &mut self.command_buffer, 
+        );
 
-        let angle_normalized = interpolated_angle_u32 as f64 / u32::MAX as f64;
-        let angle_rad = (angle_normalized * TAU) as f32;
+        self.flush_command_buffer();
 
-        let target_dir = glam::vec3(f32::sin(angle_rad), 0.0, f32::cos(angle_rad));
-        let camera_target = interpolated_pos + target_dir;
+        let check_sound_query = self.world
+            .query::<(Entity, &mut SpriteAnimation, &mut MobjAi, &Position, &CurrentSector, &MobjType)>()
+            .with::<&Idle>();
+        check_sound_system(
+            check_sound_query, 
+            &self.world, 
+            &mut self.level, 
+            random, 
+            &mut self.command_buffer, 
+            &mut self.sound_targets,
+            &mut self.traversal,
+            &mut audio.buffer,
+        );
 
-        let camera_up = glam::vec3(0.0, 1.0, 0.0);
+        //let check_sight_query = self.world
+        //    .query::<(Entity, &mut SpriteAnimation, &mut MobjAi, &Position, &CurrentSector, &MonsterRotation, &MobjType)>()
+        //    .with::<&Idle>();
+        //let players_query = self.world
+        //    .query::<(Entity, &Position, &CurrentSector, &MobjType)>()
+        //    .with::<&PlayerMarker>();
+        //check_sight_system(
+        //    check_sight_query, 
+        //    players_query, 
+        //    &self.level, 
+        //    &mut self.traversal,
+        //    &mut self.random, 
+        //    &mut self.command_buffer, 
+        //    &mut self.audio.buffer
+        //);
 
-        *view_matrix = glam::Mat4::look_at_rh(interpolated_pos, camera_target, camera_up);
+        self.flush_command_buffer();
+
+        let chase_query = self.world.query::<(
+            Entity, &mut MonsterRotation, &mut MobjAi,  
+            &mut InstantMoveIntent, &MobjType, &Position, &Target
+        )>();
+        chase_system(
+            chase_query, 
+            &self.world, 
+            random, 
+            &self.level, 
+            SkillLevel::Hard, 
+            true, 
+            &mut audio.buffer, 
+            &self.blocklists, 
+            &mut self.world_events,
+            &mut self.mobj_flag_buffer,
+        );
+
+        let friction_query = self.world.query::<&mut Velocity>();
+        friction_system(friction_query);
+
+        let try_move_query = self.world
+            .query::<(Entity, &mut InstantMoveIntent, &mut Velocity, &Position, &MobjType)>()
+            .with::<&Active>();
+        let pending_moves = try_move_system(
+            try_move_query, 
+            &self.level,
+            &self.world,
+            random,
+            &mut self.blocklists,
+            &mut self.world_events
+        );
+
+        let player_movement_query = self.world
+            .query::<(&mut Position, &Velocity, &mut CurrentSector)>()
+            .with::<&PlayerMarker>();
+        apply_player_movement_system(player_movement_query, &self.level);
+
+        let apply_query = self.world
+            .query::<(Entity, &mut Position, &mut CurrentSector)>()
+            .with::<&Active>();
+        apply_monster_movement_system(apply_query, pending_moves, &self.level, &mut self.blocklists);
+
+        execute_events_system(&mut self.world_events);
+        apply_mobj_flags_system(&mut self.mobj_flag_buffer, &self.world);
+
+        let audio_query = self.world.query::<(&Position, &PlayerRotation)>();
+        audio.system(audio_query);
+
+        let ai_query = self.world.query::<&mut MobjAi>();
+        ai_system(ai_query);
+
+        let animation_query = self.world.query::<(&mut SpriteAnimation, &MobjAi)>();
+        animation_system(animation_query);
+
+        current_input.mouse_delta_x = 0.0;
+    }
+
+    fn flush_command_buffer(&mut self) {
+        self.command_buffer.run_on(&mut self.world);
+        self.command_buffer.clear();
     }
 }
 
 impl App {
-    fn create_window(&self, event_loop: &ActiveEventLoop) -> Result<Window, Box<dyn Error>> {
+    fn create_window(&self, event_loop: &ActiveEventLoop) -> Result<Window, OsError> {
         let window_attributes = Window::default_attributes()
             .with_inner_size(LogicalSize::new(1280, 720))
             .with_title("Vuldu")
@@ -149,115 +207,6 @@ impl App {
         Ok(window)
     }
 
-    fn load_and_upload_textures(&mut self, renderer: &mut SafeRenderer) -> Result<(), String> {
-        let max_sky = *MAX_SKY.get().unwrap();
-        let (wall_names, wall_pics, sky_names, sky_pics, sky_widths) = 
-            self.wad_manager.bake_walls(max_sky).map_err(|e| format!("Wall baking failed: {e}"))?;
-
-        let (flat_names, flat_pics) = 
-            self.wad_manager.bake_flats().map_err(|e| format!("Flat baking failed: {e}"))?;
-
-        let (obj_names, obj_pics) = 
-            self.wad_manager.bake_objects().map_err(|e| format!("Object baking failed: {e}"))?;
-
-        let total_textures = wall_pics.len() + flat_pics.len() + obj_pics.len() + max_sky;
-        let total_pixels = 1 + sky_pics.iter()
-            .chain(&obj_pics)
-            .chain(&wall_pics)
-            .chain(&flat_pics)
-            .map(|p| p.raw_pixels.len())
-            .sum::<usize>();
-
-        let mut all_pixels = Vec::with_capacity(total_pixels);
-        let mut descriptors = Vec::with_capacity(total_textures);
-        let mut current_gpu_id = 0;
-
-        let mut sky_data: Vec<_> = sky_names.iter().zip(sky_pics).zip(sky_widths)
-            .map(|((n, p), w)| (n, p, w)).collect();
-        sky_data.sort_by_key(|trio| trio.0);
-        current_gpu_id += max_sky as u32;
-
-        let mut sky_widths_no_name = Vec::with_capacity(sky_data.len());
-        for (_, pic, width) in sky_data {
-            descriptors.push(TextureDescriptor {
-                width: pic.width,
-                height: pic.height,
-                pixel_offset: all_pixels.len(),
-            });
-            all_pixels.extend_from_slice(&pic.raw_pixels);
-            sky_widths_no_name.push(width);
-        }
-
-        let padding_needed = max_sky.saturating_sub(descriptors.len());                    
-        for _ in 0..padding_needed {
-            descriptors.push(TextureDescriptor {
-                width: 1, height: 1, pixel_offset: all_pixels.len(),
-            });
-        }
-        all_pixels.push(0);
-
-
-        self.graphics.offsets.reserve(obj_pics.len());
-        for (idx, pic) in obj_pics.iter().enumerate() {
-            let name = obj_names[idx];
-            self.graphics.offsets.push((pic.left_offset, pic.top_offset));
-            register_sprite(&mut self.graphics.data, name, (TextureId(current_gpu_id), pic.width, pic.height));
-            
-            descriptors.push(TextureDescriptor {
-                width: pic.width, height: pic.height, pixel_offset: all_pixels.len(),
-            });
-            all_pixels.extend_from_slice(&pic.raw_pixels);
-            current_gpu_id += 1;
-        }
-
-        for (tex_names, pics) in [(&wall_names, &wall_pics), (&flat_names, &flat_pics)] {
-            for (idx, pic) in pics.iter().enumerate() {
-                let name = tex_names[idx];
-                self.graphics.data.insert(name, (TextureId(current_gpu_id), pic.width, pic.height, false));
-                descriptors.push(TextureDescriptor {
-                    width: pic.width, height: pic.height, pixel_offset: all_pixels.len(),
-                });
-                all_pixels.extend_from_slice(&pic.raw_pixels);
-                current_gpu_id += 1;
-            }
-        }
-
-        renderer.upload_texture_array(&descriptors, &all_pixels, &sky_widths_no_name);
-
-        let map_name = construct_map_name(self.wad_manager.is_doom1, self.game.level.map_num);
-        let palettes = self.wad_manager.get_palettes(&map_name).map_err(|e| format!("PLAYPAL upload failed: {e}"))?;
-        renderer.upload_palettes(&palettes);
-
-        let colormap = self.wad_manager.get_colormap(&map_name).map_err(|e| format!("COLORMAP upload failed: {e}"))?;
-        renderer.upload_colormap(colormap);
-
-        Ok(())
-    }
-
-    fn setup_level_geometry(&mut self, renderer: &mut SafeRenderer) {
-        println!("Building map geometry...");
-        let (wall_vertices, wall_indices) = self.game.level.get_walls_vertices(&self.graphics.data);
-        println!("Walls geometry is has been built");
-        let (flat_vertices, flat_indices) = self.game.level.get_flats_vertices(&self.graphics.data);
-        println!("Flats geometry is has been built");
-        let (obj_vertices, obj_indices) = self.game.level.get_objects_vertices();
-
-        let mut level_vertices: Vec<Vertex> = wall_vertices.into_iter().map(|v| vertex_to_vertex(v)).collect();
-        let mut level_indices = wall_indices;
-
-        let vertex_offset = level_vertices.len() as u32; 
-        level_vertices.extend(flat_vertices.into_iter().map(|v| vertex_to_vertex(v)));
-        for idx in flat_indices {
-            level_indices.push(vertex_offset + idx);
-        }
-
-        let object_vertices: Vec<Vertex> = obj_vertices.into_iter().map(|v| vertex_to_vertex(v)).collect();
-
-        renderer.update_object_instances(&[]);
-        renderer.update_level_geometry(&level_vertices, &level_indices);
-        renderer.update_object_geometry(&object_vertices, &obj_indices);
-    }
-
     fn handle_fatal_error(&mut self, event_loop: &ActiveEventLoop, renderer: &mut SafeRenderer, msg: &str) {
         eprintln!("[FATAL] {}", msg);
         self.is_shutting_down = true;
@@ -267,155 +216,9 @@ impl App {
 
     fn update_game_logic(&mut self) {
         while self.time_accumulator >= TICK_TIME {
-            self.tick();
+            self.game.tick(&mut self.audio, &mut self.current_input, &mut self.random);
             self.time_accumulator -= TICK_TIME;
         }
-    }
-
-    fn tick(&mut self) {
-        let rotation_query = self.game.world.query::<&mut PlayerRotation>();
-        handle_rotation_input(rotation_query, &self.current_input);
-        
-        let position_input_query = self.game.world.query::<(Entity, &mut Velocity, &PlayerRotation)>();
-        handle_position_input(position_input_query, &self.current_input, &mut self.game.command_buffer, &mut self.audio.buffer);
-
-        self.flush_command_buffer();
-
-        let propagate_sound_query = self.game.world.query::<(Entity, &CurrentSector)>().with::<&PlayerShoot>();
-        propagate_sound_system(
-            propagate_sound_query,
-            &self.game.level,
-            &mut self.game.sound_targets,
-            &mut self.game.traversal,
-            &mut self.game.command_buffer, 
-        );
-
-        self.flush_command_buffer();
-
-        let check_sound_query = self.game.world
-            .query::<(Entity, &mut SpriteAnimation, &mut MobjAi, &Position, &CurrentSector, &MobjType)>()
-            .with::<&Idle>();
-        check_sound_system(
-            check_sound_query, 
-            &self.game.world, 
-            &mut self.game.level, 
-            &mut self.random, 
-            &mut self.game.command_buffer, 
-            &mut self.game.sound_targets,
-            &mut self.game.traversal,
-            &mut self.audio.buffer,
-        );
-
-        //let check_sight_query = self.game.world
-        //    .query::<(Entity, &mut SpriteAnimation, &mut MobjAi, &Position, &CurrentSector, &MonsterRotation, &MobjType)>()
-        //    .with::<&Idle>();
-        //let players_query = self.game.world
-        //    .query::<(Entity, &Position, &CurrentSector, &MobjType)>()
-        //    .with::<&PlayerMarker>();
-        //check_sight_system(
-        //    check_sight_query, 
-        //    players_query, 
-        //    &self.game.level, 
-        //    &mut self.game.traversal,
-        //    &mut self.random, 
-        //    &mut self.game.command_buffer, 
-        //    &mut self.audio.buffer
-        //);
-
-        self.flush_command_buffer();
-
-        let chase_query = self.game.world.query::<(
-            Entity, &mut MonsterRotation, &mut MobjAi,  
-            &mut InstantMoveIntent, &MobjType, &Position, &Target
-        )>();
-        chase_system(
-            chase_query, 
-            &self.game.world, 
-            &mut self.random, 
-            &self.game.level, 
-            SkillLevel::Hard, 
-            true, 
-            &mut self.audio.buffer, 
-            &self.game.blocklists, 
-            &mut self.game.world_events,
-            &mut self.game.mobj_flag_buffer,
-        );
-
-        let friction_query = self.game.world.query::<&mut Velocity>();
-        friction_system(friction_query);
-
-        let try_move_query = self.game.world
-            .query::<(Entity, &mut InstantMoveIntent, &mut Velocity, &Position, &MobjType)>()
-            .with::<&Active>();
-        let pending_moves = try_move_system(
-            try_move_query, 
-            &self.game.level,
-            &self.game.world,
-            &mut self.random,
-            &mut self.game.blocklists,
-            &mut self.game.world_events
-        );
-
-        let player_movement_query = self.game.world
-            .query::<(&mut Position, &Velocity, &mut CurrentSector)>()
-            .with::<&PlayerMarker>();
-        apply_player_movement_system(player_movement_query, &self.game.level);
-
-        let apply_query = self.game.world
-            .query::<(Entity, &mut Position, &mut CurrentSector)>()
-            .with::<&Active>();
-        apply_monster_movement_system(apply_query, pending_moves, &self.game.level, &mut self.game.blocklists);
-
-        execute_events_system(&mut self.game.world_events);
-        apply_mobj_flags_system(&mut self.game.mobj_flag_buffer, &self.game.world);
-
-        let audio_query = self.game.world.query::<(&Position, &PlayerRotation)>();
-        audio_system(audio_query, &mut self.audio.buffer, &mut self.audio.player, &self.audio.data);
-
-        let ai_query = self.game.world.query::<&mut MobjAi>();
-        ai_system(ai_query);
-
-        let animation_query = self.game.world.query::<(&mut SpriteAnimation, &MobjAi)>();
-        animation_system(animation_query);
-
-        self.current_input.mouse_delta_x = 0.0;
-    }
-
-    fn flush_command_buffer(&mut self) {
-        self.game.command_buffer.run_on(&mut self.game.world);
-        self.game.command_buffer.clear();
-    }
-
-    fn render(&mut self, alpha: f32) {
-        let instances = self.graphics.collect_object_instances(&self.game.world, &self.game.level.state.sectors, alpha);
-
-        let (renderer, window) = match (&mut self.graphics.renderer, &self.window) {
-            (Some(r), Some(w)) => (r, w),
-            _ => return,
-        };
-
-        renderer.update_object_instances(&instances);
-        
-        let size = window.inner_size();
-        if size.width == 0 || size.height == 0 {
-            return;
-        }
-
-        let aspect_ratio = size.width as f32 / size.height as f32;
-        let proj = Mat4::perspective_rh(FOV_ANGLE.to_radians(), aspect_ratio, 1.0, 10000.0);
-
-        update_camera_from_player(&mut self.graphics.view_matrix, &self.game.world, alpha);
-
-        let ubo = UniformBufferObject {
-            model: Mat4::IDENTITY.to_cols_array(),
-            view: self.graphics.view_matrix.to_cols_array(),
-            proj: proj.to_cols_array(),
-        };
-
-        renderer.start_frame(&ubo);
-        renderer.draw_level();
-        renderer.draw_objects();
-        renderer.end_frame();
     }
 }
 
@@ -459,12 +262,12 @@ impl ApplicationHandler for App {
             };
             renderer.set_sky_index(sky_idx);
 
-            if let Err(err) = self.load_and_upload_textures(&mut renderer) {
+            if let Err(err) = self.graphics.load_and_upload_textures(&mut renderer, &self.wad_manager, self.game.level.map_num) {
                 self.handle_fatal_error(event_loop, &mut renderer, &err);
                 return;
             }
 
-            self.setup_level_geometry(&mut renderer);
+            self.game.level.geom.sector_lines = self.graphics.setup_level_geometry(&mut renderer, &self.game.level);
 
             let _ = engine::populate_database(&self.graphics.data).map_err(|e| eprintln!("{}", e));
             engine::spawn_all_things(&mut self.game.world, &self.game.level, &mut self.random);
@@ -512,7 +315,7 @@ impl ApplicationHandler for App {
                     PhysicalKey::Code(KeyCode::ShiftLeft) => self.current_input.move_down = is_pressed,
                     _ => {}
                 }
-            },
+            }
 
             WindowEvent::MouseInput { state, button, .. } => {
                 let is_pressed = state == ElementState::Pressed;
@@ -537,17 +340,17 @@ impl ApplicationHandler for App {
                     return; 
                 }
             
-                let current_time = std::time::Instant::now();
+                let current_time = Instant::now();
                 let delta_time = current_time.duration_since(self.last_frame_time).as_secs_f32().min(0.25);
                 self.last_frame_time = current_time;
                 self.time_accumulator += delta_time;
             
                 self.update_game_logic();
             
-                let alpha = self.time_accumulator / TICK_TIME;
-                self.render(alpha);
-            
                 if let Some(window) = &self.window {
+                    let alpha = self.time_accumulator / TICK_TIME;
+                    self.graphics.render(window, &self.game.world, &self.game.level, alpha);
+
                     window.request_redraw();
                 }
             }
@@ -557,7 +360,7 @@ impl ApplicationHandler for App {
     }
 
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
-        if let Some(ref window) = self.window {
+        if let Some(window) = &self.window {
             window.request_redraw();
         }
     }
@@ -575,7 +378,7 @@ fn main() -> Result<(), String> {
     //let map = Level::from_wad(&wad_manager, &args.map)?;
 
     wad_manager.add_wad("assets/DOOM2.WAD")?;
-    wad_manager.add_wad("assets/test.wad")?;
+    //wad_manager.add_wad("assets/test.wad")?;
     //wad_manager.add_wad("assets/oku2v31.wad")?;
     //wad_manager.add_wad("assets/nuts.wad")?;
     //wad_manager.add_wad("assets/Sunder 2512.wad")?;
@@ -586,35 +389,12 @@ fn main() -> Result<(), String> {
     let event_loop = EventLoop::new().unwrap();
     event_loop.set_control_flow(ControlFlow::Poll);
 
-    let mut audio_stream_handle = rodio::DeviceSinkBuilder::open_default_sink()
-        .map_err(|_| "Failed to create an audio stream handle".to_string())?;
-    audio_stream_handle.log_on_drop(false);
-
     let mut app = App {
         window: None,
         wad_manager,
-        graphics: GraphicsContext { 
-            renderer: None, 
-            data: FxHashMap::default(), 
-            offsets: Vec::new(), 
-            view_matrix: Mat4::default() 
-        },
-        game: GameContext { 
-            world: World::new(), 
-            sound_targets: vec![None; level.state.sectors.len()],
-            blocklists: vec![Vec::new(); level.geom.blockmap.row_num * level.geom.blockmap.col_num], 
-            traversal: Traversal::for_level(&level),
-            level, 
-            world_events: Vec::new(), 
-            mobj_flag_buffer: Vec::new(), 
-            command_buffer: CommandBuffer::new() 
-        },
-        audio: AudioContext { 
-            player: DoomSfxPlayer::new(&audio_stream_handle), 
-            _audio_stream_handle: audio_stream_handle, 
-            data: FxHashMap::default(), 
-            buffer: Vec::new(), 
-        },
+        graphics: GraphicsContext::new(),
+        game: GameContext::new(level),
+        audio: AudioContext::new()?,
         random: Random::default(),
         is_shutting_down: false,
         current_input: PlayerInput::default(),

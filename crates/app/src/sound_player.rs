@@ -14,6 +14,13 @@ pub struct DoomSfxPlayer {
     idx: usize
 }
 
+pub struct AudioContext {
+    _audio_stream_handle: MixerDeviceSink,
+    pub data: FxHashMap<u64, DoomSfx>,
+    pub buffer: Vec<SfxEvent>,
+    pub player: DoomSfxPlayer,
+}
+
 const EAR_HALF_WIDTH: f32 = 0.08;
 const MAX_AUDIBLE_DIST: f32 = 600.0;
 const METERS_PER_UNIT: f32 = 0.03;
@@ -65,61 +72,71 @@ impl DoomSfxPlayer {
     }
 }
 
-pub fn audio_system(
-    mut audio_query: QueryBorrow<'_, (&Position, &PlayerRotation)>,
-    audio_buffer: &mut Vec<SfxEvent>,
-    audio_player: &mut DoomSfxPlayer,
-    sound_cache: &FxHashMap<u64, DoomSfx>,
-) {
-    let (p_pos, p_rot) = match audio_query.iter().next() {
-        Some(player) => player,
-        None => return,
-    };
+impl AudioContext {
+    pub fn new() -> Result<Self, String> {
+        let mut _audio_stream_handle = rodio::DeviceSinkBuilder::open_default_sink()
+            .map_err(|_| "Failed to create an audio stream handle".to_string())?;
+        _audio_stream_handle.log_on_drop(false);
 
-    for event in audio_buffer.drain(..) {
-        let sound = match sound_cache.get(&event.sfx_id) {
-            Some(win) => win,
-            None => continue
+        Ok(Self { 
+            player: DoomSfxPlayer::new(&_audio_stream_handle), 
+            _audio_stream_handle, 
+            data: FxHashMap::default(), 
+            buffer: Vec::new(), 
+        })
+    }
+
+    pub fn system(&mut self, mut audio_query: QueryBorrow<'_, (&Position, &PlayerRotation)>) {
+        let (p_pos, p_rot) = match audio_query.iter().next() {
+            Some(player) => player,
+            None => return,
         };
 
-        match event.pos {
-            None => {
-                let source = SamplesBuffer::new(nz!(1), NonZero::new(sound.sample_rate).unwrap(), sound.samples.clone());
-                audio_player.play_head_sound(source);
-            },
-            Some(emitter_pos) => {
-                if audio_player.spatial_players[..8].iter().all(|p| !p.empty()) {
-                    continue;
+        for event in self.buffer.drain(..) {
+            let sound = match self.data.get(&event.sfx_id) {
+                Some(sound) => sound,
+                None => continue
+            };
+
+            match event.pos {
+                None => {
+                    let source = SamplesBuffer::new(nz!(1), NonZero::new(sound.sample_rate).unwrap(), sound.samples.clone());
+                    self.player.play_head_sound(source);
+                },
+                Some(emitter_pos) => {
+                    if self.player.spatial_players[..8].iter().all(|p| !p.empty()) {
+                        continue;
+                    }
+
+                    let approx_dist = aprox_xyz_distance((p_pos.x, p_pos.y, p_pos.z), emitter_pos);
+                    if approx_dist > MAX_AUDIBLE_DIST {
+                        continue;
+                    }
+
+                    let mut dx_m = (p_pos.x - emitter_pos.0) * METERS_PER_UNIT;
+                    let mut dy_m = (p_pos.y - emitter_pos.1) * METERS_PER_UNIT;
+                    let mut dz_m = (p_pos.z - emitter_pos.2) * METERS_PER_UNIT;
+
+                    if dx_m.abs() < METERS_DIST_CAP { dx_m = METERS_DIST_CAP * (dx_m / dx_m.abs()); }
+                    if dy_m.abs() < METERS_DIST_CAP { dy_m = METERS_DIST_CAP * (dy_m / dy_m.abs()); }
+                    if dz_m.abs() < METERS_DIST_CAP { dz_m = METERS_DIST_CAP * (dz_m / dz_m.abs()); }
+
+                    let source = SamplesBuffer::new(nz!(1), NonZero::new(sound.sample_rate).unwrap(), sound.samples.clone());
+
+                    let p_angle = (p_rot.angle as f64 / u32::MAX as f64) as f32 * TAU;
+                    let perp_x = p_angle.sin() * EAR_HALF_WIDTH;
+                    let perp_z = -p_angle.cos() * EAR_HALF_WIDTH;
+
+                    let volume_factor = VOLUME_NEAR + approx_dist / MAX_AUDIBLE_DIST * (VOLUME_FAR - VOLUME_NEAR);
+
+                    self.player.play(
+                        source, 
+                        [dx_m, dy_m, dz_m], 
+                        [perp_x, 0.0, perp_z],
+                        [-perp_x, 0.0, -perp_z],
+                        volume_factor
+                    );
                 }
-                
-                let approx_dist = aprox_xyz_distance((p_pos.x, p_pos.y, p_pos.z), emitter_pos);
-                if approx_dist > MAX_AUDIBLE_DIST {
-                    continue;
-                }
-
-                let mut dx_m = (p_pos.x - emitter_pos.0) * METERS_PER_UNIT;
-                let mut dy_m = (p_pos.y - emitter_pos.1) * METERS_PER_UNIT;
-                let mut dz_m = (p_pos.z - emitter_pos.2) * METERS_PER_UNIT;
-
-                if dx_m.abs() < METERS_DIST_CAP { dx_m = METERS_DIST_CAP * (dx_m / dx_m.abs()); }
-                if dy_m.abs() < METERS_DIST_CAP { dy_m = METERS_DIST_CAP * (dy_m / dy_m.abs()); }
-                if dz_m.abs() < METERS_DIST_CAP { dz_m = METERS_DIST_CAP * (dz_m / dz_m.abs()); }
-
-                let source = SamplesBuffer::new(nz!(1), NonZero::new(sound.sample_rate).unwrap(), sound.samples.clone());
-
-                let p_angle = (p_rot.angle as f64 / u32::MAX as f64) as f32 * TAU;
-                let perp_x = p_angle.sin() * EAR_HALF_WIDTH;
-                let perp_z = -p_angle.cos() * EAR_HALF_WIDTH;
-
-                let volume_factor = VOLUME_NEAR + approx_dist / MAX_AUDIBLE_DIST * (VOLUME_FAR - VOLUME_NEAR);
-
-                audio_player.play(
-                    source, 
-                    [dx_m, dy_m, dz_m], 
-                    [perp_x, 0.0, perp_z],
-                    [-perp_x, 0.0, -perp_z],
-                    volume_factor
-                );
             }
         }
     }

@@ -240,9 +240,6 @@ impl Level {
 			.collect();
 
 		let sectors_bytes = wad_manager.get_map_data(b"SECTORS\0", &map_name)?;
-		let sectors_num = sectors_bytes.len() / size_of::<MapSector>();
-		level.geom.sector_lines.resize_with(sectors_num, || Vec::new());
-
 		level.state.sectors = sectors_bytes
     		.chunks_exact(size_of::<MapSector>())
     		.map(|chunk| {

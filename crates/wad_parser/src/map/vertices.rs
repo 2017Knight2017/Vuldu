@@ -298,7 +298,7 @@ impl Level {
 	    (gpu_vertices, gpu_indices)
 	}
 
-	pub fn get_flats_vertices(&mut self, texture_ids: &FxHashMap<u64, (TextureId, u32, u32, bool)>) -> (Vec<GpuVertex>, Vec<u32>) {
+	pub fn get_flats_vertices(&self, texture_ids: &FxHashMap<u64, (TextureId, u32, u32, bool)>) -> (Vec<GpuVertex>, Vec<u32>, Vec<Vec<LineId>>) {
 	    let mut gpu_vertices: Vec<GpuVertex> = Vec::new();
 	    let mut gpu_indices: Vec<u32> = Vec::new();
 
@@ -307,7 +307,8 @@ impl Level {
 		let sectors = &self.state.sectors;
 		let vertices = &self.geom.vertices;
 
-		let sector_lines = &mut self.geom.sector_lines;
+		let mut sector_lines = vec![Vec::new(); self.state.sectors.len()];
+
     	for (i, line) in lines.iter().enumerate() {
     	    if let Some(front_side) = line.sides.0 {
 				let sector_idx = sides[front_side.0].sector.0;
@@ -573,7 +574,7 @@ impl Level {
 	            }
 	        }
 	    }
-	    (gpu_vertices, gpu_indices)
+	    (gpu_vertices, gpu_indices, sector_lines)
 	}
 
 	pub fn get_sector_by_pos(&self, x: f32, z: f32) -> SectorId {
