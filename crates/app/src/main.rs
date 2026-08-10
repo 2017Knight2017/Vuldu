@@ -50,16 +50,6 @@ struct App {
     time_accumulator: f32,
 }
 
-fn get_sky_texture_index(map: u8) -> u32 {
-    if map <= 11 {
-        0
-    } else if map <= 20 {
-        1
-    } else {
-        2
-    }
-}
-
 impl GameContext {
     fn new(level: Level) -> Self {
         Self { 
@@ -75,17 +65,13 @@ impl GameContext {
     }
 
     fn tick(&mut self, audio: &mut AudioContext, current_input: &mut PlayerInput, random: &mut Random) {
-        let rotation_query = self.world.query::<&mut PlayerRotation>();
-        handle_rotation_input(rotation_query, current_input);
-        
-        let position_input_query = self.world.query::<(Entity, &mut Velocity, &PlayerRotation)>();
-        handle_position_input(position_input_query, current_input, &mut self.command_buffer, &mut audio.buffer);
+        handle_rotation_input(&self.world, current_input);
+        handle_position_input(&self.world, current_input, &mut self.command_buffer, &mut audio.buffer);
 
         self.flush_command_buffer();
 
-        let propagate_sound_query = self.world.query::<(Entity, &CurrentSector)>().with::<&PlayerShoot>();
         propagate_sound_system(
-            propagate_sound_query,
+            &self.world, 
             &self.level,
             &mut self.sound_targets,
             &mut self.traversal,
@@ -94,11 +80,7 @@ impl GameContext {
 
         self.flush_command_buffer();
 
-        let check_sound_query = self.world
-            .query::<(Entity, &mut SpriteAnimation, &mut MobjAi, &Position, &CurrentSector, &MobjType)>()
-            .with::<&Idle>();
         check_sound_system(
-            check_sound_query, 
             &self.world, 
             &mut self.level, 
             random, 
@@ -108,12 +90,6 @@ impl GameContext {
             &mut audio.buffer,
         );
 
-        //let check_sight_query = self.world
-        //    .query::<(Entity, &mut SpriteAnimation, &mut MobjAi, &Position, &CurrentSector, &MonsterRotation, &MobjType)>()
-        //    .with::<&Idle>();
-        //let players_query = self.world
-        //    .query::<(Entity, &Position, &CurrentSector, &MobjType)>()
-        //    .with::<&PlayerMarker>();
         //check_sight_system(
         //    check_sight_query, 
         //    players_query, 
@@ -143,42 +119,25 @@ impl GameContext {
             &mut self.mobj_flag_buffer,
         );
 
-        let friction_query = self.world.query::<&mut Velocity>();
-        friction_system(friction_query);
+        friction_system(&self.world);
 
-        let try_move_query = self.world
-            .query::<(Entity, &mut InstantMoveIntent, &mut Velocity, &Position, &MobjType)>()
-            .with::<&Active>();
         let pending_moves = try_move_system(
-            try_move_query, 
-            &self.level,
             &self.world,
+            &self.level,
             random,
             &mut self.blocklists,
             &mut self.world_events
         );
 
-        let player_movement_query = self.world
-            .query::<(&mut Position, &Velocity, &mut CurrentSector)>()
-            .with::<&PlayerMarker>();
-        apply_player_movement_system(player_movement_query, &self.level);
-
-        let apply_query = self.world
-            .query::<(Entity, &mut Position, &mut CurrentSector)>()
-            .with::<&Active>();
-        apply_monster_movement_system(apply_query, pending_moves, &self.level, &mut self.blocklists);
+        apply_player_movement_system(&self.world, &self.level);
+        apply_monster_movement_system(&self.world, pending_moves, &self.level, &mut self.blocklists);
 
         execute_events_system(&mut self.world_events);
         apply_mobj_flags_system(&mut self.mobj_flag_buffer, &self.world);
 
-        let audio_query = self.world.query::<(&Position, &PlayerRotation)>();
-        audio.system(audio_query);
-
-        let ai_query = self.world.query::<&mut MobjAi>();
-        ai_system(ai_query);
-
-        let animation_query = self.world.query::<(&mut SpriteAnimation, &MobjAi)>();
-        animation_system(animation_query);
+        audio.system(&self.world);
+        ai_system(&self.world);
+        animation_system(&self.world);
 
         current_input.mouse_delta_x = 0.0;
     }
@@ -363,6 +322,16 @@ impl ApplicationHandler for App {
         if let Some(window) = &self.window {
             window.request_redraw();
         }
+    }
+}
+
+fn get_sky_texture_index(map: u8) -> u32 {
+    if map <= 11 {
+        0
+    } else if map <= 20 {
+        1
+    } else {
+        2
     }
 }
 

@@ -1,6 +1,6 @@
 use crate::{NUMAMMO, NUMCARDS, NUMWEAPONS, PlayerRotation, PlayerShoot, PlayerState, SfxEvent, Velocity};
 use std::f64::consts::TAU;
-use hecs::{CommandBuffer, Entity, QueryBorrow};
+use hecs::{CommandBuffer, Entity, World};
 use wad_parser::to_u64;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -45,11 +45,12 @@ pub struct PlayerInput {
 }
 
 pub fn handle_position_input(
-    mut query: QueryBorrow<'_, (Entity, &mut Velocity, &PlayerRotation)>, 
+    world: &World,
     input: &PlayerInput,
     command_buffer: &mut CommandBuffer,
     audio_buffer: &mut Vec<SfxEvent>
 ) {
+    let mut query = world.query::<(Entity, &mut Velocity, &PlayerRotation)>();
     for (entity, velocity, rotation) in query.iter() {
         let mut move_forward = 0.0;
         let mut move_sideways = 0.0;
@@ -83,7 +84,8 @@ pub fn handle_position_input(
     }
 }
 
-pub fn handle_rotation_input(mut query: QueryBorrow<'_, &mut PlayerRotation>, input: &PlayerInput) {
+pub fn handle_rotation_input(world: &World, input: &PlayerInput) {
+    let mut query = world.query::<&mut PlayerRotation>();
     for rotation in query.iter() {
         let sensitivity = 0.008; 
         let angle_delta_rad = input.mouse_delta_x * sensitivity;

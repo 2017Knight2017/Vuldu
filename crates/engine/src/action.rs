@@ -1,4 +1,4 @@
-use hecs::{CommandBuffer, Entity, QueryBorrow, With, World};
+use hecs::{CommandBuffer, Entity, QueryBorrow, World};
 use serde::Deserialize;
 use wad_parser::{Level, to_u64};
 use crate::{CurrentSector, DB, Health, Idle, InstantMoveIntent, MobjAi, MobjFlagCommand, MobjFlags, MobjType, MonsterRotation, PlayerMarker, Position, Random, SfxEvent, SkillLevel, SpriteAnimation, Target, Traversal, WorldEvent, in_fov, p_check_melee_range, p_check_missile_range, p_check_sight, p_move, p_new_chase_dir, wake_up_monster};
@@ -82,9 +82,8 @@ pub enum ActionFunc {
 }
 
 /// Must be called before animation_system
-pub fn ai_system(
-	mut query: QueryBorrow<'_, &mut MobjAi>
-) {
+pub fn ai_system(world: &World) {
+	let mut query = world.query::<&mut MobjAi>();
 	for ai in query.iter() {
 		if ai.tics_left <= 0 {
 			continue;
@@ -108,8 +107,7 @@ pub fn ai_system(
 }
 
 /// Must be called after propagate_sound_system
-pub fn check_sound_system(
-	mut query: QueryBorrow<'_, With<(Entity, &mut SpriteAnimation, &mut MobjAi, &Position, &CurrentSector, &MobjType), &Idle>>, 
+pub fn check_sound_system( 
 	world: &World,
 	level: &mut Level,
 	random: &mut Random,
@@ -119,8 +117,11 @@ pub fn check_sound_system(
 	audio_buffer: &mut Vec<SfxEvent>, 
 ) {
 	let db = DB.get().unwrap();
-	for (entity, sprite_anim, ai, pos, current_sector, mobj_type) in query.iter() {
 
+	let mut query = world
+		.query::<(Entity, &mut SpriteAnimation, &mut MobjAi, &Position, &CurrentSector, &MobjType)>()
+		.with::<&Idle>();
+	for (entity, sprite_anim, ai, pos, current_sector, mobj_type) in query.iter() {
         if let Some(sound_target_entity) = sound_targets[current_sector.0.0] {            
             if mobj_type.flags.contains(MobjFlags::AMBUSH) {
 				let mut target_query = world.query_one::<(&Position, &CurrentSector)>(sound_target_entity);
@@ -160,15 +161,23 @@ pub fn check_sound_system(
 }
 
 pub fn check_sight_system(
-	mut query: QueryBorrow<'_, With<(Entity, &mut SpriteAnimation, &mut MobjAi, &Position, &CurrentSector, &MonsterRotation, &MobjType), &Idle>>, 
-	mut players_query: QueryBorrow<'_, With<(Entity, &Position, &CurrentSector, &MobjType), &PlayerMarker>>, 
+	world: &World,
 	level: &Level,
 	traversal: &mut Traversal,
 	random: &mut Random,
 	command_buffer: &mut CommandBuffer, 
 	audio_buffer: &mut Vec<SfxEvent>, 
 ) {
+	
 	let db = DB.get().unwrap();
+
+	let mut query = world
+        .query::<(Entity, &mut SpriteAnimation, &mut MobjAi, &Position, &CurrentSector, &MonsterRotation, &MobjType)>()
+        .with::<&Idle>();
+	let mut players_query = world
+        .query::<(Entity, &Position, &CurrentSector, &MobjType)>()
+        .with::<&PlayerMarker>();
+
 	for (entity, sprite_anim, ai, pos, current_sector, rot, mobj_type) in query.iter() {
         for (player_entity, player_pos, player_sector, player_flags) in players_query.iter() {
             

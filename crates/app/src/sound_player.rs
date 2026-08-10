@@ -7,7 +7,14 @@ use rodio::{
 };
 use std::num::NonZero;
 use std::f32::consts::TAU;
-use hecs::QueryBorrow;
+use hecs::World;
+
+const EAR_HALF_WIDTH: f32 = 0.08;
+const MAX_AUDIBLE_DIST: f32 = 600.0;
+const METERS_PER_UNIT: f32 = 0.03;
+const VOLUME_FAR: f32 = 22.0;
+const VOLUME_NEAR: f32 = 3.0;
+const METERS_DIST_CAP: f32 = 2.3;
 
 pub struct DoomSfxPlayer {
     spatial_players: Vec<SpatialPlayer>,
@@ -20,13 +27,6 @@ pub struct AudioContext {
     pub buffer: Vec<SfxEvent>,
     pub player: DoomSfxPlayer,
 }
-
-const EAR_HALF_WIDTH: f32 = 0.08;
-const MAX_AUDIBLE_DIST: f32 = 600.0;
-const METERS_PER_UNIT: f32 = 0.03;
-const VOLUME_FAR: f32 = 22.0;
-const VOLUME_NEAR: f32 = 3.0;
-const METERS_DIST_CAP: f32 = 2.3;
 
 impl DoomSfxPlayer {
     pub fn new(handle: &MixerDeviceSink) -> Self {
@@ -86,8 +86,9 @@ impl AudioContext {
         })
     }
 
-    pub fn system(&mut self, mut audio_query: QueryBorrow<'_, (&Position, &PlayerRotation)>) {
-        let (p_pos, p_rot) = match audio_query.iter().next() {
+    pub fn system(&mut self, world: &World) {
+        let mut query = world.query::<(&Position, &PlayerRotation)>();
+        let (p_pos, p_rot) = match query.iter().next() {
             Some(player) => player,
             None => return,
         };

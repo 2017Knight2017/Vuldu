@@ -1,22 +1,15 @@
 use crate::{Active, CurrentSector, DB, FRICTION, InstantMoveIntent, MobjAi, MobjFlags, MobjType, PlayerMarker, Position, Random, SpriteAnimation, Velocity, WorldEvent, p_try_move};
 use rustc_hash::FxHashMap;
 use wad_parser::{Level, SectorId};
-use hecs::{Entity, QueryBorrow, With, World};
+use hecs::{Entity, World};
 
 type PendingMoves = 
     FxHashMap<Entity, (f32, f32, f32, f32, f32, f32, usize, usize, usize, usize, Option<SectorId>)>;
 
 /// Must be called after friction_system
 pub fn try_move_system(
-    mut try_move_query: QueryBorrow<'_, With<(
-        Entity, 
-        &mut InstantMoveIntent, 
-        &mut Velocity,
-        &Position, 
-        &MobjType,
-    ), &Active>>, 
-    level: &Level,
     world: &World,
+    level: &Level,
     random: &mut Random,
     blocklists: &mut [Vec<Entity>],
     world_events: &mut Vec<WorldEvent>
@@ -24,7 +17,10 @@ pub fn try_move_system(
     let db = DB.get().unwrap();
     let mut pending_moves = PendingMoves::default();
 
-    for (ent, imi, velocity, pos, mobj_type) in try_move_query.iter() {
+    let mut query = world
+        .query::<(Entity, &mut InstantMoveIntent, &mut Velocity, &Position, &MobjType)>()
+        .with::<&Active>();
+    for (ent, imi, velocity, pos, mobj_type) in query.iter() {
         let can_move = p_try_move(
             ent, 
             pos, 
@@ -76,16 +72,15 @@ pub fn try_move_system(
 }
 
 pub fn apply_monster_movement_system(
-    mut apply_query: QueryBorrow<'_, With<(
-        Entity, 
-        &mut Position,
-        &mut CurrentSector, 
-    ), &Active>>,
+    world: &World,
     pending_moves: PendingMoves,
     level: &Level,
     blocklists: &mut [Vec<Entity>],
 ) {
-    for (ent, pos, current_sector) in apply_query.iter() {
+    let mut query = world
+        .query::<(Entity, &mut Position, &mut CurrentSector)>()
+        .with::<&Active>();
+    for (ent, pos, current_sector) in query.iter() {
         let (prev_x, prev_y, prev_z,
             new_x, new_y, new_z,
             prev_col, prev_row,
@@ -145,10 +140,10 @@ pub fn apply_mobj_flags_system(
     }
 }
 
-pub fn apply_player_movement_system(
-    mut query: QueryBorrow<'_, With<(&mut Position, &Velocity, &mut CurrentSector), &PlayerMarker>>,
-    map: &Level
-) {
+pub fn apply_player_movement_system(world: &World, map: &Level) {
+    let mut query = world
+        .query::<(&mut Position, &Velocity, &mut CurrentSector)>()
+        .with::<&PlayerMarker>();
     for (pos, velocity, current_sector) in query.iter() {
         pos.prev_x = pos.x;
         pos.prev_y = pos.y;
@@ -162,7 +157,8 @@ pub fn apply_player_movement_system(
 }
 
 /// Must be called after handle_position_input
-pub fn friction_system(mut query: QueryBorrow<'_, &mut Velocity>) { 
+pub fn friction_system(world: &World) { 
+    let mut query = world.query::<&mut Velocity>();
     for velocity in query.iter() {
 		velocity.x *= FRICTION;
 		velocity.y *= 0.7;
@@ -170,7 +166,8 @@ pub fn friction_system(mut query: QueryBorrow<'_, &mut Velocity>) {
     }
 }
 
-pub fn animation_system(mut query: QueryBorrow<'_, (&mut SpriteAnimation, &MobjAi)>) {
+pub fn animation_system(world: &World) {
+    let mut query = world.query::<(&mut SpriteAnimation, &MobjAi)>();
     for (anim, ai) in query.iter() {
         let db = DB.get().unwrap();
         anim.cached_rotations = db.states[&ai.current_state].cached_rotations;  

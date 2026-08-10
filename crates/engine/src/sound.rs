@@ -1,4 +1,4 @@
-use hecs::{CommandBuffer, Entity, QueryBorrow, With};
+use hecs::{CommandBuffer, Entity, World};
 use wad_parser::{Level, LineFlags, LineId, SectorId, to_u64};
 use crate::{Active, CurrentSector, Database, Idle, MAXSOUNDBLOCKS, MobjAi, MobjNum, MobjType, PlayerShoot, Position, Random, SfxEvent, SpriteAnimation, Target};
 
@@ -93,12 +93,13 @@ pub fn propagate_sound(
 }
 
 pub fn propagate_sound_system(
-	mut query: QueryBorrow<'_, With<(Entity, &CurrentSector), &PlayerShoot>>, 
+	world: &World, 
 	level: &Level,
 	sound_targets: &mut [Option<Entity>],
 	traversal: &mut Traversal,
 	command_buffer: &mut CommandBuffer
 ) {
+    let mut query = world.query::<(Entity, &CurrentSector)>().with::<&PlayerShoot>();
 	for (ent, current_sector) in query.iter() {
 		propagate_sound(level, traversal, sound_targets, current_sector.0, ent);
 
