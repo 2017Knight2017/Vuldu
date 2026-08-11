@@ -18,13 +18,13 @@ pub enum WorldEvent {
 pub fn execute_events_system(world_events: &mut Vec<WorldEvent>) {
 	for event in world_events.drain(..) {
 		match event {
-			WorldEvent::DamageMobj { target, inflictor, damage } => {
+			WorldEvent::DamageMobj { target: _, inflictor: _, damage: _ } => {
 
 			},
-			WorldEvent::ResetSkullFly { actor_id } => {
+			WorldEvent::ResetSkullFly { actor_id: _ } => {
 
 			}
-			WorldEvent::TouchSpecialThing { special_item, picker } => {
+			WorldEvent::TouchSpecialThing { special_item: _, picker: _ } => {
 
 			}
 		}

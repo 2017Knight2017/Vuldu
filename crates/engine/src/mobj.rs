@@ -108,7 +108,6 @@ pub fn spawn_mobj(
 			.add(MobjAi {
 				current_state: spawn_state,
     			tics_left,
-    			action: spawn_state_data.action,
     			threshold: 0,
 				reaction_time: mobj_info.reaction_time,
 			});

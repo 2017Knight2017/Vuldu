@@ -78,11 +78,10 @@ impl GameContext {
         self.flush_command_buffer();
 
         check_sound_system(&self.world, &mut self.level, random, &mut self.command_buffer,
-            &mut self.sound_targets, &mut self.traversal, &mut audio.buffer,
-        );
+            &mut self.sound_targets, &mut self.traversal, &mut audio.buffer, &mut self.action_buffer);
 
-        //check_sight_system(&self.world, &self.level, &mut self.traversal,
-        //    random, &mut self.command_buffer, &mut audio.buffer);
+        //check_sight_system(&self.world, &self.level, &mut self.traversal, random, 
+        //    &mut self.command_buffer, &mut audio.buffer, &mut self.action_buffer);
 
         self.flush_command_buffer();
 

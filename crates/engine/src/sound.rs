@@ -1,6 +1,6 @@
 use hecs::{CommandBuffer, Entity, World};
 use wad_parser::{Level, LineFlags, LineId, SectorId, to_u64};
-use crate::{Active, CurrentSector, Database, Idle, MAXSOUNDBLOCKS, MobjAi, MobjNum, MobjType, PlayerShoot, Position, Random, SfxEvent, SpriteAnimation, Target};
+use crate::{ActionFunc, Active, CurrentSector, DB, Idle, MAXSOUNDBLOCKS, MobjAi, MobjNum, MobjType, PlayerShoot, Position, Random, SfxEvent, SpriteAnimation, Target, set_mobj_state};
 
 pub struct Traversal {
     generation: u32,
@@ -108,26 +108,22 @@ pub fn propagate_sound_system(
 }
 
 pub fn wake_up_monster(
-	entity: Entity,
+	ent: Entity,
 	pos: &Position,
 	mobj_type: &MobjType,
 	sound_target: Entity,
-	sprite_anim: &mut SpriteAnimation,
+	anim: &mut SpriteAnimation,
 	ai: &mut MobjAi,
 	random: &mut Random,
 	command_buffer: &mut CommandBuffer, 
 	audio_buffer: &mut Vec<SfxEvent>, 
-	db: &Database
+    action_buffer: &mut Vec<(Entity, ActionFunc)>,
 ) {
+    let db = DB.get().unwrap();
 	let mobj_info = db.mobjinfo.get(&mobj_type.type_).unwrap();
 
 	if let (Some(see_state_num), Some(mut see_sound)) = (mobj_info.see_state, mobj_info.see_sound) {
-		let see_state = db.states.get(&see_state_num).unwrap();
-		
-		ai.current_state = see_state_num;
-		ai.action = see_state.action;
-		ai.tics_left = see_state.tics + (random.p() & 0b111) as i32;
-		sprite_anim.cached_rotations = see_state.cached_rotations;
+		set_mobj_state(ent, ai, anim, see_state_num, action_buffer, (random.p() & 0b111) as i32);
 		
 		if see_sound.starts_with(b"DSPOSIT") {
 			see_sound[7] = random.p() % 3 + b'1';
@@ -144,6 +140,6 @@ pub fn wake_up_monster(
 		audio_buffer.push(SfxEvent { sfx_id: to_u64(&see_sound), pos })
 	}
 
-	command_buffer.remove_one::<Idle>(entity);
-    command_buffer.insert(entity, (Target(sound_target), Active));
+	command_buffer.remove_one::<Idle>(ent);
+    command_buffer.insert(ent, (Target(sound_target), Active));
 }

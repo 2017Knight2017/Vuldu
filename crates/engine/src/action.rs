@@ -96,19 +96,26 @@ pub fn ai_system(world: &World, action_buffer: &mut Vec<(Entity, ActionFunc)>) {
 			let current_state = db.states[&ai.current_state];
 
 			if let Some(next_state_num) = current_state.next_state {
-				set_mobj_state(ent, ai, anim, next_state_num, action_buffer);
+				set_mobj_state(ent, ai, anim, next_state_num, action_buffer, 0);
 			}
 		}
 	}
 }
 
-pub fn set_mobj_state(ent: Entity, ai: &mut MobjAi, anim: &mut SpriteAnimation, state_num: StateNum, action_buffer: &mut Vec<(Entity, ActionFunc)>) {
+pub fn set_mobj_state(
+	ent: Entity, 
+	ai: &mut MobjAi, 
+	anim: &mut SpriteAnimation, 
+	state_num: StateNum, 
+	action_buffer: &mut Vec<(Entity, ActionFunc)>,
+	tics_to_add: i32,
+) {
 	let db = DB.get().unwrap();
 
 	ai.current_state = state_num;
 
 	let state = db.states[&state_num];
-	ai.tics_left = state.tics;
+	ai.tics_left = state.tics + tics_to_add;
 	anim.cached_rotations = state.cached_rotations;
 
 	if let Some(action) = state.action {
@@ -163,13 +170,14 @@ pub fn check_sound_system(
 	sound_targets: &mut [Option<Entity>],
 	traversal: &mut Traversal,
 	audio_buffer: &mut Vec<SfxEvent>, 
+	action_buffer: &mut Vec<(Entity, ActionFunc)>
 ) {
 	let db = DB.get().unwrap();
 
 	let mut query = world
 		.query::<(Entity, &mut SpriteAnimation, &mut MobjAi, &Position, &CurrentSector, &MobjType)>()
 		.with::<&Idle>();
-	for (entity, sprite_anim, ai, pos, current_sector, mobj_type) in query.iter() {
+	for (entity, anim, ai, pos, current_sector, mobj_type) in query.iter() {
         if let Some(sound_target_entity) = sound_targets[current_sector.0.0] {            
             if mobj_type.flags.contains(MobjFlags::AMBUSH) {
 				let mut target_query = world.query_one::<(&Position, &CurrentSector)>(sound_target_entity);
@@ -197,12 +205,12 @@ pub fn check_sound_system(
                 pos, 
                 mobj_type, 
 				sound_target_entity,
-				sprite_anim,
+				anim,
 				ai, 
                 random, 
                 command_buffer, 
                 audio_buffer,
-                db
+                action_buffer,
             );
         }
     }
@@ -215,6 +223,7 @@ pub fn check_sight_system(
 	random: &mut Random,
 	command_buffer: &mut CommandBuffer, 
 	audio_buffer: &mut Vec<SfxEvent>, 
+	action_buffer: &mut Vec<(Entity, ActionFunc)>
 ) {
 	let db = DB.get().unwrap();
 
@@ -225,7 +234,7 @@ pub fn check_sight_system(
         .query::<(Entity, &Position, &CurrentSector, &MobjType)>()
         .with::<&PlayerMarker>();
 
-	for (entity, sprite_anim, ai, pos, current_sector, rot, mobj_type) in query.iter() {
+	for (entity, anim, ai, pos, current_sector, rot, mobj_type) in query.iter() {
         for (player_entity, player_pos, player_sector, player_flags) in players_query.iter() {
             
             if !player_flags.flags.contains(MobjFlags::SHOOTABLE) {
@@ -250,12 +259,12 @@ pub fn check_sight_system(
             	    pos, 
             	    mobj_type, 
 					player_entity,
-					sprite_anim,
+					anim,
 					ai, 
             	    random, 
             	    command_buffer, 
             	    audio_buffer,
-            	    db
+            	    action_buffer,
             	);
 			}
         }
@@ -303,7 +312,7 @@ pub fn chase(
 		Ok(data) => data,
 		Err(_) => {
 			if let Some(spawn_state) = mobj_info.spawn_state {
-				set_mobj_state(ent, ai, anim, spawn_state, action_buffer);
+				set_mobj_state(ent, ai, anim, spawn_state, action_buffer, 0);
         	}
         	return;
 		}
@@ -311,7 +320,7 @@ pub fn chase(
 
 	if target_hp.0 <= 0 {
         if let Some(spawn_state) = mobj_info.spawn_state {
-			set_mobj_state(ent, ai, anim, spawn_state, action_buffer);
+			set_mobj_state(ent, ai, anim, spawn_state, action_buffer, 0);
         }
         return;
     }
@@ -344,8 +353,7 @@ pub fn chase(
                 });
             }
 
-			set_mobj_state(ent, ai, anim, melee_state, action_buffer);
-
+			set_mobj_state(ent, ai, anim, melee_state, action_buffer, 0);
             return;
         }
     }
@@ -366,7 +374,7 @@ pub fn chase(
 			mobj_info.melee_state.is_none(),
 			mobj_flag_buffer
 		) {
-			set_mobj_state(ent, ai, anim, missile_state, action_buffer);
+			set_mobj_state(ent, ai, anim, missile_state, action_buffer, 0);
 			mobj_flag_buffer.push(MobjFlagCommand::Add { ent, flag: MobjFlags::JUST_ATTACKED }); 
             return;
         }

@@ -1,6 +1,6 @@
 use hecs::Entity;
 use wad_parser::SectorId;
-use crate::{ActionFunc, CachedStateSprite, Direction, MobjFlags, MobjNum, StateNum};
+use crate::{CachedStateSprite, Direction, MobjFlags, MobjNum, StateNum};
 
 macro_rules! define_markers {
     ($($name:ident);* $(;)?) => {
@@ -36,7 +36,6 @@ pub struct PlayerRotation {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MonsterRotation {
-    // move_dir's range = 0..=7
 	pub move_dir: Option<Direction>,
     pub move_count: i32,
 }
@@ -60,10 +59,10 @@ pub struct SpriteAnimation {
     pub top_offset_shift: i16
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct MobjAi {
     pub current_state: StateNum,
     pub tics_left: i32,
-    pub action: Option<ActionFunc>,
     pub threshold: u32,
     pub reaction_time: u32
 }
