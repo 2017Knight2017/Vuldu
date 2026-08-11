@@ -17,3 +17,7 @@ clap = { version = "4.6.1", features = ["derive"] }
 renderer = { path = "../renderer" }
 wad_parser = { path = "../wad_parser" }
 engine = { path = "../engine" }
+
+[[bin]]
+name = "vuldu"
+path = "src/main.rs"

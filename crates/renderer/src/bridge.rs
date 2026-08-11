@@ -3,6 +3,7 @@ pub(crate) mod ffi {
     pub struct WindowHandles {
         display_ptr: usize, 
         window_ptr: usize, 
+        is_x11: bool,
     }
 
     pub struct WindowSize {

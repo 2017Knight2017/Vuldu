@@ -168,36 +168,61 @@ impl ApplicationHandler for App {
         let display_handle = window_ref.display_handle().unwrap().as_raw();
         let window_handle = window_ref.window_handle().unwrap().as_raw();
 
-        if let (RawDisplayHandle::Wayland(d), RawWindowHandle::Wayland(w)) = (display_handle, window_handle) {
-            let handles = WindowHandles {
-                display_ptr: d.display.as_ptr() as usize,
-                window_ptr: w.surface.as_ptr() as usize,
-            };
-
-            let window_raw_ptr = window_ref as *const Window as usize;
-            renderer.init(&handles, window_raw_ptr);
-            renderer.set_resolution(1280, 720);
-
-            let sky_idx = if self.wad_manager.is_doom1 { 
-                (self.game.level.map_num as u32 - 1) / 9 
-            } else { 
-                get_sky_texture_index(self.game.level.map_num) 
-            };
-            renderer.set_sky_index(sky_idx);
-
-            if let Err(err) = self.graphics.load_and_upload_textures(&mut renderer, &self.wad_manager, self.game.level.map_num) {
-                self.handle_fatal_error(event_loop, &mut renderer, &err);
+        let handles = match (display_handle, window_handle) {
+            (RawDisplayHandle::Wayland(d), RawWindowHandle::Wayland(w)) => 
+                WindowHandles {
+                    display_ptr: d.display.as_ptr() as usize,
+                    window_ptr: w.surface.as_ptr() as usize,
+                    is_x11: false,
+                },
+            (RawDisplayHandle::Xlib(d), RawWindowHandle::Xlib(w)) => 
+                WindowHandles {
+                    display_ptr: d.display.unwrap().as_ptr() as usize,
+                    window_ptr: w.window as usize,
+                    is_x11: true,
+                },
+            (RawDisplayHandle::Windows(_), RawWindowHandle::Win32(w)) => 
+                WindowHandles {
+                    display_ptr: w.hinstance.map(|handle| handle.get()).expect("Failed to get the window handle.") as usize,
+                    window_ptr: w.hwnd.get() as usize,
+                    is_x11: false,
+                },
+            (RawDisplayHandle::AppKit(_), RawWindowHandle::AppKit(w)) => 
+                WindowHandles {
+                    display_ptr: w.ns_view.as_ptr() as usize,
+                    window_ptr: 0,
+                    is_x11: false,
+                },
+            (_, _) => {
+                eprintln!("Unsupported platform. Available platforms are: Linux Wayland, Linux X11, Windows, MacOS.");
+                event_loop.exit();
                 return;
             }
+        };
 
-            self.game.level.geom.sector_lines = self.graphics.setup_level_geometry(&mut renderer, &self.game.level);
+        let window_raw_ptr = window_ref as *const Window as usize;
+        renderer.init(&handles, window_raw_ptr);
+        renderer.set_resolution(1280, 720);
 
-            let _ = engine::populate_database(&self.graphics.data).map_err(|e| eprintln!("{}", e));
-            engine::spawn_all_things(&mut self.game.world, &self.game.level, &mut self.random);
-            println!("Mobj spawning is done!");
+        let sky_idx = if self.wad_manager.is_doom1 { 
+            (self.game.level.map_num as u32 - 1) / 9 
+        } else { 
+            get_sky_texture_index(self.game.level.map_num) 
+        };
+        renderer.set_sky_index(sky_idx);
 
-            self.graphics.renderer = Some(renderer);
+        if let Err(err) = self.graphics.load_and_upload_textures(&mut renderer, &self.wad_manager, self.game.level.map_num) {
+            self.handle_fatal_error(event_loop, &mut renderer, &err);
+            return;
         }
+
+        self.game.level.geom.sector_lines = self.graphics.setup_level_geometry(&mut renderer, &self.game.level);
+
+        let _ = engine::populate_database(&self.graphics.data).map_err(|e| eprintln!("{}", e));
+        engine::spawn_all_things(&mut self.game.world, &self.game.level, &mut self.random);
+        println!("Mobj spawning is done!");
+
+        self.graphics.renderer = Some(renderer);
     }
 
     fn device_event(
