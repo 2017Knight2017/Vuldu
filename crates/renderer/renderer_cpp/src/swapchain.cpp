@@ -1,5 +1,6 @@
 #include <limits>
 #include <algorithm>
+#include <stdexcept>
 #include "renderer.h"
 #include "renderer/src/bridge.rs.h"
 
@@ -27,7 +28,7 @@ VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities, size_t
     if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
         return capabilities.currentExtent;
     }
-    
+
     WindowSize size = get_winit_window_size(window_raw_ptr);
 
     VkExtent2D actualExtent = {
