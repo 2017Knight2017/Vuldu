@@ -18,6 +18,7 @@
 #endif
 
 #include <vulkan/vulkan.h>
+#include <stdexcept>
 #include <cstring>
 #include "renderer.h"
 #include "renderer/src/bridge.rs.h"
@@ -105,8 +106,8 @@ void VulkanRenderer::createSurface(const WindowHandles& handles) {
     #if defined(_WIN32)
         VkWin32SurfaceCreateInfoKHR createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-        createInfo.hinstance = reinterpret_cast<HINSTANCE*>(handles.display_ptr);
-        createInfo.hwnd = reinterpret_cast<HWND*>(handles.window_ptr);
+        createInfo.hinstance = reinterpret_cast<HINSTANCE>(handles.display_ptr);
+        createInfo.hwnd = reinterpret_cast<HWND>(handles.window_ptr);
         surfaceResult = vkCreateWin32SurfaceKHR(this->instance, &createInfo, nullptr, &this->surface);
     #elif defined(__APPLE__)
         VkMetalSurfaceCreateInfoEXT createInfo{};
