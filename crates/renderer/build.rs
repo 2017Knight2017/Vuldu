@@ -13,15 +13,16 @@ fn main() {
         .file("renderer_cpp/src/swapchain.cpp")
         .file("renderer_cpp/src/buffers.cpp")
         .file("renderer_cpp/src/utils.cpp")
-        .include("renderer_cpp/include")
-        .flag_if_supported("-std=c++20");
+        .include("renderer_cpp/include");
 
     if cfg!(target_env = "msvc") {
-        build.flag("/W4");
+        build.flag("/std:c++20")
+            .flag("/W4");
     } else {
-        build.flag("-Wall")
-             .flag("-Wextra")
-             .flag("-Wpedantic");
+        build.flag_if_supported("-std=c++20")
+            .flag("-Wall")
+            .flag("-Wextra")
+            .flag("-Wpedantic");
     }
 
     if let Ok(vulkan_sdk) = std::env::var("VULKAN_SDK") {

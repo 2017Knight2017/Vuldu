@@ -1,3 +1,4 @@
+#include <limits>
 #include <algorithm>
 #include "renderer.h"
 #include "renderer/src/bridge.rs.h"
@@ -25,19 +26,19 @@ VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& avai
 VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities, size_t window_raw_ptr) {
     if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
         return capabilities.currentExtent;
-    } else {
-        WindowSize size = get_winit_window_size(window_raw_ptr);
-
-        VkExtent2D actualExtent = {
-            size.width,
-            size.height
-        };
-
-        actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
-        actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
-
-        return actualExtent;
     }
+    
+    WindowSize size = get_winit_window_size(window_raw_ptr);
+
+    VkExtent2D actualExtent = {
+        size.width,
+        size.height
+    };
+
+    actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+    actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+
+    return actualExtent;
 }
 
 void VulkanRenderer::createSwapChain() {
