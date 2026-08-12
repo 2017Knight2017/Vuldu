@@ -169,6 +169,7 @@ dependencies = [
  "hecs",
  "image",
  "micropool",
+ "objc2 0.6.4",
  "raw-window-handle",
  "renderer",
  "rodio",

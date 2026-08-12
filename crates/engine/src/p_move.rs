@@ -31,8 +31,8 @@ pub fn p_move(
 
     let move_dir = rot.move_dir.unwrap();
 
-    let try_x = pos.x + mobj_info.speed * XSPEED[move_dir as usize];
-    let try_z = pos.z + mobj_info.speed * YSPEED[move_dir as usize];
+    let try_x = pos.x + mobj_info.speed * 0.41 * XSPEED[move_dir as usize];
+    let try_z = pos.z + mobj_info.speed * 0.41 * YSPEED[move_dir as usize];
 
     let (try_ok, float_ok) = p_try_move(
         ent,

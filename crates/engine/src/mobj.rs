@@ -103,7 +103,7 @@ pub fn spawn_mobj(
 			})
 			.add(MonsterRotation { 
 				move_dir: Some(move_dir),
-				move_count: (random.p() & 0xF) as i32
+				move_count: (random.p() & 0b111) as i32
 			})
 			.add(MobjAi {
 				current_state: spawn_state,

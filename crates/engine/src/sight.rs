@@ -4,9 +4,9 @@ use crate::{CurrentSector, PLAYERHEIGHT, Pass, Position, Traversal};
 #[derive(Debug, Clone, Copy)]
 pub struct DivLine {
     pub x: f32,
-    pub y: f32,
+    pub z: f32,
     pub dx: f32,
-    pub dy: f32,
+    pub dz: f32,
 }
 
 pub fn p_divline_side(x: f32, y: f32, node: &DivLine) -> i32 {
@@ -15,25 +15,25 @@ pub fn p_divline_side(x: f32, y: f32, node: &DivLine) -> i32 {
             return 2;
         }
         if x <= node.x {
-            return if node.dy > 0.0 { 1 } else { 0 };
+            return if node.dz > 0.0 { 1 } else { 0 };
         }
-        return if node.dy < 0.0 { 1 } else { 0 };
+        return if node.dz < 0.0 { 1 } else { 0 };
     }
 
-    if node.dy == 0.0 {
-        if y == node.y {
+    if node.dz == 0.0 {
+        if y == node.z {
             return 2;
         }
-        if y <= node.y {
+        if y <= node.z {
             return if node.dx < 0.0 { 1 } else { 0 };
         }
         return if node.dx > 0.0 { 1 } else { 0 };
     }
 
     let dx = x - node.x;
-    let dy = y - node.y;
+    let dy = y - node.z;
 
-    let left = node.dy * dx;
+    let left = node.dz * dx;
     let right = dy * node.dx;
 
     if right < left {
@@ -46,20 +46,20 @@ pub fn p_divline_side(x: f32, y: f32, node: &DivLine) -> i32 {
 }
 
 pub fn p_intercept_vector2(v2: &DivLine, v1: &DivLine) -> f32 {
-    let den = v1.dy * v2.dx - v1.dx * v2.dy;
+    let den = v1.dz * v2.dx - v1.dx * v2.dz;
 
     if den == 0.0 {
         return 0.0;
     }
 
-    let num = (v1.x - v2.x) * v1.dy + (v2.y - v1.y) * v1.dx;
+    let num = (v1.x - v2.x) * v1.dz + (v2.z - v1.z) * v1.dx;
     num / den
 }
 
 pub struct SightContext<'a> {
     pub strace: DivLine,
     pub t2x: f32,
-    pub t2y: f32,
+    pub t2z: f32,
     pub sight_ystart: f32,
     pub top_slope: f32,
     pub bottom_slope: f32,
@@ -74,15 +74,15 @@ impl<'a> SightContext<'a> {
 
         let strace = DivLine {
             x: t1_pos.0,
-            y: t1_pos.1,
+            z: t1_pos.2,
             dx: t2_pos.0 - t1_pos.0,
-            dy: t2_pos.1 - t1_pos.1,
+            dz: t2_pos.2 - t1_pos.2,
         };
 
         Self {
             strace,
             t2x: t2_pos.0,
-            t2y: t2_pos.1,
+            t2z: t2_pos.2,
             sight_ystart,
             top_slope,
             bottom_slope,
@@ -122,12 +122,12 @@ impl<'a> SightContext<'a> {
             }
 
 			let seg_v1_x = level.geom.vertices[seg.v1 as usize].0;
-			let seg_v1_y = level.geom.vertices[seg.v1 as usize].1;
+			let seg_v1_z = level.geom.vertices[seg.v1 as usize].1;
 			let seg_v2_x = level.geom.vertices[seg.v2 as usize].0;
-			let seg_v2_y = level.geom.vertices[seg.v2 as usize].1;
+			let seg_v2_z = level.geom.vertices[seg.v2 as usize].1;
 
-            let s1 = p_divline_side(seg_v1_x, seg_v1_y, &self.strace);
-            let s2 = p_divline_side(seg_v2_x, seg_v2_y, &self.strace);
+            let s1 = p_divline_side(seg_v1_x, seg_v1_z, &self.strace);
+            let s2 = p_divline_side(seg_v2_x, seg_v2_z, &self.strace);
 
             if s1 == s2 {
                 continue;
@@ -135,13 +135,13 @@ impl<'a> SightContext<'a> {
 
             let divl = DivLine {
                 x: seg_v1_x,
-                y: seg_v1_y,
+                z: seg_v1_z,
                 dx: seg_v2_x - seg_v1_x,
-                dy: seg_v2_y - seg_v1_y,
+                dz: seg_v2_z - seg_v1_z,
             };
 
-            let s1 = p_divline_side(self.strace.x, self.strace.y, &divl);
-            let s2 = p_divline_side(self.t2x, self.t2y, &divl);
+            let s1 = p_divline_side(self.strace.x, self.strace.z, &divl);
+            let s2 = p_divline_side(self.t2x, self.t2z, &divl);
 
             if s1 == s2 {
                 continue;
@@ -181,9 +181,9 @@ impl<'a> SightContext<'a> {
         }
 
         let bsp = &level.geom.nodes[bspnum];
-		let bsp_divline = DivLine { x: bsp.x as f32, y: bsp.y as f32, dx: bsp.dx as f32, dy: bsp.dy as f32 };
+		let bsp_divline = DivLine { x: bsp.x as f32, z: bsp.y as f32, dx: bsp.dx as f32, dz: bsp.dy as f32 };
 
-        let mut side = p_divline_side(self.strace.x, self.strace.y, &bsp_divline);
+        let mut side = p_divline_side(self.strace.x, self.strace.z, &bsp_divline);
         if side == 2 {
             side = 0;
         }
@@ -192,7 +192,7 @@ impl<'a> SightContext<'a> {
             return false;
         }
 
-        if side == p_divline_side(self.t2x, self.t2y, &bsp_divline) {
+        if side == p_divline_side(self.t2x, self.t2z, &bsp_divline) {
             return true;
         }
 
@@ -210,10 +210,8 @@ pub fn p_check_sight(
 	level: &Level,
 	traversal: &mut Traversal
 ) -> bool {
-	if let Some(_) = level.geom.reject_table.0 {
-        if level.geom.reject_table.is_rejected(cur_sector.0, player_cur_sector.0, level.state.sectors.len()) {
-            return false;
-        }
+    if level.geom.reject_table.is_rejected(cur_sector.0, player_cur_sector.0, level.state.sectors.len()) {
+        return false;
     }
 
 	let pass = traversal.begin();

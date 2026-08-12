@@ -390,7 +390,7 @@ pub fn chase(
     	    map, world, random, blocklists, world_events, mobj_flag_buffer
     	);
 		
-    	rot.move_count = (random.p() & 15) as i32;
+    	rot.move_count = (random.p() & 0b111) as i32;
     }
 
     if let Some(active_sound) = &mobj_info.active_sound {
