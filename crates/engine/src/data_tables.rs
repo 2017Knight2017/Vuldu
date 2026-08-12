@@ -223,7 +223,7 @@ pub fn populate_database(texture_data: &FxHashMap<u64, (TextureId, u32, u32, boo
 pub fn pack_sprite_u64(prefix: &[u8], frame: char, rotation: u8) -> u64 {
     let mut buf = [0u8; 8];
 
-    let p_len = std::cmp::min(prefix.len(), 4);
+    let p_len = usize::min(prefix.len(), 4);
     buf[..p_len].copy_from_slice(&prefix[..p_len]);
 
     buf[4] = frame as u8;

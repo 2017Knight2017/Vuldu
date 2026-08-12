@@ -16,6 +16,8 @@ inline const uint32_t MAX_SKY = 16;
 inline const uint32_t MAX_PAL = 14;
 inline const uint32_t MAX_LIGHTLEVEL = 32;
 inline const uint32_t MAX_OBJECTS = 100000;
+inline const uint32_t RGBA = 4;
+inline const uint32_t COLORS_IN_PALETTE = 256;
 
 struct WindowHandles;
 struct Vertex;
@@ -69,8 +71,8 @@ public:
     void updateLevelGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint32_t* indices_ptr, size_t index_count);
     void updateObjectGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint32_t* indices_ptr, size_t index_count);
     void updateObjectInstances(const ObjectInstance* instances_ptr, size_t instances_count);
-    void uploadPalettes(const float* palettes_ptr);
-    void uploadColormap(const uint8_t* colormap_ptr);
+    void uploadPalettes(const float* palettes_ptr, size_t colormap_bytes_count);
+    void uploadColormap(const uint8_t* colormap_ptr, size_t colormap_bytes_count);
     void uploadTextureArray(
         const TextureDescriptor* descriptors_ptr, 
         size_t descriptor_count, 

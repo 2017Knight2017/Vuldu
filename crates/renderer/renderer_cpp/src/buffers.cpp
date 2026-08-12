@@ -86,14 +86,17 @@ void VulkanRenderer::uploadTextureArray(
     const float* sky_widths_ptr, 
     size_t sky_widths_count
 ) {
-    if (descriptors_ptr == nullptr) {
-        throw std::runtime_error("descriptors_ptr is empty!");
-    }
-    if (all_pixels_ptr == nullptr) {
-        throw std::runtime_error("all_pixels_ptr is empty!");
-    }
+    if (descriptor_count == 0 || descriptors_ptr == nullptr)
+        throw std::runtime_error("No textures to load!");
+
+    if (descriptor_count > MAX_TEXTURES) 
+        throw std::runtime_error("Too many textures to load! (>8192)");
+    
+    if (all_pixels_count == 0 || all_pixels_ptr == nullptr)
+        throw std::runtime_error("Pixels vector is empty!");
+    
     this->skyWidths.resize(sky_widths_count);
-    memcpy(this->skyWidths.data(), sky_widths_ptr, sizeof(float) * sky_widths_count);
+    memcpy(this->skyWidths.data(), sky_widths_ptr, sky_widths_count * sizeof(float));
 
     std::vector<TextureDescriptor> descriptors(descriptors_ptr, descriptors_ptr + descriptor_count);
 
@@ -275,8 +278,10 @@ void VulkanRenderer::createTextureSamplers() {
     }
 }
 
-void VulkanRenderer::uploadPalettes(const float* palettes_ptr) {
-    VkDeviceSize bufferSize = MAX_PAL * 256 * 4 * sizeof(float);
+void VulkanRenderer::uploadPalettes(const float* palettes_ptr, size_t palette_channels_count) {
+    if (palette_channels_count == 0 || palettes_ptr == nullptr) return;
+
+    VkDeviceSize bufferSize = palette_channels_count * sizeof(float);
 
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
@@ -325,8 +330,10 @@ void VulkanRenderer::uploadPalettes(const float* palettes_ptr) {
     }
 }
 
-void VulkanRenderer::uploadColormap(const uint8_t* colormap_ptr) {
-    VkDeviceSize bufferSize = MAX_LIGHTLEVEL * 256 * sizeof(uint8_t);
+void VulkanRenderer::uploadColormap(const uint8_t* colormap_ptr, size_t colormap_bytes_count) {
+    if (colormap_bytes_count == 0 || colormap_ptr == nullptr) return;
+
+    VkDeviceSize bufferSize = colormap_bytes_count * sizeof(uint8_t);
 
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;

@@ -183,7 +183,7 @@ impl ApplicationHandler for App {
                 },
             (RawDisplayHandle::Windows(_), RawWindowHandle::Win32(w)) => 
                 WindowHandles {
-                    display_ptr: w.hinstance.map(|handle| handle.get()).expect("Failed to get the window handle.") as usize,
+                    display_ptr: w.hinstance.map(|handle| handle.get()).unwrap_or(0) as usize,
                     window_ptr: w.hwnd.get() as usize,
                     is_x11: false,
                 },

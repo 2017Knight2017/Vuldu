@@ -99,11 +99,10 @@ void VulkanRenderer::updateUniformBuffer(const UniformBufferObject* ubo_ptr, uin
 }
 
 void VulkanRenderer::updateObjectInstances(const ObjectInstance* instances_ptr, size_t instances_count) {
+    if (instances_count == 0 || instances_ptr == nullptr) return;
+    if (instances_count > MAX_OBJECTS) return;
+
     this->activeObjectsCount = static_cast<uint32_t>(instances_count);
-    
-    if (this->activeObjectsCount == 0 || instances_ptr == nullptr) {
-        return;
-    }
 
 	VkDeviceSize instanceBufferSize = sizeof(ObjectInstance) * this->activeObjectsCount;
     memcpy(this->instanceBuffersMapped[this->currentFrame], instances_ptr, instanceBufferSize);   

@@ -78,6 +78,10 @@ impl GraphicsContext {
         self.offsets.reserve(obj_pics.len());
         for (idx, pic) in obj_pics.iter().enumerate() {
             let name = obj_names[idx];
+            if name.iter().all(|&char| char == b'\0') {
+                continue;
+            }
+
             self.offsets.push((pic.left_offset, pic.top_offset));
             register_sprite(&mut self.data, name, (TextureId(current_gpu_id), pic.width, pic.height));
             
@@ -262,7 +266,7 @@ fn register_sprite(
 ) {
     let (id, w, h) = texture_tuple;
 
-    let last_non_zero = lump_name.iter().rposition(|&b| b != 0).unwrap();
+    let last_non_zero = lump_name.iter().rposition(|&b| b != b'\0').unwrap();
     let normed_name = &lump_name[..=last_non_zero];
 
     let prefix = &normed_name[..4];

@@ -63,8 +63,8 @@ pub(crate) mod ffi {
         unsafe fn updateLevelGeometry(self: Pin<&mut VulkanRenderer>, vertices_ptr: *const Vertex, vertex_count: usize, indices_ptr: *const u32, index_count: usize);
         unsafe fn updateObjectGeometry(self: Pin<&mut VulkanRenderer>, vertices_ptr: *const Vertex, vertex_count: usize, indices_ptr: *const u32, index_count: usize);
         unsafe fn updateObjectInstances(self: Pin<&mut VulkanRenderer>, instances_ptr: *const ObjectInstance, instances_count: usize);
-        unsafe fn uploadPalettes(self: Pin<&mut VulkanRenderer>, palettes_ptr: *const f32);
-        unsafe fn uploadColormap(self: Pin<&mut VulkanRenderer>, colormap_ptr: *const u8);
+        unsafe fn uploadPalettes(self: Pin<&mut VulkanRenderer>, palettes_ptr: *const f32, palette_channels_count: usize);
+        unsafe fn uploadColormap(self: Pin<&mut VulkanRenderer>, colormap_ptr: *const u8, colormap_bytes_count: usize);
         unsafe fn uploadTextureArray(self: Pin<&mut VulkanRenderer>, descriptors: *const TextureDescriptor, descriptor_count: usize, all_pixels: *const u8, all_pixels_count: usize, sky_widths: *const f32, sky_widths_count: usize);
         fn setPaletteIndex(self: Pin<&mut VulkanRenderer>, idx: u32);
         fn setResolution(self: Pin<&mut VulkanRenderer>, width: u32, height: u32);

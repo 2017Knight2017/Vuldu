@@ -37,13 +37,13 @@ impl SafeRenderer {
 
     pub fn upload_palettes(&mut self, palettes: &[f32]) {
         unsafe {
-            self.pin_mut().uploadPalettes(palettes.as_ptr());
+            self.pin_mut().uploadPalettes(palettes.as_ptr(), palettes.len());
         }
     }
 
     pub fn upload_colormap(&mut self, colormap: &[u8]) {
         unsafe {
-            self.pin_mut().uploadColormap(colormap.as_ptr());
+            self.pin_mut().uploadColormap(colormap.as_ptr(), colormap.len());
         }
     }
 
