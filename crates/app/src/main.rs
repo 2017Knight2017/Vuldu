@@ -2,7 +2,7 @@ mod graphics;
 mod parse_commandline;
 mod sound_player;
 
-//use parse_commandline::Args;
+use parse_commandline::Args;
 use sound_player::*;
 use renderer::*;
 use wad_parser::map::Level;
@@ -19,7 +19,7 @@ use winit::{
     window::{CursorGrabMode, Window, WindowId}
 };
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle, RawDisplayHandle, RawWindowHandle};
-//use clap::Parser;
+use clap::Parser;
 use std::time::Instant;
 use crate::graphics::GraphicsContext;
 
@@ -325,24 +325,23 @@ fn get_sky_texture_index(map: u8) -> u32 {
 }
 
 fn main() -> Result<(), String> {
-    //let args = Args::parse();
     let mut wad_manager = WadManager::new();
 
-    //wad_manager.add_wad(args.iwad)?;
-    //for pwad in args.pwads {
-    //    wad_manager.add_wad(pwad)?;
-    //}
-    //
-    //let map = Level::from_wad(&wad_manager, &args.map)?;
-
-    wad_manager.add_wad("assets/PLUTONIA.WAD")?;
+    //wad_manager.add_wad("assets/PLUTONIA.WAD")?;
     //wad_manager.add_wad("assets/test.wad")?;
     //wad_manager.add_wad("assets/oku2v31.wad")?;
     //wad_manager.add_wad("assets/nuts.wad")?;
     //wad_manager.add_wad("assets/Sunder 2512.wad")?;
     //wad_manager.add_wad("assets/HR.WAD")?;
 
-    let level = Level::load(&wad_manager, 12)?;
+    let args = Args::parse();
+
+    wad_manager.add_wad(args.iwad)?;
+    for pwad in args.pwads {
+        wad_manager.add_wad(pwad)?;
+    }
+
+    let level = Level::load(&wad_manager, args.map)?;
 
     let event_loop = EventLoop::new().unwrap();
     event_loop.set_control_flow(ControlFlow::Poll);

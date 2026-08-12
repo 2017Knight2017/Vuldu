@@ -3,8 +3,7 @@ use strum::IntoEnumIterator;
 use toml;
 use rustc_hash::FxHashMap;
 use wad_parser::TextureId;
-use std::sync::OnceLock;
-use std::fs;
+use std::{error::Error, sync::OnceLock};
 use crate::{ActionFunc, AmmoType, MobjFlagNum, MobjNum, NUMMOBJTYPES, NUMSTATES, NUMWEAPONS, StateNum, WeaponType};
 
 #[derive(Debug, Deserialize)]
@@ -117,6 +116,7 @@ struct StateConfig {
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]
+#[allow(dead_code)]
 pub struct WeaponInfo {
     ammo: AmmoType,
     up_state: StateNum,
@@ -140,15 +140,15 @@ pub struct Database {
 
 pub static DB: OnceLock<Database> = OnceLock::new();
 
-pub fn populate_database(texture_data: &FxHashMap<u64, (TextureId, u32, u32, bool)>) -> Result<(), Box<dyn std::error::Error>> {
-    let states_content = fs::read_to_string("crates/engine/data_tables/states.toml")?;
-    let state_config: StateConfig = toml::from_str(&states_content)?;
+pub fn populate_database(texture_data: &FxHashMap<u64, (TextureId, u32, u32, bool)>) -> Result<(), Box<dyn Error>> {
+    let states_content = include_str!("../data_tables/states.toml");
+    let state_config: StateConfig = toml::from_str(states_content)?;
 
-    let mobj_content = fs::read_to_string("crates/engine/data_tables/mobjinfo.toml")?;
-    let mobj_config: MobjConfig = toml::from_str(&mobj_content)?;
+    let mobj_content = include_str!("../data_tables/mobjinfo.toml");
+    let mobj_config: MobjConfig = toml::from_str(mobj_content)?;
 
-    let weapon_content = fs::read_to_string("crates/engine/data_tables/weapons.toml")?;
-    let weapon_config: WeaponConfig = toml::from_str(&weapon_content)?;    
+    let weapon_content = include_str!("../data_tables/weapons.toml");
+    let weapon_config: WeaponConfig = toml::from_str(weapon_content)?;    
 
     let states_toml_count = state_config.states.len();
     if states_toml_count != NUMSTATES {

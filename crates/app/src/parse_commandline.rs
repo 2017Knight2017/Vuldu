@@ -7,12 +7,12 @@ use std::path::PathBuf;
 #[command(version = "0.1.0")]
 #[command(about = "Vulkan-powered Doom port written in Rust", long_about = None)]
 pub struct Args {
-	#[arg(short, long, value_name = "FILE", default_value = "assets/DOOM2.WAD")]	
+	#[arg(short, long, value_name = "FILE")]	
 	pub iwad: PathBuf,
 
 	#[arg(short = 'w', long = "wad", value_name = "FILE")]
     pub pwads: Vec<PathBuf>,
 
-    #[arg(short, long, default_value = "MAP01")]
-    pub map: String
+    #[arg(short, long, default_value = "1", value_name = "MAP_NUM")]
+    pub map: u8
 }

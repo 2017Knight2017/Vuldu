@@ -118,9 +118,9 @@ impl AudioContext {
                     let mut dy_m = (p_pos.y - emitter_pos.1) * METERS_PER_UNIT;
                     let mut dz_m = (p_pos.z - emitter_pos.2) * METERS_PER_UNIT;
 
-                    if dx_m.abs() < METERS_DIST_CAP { dx_m = METERS_DIST_CAP * (dx_m / dx_m.abs()); }
-                    if dy_m.abs() < METERS_DIST_CAP { dy_m = METERS_DIST_CAP * (dy_m / dy_m.abs()); }
-                    if dz_m.abs() < METERS_DIST_CAP { dz_m = METERS_DIST_CAP * (dz_m / dz_m.abs()); }
+                    if dx_m.abs() < METERS_DIST_CAP { dx_m = METERS_DIST_CAP * dx_m.signum(); }
+                    if dy_m.abs() < METERS_DIST_CAP { dy_m = METERS_DIST_CAP * dy_m.signum(); }
+                    if dz_m.abs() < METERS_DIST_CAP { dz_m = METERS_DIST_CAP * dz_m.signum(); }
 
                     let source = SamplesBuffer::new(nz!(1), NonZero::new(sound.sample_rate).unwrap(), sound.samples.clone());
 
