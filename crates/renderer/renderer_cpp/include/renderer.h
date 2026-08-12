@@ -1,5 +1,4 @@
 #pragma once
-#define VK_USE_PLATFORM_WAYLAND_KHR
 #include <vulkan/vulkan.h>
 #include <memory>
 #include <vector>
@@ -37,11 +36,6 @@ struct SwapChainSupportDetails {
     VkSurfaceCapabilitiesKHR capabilities;
     std::vector<VkSurfaceFormatKHR> formats;
     std::vector<VkPresentModeKHR> presentModes;
-};
-
-const std::vector<const char*> extensions = {
-    VK_KHR_SURFACE_EXTENSION_NAME, 
-    VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME
 };
 
 const std::vector<const char*> deviceExtensions = {
@@ -172,7 +166,7 @@ private:
     uint32_t currentSkyIndex = 0;
     std::vector<float> skyWidths;
     
-    void createInstance();
+    void createInstance(const WindowHandles& handles);
     void setupDebugMessenger();
     void createSurface(const WindowHandles& handles);
     void pickPhysicalDevice();

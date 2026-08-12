@@ -1,8 +1,7 @@
 *.spv
 /target
-/renderer_cpp/.cache
 /.vscode
-/cache
+/.cache
 compile_commands.json
 doomdata.h
 assets/*.WAD

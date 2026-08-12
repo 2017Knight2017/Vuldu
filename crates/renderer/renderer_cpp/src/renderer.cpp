@@ -14,7 +14,7 @@ VulkanRenderer::~VulkanRenderer() {
 
 void VulkanRenderer::initVulkan(const WindowHandles& handles, size_t window_raw_ptr) {
     this->window_raw_ptr = window_raw_ptr;
-    createInstance();
+    createInstance(handles);
     setupDebugMessenger();
     createSurface(handles);
     pickPhysicalDevice();

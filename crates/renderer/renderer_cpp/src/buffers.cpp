@@ -1,4 +1,5 @@
 #include <cstring>
+#include <stdexcept>
 #include <iostream>
 #include "renderer.h"
 #include "renderer/src/bridge.rs.h"

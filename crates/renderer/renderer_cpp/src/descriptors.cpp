@@ -1,3 +1,4 @@
+#include <stdexcept>
 #include "renderer.h"
 #include "renderer/src/bridge.rs.h"
 
