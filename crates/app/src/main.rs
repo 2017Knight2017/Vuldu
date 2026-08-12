@@ -24,7 +24,7 @@ use clap::Parser;
 use std::time::Instant;
 
 #[cfg(target_os = "macos")]
-use objc2::{msg_send, msg_send_id, runtime::AnyObject};
+use objc2::{msg_send, runtime::AnyObject};
 
 const TICKRATE: u32 = 35;
 const TICK_TIME: f32 = 1.0 / TICKRATE as f32;
@@ -195,7 +195,7 @@ impl ApplicationHandler for App {
             (RawDisplayHandle::AppKit(_), RawWindowHandle::AppKit(w)) => {
                 let view_ptr = w.ns_view.as_ptr() as *mut AnyObject;
 
-                let layer_class = objc2::runtime::AnyClass::get("CAMetalLayer".into())
+                let layer_class = objc2::runtime::AnyClass::get(c"CAMetalLayer")
                     .expect("CAMetalLayer class not found");
 
                 let layer: *mut AnyObject = unsafe { msg_send![layer_class, layer] };
