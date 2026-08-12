@@ -18,9 +18,6 @@ renderer = { path = "../renderer" }
 wad_parser = { path = "../wad_parser" }
 engine = { path = "../engine" }
 
-[target.'cfg(target_os = "macos")'.dependencies]
-objc2 = "0.6.4"
-
 [[bin]]
 name = "vuldu"
 path = "src/main.rs"

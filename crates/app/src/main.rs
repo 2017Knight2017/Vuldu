@@ -23,9 +23,6 @@ use raw_window_handle::{HasDisplayHandle, HasWindowHandle, RawDisplayHandle, Raw
 use clap::Parser;
 use std::time::Instant;
 
-#[cfg(target_os = "macos")]
-use objc2::{msg_send, runtime::AnyObject};
-
 const TICKRATE: u32 = 35;
 const TICK_TIME: f32 = 1.0 / TICKRATE as f32;
 
@@ -190,30 +187,8 @@ impl ApplicationHandler for App {
                     window_ptr: w.hwnd.get() as usize,
                     is_x11: false,
                 },
-
-            #[cfg(target_os = "macos")]
-            (RawDisplayHandle::AppKit(_), RawWindowHandle::AppKit(w)) => {
-                let view_ptr = w.ns_view.as_ptr() as *mut AnyObject;
-
-                let layer_class = objc2::runtime::AnyClass::get(c"CAMetalLayer")
-                    .expect("CAMetalLayer class not found");
-
-                let layer: *mut AnyObject = unsafe { msg_send![layer_class, layer] };
-                
-                unsafe {
-                    let _: () = msg_send![view_ptr, setLayer: layer];
-                    let _: () = msg_send![view_ptr, setWantsLayer: true];
-                }
-
-                WindowHandles {
-                    display_ptr: layer as usize,
-                    window_ptr: 0,
-                    is_x11: false,
-                }
-            },
-                
             (_, _) => {
-                eprintln!("Unsupported platform. Available platforms are: Linux Wayland, Linux X11, Windows, MacOS.");
+                eprintln!("Unsupported platform. Available platforms are: Linux Wayland, Linux X11, Windows.");
                 event_loop.exit();
                 return;
             }
