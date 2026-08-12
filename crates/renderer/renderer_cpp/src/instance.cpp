@@ -47,14 +47,15 @@ std::vector<const char*> getRequiredExtensions(bool is_x11) {
     std::vector<const char*> extensions = { VK_KHR_SURFACE_EXTENSION_NAME };
 
     #if defined(_WIN32)
-        extensions.push_back("VK_KHR_win32_surface");
+        extensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
     #elif defined(__APPLE__)
-        extensions.push_back("VK_MVK_macos_surface");
+        extensions.push_back(VK_EXT_METAL_SURFACE_EXTENSION_NAME);
+        extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
     #elif defined(__linux__)
         if (is_x11) 
-            extensions.push_back("VK_KHR_xlib_surface");
+            extensions.push_back(VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
         else 
-            extensions.push_back("VK_KHR_wayland_surface");
+            extensions.push_back(VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
     #endif
 
     return extensions;
@@ -75,6 +76,9 @@ void VulkanRenderer::createInstance(const WindowHandles& handles) {
     VkInstanceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     createInfo.pApplicationInfo = &appInfo;
+    #if defined(__APPLE__)
+        createInfo.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+    #endif
 
     std::vector<const char*> requiredExtensions = getRequiredExtensions(handles.is_x11);
     if (enableValidationLayers) {
