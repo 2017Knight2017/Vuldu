@@ -3,30 +3,6 @@
 #include "renderer.h" 
 #include "renderer/src/bridge.rs.h"
 
-void VulkanRenderer::createFramebuffers() {
-	this->swapChainFramebuffers.resize(this->swapChainImageViews.size());
-	for (size_t i = 0; i < this->swapChainImageViews.size(); i++) {
-	    std::array<VkImageView, 2> attachments = {
-	        this->swapChainImageViews[i],
-			this->depthImageView
-	    };
-
-	    VkFramebufferCreateInfo framebufferInfo{};
-	    framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-	    framebufferInfo.renderPass = this->renderPass;
-	    framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-		framebufferInfo.pAttachments = attachments.data();
-	    framebufferInfo.width = this->swapChainExtent.width;
-	    framebufferInfo.height = this->swapChainExtent.height;
-	    framebufferInfo.layers = 1;
-
-		VkResult framebufferResult = vkCreateFramebuffer(this->device, &framebufferInfo, nullptr, &this->swapChainFramebuffers[i]);
-	    if (framebufferResult != VK_SUCCESS) {
-	        throw std::runtime_error("failed to create framebuffer!");
-	    }
-	}
-}
-
 void VulkanRenderer::createCommandPool() {
 	QueueFamilyIndices queueFamilyIndices = findQueueFamilies(this->physicalDevice);
 
@@ -89,11 +65,11 @@ void VulkanRenderer::createSyncObjects() {
 	}
 }
 
-void VulkanRenderer::updateUniformBuffer(const UniformBufferObject* ubo_ptr, uint32_t currentImage) {
+void VulkanRenderer::updateUniformBuffer(const UniformBufferObject* ubo_ptr) {
 	if (ubo_ptr == nullptr) return;
-	memcpy(this->uniformBuffersMapped[currentImage], ubo_ptr, sizeof(UniformBufferObject));
+	memcpy(this->uniformBuffersMapped[this->currentFrame], ubo_ptr, sizeof(UniformBufferObject));
 	
-	auto* ubo = reinterpret_cast<UniformBufferObject*>(this->uniformBuffersMapped[currentImage]);
+	auto* ubo = reinterpret_cast<UniformBufferObject*>(this->uniformBuffersMapped[this->currentFrame]);
     ubo->proj[5] *= -1.0f;
     ubo->proj[0] *= -1.0f;
 }
@@ -137,10 +113,9 @@ void VulkanRenderer::startFrame(const UniformBufferObject* ubo_ptr) {
         throw std::runtime_error("failed to acquire swap chain image!");
     }
 
-	updateUniformBuffer(ubo_ptr, this->currentFrame);
+	updateUniformBuffer(ubo_ptr);
 
 	vkResetFences(this->device, 1, &this->inFlightFences[this->currentFrame]);
-
 	vkResetCommandBuffer(currentCommandBuffer, 0);
 
     VkCommandBufferBeginInfo beginInfo{};
@@ -151,21 +126,19 @@ void VulkanRenderer::startFrame(const UniformBufferObject* ubo_ptr) {
         throw std::runtime_error("Failed to begin recording command buffer!");
     }
 
-    VkRenderPassBeginInfo renderPassInfo{};
-    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    renderPassInfo.renderPass = this->renderPass;
-    renderPassInfo.framebuffer = this->swapChainFramebuffers[this->currentImageIndex];
-    renderPassInfo.renderArea.offset = {0, 0};
-    renderPassInfo.renderArea.extent = this->swapChainExtent;
-
-    std::array<VkClearValue, 2> clearValues{};
-    clearValues[0].color = {{0.1f, 0.1f, 0.1f, 1.0f}};
-    clearValues[1].depthStencil = {1.0f, 0};
-
-    renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-    renderPassInfo.pClearValues = clearValues.data();
-
-    vkCmdBeginRenderPass(currentCommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    changeImageLayout(
+        currentCommandBuffer, 
+        VK_IMAGE_LAYOUT_UNDEFINED, 
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        {&this->depthImage, 1} 
+    );
+    changeImageLayout(
+        currentCommandBuffer, 
+        VK_IMAGE_LAYOUT_UNDEFINED, 
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        {&this->swapChainImages[this->currentImageIndex], 1} 
+    );
+    beginRendering(currentCommandBuffer);
 
 	VkViewport viewport{};
     viewport.x = 0.0f;
@@ -225,41 +198,40 @@ void VulkanRenderer::drawObjects() {
 void VulkanRenderer::endFrame() {
 	VkCommandBuffer currentCommandBuffer = this->commandBuffers[this->currentFrame];
 
-    vkCmdEndRenderPass(currentCommandBuffer);
+    vkCmdEndRendering(currentCommandBuffer);
+    changeImageLayout(
+        currentCommandBuffer, 
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 
+        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+        {&this->swapChainImages[this->currentImageIndex], 1} 
+    );
 
     if (vkEndCommandBuffer(currentCommandBuffer) != VK_SUCCESS) {
         throw std::runtime_error("Failed to record command buffer!");
     }
 
+    VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-    VkSemaphore waitSemaphores[] = { this->imageAvailableSemaphores[this->currentFrame] };
-    VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
     submitInfo.waitSemaphoreCount = 1;
-    submitInfo.pWaitSemaphores = waitSemaphores;
+    submitInfo.pWaitSemaphores = &this->imageAvailableSemaphores[this->currentFrame];
     submitInfo.pWaitDstStageMask = waitStages;
-
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &currentCommandBuffer;
-
-    VkSemaphore signalSemaphores[] = { this->renderFinishedSemaphores[this->currentImageIndex] };
     submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = signalSemaphores;
+    submitInfo.pSignalSemaphores = &this->renderFinishedSemaphores[this->currentImageIndex];
 
-    vkResetFences(this->device, 1, &this->inFlightFences[currentFrame]);
-    if (vkQueueSubmit(this->graphicsQueue, 1, &submitInfo, this->inFlightFences[currentFrame]) != VK_SUCCESS) {
+    vkResetFences(this->device, 1, &this->inFlightFences[this->currentFrame]);
+    if (vkQueueSubmit(this->graphicsQueue, 1, &submitInfo, this->inFlightFences[this->currentFrame]) != VK_SUCCESS) {
         throw std::runtime_error("Failed to submit draw command buffer!");
     }
 
 	VkPresentInfoKHR presentInfo{};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = signalSemaphores;
-
-	VkSwapchainKHR swapChains[] = {this->swapChain};
+	presentInfo.pWaitSemaphores = &this->renderFinishedSemaphores[this->currentImageIndex];
 	presentInfo.swapchainCount = 1;
-	presentInfo.pSwapchains = swapChains;
+	presentInfo.pSwapchains = &this->swapChain;
 	presentInfo.pImageIndices = &this->currentImageIndex;
 	presentInfo.pResults = nullptr;  // Optional
 
@@ -313,4 +285,45 @@ void VulkanRenderer::drawLevel() {
 
         vkCmdDrawIndexed(currentCommandBuffer, this->levelIndexCount, 1, 0, 0, 0);
     }
+}
+
+void VulkanRenderer::beginRendering(VkCommandBuffer currentCommandBuffer) {
+    VkClearValue clearColor{{{0.1f, 0.1f, 0.1f, 1.0f}}};
+    VkClearValue clearDepth{{{1.0f, 0}}};
+
+    VkRenderingAttachmentInfo depthAttachment{};
+    depthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    depthAttachment.imageView = this->depthImageView;
+    depthAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	depthAttachment.resolveMode = VK_RESOLVE_MODE_NONE;
+	depthAttachment.resolveImageView = VK_NULL_HANDLE;
+	depthAttachment.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	depthAttachment.clearValue = clearDepth;
+
+	VkRenderingAttachmentInfo colorAttachment{};
+    colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+    colorAttachment.imageView = this->swapChainImageViews[this->currentImageIndex];
+	colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	colorAttachment.resolveMode = VK_RESOLVE_MODE_NONE;
+	colorAttachment.resolveImageView = VK_NULL_HANDLE;
+	colorAttachment.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	colorAttachment.clearValue = clearColor;
+
+    VkRenderingInfo renderingInfo{};
+    renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
+    renderingInfo.renderArea = {
+        {0, 0}, 
+        this->swapChainExtent
+    };
+    renderingInfo.layerCount = 1;
+    renderingInfo.viewMask = 0;
+    renderingInfo.colorAttachmentCount = 1;
+    renderingInfo.pColorAttachments = &colorAttachment;
+    renderingInfo.pDepthAttachment = &depthAttachment;
+
+    vkCmdBeginRendering(currentCommandBuffer, &renderingInfo);
 }

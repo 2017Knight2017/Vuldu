@@ -126,25 +126,13 @@ void VulkanRenderer::uploadTextureArray(
         );
     }
     VkCommandBuffer commandBuffer = beginSingleTimeCommands();
-    
-    std::vector<VkImageMemoryBarrier> preCopyBarriers(descriptor_count);
-    for (size_t i = 0; i < descriptor_count; i++) {
-        preCopyBarriers[i].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        preCopyBarriers[i].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        preCopyBarriers[i].newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        preCopyBarriers[i].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        preCopyBarriers[i].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        preCopyBarriers[i].image = this->textureImages[i];
-        preCopyBarriers[i].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        preCopyBarriers[i].subresourceRange.baseMipLevel = 0;
-        preCopyBarriers[i].subresourceRange.levelCount = 1;
-        preCopyBarriers[i].subresourceRange.baseArrayLayer = 0;
-        preCopyBarriers[i].subresourceRange.layerCount = 1;
-        preCopyBarriers[i].srcAccessMask = 0;
-        preCopyBarriers[i].dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    }
-    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 
-                         0, 0, nullptr, 0, nullptr, static_cast<uint32_t>(preCopyBarriers.size()), preCopyBarriers.data());
+
+    changeImageLayout(
+        commandBuffer, 
+        VK_IMAGE_LAYOUT_UNDEFINED, 
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
+        this->textureImages
+    );
 
     for (size_t i = 0; i < descriptor_count; i++) {
         const auto& desc = descriptors[i];
@@ -158,25 +146,13 @@ void VulkanRenderer::uploadTextureArray(
                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
     }
 
-    std::vector<VkImageMemoryBarrier> postCopyBarriers(descriptor_count);
-    for (size_t i = 0; i < descriptor_count; i++) {
-        postCopyBarriers[i].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        postCopyBarriers[i].oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        postCopyBarriers[i].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        postCopyBarriers[i].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        postCopyBarriers[i].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        postCopyBarriers[i].image = this->textureImages[i];
-        postCopyBarriers[i].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        postCopyBarriers[i].subresourceRange.baseMipLevel = 0;
-        postCopyBarriers[i].subresourceRange.levelCount = 1;
-        postCopyBarriers[i].subresourceRange.baseArrayLayer = 0;
-        postCopyBarriers[i].subresourceRange.layerCount = 1;
-        postCopyBarriers[i].srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        postCopyBarriers[i].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    }
-    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 
-                         0, 0, nullptr, 0, nullptr, static_cast<uint32_t>(postCopyBarriers.size()), postCopyBarriers.data());
-        
+    changeImageLayout(
+        commandBuffer, 
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
+        this->textureImages
+    );
+       
     endSingleTimeCommands(commandBuffer);
 
     for (size_t i = 0; i < descriptor_count; i++) {

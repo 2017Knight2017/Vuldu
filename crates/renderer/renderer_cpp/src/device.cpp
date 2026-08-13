@@ -127,16 +127,14 @@ void VulkanRenderer::createLogicalDevice() {
         queueCreateInfos.push_back(queueCreateInfo);
     }
 
-    //VkPhysicalDeviceDescriptorIndexingFeatures indexingFeatures{};
-    //indexingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
-    //indexingFeatures.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
-    //indexingFeatures.descriptorBindingPartiallyBound = VK_TRUE;
-    //indexingFeatures.descriptorBindingVariableDescriptorCount = VK_TRUE;
-    //indexingFeatures.runtimeDescriptorArray = VK_TRUE;
+    VkPhysicalDeviceVulkan13Features vulkan13Features{};
+    vulkan13Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+    vulkan13Features.synchronization2 = VK_TRUE;
+    vulkan13Features.dynamicRendering = VK_TRUE;
 
     VkPhysicalDeviceVulkan12Features vulkan12Features{};
     vulkan12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-    //vulkan12Features.pNext = &indexingFeatures;
+    vulkan12Features.pNext = &vulkan13Features;
     vulkan12Features.descriptorBindingVariableDescriptorCount = VK_TRUE;
     vulkan12Features.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
     vulkan12Features.descriptorBindingPartiallyBound = VK_TRUE;

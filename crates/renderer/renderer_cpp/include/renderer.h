@@ -41,7 +41,7 @@ struct SwapChainSupportDetails {
 };
 
 const std::vector<const char*> deviceExtensions = {
-    VK_KHR_SWAPCHAIN_EXTENSION_NAME
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 };
 
 const std::vector<const char*> validationLayers = {
@@ -105,9 +105,7 @@ private:
     VkExtent2D swapChainExtent{};
     std::vector<VkImage> swapChainImages;
     std::vector<VkImageView> swapChainImageViews;
-    std::vector<VkFramebuffer> swapChainFramebuffers;
 
-    VkRenderPass renderPass = VK_NULL_HANDLE;
     VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
     VkPipelineLayout spritePipelineLayout = VK_NULL_HANDLE;
     VkPipeline spritePipeline = VK_NULL_HANDLE;
@@ -175,11 +173,9 @@ private:
     void createLogicalDevice();
     void createSwapChain();
     void createImageViews();
-    void createRenderPass();
     void createDescriptorSetLayout();
     void createGraphicsPipeline();
     void createDepthResources();
-    void createFramebuffers();
     void createUniformBuffers();
     void createInstanceBuffers();
     void createDescriptorPool();
@@ -189,7 +185,7 @@ private:
     void createCommandBuffers();
     void createSyncObjects();
 
-    void updateUniformBuffer(const UniformBufferObject* ubo_ptr, uint32_t currentImage);
+    void updateUniformBuffer(const UniformBufferObject* ubo_ptr);
 
     void cleanupSwapChain();
 
@@ -205,6 +201,7 @@ private:
         VkImage& image, 
         VkDeviceMemory& imageMemory
     );
+    void beginRendering(VkCommandBuffer currentCommandBuffer);
     
     VkCommandBuffer beginSingleTimeCommands();
     void endSingleTimeCommands(VkCommandBuffer commandBuffer);

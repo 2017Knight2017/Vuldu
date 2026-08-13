@@ -21,7 +21,6 @@ void VulkanRenderer::initVulkan(const WindowHandles& handles, size_t window_raw_
     createLogicalDevice();
     createSwapChain();
     createImageViews();
-    createRenderPass();
     createDescriptorSetLayout();
     createGraphicsPipeline();
     createUniformBuffers();
@@ -30,7 +29,6 @@ void VulkanRenderer::initVulkan(const WindowHandles& handles, size_t window_raw_
     createDescriptorSets(); 
     createCommandPool();
     createDepthResources();
-    createFramebuffers();
     createTextureSamplers();
     createCommandBuffers();
     createSyncObjects();
@@ -44,7 +42,6 @@ void VulkanRenderer::recreateSwapChain() {
     createSwapChain();
     createImageViews();
     createDepthResources();
-    createFramebuffers();
 
     this->currentFrame = 0;
 }
@@ -53,11 +50,6 @@ void VulkanRenderer::cleanupSwapChain() {
     destroyResource(this->device, this->depthImageView, vkDestroyImageView);
     destroyResource(this->device, this->depthImage, vkDestroyImage);
     destroyResource(this->device, this->depthImageMemory, vkFreeMemory);
-
-    for (auto framebuffer : this->swapChainFramebuffers) {
-        vkDestroyFramebuffer(this->device, framebuffer, nullptr);
-    }
-    this->swapChainFramebuffers.clear();
 
     for (auto imageView : this->swapChainImageViews) {
         vkDestroyImageView(this->device, imageView, nullptr);
@@ -133,7 +125,6 @@ void VulkanRenderer::cleanup() {
     destroyResource(this->device, this->levelPipelineLayout, vkDestroyPipelineLayout);
     destroyResource(this->device, this->spritePipeline, vkDestroyPipeline);
     destroyResource(this->device, this->spritePipelineLayout, vkDestroyPipelineLayout);
-    destroyResource(this->device, this->renderPass, vkDestroyRenderPass);
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroyFence(this->device, this->inFlightFences[i], nullptr);
