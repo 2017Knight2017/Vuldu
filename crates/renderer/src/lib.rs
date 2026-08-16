@@ -1,6 +1,6 @@
 mod bridge; 
 
-pub use bridge::ffi::{WindowHandles, WindowSize, Vertex, UniformBufferObject, TextureDescriptor, ObjectInstance};
+pub use bridge::ffi::{WindowHandles, WindowSize, Vertex, UniformBufferObject, TextureDescriptor, ObjectInstance, UiInstance};
 use bridge::ffi::{VulkanRenderer, createRenderer, getMaxSky};
 use std::{pin::Pin, sync::OnceLock};
 use cxx::UniquePtr;
@@ -81,9 +81,26 @@ impl SafeRenderer {
         }
     }
 
+    pub fn update_ui_geometry(&mut self, vertices: &[Vertex], indices: &[u32]) {
+        unsafe {
+            self.pin_mut().updateUiGeometry(
+                vertices.as_ptr(),
+                vertices.len(),
+                indices.as_ptr(),
+                indices.len(),
+            );
+        }
+    }
+
     pub fn update_object_instances(&mut self, instances: &[ObjectInstance]) {
         unsafe {
             self.pin_mut().updateObjectInstances(instances.as_ptr(), instances.len());   
+        }
+    }
+
+    pub fn update_ui_instances(&mut self, instances: &[UiInstance]) {
+        unsafe {
+            self.pin_mut().updateUiInstances(instances.as_ptr(), instances.len());   
         }
     }
 
@@ -103,6 +120,10 @@ impl SafeRenderer {
 
     pub fn draw_objects(&mut self) {
         self.pin_mut().drawObjects();
+    }
+
+    pub fn draw_ui(&mut self) {
+        self.pin_mut().drawUi();
     }
 
     pub fn upload_texture_array(&mut self, descriptors: &[TextureDescriptor], all_pixels: &[u8], sky_widths: &[f32]) {

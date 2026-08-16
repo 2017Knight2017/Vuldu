@@ -22,9 +22,10 @@ void VulkanRenderer::initVulkan(const WindowHandles& handles, size_t window_raw_
     createSwapChain();
     createImageViews();
     createDescriptorSetLayout();
-    createGraphicsPipeline();
+    createPipelines();
     createUniformBuffers();
-    createInstanceBuffers();
+    createObjectInstanceBuffers();
+    createUiInstanceBuffers();
     createDescriptorPool();
     createDescriptorSets(); 
     createCommandPool();
@@ -92,20 +93,28 @@ void VulkanRenderer::cleanup() {
         if (this->uniformBuffersMapped[i] != nullptr) {
             vkUnmapMemory(this->device, this->uniformBuffersMemory[i]);
         }
-        if (this->instanceBuffersMapped[i] != nullptr) {
-            vkUnmapMemory(this->device, this->instanceBuffersMemory[i]);
+        if (this->objectInstanceBuffersMapped[i] != nullptr) {
+            vkUnmapMemory(this->device, this->objectInstanceBuffersMemory[i]);
+        }
+        if (this->uiInstanceBuffersMapped[i] != nullptr) {
+            vkUnmapMemory(this->device, this->uiInstanceBuffersMemory[i]);
         }
         vkDestroyBuffer(this->device, this->uniformBuffers[i], nullptr);
         vkFreeMemory(this->device, this->uniformBuffersMemory[i], nullptr);
-        vkDestroyBuffer(this->device, this->instanceBuffers[i], nullptr);
-        vkFreeMemory(this->device, this->instanceBuffersMemory[i], nullptr);
+        vkDestroyBuffer(this->device, this->objectInstanceBuffers[i], nullptr);
+        vkFreeMemory(this->device, this->objectInstanceBuffersMemory[i], nullptr);
+        vkDestroyBuffer(this->device, this->uiInstanceBuffers[i], nullptr);
+        vkFreeMemory(this->device, this->uiInstanceBuffersMemory[i], nullptr);
     }
     this->uniformBuffers.clear();
     this->uniformBuffersMemory.clear();
     this->uniformBuffersMapped.clear();
-    this->instanceBuffers.clear();
-    this->instanceBuffersMemory.clear();
-    this->instanceBuffersMapped.clear();
+    this->objectInstanceBuffers.clear();
+    this->objectInstanceBuffersMemory.clear();
+    this->objectInstanceBuffersMapped.clear();
+    this->uiInstanceBuffers.clear();
+    this->uiInstanceBuffersMemory.clear();
+    this->uiInstanceBuffersMapped.clear();
 
     destroyResource(this->device, this->descriptorPool, vkDestroyDescriptorPool);
     destroyResource(this->device, this->descriptorSetLayout, vkDestroyDescriptorSetLayout);
@@ -121,10 +130,16 @@ void VulkanRenderer::cleanup() {
     destroyResource(this->device, this->objectIndexBufferMemory, vkFreeMemory);
     destroyResource(this->device, this->objectVertexBuffer, vkDestroyBuffer);
     destroyResource(this->device, this->objectVertexBufferMemory, vkFreeMemory);
+    destroyResource(this->device, this->uiIndexBuffer, vkDestroyBuffer);
+    destroyResource(this->device, this->uiIndexBufferMemory, vkFreeMemory);
+    destroyResource(this->device, this->uiVertexBuffer, vkDestroyBuffer);
+    destroyResource(this->device, this->uiVertexBufferMemory, vkFreeMemory);
     destroyResource(this->device, this->levelPipeline, vkDestroyPipeline);
     destroyResource(this->device, this->levelPipelineLayout, vkDestroyPipelineLayout);
     destroyResource(this->device, this->spritePipeline, vkDestroyPipeline);
     destroyResource(this->device, this->spritePipelineLayout, vkDestroyPipelineLayout);
+    destroyResource(this->device, this->uiPipeline, vkDestroyPipeline);
+    destroyResource(this->device, this->uiPipelineLayout, vkDestroyPipelineLayout);
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroyFence(this->device, this->inFlightFences[i], nullptr);

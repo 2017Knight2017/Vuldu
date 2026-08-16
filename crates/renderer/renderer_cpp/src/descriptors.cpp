@@ -83,23 +83,43 @@ void VulkanRenderer::createUniformBuffers() {
     }
 }
 
-void VulkanRenderer::createInstanceBuffers() {
+void VulkanRenderer::createObjectInstanceBuffers() {
     VkDeviceSize bufferSize = sizeof(ObjectInstance) * MAX_OBJECTS;
 
-    this->instanceBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-    this->instanceBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
-    this->instanceBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
+    this->objectInstanceBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+    this->objectInstanceBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
+    this->objectInstanceBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         createBuffer(
             bufferSize, 
             VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
-            instanceBuffers[i], 
-            instanceBuffersMemory[i]
+            objectInstanceBuffers[i], 
+            objectInstanceBuffersMemory[i]
         );
 
-        vkMapMemory(this->device, this->instanceBuffersMemory[i], 0, bufferSize, 0, &instanceBuffersMapped[i]);
+        vkMapMemory(this->device, this->objectInstanceBuffersMemory[i], 0, bufferSize, 0, &objectInstanceBuffersMapped[i]);
+    }
+}
+
+void VulkanRenderer::createUiInstanceBuffers() {
+    VkDeviceSize bufferSize = sizeof(UiInstance) * MAX_UI;
+
+    this->uiInstanceBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+    this->uiInstanceBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
+    this->uiInstanceBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        createBuffer(
+            bufferSize, 
+            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
+            uiInstanceBuffers[i], 
+            uiInstanceBuffersMemory[i]
+        );
+
+        vkMapMemory(this->device, this->uiInstanceBuffersMemory[i], 0, bufferSize, 0, &uiInstanceBuffersMapped[i]);
     }
 }
 

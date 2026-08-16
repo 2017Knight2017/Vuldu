@@ -1,7 +1,7 @@
 use hecs::{CommandBuffer, Entity, World};
 use serde::Deserialize;
 use wad_parser::{Level, to_u64};
-use crate::{CurrentSector, DB, Health, Idle, InstantMoveIntent, MobjAi, MobjFlagCommand, MobjFlags, MobjType, MonsterRotation, PlayerMarker, Position, Random, SfxEvent, SkillLevel, SpriteAnimation, StateNum, Target, Traversal, WorldEvent, in_fov, p_check_melee_range, p_check_missile_range, p_check_sight, p_move, p_new_chase_dir, wake_up_monster};
+use crate::{CurrentSector, DB, Health, Idle, InstantMoveIntent, MobjAi, MobjFlagCommand, MobjFlags, MobjType, MonsterRotation, PlayerMarker, Position, Random, SfxEvent, SkillLevel, SpriteAnimation, StateNum, Target, Traversal, WorldEvent, in_fov, p_check_melee_range/*, p_check_missile_range*/, p_check_sight, p_move, p_new_chase_dir, wake_up_monster};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub enum ActionFunc {
@@ -241,9 +241,9 @@ pub fn check_sight_system(
                 continue;
             }
 
-            if !in_fov(&pos, &rot, &player_pos) {
-                continue;
-            }
+        	if !in_fov(&pos, &rot, &player_pos) {
+        	    continue;
+        	}
 
             if p_check_sight( 
 				pos, 
@@ -358,27 +358,26 @@ pub fn chase(
         }
     }
 
-    let mut check_missile = true;
-
-    if let Some(missile_state) = mobj_info.missile_state {
-        if game_skill != SkillLevel::Nightmare && !fast_monsters && rot.move_count != 0 {
-            check_missile = false;
-        }
-
-        if check_missile && p_check_missile_range(
-			ent,
-			pos, 
-			mobj_type, 
-			target_pos, 
-			random, 
-			mobj_info.melee_state.is_none(),
-			mobj_flag_buffer
-		) {
-			set_mobj_state(ent, ai, anim, missile_state, action_buffer, 0);
-			mobj_flag_buffer.push(MobjFlagCommand::Add { ent, flag: MobjFlags::JUST_ATTACKED }); 
-            return;
-        }
-    }
+    //let mut check_missile = true;
+	//
+    //if let Some(missile_state) = mobj_info.missile_state {
+    //    if game_skill != SkillLevel::Nightmare && !fast_monsters && rot.move_count != 0 {
+    //        check_missile = false;
+    //    }
+	//
+    //    if check_missile && p_check_missile_range(
+	//		ent,
+	//		pos, 
+	//		mobj_type, 
+	//		target_pos, 
+	//		random, 
+	//		mobj_info.melee_state.is_none(),
+	//		mobj_flag_buffer
+	//	) {
+	//		set_mobj_state(ent, ai, anim, missile_state, action_buffer, 0);
+    //        return;
+    //    }
+    //}
 
     rot.move_count -= 1;
     if rot.move_count < 0 || !p_move(

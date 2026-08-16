@@ -76,6 +76,11 @@ impl Wad {
             maps.push(map);
         }
 
+        //println!("{}, {}, {}, {}, {}, {}", stcfncnt, stcnt, mcnt, wilvcnt, wicnt, amcnt);
+        // Doom    : 64, 88, 46, 36, 100, 11
+        // Doom 2  : 64, 88, 45, 32, 36, 11
+        // TNT     : 64, 88, 45, 32, 36, 11
+        // Plutonia: 64, 88, 45, 32, 36, 11
         Ok((Wad { data, dir_offset, num_lumps }, parsed_lumps, maps))
     }
 }

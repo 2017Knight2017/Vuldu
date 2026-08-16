@@ -10,6 +10,8 @@
     #include <windows.h>
 
     #define VK_USE_PLATFORM_WIN32_KHR
+#elif defined(__APPLE__)
+    #define VK_USE_PLATFORM_METAL_EXT
 #elif defined(__linux__)
     #define VK_USE_PLATFORM_WAYLAND_KHR
     #define VK_USE_PLATFORM_XLIB_KHR
@@ -46,6 +48,9 @@ std::vector<const char*> getRequiredExtensions(bool is_x11) {
 
     #if defined(_WIN32)
         extensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+    #elif defined(__APPLE__)
+        extensions.push_back(VK_EXT_METAL_SURFACE_EXTENSION_NAME);
+        extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
     #elif defined(__linux__)
         if (is_x11) 
             extensions.push_back(VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
@@ -71,6 +76,9 @@ void VulkanRenderer::createInstance(const WindowHandles& handles) {
     VkInstanceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     createInfo.pApplicationInfo = &appInfo;
+    #if defined(__APPLE__)
+        createInfo.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+    #endif
 
     std::vector<const char*> requiredExtensions = getRequiredExtensions(handles.is_x11);
     if (enableValidationLayers) {
@@ -105,6 +113,11 @@ void VulkanRenderer::createSurface(const WindowHandles& handles) {
         createInfo.hinstance = reinterpret_cast<HINSTANCE>(handles.display_ptr);
         createInfo.hwnd = reinterpret_cast<HWND>(handles.window_ptr);
         surfaceResult = vkCreateWin32SurfaceKHR(this->instance, &createInfo, nullptr, &this->surface);
+    #elif defined(__APPLE__)
+        VkMetalSurfaceCreateInfoEXT createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT;
+        createInfo.pLayer = reinterpret_cast<const CAMetalLayer*>(handles.window_ptr);
+        surfaceResult = vkCreateMetalSurfaceEXT(this->instance, &createInfo, nullptr, &this->surface);
     #elif defined(__linux__)
         if (handles.is_x11) {
             VkXlibSurfaceCreateInfoKHR createInfo{};

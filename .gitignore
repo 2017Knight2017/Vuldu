@@ -6,3 +6,9 @@ compile_commands.json
 doomdata.h
 assets/*.WAD
 assets/*.wad
+level_vert.h
+level_frag.h
+sprite_vert.h
+sprite_frag.h
+ui_vert.h
+ui_frag.h

@@ -1,5 +1,6 @@
 #pragma once
 #include <vulkan/vulkan.h>
+#include <vulkan/vulkan_beta.h>
 #include <memory>
 #include <vector>
 #include <optional>
@@ -11,19 +12,18 @@ const bool enableValidationLayers = false;
 #endif
 
 inline const uint32_t MAX_FRAMES_IN_FLIGHT = 2;
-inline const uint32_t MAX_TEXTURES = 8192;  // Maximal amount of textures on a level
+inline const uint32_t MAX_TEXTURES = 8192;
 inline const uint32_t MAX_SKY = 16;  
 inline const uint32_t MAX_PAL = 14;
-inline const uint32_t MAX_LIGHTLEVEL = 32;
 inline const uint32_t MAX_OBJECTS = 100000;
-inline const uint32_t RGBA = 4;
-inline const uint32_t COLORS_IN_PALETTE = 256;
+inline const uint32_t MAX_UI = 256;
 
 struct WindowHandles;
 struct Vertex;
 struct UniformBufferObject;
 struct TextureDescriptor;
 struct ObjectInstance;
+struct UiInstance;
 
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily;
@@ -42,6 +42,9 @@ struct SwapChainSupportDetails {
 
 const std::vector<const char*> deviceExtensions = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+#if defined(__APPLE__)
+    VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME
+#endif
 };
 
 const std::vector<const char*> validationLayers = {
@@ -70,7 +73,9 @@ public:
     void recreateSwapChain();
     void updateLevelGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint32_t* indices_ptr, size_t index_count);
     void updateObjectGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint32_t* indices_ptr, size_t index_count);
+    void updateUiGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint32_t* indices_ptr, size_t index_count);
     void updateObjectInstances(const ObjectInstance* instances_ptr, size_t instances_count);
+    void updateUiInstances(const UiInstance* instances_ptr, size_t instances_count);
     void uploadPalettes(const float* palettes_ptr, size_t colormap_bytes_count);
     void uploadColormap(const uint8_t* colormap_ptr, size_t colormap_bytes_count);
     void uploadTextureArray(
@@ -86,8 +91,9 @@ public:
     void setSkyIndex(uint32_t idx);
     void startFrame(const UniformBufferObject* ubo_ptr);
     void endFrame();
-    void drawObjects();
     void drawLevel();
+    void drawObjects();
+    void drawUi();
     
 private:
     size_t window_raw_ptr = 0;
@@ -111,6 +117,8 @@ private:
     VkPipeline spritePipeline = VK_NULL_HANDLE;
     VkPipelineLayout levelPipelineLayout = VK_NULL_HANDLE;
     VkPipeline levelPipeline = VK_NULL_HANDLE;
+    VkPipelineLayout uiPipelineLayout = VK_NULL_HANDLE;
+    VkPipeline uiPipeline = VK_NULL_HANDLE;
 
     VkCommandPool commandPool = VK_NULL_HANDLE;
     std::vector<VkCommandBuffer> commandBuffers;
@@ -121,10 +129,15 @@ private:
     std::vector<VkDeviceMemory> uniformBuffersMemory;
     std::vector<void*> uniformBuffersMapped;
 
-    std::vector<VkBuffer> instanceBuffers;
-    std::vector<VkDeviceMemory> instanceBuffersMemory;
-    std::vector<void*> instanceBuffersMapped;
+    std::vector<VkBuffer> objectInstanceBuffers;
+    std::vector<VkDeviceMemory> objectInstanceBuffersMemory;
+    std::vector<void*> objectInstanceBuffersMapped;
     uint32_t activeObjectsCount = 0;
+
+    std::vector<VkBuffer> uiInstanceBuffers;
+    std::vector<VkDeviceMemory> uiInstanceBuffersMemory;
+    std::vector<void*> uiInstanceBuffersMapped;
+    uint32_t activeUiCount = 0;
 
     VkBuffer levelVertexBuffer = VK_NULL_HANDLE;
     VkDeviceMemory levelVertexBufferMemory = VK_NULL_HANDLE;
@@ -139,6 +152,13 @@ private:
     VkDeviceMemory objectIndexBufferMemory = VK_NULL_HANDLE;
     uint32_t objectVertexCount = 0;
     uint32_t objectIndexCount = 0;
+
+    VkBuffer uiVertexBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory uiVertexBufferMemory = VK_NULL_HANDLE;
+    VkBuffer uiIndexBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory uiIndexBufferMemory = VK_NULL_HANDLE;
+    uint32_t uiVertexCount = 0;
+    uint32_t uiIndexCount = 0;
 
     std::vector<VkImage> textureImages;
     std::vector<VkDeviceMemory> textureImageMemories;
@@ -174,10 +194,11 @@ private:
     void createSwapChain();
     void createImageViews();
     void createDescriptorSetLayout();
-    void createGraphicsPipeline();
+    void createPipelines();
     void createDepthResources();
     void createUniformBuffers();
-    void createInstanceBuffers();
+    void createObjectInstanceBuffers();
+    void createUiInstanceBuffers();
     void createDescriptorPool();
     void createDescriptorSets();
     void createTextureSamplers();
@@ -206,6 +227,35 @@ private:
     VkCommandBuffer beginSingleTimeCommands();
     void endSingleTimeCommands(VkCommandBuffer commandBuffer);
     VkFormat findDepthFormat();
+
+    void createSpritePipeline(
+    	VkPipelineInputAssemblyStateCreateInfo* inputAssembly,
+    	VkPipelineViewportStateCreateInfo* viewportState,
+    	VkPipelineRasterizationStateCreateInfo* rasterizer,
+    	VkPipelineMultisampleStateCreateInfo* multisampling,
+    	VkPipelineDepthStencilStateCreateInfo* depthStencil,
+    	VkPipelineColorBlendStateCreateInfo* colorBlending,
+    	VkPipelineDynamicStateCreateInfo* dynamicState,
+    	VkPipelineRenderingCreateInfo* renderingInfo
+    );
+    void createLevelPipeline(
+    	VkPipelineInputAssemblyStateCreateInfo* inputAssembly,
+    	VkPipelineViewportStateCreateInfo* viewportState,
+    	VkPipelineRasterizationStateCreateInfo* rasterizer,
+    	VkPipelineMultisampleStateCreateInfo* multisampling,
+    	VkPipelineDepthStencilStateCreateInfo* depthStencil,
+    	VkPipelineColorBlendStateCreateInfo* colorBlending,
+    	VkPipelineDynamicStateCreateInfo* dynamicState,
+    	VkPipelineRenderingCreateInfo* renderingInfo
+    );
+    void createUiPipeline(
+    	VkPipelineInputAssemblyStateCreateInfo* inputAssembly,
+    	VkPipelineViewportStateCreateInfo* viewportState,
+    	VkPipelineRasterizationStateCreateInfo* rasterizer,
+    	VkPipelineMultisampleStateCreateInfo* multisampling,
+    	VkPipelineDynamicStateCreateInfo* dynamicState,
+    	VkPipelineRenderingCreateInfo* renderingInfo
+    );
 
     bool isDeviceSuitable(VkPhysicalDevice device);
     QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);

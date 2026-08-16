@@ -1,11 +1,8 @@
 #pragma once
 #include <vulkan/vulkan_core.h>
-#include <vector>
 #include <span>
-#include <string>
 
-std::vector<char> readFile(const std::string& filename);
-VkShaderModule createShaderModule(VkDevice device, const std::vector<char>& code);
+VkShaderModule createShaderModule(VkDevice device, std::span<const uint32_t> code);
 uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties);
 void createImageView(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, VkImageView* dstView);
 void changeImageLayout(

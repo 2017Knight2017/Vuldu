@@ -1,7 +1,7 @@
-use crate::{NUMAMMO, NUMCARDS, NUMWEAPONS, PlayerRotation, PlayerShoot, PlayerState, SfxEvent, Velocity};
+use crate::{CurrentSector, NUMAMMO, NUMCARDS, NUMWEAPONS, PlayerMarker, PlayerRotation, PlayerShoot, PlayerState, Position, SfxEvent, Velocity};
 use std::f64::consts::TAU;
 use hecs::{CommandBuffer, Entity, World};
-use wad_parser::to_u64;
+use wad_parser::{Level, to_u64};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PlayerCamera {
@@ -95,5 +95,21 @@ pub fn handle_rotation_input(world: &World, input: &PlayerInput) {
 
         rotation.prev_angle = rotation.angle;
         rotation.angle = rotation.angle.wrapping_add_signed(angle_delta);
+    }
+}
+
+pub fn apply_player_movement_system(world: &World, map: &Level) {
+    let mut query = world
+        .query::<(&mut Position, &Velocity, &mut CurrentSector)>()
+        .with::<&PlayerMarker>();
+    for (pos, velocity, current_sector) in query.iter() {
+        pos.prev_x = pos.x;
+        pos.prev_y = pos.y;
+	    pos.prev_z = pos.z;
+        pos.x += velocity.x;
+        pos.y += velocity.y;
+        pos.z += velocity.z;
+
+        current_sector.0 = map.get_sector_by_pos(pos.x, pos.z);
     }
 }

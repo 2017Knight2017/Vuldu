@@ -1,10 +1,10 @@
 use hecs::World;
-use renderer::{MAX_SKY, ObjectInstance, SafeRenderer, TextureDescriptor, UniformBufferObject, Vertex};
+use renderer::{MAX_SKY, ObjectInstance, SafeRenderer, TextureDescriptor, UiInstance, UniformBufferObject, Vertex};
 use engine::{CurrentSector, EYEHEIGHT, MonsterRotation, PlayerMarker, PlayerRotation, Position, SpriteAnimation, pack_sprite_u64, point_to_angle};
 use glam::{Mat4, Vec3};
 use micropool::iter::*;
 use rustc_hash::FxHashMap;
-use wad_parser::{GpuVertex, Level, LineId, SectorState, TextureId, WadManager, construct_map_name};
+use wad_parser::{DoomPicture, GpuVertex, Level, LineId, NUM_UI, SectorState, TextureId, Ui, WadManager, construct_map_name};
 use winit::window::Window;
 use std::f64::consts::TAU;
 
@@ -13,6 +13,7 @@ const FOV_ANGLE: f32 = 90.0;
 pub struct GraphicsContext {
     pub renderer: Option<SafeRenderer>,
     pub data: FxHashMap<u64, (TextureId, u32, u32, bool)>,
+    pub ui: [Option<(TextureId, u32, u32)>; NUM_UI],
     pub offsets: Vec<(i16, i16)>,
     pub view_matrix: Mat4,
 }
@@ -22,6 +23,7 @@ impl GraphicsContext {
 		Self { 
 			renderer: None, 
             data: FxHashMap::default(), 
+            ui: [None; NUM_UI],
             offsets: Vec::new(), 
             view_matrix: Mat4::default()
 		}
@@ -29,20 +31,28 @@ impl GraphicsContext {
 
 	pub fn load_and_upload_textures(&mut self, renderer: &mut SafeRenderer, wad_manager: &WadManager, map_num: u8) -> Result<(), String> {
         let max_sky = *MAX_SKY.get().unwrap();
+
         let (wall_names, wall_pics, sky_names, sky_pics, sky_widths) = 
             wad_manager.bake_walls(max_sky).map_err(|e| format!("Wall baking failed: {e}"))?;
+        println!("[load_and_upload_textures] walls are baked");
 
         let (flat_names, flat_pics) = 
             wad_manager.bake_flats().map_err(|e| format!("Flat baking failed: {e}"))?;
+        println!("[load_and_upload_textures] flats are baked");
 
         let (obj_names, obj_pics) = 
             wad_manager.bake_objects().map_err(|e| format!("Object baking failed: {e}"))?;
+        println!("[load_and_upload_textures] objects are baked");
 
-        let total_textures = wall_pics.len() + flat_pics.len() + obj_pics.len() + max_sky;
+        let (ui_shown, ui_pics) = wad_manager.bake_ui();
+        println!("[load_and_upload_textures] ui is baked");
+
+        let total_textures = wall_pics.len() + flat_pics.len() + obj_pics.len() + ui_pics.len() + max_sky;
         let total_pixels = 1 + sky_pics.iter()
             .chain(&obj_pics)
             .chain(&wall_pics)
             .chain(&flat_pics)
+            .chain(&ui_pics)
             .map(|p| p.raw_pixels.len())
             .sum::<usize>();
 
@@ -50,8 +60,11 @@ impl GraphicsContext {
         let mut descriptors = Vec::with_capacity(total_textures);
         let mut current_gpu_id = 0;
 
-        let mut sky_data: Vec<_> = sky_names.iter().zip(sky_pics).zip(sky_widths)
-            .map(|((n, p), w)| (n, p, w)).collect();
+        let mut sky_data: Vec<(&u64, DoomPicture, f32)> = sky_names.iter()
+            .zip(sky_pics)
+            .zip(sky_widths)
+            .map(|((n, p), w)| (n, p, w))
+            .collect();
         sky_data.sort_by_key(|trio| trio.0);
         current_gpu_id += max_sky as u32;
 
@@ -92,7 +105,7 @@ impl GraphicsContext {
             current_gpu_id += 1;
         }
 
-        for (tex_names, pics) in [(&wall_names, &wall_pics), (&flat_names, &flat_pics)] {
+        for (tex_names, pics) in [(wall_names, wall_pics), (flat_names, flat_pics)] {
             for (idx, pic) in pics.iter().enumerate() {
                 let name = tex_names[idx];
                 self.data.insert(name, (TextureId(current_gpu_id), pic.width, pic.height, false));
@@ -102,6 +115,23 @@ impl GraphicsContext {
                 all_pixels.extend_from_slice(&pic.raw_pixels);
                 current_gpu_id += 1;
             }
+        }
+
+        let mut ui_insert_idx = 0;
+        for pic in ui_pics {
+            descriptors.push(TextureDescriptor {
+                width: pic.width, 
+                height: pic.height, 
+                pixel_offset: all_pixels.len(),
+            });
+            all_pixels.extend_from_slice(&pic.raw_pixels);
+
+            while !ui_shown[ui_insert_idx] { ui_insert_idx += 1; }
+            let tex_id = TextureId(current_gpu_id);
+            self.ui[ui_insert_idx] = Some((tex_id, pic.width, pic.height));
+
+            ui_insert_idx += 1;
+            current_gpu_id += 1;
         }
 
         renderer.upload_texture_array(&descriptors, &all_pixels, &sky_widths_no_name);
@@ -122,7 +152,8 @@ impl GraphicsContext {
         println!("Walls geometry has been built");
         let (flat_vertices, flat_indices, sector_lines) = level.get_flats_vertices(&self.data);
         println!("Flats geometry has been built");
-        let (obj_vertices, obj_indices) = level.get_objects_vertices();
+        let (obj_gpu_vertices, obj_indices) = level.get_objects_vertices();
+        let (ui_gpu_vertices, ui_indices) = level.get_ui_vertices();
 
         let mut level_vertices: Vec<Vertex> = wall_vertices.into_iter().map(|v| vertex_to_vertex(v)).collect();
         let mut level_indices = wall_indices;
@@ -133,17 +164,21 @@ impl GraphicsContext {
             level_indices.push(vertex_offset + idx);
         }
 
-        let object_vertices: Vec<Vertex> = obj_vertices.into_iter().map(|v| vertex_to_vertex(v)).collect();
+        let obj_vertices: Vec<Vertex> = obj_gpu_vertices.into_iter().map(|v| vertex_to_vertex(v)).collect();
+        let ui_vertices: Vec<Vertex> = ui_gpu_vertices.into_iter().map(|v| vertex_to_vertex(v)).collect();
 
         renderer.update_object_instances(&[]);
+        renderer.update_ui_instances(&[]);
         renderer.update_level_geometry(&level_vertices, &level_indices);
-        renderer.update_object_geometry(&object_vertices, &obj_indices);
+        renderer.update_object_geometry(&obj_vertices, &obj_indices);
+        renderer.update_ui_geometry(&ui_vertices, &ui_indices);
 
         sector_lines
     }
 
     pub fn render(&mut self, window: &Window, world: &World, level: &Level, alpha: f32) {
-        let instances = self.collect_object_instances(world, &level.state.sectors, alpha);
+        let obj_instances = self.collect_object_instances(world, &level.state.sectors, alpha);
+        let ui_instances = self.collect_ui_instances();
         
         let size = window.inner_size();
         if size.width == 0 || size.height == 0 {
@@ -162,15 +197,17 @@ impl GraphicsContext {
         };
 
         if let Some(renderer) = &mut self.renderer {
-            renderer.update_object_instances(&instances);
+            renderer.update_ui_instances(&ui_instances);
+            renderer.update_object_instances(&obj_instances);
             renderer.start_frame(&ubo);
             renderer.draw_level();
             renderer.draw_objects();
+            renderer.draw_ui();
             renderer.end_frame();
         }
     }
 
-	pub fn collect_object_instances(&self, world: &World, sectors: &[SectorState], alpha: f32) -> Vec<ObjectInstance> {
+	fn collect_object_instances(&self, world: &World, sectors: &[SectorState], alpha: f32) -> Vec<ObjectInstance> {
 	    let mut player_pos = Vec3::ZERO;
 	
 	    for pos in world.query::<&Position>().with::<&PlayerMarker>().iter() {
@@ -242,7 +279,7 @@ impl GraphicsContext {
 					sprite_size: [final_width, tex_height as f32],
 	    	        light_level: modern_light,
 	    	        texture_id: tex_id.0,
-	    	        colormap_idx: colormap_idx,
+	    	        colormap_idx,
 	    	    }
 	    	})
 			.collect_per_thread::<Vec<ObjectInstance>>();
@@ -257,6 +294,17 @@ impl GraphicsContext {
 
 	    instances
 	}
+
+    fn collect_ui_instances(&self) -> Vec<UiInstance> {
+        // test
+        let (tex_id, width, height) = self.ui[Ui::STBAR as usize].unwrap();
+
+        vec![UiInstance {
+            pos: [1.0, 1.0],
+            sprite_size: [width as f32, height as f32],
+            texture_id: tex_id.0
+        }]
+    }
 }
 
 fn register_sprite(

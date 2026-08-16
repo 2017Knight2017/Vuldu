@@ -23,6 +23,9 @@ use raw_window_handle::{HasDisplayHandle, HasWindowHandle, RawDisplayHandle, Raw
 use clap::Parser;
 use std::time::Instant;
 
+#[cfg(target_os = "macos")]
+use objc2::{msg_send, runtime::AnyObject};
+
 const TICKRATE: u32 = 35;
 const TICK_TIME: f32 = 1.0 / TICKRATE as f32;
 
@@ -80,8 +83,8 @@ impl GameContext {
         check_sound_system(&self.world, &mut self.level, random, &mut self.command_buffer,
             &mut self.sound_targets, &mut self.traversal, &mut audio.buffer, &mut self.action_buffer);
 
-        check_sight_system(&self.world, &self.level, &mut self.traversal, random, 
-            &mut self.command_buffer, &mut audio.buffer, &mut self.action_buffer);
+        //check_sight_system(&self.world, &self.level, &mut self.traversal, random, 
+        //    &mut self.command_buffer, &mut audio.buffer, &mut self.action_buffer);
 
         self.flush_command_buffer();
 
@@ -187,8 +190,28 @@ impl ApplicationHandler for App {
                     window_ptr: w.hwnd.get() as usize,
                     is_x11: false,
                 },
+            #[cfg(target_os = "macos")]
+            (RawDisplayHandle::AppKit(_), RawWindowHandle::AppKit(w)) => {
+                let view_ptr = w.ns_view.as_ptr() as *mut AnyObject;
+
+                let layer_class = objc2::runtime::AnyClass::get(c"CAMetalLayer")
+                    .expect("CAMetalLayer class not found");
+
+                let layer: *mut AnyObject = unsafe { msg_send![layer_class, layer] };
+                
+                unsafe {
+                    let _: () = msg_send![view_ptr, setLayer: layer];
+                    let _: () = msg_send![view_ptr, setWantsLayer: true];
+                }
+
+                WindowHandles {
+                    display_ptr: 0,
+                    window_ptr: layer as usize,
+                    is_x11: false,
+                }
+            },
             (_, _) => {
-                eprintln!("Unsupported platform. Available platforms are: Linux Wayland, Linux X11, Windows.");
+                eprintln!("Unsupported platform. Available platforms are: Linux Wayland, Linux X11, Windows, MacOS.");
                 event_loop.exit();
                 return;
             }
@@ -320,13 +343,6 @@ fn get_sky_texture_index(map: u8) -> u32 {
 
 fn main() -> Result<(), String> {
     let mut wad_manager = WadManager::new();
-
-    //wad_manager.add_wad("assets/PLUTONIA.WAD")?;
-    //wad_manager.add_wad("assets/test.wad")?;
-    //wad_manager.add_wad("assets/oku2v31.wad")?;
-    //wad_manager.add_wad("assets/nuts.wad")?;
-    //wad_manager.add_wad("assets/Sunder 2512.wad")?;
-    //wad_manager.add_wad("assets/HR.WAD")?;
 
     let args = Args::parse();
 

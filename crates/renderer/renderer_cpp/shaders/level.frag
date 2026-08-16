@@ -3,6 +3,7 @@
 #extension GL_EXT_shader_8bit_storage : require
 
 layout(binding = 0) uniform UniformBufferObject {
+    mat4 model;
     mat4 view;
     mat4 proj;
 } ubo;
@@ -54,7 +55,7 @@ void main() {
     
     // sky walls or sky ceilings
     } else if (fragTexId == 65534 || fragTexId == 65533) {
-        vec3 forward = normalize(vec3(ubo.proj[0][2], ubo.proj[1][2], ubo.proj[2][2]));
+        vec3 forward = normalize(vec3(ubo.view[0][2], ubo.view[1][2], ubo.view[2][2]));
         float cameraYaw = atan(forward.x, forward.z);
 
         float widthFactor = 1024.0 / lc.skyWidth;

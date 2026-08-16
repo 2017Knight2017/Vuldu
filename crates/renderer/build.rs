@@ -43,6 +43,25 @@ fn main() {
     let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap();
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
     match target_os.as_str() {
+        "macos" => {            
+            if profile == "debug" {
+                println!("cargo:rustc-link-lib=vulkan");
+            } else {
+                let moltenvk_path = PathBuf::from(&manifest_dir)
+                    .join("renderer_cpp")
+                    .join("third_party")
+                    .join("moltenvk")
+                    .join("lib");
+
+                println!("cargo:rustc-link-search=native={}", moltenvk_path.display());
+                println!("cargo:rustc-link-lib=static=MoltenVK");
+
+                println!("cargo:rustc-link-lib=framework=Metal");
+                println!("cargo:rustc-link-lib=framework=Foundation");
+                println!("cargo:rustc-link-lib=framework=QuartzCore");
+                println!("cargo:rustc-link-lib=framework=IOSurface");
+            }
+        }
         "windows" => {
             let vulkan_lib_path = PathBuf::from(&manifest_dir)
                 .join("renderer_cpp")

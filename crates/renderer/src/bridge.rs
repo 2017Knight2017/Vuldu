@@ -36,6 +36,12 @@ pub(crate) mod ffi {
         pub colormap_idx: u32,
     }
 
+    pub struct UiInstance {
+        pub pos: [f32; 2],
+        pub sprite_size: [f32; 2],
+        pub texture_id: u32,
+    }
+
     pub struct TextureDescriptor {
         pub width: u32,
         pub height: u32,
@@ -60,9 +66,12 @@ pub(crate) mod ffi {
         fn endFrame(self: Pin<&mut VulkanRenderer>);
         fn drawLevel(self: Pin<&mut VulkanRenderer>);
         fn drawObjects(self: Pin<&mut VulkanRenderer>);
+        fn drawUi(self: Pin<&mut VulkanRenderer>);
         unsafe fn updateLevelGeometry(self: Pin<&mut VulkanRenderer>, vertices_ptr: *const Vertex, vertex_count: usize, indices_ptr: *const u32, index_count: usize);
         unsafe fn updateObjectGeometry(self: Pin<&mut VulkanRenderer>, vertices_ptr: *const Vertex, vertex_count: usize, indices_ptr: *const u32, index_count: usize);
+        unsafe fn updateUiGeometry(self: Pin<&mut VulkanRenderer>, vertices_ptr: *const Vertex, vertex_count: usize, indices_ptr: *const u32, index_count: usize);
         unsafe fn updateObjectInstances(self: Pin<&mut VulkanRenderer>, instances_ptr: *const ObjectInstance, instances_count: usize);
+        unsafe fn updateUiInstances(self: Pin<&mut VulkanRenderer>, instances_ptr: *const UiInstance, instances_count: usize);
         unsafe fn uploadPalettes(self: Pin<&mut VulkanRenderer>, palettes_ptr: *const f32, palette_channels_count: usize);
         unsafe fn uploadColormap(self: Pin<&mut VulkanRenderer>, colormap_ptr: *const u8, colormap_bytes_count: usize);
         unsafe fn uploadTextureArray(self: Pin<&mut VulkanRenderer>, descriptors: *const TextureDescriptor, descriptor_count: usize, all_pixels: *const u8, all_pixels_count: usize, sky_widths: *const f32, sky_widths_count: usize);

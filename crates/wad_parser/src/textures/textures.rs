@@ -160,12 +160,25 @@ pub static SPRITE_NAMES: Map<i16, Option<&'static str>> = phf_map! {
 };
 
 impl WadManager {
-	pub fn bake_walls(&self, max_sky: usize) -> Result<(Vec<u64>, Vec<DoomPicture>, Vec<u64>, Vec<DoomPicture>, Vec<f32>), String> {
+	pub fn bake_walls(&self, max_sky: usize) -> 
+		Result<(Vec<u64>, Vec<DoomPicture>, Vec<u64>, Vec<DoomPicture>, Vec<f32>), String> 
+	{
 		let all_patchnames_raw = self.get_data(b"PNAMES")?;
 		let patch_names: Vec<&[u8]> = all_patchnames_raw.get(4..)
 			.ok_or_else(|| "Failed to get PNAMES data".to_string())?
 			.chunks_exact(8)
 			.collect();
+
+		let patches = patch_names
+		    .into_par_iter()
+			.map(|name| {
+				let data = self.get_data(name);
+				match data {
+					Ok(data) => decode_column_picture(&data, name),
+					Err(err) => Err(err)
+				}
+			})
+		    .collect::<Result<Vec<DoomPicture>, String>>()?;
 
 		let mut texture_lumps = Vec::new();
     	let texture1_raw = self.get_data(b"TEXTURE1")?;
@@ -176,16 +189,6 @@ impl WadManager {
     	    let offsets2 = parse_texture_header(&texture2_raw, "TEXTURE2")?;
     	    texture_lumps.push((texture2_raw, offsets2));
     	}
-
-		let sky_names = [
-			to_u64(b"RSKY1"),
-			to_u64(b"RSKY1"),
-			to_u64(b"RSKY2"),
-			to_u64(b"SKY1"),
-			to_u64(b"SKY2"),
-			to_u64(b"SKY3"),
-			to_u64(b"SKY4")
-		];
 
 		let mut all_map_textures = Vec::new();
     	for (texture_raw, offsets) in &texture_lumps {
@@ -199,50 +202,36 @@ impl WadManager {
 
 		println!("[bake_walls] preparation is done");
 
-		let cached_patches = patch_names
-		    .par_iter()
-			.map(|name| {
-				let data = self.get_data(name);
-				match data {
-					Ok(data) => decode_column_picture(&data, name),
-					Err(err) => Err(err)
-				}
-			})
-		    .collect::<Result<Vec<DoomPicture>, String>>()?;
-
-		println!("[bake_walls] cached_patches are filled");
-
-		let baked_results: Vec<(u64, DoomPicture)> = all_map_textures
+		let baked_results: Vec<([u8; 8], DoomPicture)> = all_map_textures
         	.into_par_iter()
         	.map_init(|| Vec::with_capacity(256 * 256),
 				|thread_local_buffer, map_texture| {
     		    let width = map_texture.width as usize;
     		    let height = map_texture.height as usize;
-    		    let total_pixels = width * height;
             	
-            	thread_local_buffer.resize(total_pixels, 0xFF);
+            	thread_local_buffer.resize(width * height, 0xFF);
 			
     		    for wad_patch in &map_texture.patches {
 				    let patch_idx = wad_patch.patch as usize;
-				    if patch_idx >= cached_patches.len() { continue; }
+				    if patch_idx >= patches.len() { continue; }
 
-				    let patch_pic = &cached_patches[patch_idx];
+				    let patch_pic = &patches[patch_idx];
 				    let p_width = patch_pic.width as usize;
                     let p_height = patch_pic.height as usize;
                 
-                    let origin_x = wad_patch.originx as i32;
-                    let origin_y = wad_patch.originy as i32;
+                    let origin_x = wad_patch.originx as isize;
+                    let origin_y = wad_patch.originy as isize;
                 
                     let start_x = if origin_x < 0 { (-origin_x) as usize } else { 0 };
-                    let end_x = if origin_x + (p_width as i32) > width as i32 {
-                        (width as i32 - origin_x) as usize
+                    let end_x = if p_width.strict_add_signed(origin_x) > width {
+                        width.strict_sub_signed(origin_x)
                     } else {
                         p_width
                     };
                 
                     let start_y = if origin_y < 0 { (-origin_y) as usize } else { 0 };
-                    let end_y = if origin_y + (p_height as i32) > height as i32 {
-                        (height as i32 - origin_y) as usize
+                    let end_y = if p_height.strict_add_signed(origin_y) > height {
+                        height.strict_sub_signed(origin_y)
                     } else {
                         p_height
                     };
@@ -250,14 +239,14 @@ impl WadManager {
                     if start_x >= end_x || start_y >= end_y { continue; }
                 
                     for px in start_x..end_x {
-                        let dest_x = (origin_x + px as i32) as usize;
+                        let dest_x = px.strict_add_signed(origin_x);
                         let src_col_offset = px * p_height;
                     
                         for py in start_y..end_y {
                             let color_idx = patch_pic.raw_pixels[src_col_offset + py];
                         
                             if color_idx != 0xFF {
-                                let dest_y = (origin_y + py as i32) as usize;
+                                let dest_y = py.strict_add_signed(origin_y);
                                 let dest_idx = dest_y * width + dest_x;
 
                                 unsafe {
@@ -270,8 +259,7 @@ impl WadManager {
 
 				let final_wall_pixels = std::mem::take(thread_local_buffer);
 			
-    		    let tex_name_packed = to_u64(&map_texture.name);
-    		    (tex_name_packed, DoomPicture {
+    		    (map_texture.name, DoomPicture {
     		        raw_pixels: final_wall_pixels,
     		        width: width as u32,
     		        height: height as u32,
@@ -284,24 +272,24 @@ impl WadManager {
 		println!("[bake_walls] baked_results are filled");
 
 		let total_textures = texture_lumps.iter().map(|(_, offsets)| offsets.len()).sum();
-	    let mut baked_textures = Vec::with_capacity(total_textures);
-		let mut textures_names = Vec::with_capacity(total_textures);
-		let mut baked_sky_textures = Vec::with_capacity(max_sky);
-		let mut sky_textures_names = Vec::with_capacity(max_sky);
+	    let mut wall_textures = Vec::with_capacity(total_textures);
+		let mut wall_tex_names = Vec::with_capacity(total_textures);
+		let mut sky_textures = Vec::with_capacity(max_sky);
+		let mut sky_tex_names = Vec::with_capacity(max_sky);
 		let mut sky_widths = Vec::with_capacity(max_sky);
 
 		for (name, picture) in baked_results {
-    	    if sky_names.contains(&name) {
-    	        sky_textures_names.push(name);
+    	    if name.starts_with(b"SKY") || name.starts_with(b"RSKY") {
+    	        sky_tex_names.push(to_u64(&name));
     	        sky_widths.push(picture.width as f32);
-    	        baked_sky_textures.push(picture); 
-    	    } else {
-				textures_names.push(name);
-				baked_textures.push(picture);
+    	        sky_textures.push(picture); 
+			} else {
+				wall_tex_names.push(to_u64(&name));
+				wall_textures.push(picture);
 			}
     	}
 
-	    Ok((textures_names, baked_textures, sky_textures_names, baked_sky_textures, sky_widths))
+	    Ok((wall_tex_names, wall_textures, sky_tex_names, sky_textures, sky_widths))
 	}
 
 	pub fn parse_texture_lump(&self, lump_data: &[u8], offset: usize) -> Result<MapTexture, String> {
@@ -327,23 +315,12 @@ impl WadManager {
     	        patchcount * 10, patchcount, offset
     	    ))?;
 
-	    let wad_patches: Vec<MapPatch> = patches_bytes
+	    let patches: Vec<MapPatch> = patches_bytes
 			.chunks_exact(size_of::<MapPatch>())
 			.map(|chunk| {
     		    unsafe { read_unaligned(chunk.as_ptr() as *const MapPatch) }
     		})
     		.collect();
-
-	    let patches: Vec<MapPatch> = wad_patches
-	        .iter()
-	        .map(|p| MapPatch {
-	            originx: p.originx,
-	            originy: p.originy,
-	            patch: p.patch,
-	            stepdir: p.stepdir,
-	            colormap: p.colormap,
-	        })
-	        .collect();
 
 	    Ok(MapTexture {
 	        name,

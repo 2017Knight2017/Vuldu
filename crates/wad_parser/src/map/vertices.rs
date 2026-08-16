@@ -617,11 +617,38 @@ impl Level {
 
 	    let vertices: Vec<GpuVertex> = corners
 	        .iter()
-	        .map(|&(pos, uv)| GpuVertex {
+	        .map(|&(pos, texture_pos)| GpuVertex {
 	            pos,
-	            texture_pos: uv,
+	            texture_pos,
 
 				// stub values; they are used from ObjectInstance instead
+	            light_level: 1.0,
+	            texture_id: 0,
+	            colormap_idx: 0,
+				floor_tex_id: 0,
+	        })
+	        .collect();
+
+	    let indices = vec![0, 3, 2, 0, 2, 1];
+
+	    (vertices, indices)
+	}
+
+	pub fn get_ui_vertices(&self) -> (Vec<GpuVertex>, Vec<u32>) {
+		let corners = [
+		    ([0.0, 0.0, 0.0], [1.0, 1.0]),
+		    ([1.0, 0.0, 0.0], [0.0, 1.0]),
+		    ([1.0, 1.0, 0.0], [0.0, 0.0]),
+		    ([0.0, 1.0, 0.0], [1.0, 0.0]),
+		];
+
+	    let vertices: Vec<GpuVertex> = corners
+	        .iter()
+	        .map(|&(pos, texture_pos)| GpuVertex {
+	            pos,
+	            texture_pos,
+
+				// stub values; they are used from UiInstance instead
 	            light_level: 1.0,
 	            texture_id: 0,
 	            colormap_idx: 0,
