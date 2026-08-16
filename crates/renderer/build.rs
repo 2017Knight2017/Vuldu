@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, process::Command};
 
 fn main() {
     let mut build = cxx_build::bridge("src/bridge.rs");
@@ -27,15 +27,44 @@ fn main() {
 
     if let Ok(vulkan_sdk) = std::env::var("VULKAN_SDK") {
         build.include(format!("{}/include", vulkan_sdk));
+
+        let lib_dir = if cfg!(windows) { "Lib" } else { "lib" };
         
-        println!("cargo:rustc-link-search=native={}/lib", vulkan_sdk);
-    } else { 
-        build.include("renderer_cpp/third_party");
+        println!("cargo:rustc-link-search=native={}/{}", vulkan_sdk, lib_dir);
     }
 
     let profile = std::env::var("PROFILE").unwrap();
     if profile == "debug" {
         build.define("DEBUG_MODE", None);
+    }
+
+    println!("cargo:rerun-if-changed=renderer_cpp/shaders");
+
+    let shaders = [
+        ("sprite.vert", "sprite_vert.h"),
+        ("sprite.frag", "sprite_frag.h"),
+        ("level.vert", "level_vert.h"),
+        ("level.frag", "level_frag.h"),
+        ("ui.vert", "ui_vert.h"),
+        ("ui.frag", "ui_frag.h"),
+    ];
+
+    let glslc_path = std::env::var("VULKAN_SDK")
+        .map(|sdk| format!("{}/{}/glslc", sdk, if cfg!(windows) { "Bin" } else { "bin" }))
+        .unwrap_or_else(|_| "glslc".to_string());
+
+    for (src, dst) in shaders {
+        let status = Command::new(&glslc_path)
+            .args([
+                &format!("renderer_cpp/shaders/{}", src),
+                "-mfmt=c",
+                "-o",
+                &format!("renderer_cpp/include/{}", dst),
+            ])
+            .status()
+            .expect("Failed to execute glslc. Is Vulkan SDK / shaderc installed?");
+
+        assert!(status.success(), "Failed to compile shader {}", src);
     }
 
     build.compile("vulkan_renderer");
@@ -44,31 +73,21 @@ fn main() {
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
     match target_os.as_str() {
         "macos" => {            
-            if profile == "debug" {
-                println!("cargo:rustc-link-lib=vulkan");
-            } else {
-                let moltenvk_path = PathBuf::from(&manifest_dir)
-                    .join("renderer_cpp")
-                    .join("third_party")
-                    .join("moltenvk")
-                    .join("lib");
-
-                println!("cargo:rustc-link-search=native={}", moltenvk_path.display());
-                println!("cargo:rustc-link-lib=static=MoltenVK");
-
-                println!("cargo:rustc-link-lib=framework=Metal");
-                println!("cargo:rustc-link-lib=framework=Foundation");
-                println!("cargo:rustc-link-lib=framework=QuartzCore");
-                println!("cargo:rustc-link-lib=framework=IOSurface");
-            }
-        }
-        "windows" => {
-            let vulkan_lib_path = PathBuf::from(&manifest_dir)
+            let moltenvk_path = PathBuf::from(&manifest_dir)
                 .join("renderer_cpp")
                 .join("third_party")
-                .join("vulkan_lib");
+                .join("moltenvk")
+                .join("lib");
 
-            println!("cargo:rustc-link-search=native={}", vulkan_lib_path.display());
+            println!("cargo:rustc-link-search=native={}", moltenvk_path.display());
+            println!("cargo:rustc-link-lib=static=MoltenVK");
+
+            println!("cargo:rustc-link-lib=framework=Metal");
+            println!("cargo:rustc-link-lib=framework=Foundation");
+            println!("cargo:rustc-link-lib=framework=QuartzCore");
+            println!("cargo:rustc-link-lib=framework=IOSurface");
+        }
+        "windows" => {
             println!("cargo:rustc-link-lib=vulkan-1");
         }
         _ => {

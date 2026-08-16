@@ -6,7 +6,7 @@ on:
 
 jobs:
   build-linux:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout repository
@@ -24,7 +24,8 @@ jobs:
             libx11-dev libxcursor-dev libxrandr-dev libxi-dev libxext-dev libxcb1-dev libx11-xcb-dev \
             libwayland-dev wayland-protocols libxkbcommon-dev \
             libvulkan-dev vulkan-tools \
-            libasound2-dev libpulse-dev
+            libasound2-dev libpulse-dev \
+            libshaderc1
 
       - name: Cache Cargo Dependencies
         uses: Swatinem/rust-cache@v2

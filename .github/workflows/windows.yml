@@ -20,6 +20,12 @@ jobs:
       - name: Cache Cargo Dependencies
         uses: Swatinem/rust-cache@v2
 
+      - name: Install Vulkan SDK
+        uses: humbletim/install-vulkan-sdk@v1.2
+        with:
+          version: latest
+          cache: true
+
       - name: Build Windows Binary
         run: cargo build --release --target x86_64-pc-windows-msvc
 
