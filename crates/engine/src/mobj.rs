@@ -1,5 +1,5 @@
 use crate::*;
-use hecs::World;
+use hecs::{Entity, World};
 use wad_parser::map::Level;
 
 pub fn spawn_mobj(
@@ -10,13 +10,13 @@ pub fn spawn_mobj(
 	x_raw: i16, 
 	z_raw: i16, 
 	angle_raw: i16
-) {
+) -> Option<Entity> {
 	let x = x_raw as f32;
 	let z = z_raw as f32;
 	
 	let mobj_type = match mobj_type_raw {
 		Some(mobj) => mobj,
-		None => return
+		None => return None
 	};
 
 	let angle = (angle_raw + 270) as u32 % 360 / 45 * ANG45;
@@ -29,7 +29,7 @@ pub fn spawn_mobj(
 
 	let spawn_state = match mobj_info.spawn_state {
 		Some(state) => state,
-		None => return
+		None => return None
 	};
 
 	let spawn_state_data = db.states.get(&spawn_state)
@@ -82,16 +82,6 @@ pub fn spawn_mobj(
 			.add(PlayerMarker)
 			.add(PlayerRotation { angle, prev_angle: angle })
         	.add(PlayerCamera { view_z: EYEHEIGHT, view_height: EYEHEIGHT, delta_view_height: 0.0, bob: 0.0 })
-        	.add(PlayerStats::default())
-        	.add(PlayerInventory { 
-        	    ready_weapon: 1, 
-        	    pending_weapon: 1, 
-        	    backpack: false, 
-        	    cards: [false; NUMCARDS], 
-        	    weapon_owned: [false; NUMWEAPONS], 
-        	    ammo: [50, 0, 0, 0], 
-        	    max_ammo: [200, 50, 50, 300] 
-        	})
         	.add(WeaponOverlay { state_idx: 0, tics: 0, sx: 0.0, sy: 0.0 });
 	} else {
 		entity_builder
@@ -113,10 +103,10 @@ pub fn spawn_mobj(
 			});
 	};
 
-    world.spawn(entity_builder.build());
+    Some(world.spawn(entity_builder.build()))
 }
 
-pub fn spawn_all_things(world: &mut World, level: &Level, random: &mut Random) {
+pub fn spawn_all_things(world: &mut World, level: &Level, random: &mut Random, player_info: &mut PlayerInfo) {
 	let mut player_spawned = false;
 	for thing in level.things.iter() {
 		if thing.type_ == 1 {
@@ -127,7 +117,10 @@ pub fn spawn_all_things(world: &mut World, level: &Level, random: &mut Random) {
 		}
 
 		if let Some(thing_type) = MOBJTYPE_BY_DOOMEDNUM.get(&thing.type_) {
-			spawn_mobj(level, world, random, *thing_type, thing.x, thing.y, thing.angle);
+			let ent_opt = spawn_mobj(level, world, random, *thing_type, thing.x, thing.y, thing.angle);
+			if thing.type_ == 1 { 
+				player_info.entity = ent_opt.unwrap(); 
+			}
 		}
 	}
 }

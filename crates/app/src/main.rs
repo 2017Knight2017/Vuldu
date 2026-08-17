@@ -38,7 +38,8 @@ struct GameContext {
     mobj_flag_buffer: Vec<MobjFlagCommand>,
     action_buffer: Vec<(Entity, ActionFunc)>,
     command_buffer: CommandBuffer,
-    traversal: Traversal
+    traversal: Traversal,
+    player_info: PlayerInfo
 }
 
 struct App {
@@ -65,7 +66,8 @@ impl GameContext {
             world_events: Vec::new(), 
             mobj_flag_buffer: Vec::new(), 
             command_buffer: CommandBuffer::new(),
-            action_buffer: Vec::new()
+            action_buffer: Vec::new(),
+            player_info: PlayerInfo::new()
         }
     }
 
@@ -236,7 +238,7 @@ impl ApplicationHandler for App {
         self.game.level.geom.sector_lines = self.graphics.setup_level_geometry(&mut renderer, &self.game.level);
 
         let _ = engine::populate_database(&self.graphics.data).map_err(|e| eprintln!("{}", e));
-        engine::spawn_all_things(&mut self.game.world, &self.game.level, &mut self.random);
+        engine::spawn_all_things(&mut self.game.world, &self.game.level, &mut self.random, &mut self.game.player_info);
         println!("Mobj spawning is done!");
 
         self.graphics.renderer = Some(renderer);
@@ -314,7 +316,7 @@ impl ApplicationHandler for App {
             
                 if let Some(window) = &self.window {
                     let alpha = self.time_accumulator / TICK_TIME;
-                    self.graphics.render(window, &self.game.world, &self.game.level, alpha);
+                    self.graphics.render(window, &self.game.world, &self.game.level, &self.game.player_info, alpha);
 
                     window.request_redraw();
                 }

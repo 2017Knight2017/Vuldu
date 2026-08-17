@@ -1301,13 +1301,25 @@ pub enum WeaponType {
     NoChange
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, EnumIter)]
 pub enum AmmoType {
     Clip,
     Shell,
-    Cell,
     Missile,
+    Cell,
     NoAmmo
+}
+
+impl From<WeaponType> for AmmoType {
+    fn from(value: WeaponType) -> Self {
+        match value {
+			WeaponType::Pistol | WeaponType::Chaingun => AmmoType::Clip,
+			WeaponType::Shotgun | WeaponType::SuperShotgun => AmmoType::Shell,
+			WeaponType::Missile => AmmoType::Missile,
+			WeaponType::Plasma | WeaponType::BFG => AmmoType::Cell,
+			WeaponType::Fist | WeaponType::Chainsaw | WeaponType::NoChange => AmmoType::NoAmmo
+		}
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

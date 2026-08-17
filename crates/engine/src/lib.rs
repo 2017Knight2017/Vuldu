@@ -16,6 +16,7 @@ pub mod sight;
 pub mod p_move;
 pub mod world_event;
 pub mod bbox;
+pub mod ui;
 
 pub use components::*;
 pub use enums::*;
@@ -35,3 +36,4 @@ pub use sight::*;
 pub use p_move::*;
 pub use world_event::*;
 pub use bbox::*;
+pub use ui::*;

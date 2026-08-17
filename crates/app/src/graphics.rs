@@ -1,10 +1,10 @@
 use hecs::World;
 use renderer::{MAX_SKY, ObjectInstance, SafeRenderer, TextureDescriptor, UiInstance, UniformBufferObject, Vertex};
-use engine::{CurrentSector, EYEHEIGHT, MonsterRotation, PlayerMarker, PlayerRotation, Position, SpriteAnimation, pack_sprite_u64, point_to_angle};
+use engine::{CurrentSector, EYEHEIGHT, Health, MonsterRotation, PlayerInfo, PlayerMarker, PlayerRotation, Position, SpriteAnimation, get_stbar, pack_sprite_u64, point_to_angle};
 use glam::{Mat4, Vec3};
 use micropool::iter::*;
 use rustc_hash::FxHashMap;
-use wad_parser::{DoomPicture, GpuVertex, Level, LineId, NUM_UI, SCREEN_HEIGHT, SectorState, TextureId, Ui, WadManager, construct_map_name};
+use wad_parser::{DoomPicture, GpuVertex, Level, LineId, NUM_UI, SectorState, TextureId, Ui, WadManager, construct_map_name};
 use winit::window::Window;
 use std::f64::consts::TAU;
 
@@ -13,7 +13,8 @@ const FOV_ANGLE: f32 = 90.0;
 pub struct GraphicsContext {
     pub renderer: Option<SafeRenderer>,
     pub data: FxHashMap<u64, (TextureId, u32, u32, bool)>,
-    pub ui: [Option<(TextureId, u32, u32)>; NUM_UI],
+    pub ui_db: [Option<(TextureId, u32, u32)>; NUM_UI],
+    pub cached_ui_instances: Vec<UiInstance>,
     pub offsets: Vec<(i16, i16)>,
     pub view_matrix: Mat4,
 }
@@ -23,7 +24,8 @@ impl GraphicsContext {
 		Self { 
 			renderer: None, 
             data: FxHashMap::default(), 
-            ui: [None; NUM_UI],
+            ui_db: [None; NUM_UI],
+            cached_ui_instances: Vec::new(),
             offsets: Vec::new(), 
             view_matrix: Mat4::default()
 		}
@@ -128,7 +130,7 @@ impl GraphicsContext {
 
             while !ui_shown[ui_insert_idx] { ui_insert_idx += 1; }
             let tex_id = TextureId(current_gpu_id);
-            self.ui[ui_insert_idx] = Some((tex_id, pic.width, pic.height));
+            self.ui_db[ui_insert_idx] = Some((tex_id, pic.width, pic.height));
 
             ui_insert_idx += 1;
             current_gpu_id += 1;
@@ -176,9 +178,13 @@ impl GraphicsContext {
         sector_lines
     }
 
-    pub fn render(&mut self, window: &Window, world: &World, level: &Level, alpha: f32) {
+    pub fn render(&mut self, window: &Window, world: &World, level: &Level, player_info: &PlayerInfo, alpha: f32) {
         let obj_instances = self.collect_object_instances(world, &level.state.sectors, alpha);
-        let ui_instances = self.collect_ui_instances();
+
+        if self.cached_ui_instances.is_empty() { 
+            let mut health_query = world.query_one::<&Health>(player_info.entity);
+            self.cached_ui_instances = self.collect_ui_instances(player_info, health_query.get().unwrap()); 
+        }
         
         let size = window.inner_size();
         if size.width == 0 || size.height == 0 {
@@ -197,7 +203,7 @@ impl GraphicsContext {
         };
 
         if let Some(renderer) = &mut self.renderer {
-            renderer.update_ui_instances(&ui_instances);
+            renderer.update_ui_instances(&self.cached_ui_instances);
             renderer.update_object_instances(&obj_instances);
             renderer.start_frame(&ubo);
             renderer.draw_level();
@@ -295,15 +301,25 @@ impl GraphicsContext {
 	    instances
 	}
 
-    fn collect_ui_instances(&self) -> Vec<UiInstance> {
-        // test
-        let (tex_id, width, height) = self.ui[Ui::STBAR as usize].unwrap();
-
-        vec![UiInstance {
-            pos: [0.0, SCREEN_HEIGHT - height as f32],
-            sprite_size: [width as f32, height as f32],
-            texture_id: tex_id.0
-        }]
+    fn collect_ui_instances(&self, player_info: &PlayerInfo, player_health: &Health) -> Vec<UiInstance> {
+        // TODO: make get_stbar run only when any of PlayerInfo params is changed
+        get_stbar(
+            player_info, 
+            player_health,
+            self.ui_db[Ui::STBAR as usize].unwrap().2 as f32, 
+            (self.ui_db[Ui::STTNUM0 as usize].unwrap().1 as f32,
+            self.ui_db[Ui::STYSNUM0 as usize].unwrap().1 as f32)
+        )
+            .iter()
+            .map(|(ui, x, y)| {
+                let (tex_id, width, height) = self.ui_db[*ui as usize].unwrap();
+                UiInstance {
+                    pos: [*x, *y],
+                    sprite_size: [width as f32, height as f32],
+                    texture_id: tex_id.0
+                }
+            })
+            .collect()
     }
 }
 

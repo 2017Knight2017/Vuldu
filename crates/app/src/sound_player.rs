@@ -68,7 +68,7 @@ impl DoomSfxPlayer {
             return;
         }
 
-        self.spatial_players[8].append(src);
+        self.spatial_players[8].append(src.amplify(0.4));
     }
 }
 

@@ -1,4 +1,4 @@
-use crate::{CurrentSector, NUMAMMO, NUMCARDS, NUMWEAPONS, PlayerMarker, PlayerRotation, PlayerShoot, PlayerState, Position, SfxEvent, Velocity};
+use crate::{CurrentSector, NUMAMMO, NUMCARDS, NUMWEAPONS, PlayerMarker, PlayerRotation, PlayerShoot, PlayerState, Position, SfxEvent, Velocity, WeaponType};
 use std::f64::consts::TAU;
 use hecs::{CommandBuffer, Entity, World};
 use wad_parser::{Level, to_u64};
@@ -14,8 +14,8 @@ pub struct PlayerCamera {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct PlayerStats {
     pub state: PlayerState,
-    pub armor_points: i32,
-    pub armor_type: i32,
+    pub armor_points: u32,
+    pub is_super_armor: bool,
     pub kill_count: i32,
     pub item_count: i32,
     pub secret_count: i32,
@@ -23,13 +23,42 @@ pub struct PlayerStats {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PlayerInventory {
-    pub ready_weapon: u32,
-    pub pending_weapon: u32,
+    pub ready_weapon: WeaponType,
+    pub pending_weapon: WeaponType,
     pub backpack: bool,
     pub cards: [bool; NUMCARDS],
     pub weapon_owned: [bool; NUMWEAPONS],
-	pub ammo: [i32; NUMAMMO],
-    pub max_ammo: [i32; NUMAMMO],
+	pub ammo: [u32; NUMAMMO],
+}
+
+impl Default for PlayerInventory {
+    fn default() -> Self {
+        PlayerInventory {
+            ready_weapon: WeaponType::Pistol,
+            pending_weapon: WeaponType::Pistol,
+            backpack: false,
+            cards: [false; NUMCARDS],
+            weapon_owned: [true, true, false, false, false, false, false, false, false],
+            ammo: [50, 0, 0, 0],
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct PlayerInfo {
+    pub entity: Entity,
+    pub inventory: PlayerInventory,
+    pub stats: PlayerStats,
+}
+
+impl PlayerInfo {
+    pub fn new() -> Self {
+        PlayerInfo { 
+            entity: Entity::DANGLING, 
+            inventory: PlayerInventory::default(), 
+            stats: PlayerStats::default(),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Default)]

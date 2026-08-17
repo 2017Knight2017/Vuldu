@@ -370,6 +370,7 @@ pub const UI_LUMPNAMES: [&[u8]; NUM_UI] = [
 ];
 
 #[allow(non_camel_case_types)]
+#[derive(Debug, Clone, Copy)]
 pub enum Ui {
 	HELP,
 	HELP1,
