@@ -56,6 +56,7 @@ fn main() {
             println!("cargo:rustc-link-lib=framework=Foundation");
             println!("cargo:rustc-link-lib=framework=QuartzCore");
             println!("cargo:rustc-link-lib=framework=IOSurface");
+            println!("cargo:rustc-link-lib=framework=IOKit");
         }
         "windows" => {
             println!("cargo:rustc-link-lib=vulkan-1");
