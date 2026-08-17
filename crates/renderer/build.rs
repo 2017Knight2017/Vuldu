@@ -47,8 +47,7 @@ fn main() {
             let moltenvk_path = PathBuf::from(&manifest_dir)
                 .join("renderer_cpp")
                 .join("third_party")
-                .join("moltenvk")
-                .join("lib");
+                .join("moltenvk");
 
             println!("cargo:rustc-link-search=native={}", moltenvk_path.display());
             println!("cargo:rustc-link-lib=static=MoltenVK");

@@ -20,9 +20,6 @@ jobs:
       - name: Cache Cargo Dependencies
         uses: Swatinem/rust-cache@v2
       
-      - name: Install shaderc (glslc)
-        run: brew install shaderc
-      
       - name: Prepare Vulkan SDK
         uses: humbletim/setup-vulkan-sdk@v1.2.1
         with:
