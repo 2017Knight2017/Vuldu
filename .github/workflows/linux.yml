@@ -25,7 +25,6 @@ jobs:
             libwayland-dev wayland-protocols libxkbcommon-dev \
             libvulkan-dev vulkan-tools \
             libasound2-dev libpulse-dev \
-            libshaderc1
 
       - name: Cache Cargo Dependencies
         uses: Swatinem/rust-cache@v2

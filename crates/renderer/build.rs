@@ -1,4 +1,4 @@
-use std::{path::PathBuf, process::Command};
+use std::path::PathBuf;
 
 fn main() {
     let mut build = cxx_build::bridge("src/bridge.rs");
@@ -36,35 +36,6 @@ fn main() {
     let profile = std::env::var("PROFILE").unwrap();
     if profile == "debug" {
         build.define("DEBUG_MODE", None);
-    }
-
-    println!("cargo:rerun-if-changed=renderer_cpp/shaders");
-
-    let shaders = [
-        ("sprite.vert", "sprite_vert.h"),
-        ("sprite.frag", "sprite_frag.h"),
-        ("level.vert", "level_vert.h"),
-        ("level.frag", "level_frag.h"),
-        ("ui.vert", "ui_vert.h"),
-        ("ui.frag", "ui_frag.h"),
-    ];
-
-    let glslc_path = std::env::var("VULKAN_SDK")
-        .map(|sdk| format!("{}/{}/glslc", sdk, if cfg!(windows) { "Bin" } else { "bin" }))
-        .unwrap_or_else(|_| "glslc".to_string());
-
-    for (src, dst) in shaders {
-        let status = Command::new(&glslc_path)
-            .args([
-                &format!("renderer_cpp/shaders/{}", src),
-                "-mfmt=c",
-                "-o",
-                &format!("renderer_cpp/include/{}", dst),
-            ])
-            .status()
-            .expect("Failed to execute glslc. Is Vulkan SDK / shaderc installed?");
-
-        assert!(status.success(), "Failed to compile shader {}", src);
     }
 
     build.compile("vulkan_renderer");

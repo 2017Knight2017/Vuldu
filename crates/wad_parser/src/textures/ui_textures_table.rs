@@ -1,4 +1,4 @@
-use crate::{DoomPicture, TextureId, WadManager, decode_column_picture};
+use crate::{DoomPicture, WadManager, decode_column_picture};
 
 pub const NUM_UI: usize = 362; 
 
