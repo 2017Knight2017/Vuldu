@@ -13,7 +13,6 @@ layout(binding = 2) readonly buffer ColormapBuffer {
 layout(binding = 3) uniform sampler2D texSamplers[];
 
 layout(push_constant) uniform UiConstants {
-	float resolution[2];
     uint paletteIndex;
 } uc;
 

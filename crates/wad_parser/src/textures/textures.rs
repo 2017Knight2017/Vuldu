@@ -240,10 +240,9 @@ impl WadManager {
                 
                     for px in start_x..end_x {
                         let dest_x = px.strict_add_signed(origin_x);
-                        let src_col_offset = px * p_height;
                     
                         for py in start_y..end_y {
-                            let color_idx = patch_pic.raw_pixels[src_col_offset + py];
+                            let color_idx = patch_pic.raw_pixels[py * p_width + px];
                         
                             if color_idx != 0xFF {
                                 let dest_y = py.strict_add_signed(origin_y);
@@ -423,30 +422,14 @@ impl WadManager {
 
                     match decode_column_picture(pic_bytes, name) {
                         Ok(col_picture) => { 
-                    	    let w = col_picture.width as usize;
-                    	    let h = col_picture.height as usize;
-                    	    let total_pixels = w * h;
-							
-                    	    let mut row_pixels = vec![0xFFu8; total_pixels];
-							
-                    	    for col in 0..w {
-                    	        let src_col_offset = col * h;
-                    	        for row in 0..h {
-                    	            let color = col_picture.raw_pixels[src_col_offset + row];
-                    	            row_pixels[row * w + col] = color;
-                    	        }
-                    	    }
-
-                    	    let row_picture = DoomPicture {
-                    	        raw_pixels: row_pixels,
+							objects_names.push(name);
+							baked_objects.push(DoomPicture {
+                    	        raw_pixels: col_picture.raw_pixels,
                     	        width: col_picture.width,
                     	        height: col_picture.height,
                     	        left_offset: col_picture.left_offset,
                     	        top_offset: col_picture.top_offset,
-                    	    };
-
-							objects_names.push(name);
-							baked_objects.push(row_picture);
+                    	    });
                     	},
 						Err(err) => { return Err(err); }
                     }
@@ -507,13 +490,11 @@ pub fn decode_column_picture(pic_data: &[u8], name: &[u8]) -> Result<DoomPicture
         
             if pixel_data_start + column_length > pic_data.len() { break; }
             let pixels = &pic_data[pixel_data_start..pixel_data_start + column_length];
-        
-            let dest_col_offset = col_idx * height;
 
             for (i, &color_index) in pixels.iter().enumerate() {
                 let row_idx = top_delta as usize + i;
                 if row_idx < height {
-                    let dest_index = dest_col_offset + row_idx;
+                    let dest_index = row_idx * width + col_idx;
                     unsafe {
                         *raw_pixels.get_unchecked_mut(dest_index) = color_index;
                     }

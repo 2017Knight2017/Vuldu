@@ -28,9 +28,13 @@ jobs:
           vulkan-use-cache: true
 
       - name: Build Apple Silicon (ARM64 / M-series)
+        env:
+          MACOSX_DEPLOYMENT_TARGET: "12.0"
         run: cargo build --release --target aarch64-apple-darwin
 
       - name: Build Intel Mac (x86_64)
+        env:
+          MACOSX_DEPLOYMENT_TARGET: "12.0"
         run: cargo build --release --target x86_64-apple-darwin
 
       - name: Upload Apple Silicon Binary

@@ -1,6 +1,8 @@
 use crate::{DoomPicture, WadManager, decode_column_picture};
 
 pub const NUM_UI: usize = 362; 
+pub const SCREEN_WIDTH: f32 = 320.0;
+pub const SCREEN_HEIGHT: f32 = 200.0;
 
 pub const UI_LUMPNAMES: [&[u8]; NUM_UI] = [
 	b"HELP",

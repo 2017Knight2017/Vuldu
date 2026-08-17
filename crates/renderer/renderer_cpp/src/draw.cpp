@@ -267,16 +267,14 @@ void VulkanRenderer::drawUi() {
         vkCmdBindIndexBuffer(currentCommandBuffer, this->uiIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
         PushConstants constants{};
-        constants.resolution[0] = this->currentResolution[0];
-        constants.resolution[1] = this->currentResolution[1];
         constants.paletteIndex = this->currentPaletteIndex;
 
         vkCmdPushConstants(
             currentCommandBuffer,
             this->uiPipelineLayout,
-            VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT,
+            VK_SHADER_STAGE_FRAGMENT_BIT,
             0,                    
-            sizeof(float) + sizeof(float) + sizeof(uint32_t),
+            sizeof(uint32_t),
             &constants 
         );
 

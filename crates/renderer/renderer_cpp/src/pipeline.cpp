@@ -361,6 +361,7 @@ void VulkanRenderer::createPipelines() {
 		&viewportState,
 		&rasterizer,
 		&multisampling,
+		&colorBlending,
 		&dynamicState,
 		&renderingInfo
 	);
@@ -529,6 +530,7 @@ void VulkanRenderer::createUiPipeline(
 	VkPipelineViewportStateCreateInfo* viewportState,
 	VkPipelineRasterizationStateCreateInfo* rasterizer,
 	VkPipelineMultisampleStateCreateInfo* multisampling,
+	VkPipelineColorBlendStateCreateInfo* colorBlending,
 	VkPipelineDynamicStateCreateInfo* dynamicState,
 	VkPipelineRenderingCreateInfo* renderingInfo
 ) {
@@ -557,23 +559,6 @@ void VulkanRenderer::createUiPipeline(
 	depthStencil.depthBoundsTestEnable = VK_FALSE;
 	depthStencil.stencilTestEnable = VK_FALSE;
 
-	VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-	                                      VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-	colorBlendAttachment.blendEnable = VK_FALSE;
-	//colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-	//colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-	//colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-	//colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-	//colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-	//colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
-
-	VkPipelineColorBlendStateCreateInfo colorBlending{};
-	colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-	colorBlending.logicOpEnable = VK_FALSE;
-	colorBlending.attachmentCount = 1;
-	colorBlending.pAttachments = &colorBlendAttachment;
-
 	auto bindingDescriptions = getUiBindings();
 	auto attributeDescriptions = getUiAttributes();
 
@@ -585,9 +570,9 @@ void VulkanRenderer::createUiPipeline(
 	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
 	VkPushConstantRange pushConstantRange{};
-	pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT; 
+	pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; 
 	pushConstantRange.offset = 0;
-	pushConstantRange.size = sizeof(float) + sizeof(float) + sizeof(uint32_t);
+	pushConstantRange.size = sizeof(uint32_t);
 
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -612,7 +597,7 @@ void VulkanRenderer::createUiPipeline(
 	pipelineInfo.pRasterizationState = rasterizer;
 	pipelineInfo.pMultisampleState = multisampling;
 	pipelineInfo.pDepthStencilState = &depthStencil;
-	pipelineInfo.pColorBlendState = &colorBlending;
+	pipelineInfo.pColorBlendState = colorBlending;
 	pipelineInfo.pDynamicState = dynamicState;
 	pipelineInfo.layout = this->uiPipelineLayout;
 	pipelineInfo.subpass = 0;

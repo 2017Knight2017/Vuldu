@@ -253,6 +253,7 @@ private:
     	VkPipelineViewportStateCreateInfo* viewportState,
     	VkPipelineRasterizationStateCreateInfo* rasterizer,
     	VkPipelineMultisampleStateCreateInfo* multisampling,
+        VkPipelineColorBlendStateCreateInfo* colorBlending,
     	VkPipelineDynamicStateCreateInfo* dynamicState,
     	VkPipelineRenderingCreateInfo* renderingInfo
     );

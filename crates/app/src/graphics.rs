@@ -4,7 +4,7 @@ use engine::{CurrentSector, EYEHEIGHT, MonsterRotation, PlayerMarker, PlayerRota
 use glam::{Mat4, Vec3};
 use micropool::iter::*;
 use rustc_hash::FxHashMap;
-use wad_parser::{DoomPicture, GpuVertex, Level, LineId, NUM_UI, SectorState, TextureId, Ui, WadManager, construct_map_name};
+use wad_parser::{DoomPicture, GpuVertex, Level, LineId, NUM_UI, SCREEN_HEIGHT, SectorState, TextureId, Ui, WadManager, construct_map_name};
 use winit::window::Window;
 use std::f64::consts::TAU;
 
@@ -300,7 +300,7 @@ impl GraphicsContext {
         let (tex_id, width, height) = self.ui[Ui::STBAR as usize].unwrap();
 
         vec![UiInstance {
-            pos: [1.0, 1.0],
+            pos: [0.0, SCREEN_HEIGHT - height as f32],
             sprite_size: [width as f32, height as f32],
             texture_id: tex_id.0
         }]
