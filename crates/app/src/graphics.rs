@@ -1,10 +1,10 @@
 use hecs::World;
 use renderer::{MAX_SKY, ObjectInstance, SafeRenderer, TextureDescriptor, UiInstance, UniformBufferObject, Vertex};
-use engine::{CurrentSector, EYEHEIGHT, Health, MonsterRotation, PlayerInfo, PlayerMarker, PlayerRotation, Position, SpriteAnimation, get_stbar, pack_sprite_u64, point_to_angle};
+use engine::{CurrentSector, EYEHEIGHT, GameState, MonsterRotation, PlayerInfo, PlayerMarker, PlayerRotation, Position, STBarUi, SpriteAnimation, UpdatableUiType, get_stbar, pack_sprite_u64, point_to_angle, update_ammo_ui, update_armor_ui, update_arms_ui, update_face_ui, update_hp_ui, update_keys_ui, update_total_ammo_ui};
 use glam::{Mat4, Vec3};
 use micropool::iter::*;
 use rustc_hash::FxHashMap;
-use wad_parser::{DoomPicture, GpuVertex, Level, LineId, NUM_UI, SectorState, TextureId, Ui, WadManager, construct_map_name};
+use wad_parser::{DoomPicture, GpuVertex, Level, NUM_UI, SectorState, TextureId, Ui, WadManager, construct_map_name};
 use winit::window::Window;
 use std::f64::consts::TAU;
 
@@ -14,7 +14,8 @@ pub struct GraphicsContext {
     pub renderer: Option<SafeRenderer>,
     pub data: FxHashMap<u64, (TextureId, u32, u32, bool)>,
     pub ui_db: [Option<(TextureId, u32, u32)>; NUM_UI],
-    pub cached_ui_instances: Vec<UiInstance>,
+    pub cached_stbar_ui: STBarUi,
+    pub ui_to_update: Vec<UpdatableUiType>,
     pub offsets: Vec<(i16, i16)>,
     pub view_matrix: Mat4,
 }
@@ -25,7 +26,8 @@ impl GraphicsContext {
 			renderer: None, 
             data: FxHashMap::default(), 
             ui_db: [None; NUM_UI],
-            cached_ui_instances: Vec::new(),
+            cached_stbar_ui: STBarUi::new(),
+            ui_to_update: Vec::new(),
             offsets: Vec::new(), 
             view_matrix: Mat4::default()
 		}
@@ -148,11 +150,11 @@ impl GraphicsContext {
         Ok(())
     }
 
-    pub fn setup_level_geometry(&mut self, renderer: &mut SafeRenderer, level: &Level) -> Vec<Vec<LineId>> {
+    pub fn setup_level_geometry(&mut self, renderer: &mut SafeRenderer, level: &mut Level) {
         println!("Building map geometry...");
         let (wall_vertices, wall_indices) = level.get_walls_vertices(&self.data);
         println!("Walls geometry has been built");
-        let (flat_vertices, flat_indices, sector_lines) = level.get_flats_vertices(&self.data);
+        let (flat_vertices, flat_indices) = level.get_flats_vertices(&self.data);
         println!("Flats geometry has been built");
         let (obj_gpu_vertices, obj_indices) = level.get_objects_vertices();
         let (ui_gpu_vertices, ui_indices) = level.get_ui_vertices();
@@ -169,22 +171,24 @@ impl GraphicsContext {
         let obj_vertices: Vec<Vertex> = obj_gpu_vertices.into_iter().map(|v| vertex_to_vertex(v)).collect();
         let ui_vertices: Vec<Vertex> = ui_gpu_vertices.into_iter().map(|v| vertex_to_vertex(v)).collect();
 
-        renderer.update_object_instances(&[]);
-        renderer.update_ui_instances(&[]);
+        //renderer.update_object_instances(&[]);
+        //renderer.update_ui_instances(&[]);
         renderer.update_level_geometry(&level_vertices, &level_indices);
         renderer.update_object_geometry(&obj_vertices, &obj_indices);
         renderer.update_ui_geometry(&ui_vertices, &ui_indices);
-
-        sector_lines
     }
 
-    pub fn render(&mut self, window: &Window, world: &World, level: &Level, player_info: &PlayerInfo, alpha: f32) {
+    pub fn render(
+        &mut self, 
+        window: &Window, 
+        world: &World, 
+        level: &Level,
+        game_state: GameState,
+        player_info: &PlayerInfo,
+        alpha: f32
+    ) {
         let obj_instances = self.collect_object_instances(world, &level.state.sectors, alpha);
-
-        if self.cached_ui_instances.is_empty() { 
-            let mut health_query = world.query_one::<&Health>(player_info.entity);
-            self.cached_ui_instances = self.collect_ui_instances(player_info, health_query.get().unwrap()); 
-        }
+        let ui_instances = self.collect_ui_instances(game_state, player_info);
         
         let size = window.inner_size();
         if size.width == 0 || size.height == 0 {
@@ -203,7 +207,7 @@ impl GraphicsContext {
         };
 
         if let Some(renderer) = &mut self.renderer {
-            renderer.update_ui_instances(&self.cached_ui_instances);
+            renderer.update_ui_instances(&ui_instances);
             renderer.update_object_instances(&obj_instances);
             renderer.start_frame(&ubo);
             renderer.draw_level();
@@ -223,103 +227,156 @@ impl GraphicsContext {
 	        player_pos = Vec3::new(lerped_x, lerped_y, lerped_z);
 	    }
 
-		let mut entities_query = world.query::<(&Position, &MonsterRotation, &CurrentSector, &SpriteAnimation)>();
-		let entities_to_process = entities_query
-			.iter()
-			.collect::<Vec<(&Position, &MonsterRotation, &CurrentSector, &SpriteAnimation)>>();
+        let sprite_offsets = &self.offsets;
 
-		let sprite_offsets = &self.offsets;
-
-		let nested_instances = entities_to_process 
-        	.par_iter()
-        	.with_thread_pool(micropool::split_by_threads())
-        	.map(|(pos, rot, current_sector, anim)| {
-				let lerped_x = pos.prev_x * (1.0 - alpha) + pos.x * alpha;
-	    	    let lerped_y = pos.prev_y * (1.0 - alpha) + pos.y * alpha;
-	    	    let lerped_z = pos.prev_z * (1.0 - alpha) + pos.z * alpha;	
+        let process_entity = |(pos, rot, current_sector, anim): (&Position, &MonsterRotation, &CurrentSector, &SpriteAnimation)| 
+        {
+			let lerped_x = pos.prev_x * (1.0 - alpha) + pos.x * alpha;
+	    	let lerped_y = pos.prev_y * (1.0 - alpha) + pos.y * alpha;
+	    	let lerped_z = pos.prev_z * (1.0 - alpha) + pos.z * alpha;	
 			
-	    	    let monster_pos = Vec3::new(lerped_x, lerped_y, lerped_z);
+	    	let monster_pos = Vec3::new(lerped_x, lerped_y, lerped_z);
 
-	    	    let monster_angle = match rot.move_dir {
-					Some(dir) => (dir as u32) << 29,
-					None => 0
-				};
+	    	let monster_angle = match rot.move_dir {
+				Some(dir) => (dir as u32) << 29,
+				None => 0
+			};
 
-	    	    let to_player = player_pos - monster_pos;
-				let angle_to_player = point_to_angle(to_player.x, to_player.z);
+	    	let to_player = player_pos - monster_pos;
+			let angle_to_player = point_to_angle(to_player.x, to_player.z);
 
-				let view_angle = angle_to_player.wrapping_sub(monster_angle);
+			let view_angle = angle_to_player.wrapping_sub(monster_angle);
 
-				let sector_offset = 0x10000000;
-				let shifted_angle = view_angle.wrapping_add(sector_offset);
+			let sector_offset = 0x10000000;
+			let shifted_angle = view_angle.wrapping_add(sector_offset);
 
-				let sprite_rotation = ((shifted_angle >> 29) + 1) as u8;
+			let sprite_rotation = ((shifted_angle >> 29) + 1) as u8;
 			
-	    	    let cached = anim.cached_rotations[sprite_rotation as usize];
+	    	let cached = anim.cached_rotations[sprite_rotation as usize];
 			
-        		let tex_id = cached.tex_id;
-        		let tex_width = cached.width;
-        		let tex_height = cached.height;
-        		let need_flip = cached.need_flip;
+        	let tex_id = cached.tex_id;
+        	let tex_width = cached.width;
+        	let tex_height = cached.height;
+        	let need_flip = cached.need_flip;
 				// first 16 indices are reserved for sky textures,
 				// so we have to subtract MAX_SKY from the actual index
-				let (left_offset, top_offset) = sprite_offsets[tex_id.0 as usize - MAX_SKY.get().unwrap()];  
+			let (left_offset, top_offset) = sprite_offsets[tex_id.0 as usize - MAX_SKY.get().unwrap()];  
 
-				let mut final_width = tex_width as f32;
-        		let mut final_left_offset = left_offset as f32;
+			let mut final_width = tex_width as f32;
+        	let mut final_left_offset = left_offset as f32;
 
-				if need_flip {
-        		    final_width = -final_width;
-        		    final_left_offset = tex_width as f32 - final_left_offset;
-        		}
+			if need_flip {
+        	    final_width = -final_width;
+        	    final_left_offset = tex_width as f32 - final_left_offset;
+        	}
 
-				let sector = &sectors[current_sector.0.0];
+			let sector = &sectors[current_sector.0.0];
 
-				let clamped_light = sector.light.clamp(0, 255) as f32;
-	    	    let modern_light = clamped_light / 255.0;
-	    	    let colormap_idx = 31 - ((clamped_light / 8.0).floor() as u32).clamp(0, 31);
+			let clamped_light = sector.light.clamp(0, 255) as f32;
+	    	let modern_light = clamped_light / 255.0;
+	    	let colormap_idx = 31 - ((clamped_light / 8.0).floor() as u32).clamp(0, 31);
 
-	    	    ObjectInstance {
-	    	        pos: [lerped_x, lerped_y, lerped_z],
-	    	        sprite_offset: [final_left_offset, (top_offset + anim.top_offset_shift) as f32],
-					sprite_size: [final_width, tex_height as f32],
-	    	        light_level: modern_light,
-	    	        texture_id: tex_id.0,
-	    	        colormap_idx,
-	    	    }
-	    	})
-			.collect_per_thread::<Vec<ObjectInstance>>();
+	    	ObjectInstance {
+	    	    pos: [lerped_x, lerped_y, lerped_z],
+	    	    sprite_offset: [final_left_offset, (top_offset + anim.top_offset_shift) as f32],
+				sprite_size: [final_width, tex_height as f32],
+	    	    light_level: modern_light,
+	    	    texture_id: tex_id.0,
+	    	    colormap_idx,
+	    	}
+	    };
 
-		let total_count: usize = nested_instances.iter().map(|v| v.len()).sum();
+		let mut entities_query = world.query::<(&Position, &MonsterRotation, &CurrentSector, &SpriteAnimation)>();
+		let iter = entities_query.iter();
 
-		let mut instances = Vec::with_capacity(total_count);
+        let (lower_bound, _) = iter.size_hint();
+        const PARALLEL_THRESHOLD: usize = 2000;
+		
+        if lower_bound < PARALLEL_THRESHOLD {
+            iter.map(|ent| process_entity(ent)).collect()
+        } else {
+            let entities_to_process = iter.collect::<Vec<_>>();
 
-		for mut thread_vec in nested_instances {
-		    instances.append(&mut thread_vec); 
-		}
+            let nested_instances = entities_to_process
+                .into_par_iter()
+                .with_thread_pool(micropool::split_by_threads())
+                .map(process_entity)
+                .collect_per_thread();
 
-	    instances
+            let total_count: usize = nested_instances.iter().map(|v: &Vec<_>| v.len()).sum();
+
+		    let mut instances = Vec::with_capacity(total_count);
+
+		    for mut thread_vec in nested_instances {
+		        instances.append(&mut thread_vec); 
+		    }
+
+	        instances
+        }
 	}
 
-    fn collect_ui_instances(&self, player_info: &PlayerInfo, player_health: &Health) -> Vec<UiInstance> {
-        // TODO: make get_stbar run only when any of PlayerInfo params is changed
-        get_stbar(
-            player_info, 
-            player_health,
-            self.ui_db[Ui::STBAR as usize].unwrap().2 as f32, 
-            (self.ui_db[Ui::STTNUM0 as usize].unwrap().1 as f32,
-            self.ui_db[Ui::STYSNUM0 as usize].unwrap().1 as f32)
-        )
-            .iter()
-            .map(|(ui, x, y)| {
-                let (tex_id, width, height) = self.ui_db[*ui as usize].unwrap();
-                UiInstance {
-                    pos: [*x, *y],
-                    sprite_size: [width as f32, height as f32],
-                    texture_id: tex_id.0
+    fn collect_ui_instances(
+        &mut self, 
+        game_state: GameState, 
+        player_info: &PlayerInfo, 
+    ) -> Vec<UiInstance> {
+        match game_state {
+            GameState::Level | GameState::Demoscreen => {
+                if self.cached_stbar_ui.arms.is_empty() {
+                    get_stbar(player_info, &mut self.cached_stbar_ui);
+                } else {
+                    let mut checked = [false; 7];
+
+                    for ui_type in self.ui_to_update.drain(..) {
+                        if checked[ui_type as usize] {
+                            continue;
+                        }
+                    
+                        match ui_type {
+                            UpdatableUiType::Ammo => 
+                                update_ammo_ui(&player_info.inventory, &mut self.cached_stbar_ui.ammo),
+                            UpdatableUiType::Hp => 
+                                update_hp_ui(&player_info.hp, &mut self.cached_stbar_ui.hp),
+                            UpdatableUiType::Arms => 
+                                update_arms_ui(&player_info.inventory.weapon_owned, &mut self.cached_stbar_ui.arms),
+                            UpdatableUiType::Face => 
+                                update_face_ui(&mut self.cached_stbar_ui.face),
+                            UpdatableUiType::Armor => 
+                                update_armor_ui(player_info.stats.armor_points, &mut self.cached_stbar_ui.armor),
+                            UpdatableUiType::Keys => 
+                                update_keys_ui(&player_info.inventory.cards, &mut self.cached_stbar_ui.keys),
+                            UpdatableUiType::TotalAmmo => 
+                                update_total_ammo_ui(&player_info.inventory, &mut self.cached_stbar_ui.total_ammo),
+                        }
+
+                        checked[ui_type as usize] = true;
+                    }
                 }
-            })
-            .collect()
+
+                self.cached_stbar_ui.stbar.iter()
+                    .chain(&self.cached_stbar_ui.ammo)
+                    .chain(&self.cached_stbar_ui.hp)
+                    .chain(&self.cached_stbar_ui.arms)
+                    .chain(&self.cached_stbar_ui.face)
+                    .chain(&self.cached_stbar_ui.armor)
+                    .chain(&self.cached_stbar_ui.keys)
+                    .chain(&self.cached_stbar_ui.total_ammo)
+                    .map(|&engine_ui| self.engine_ui_to_instance(engine_ui))
+                    .collect()
+            }
+            _ => unreachable!()
+        }
+    }
+
+    fn engine_ui_to_instance(&self, engine_ui: (Ui, f32, f32)) -> UiInstance {
+        let (ui, x, y) = engine_ui;
+        let (tex_id, width, height) = self.ui_db[ui as usize].unwrap();
+
+        UiInstance { 
+            pos: [x, y], 
+            sprite_size: [width as f32, height as f32], 
+            texture_id: tex_id.0 
+        }
     }
 }
 

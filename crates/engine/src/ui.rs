@@ -1,53 +1,167 @@
-use strum::IntoEnumIterator;
 use wad_parser::{SCREEN_HEIGHT, Ui};
 
-use crate::{AmmoType, Card, Health, PlayerInfo, WeaponType};
+use crate::{AmmoType, Card, Health, NUMCARDS, NUMWEAPONS, PlayerInfo, PlayerInventory, WeaponType};
 
-pub fn get_stbar(player_info: &PlayerInfo, player_health: &Health, stbar_height: f32, num_widths: (f32, f32)) -> Vec<(Ui, f32, f32)> {
-	let mut ui_to_render = Vec::with_capacity(1 + 3 + 5 + 6 + 1 + 4 + 3 + 24);
+const STT_NUM_WIDTH: f32 = 14.0;
+const STYS_NUM_WIDTH: f32 = 4.0; 
+const STBAR_Y_OFFSET: f32 = SCREEN_HEIGHT - 32.0;
+const NUM_Y_OFFSET: f32 = 4.0;
 
-	let stbar_y_offset = SCREEN_HEIGHT - stbar_height;
-	ui_to_render.push((Ui::STBAR, 0.0, stbar_y_offset));
+pub struct STBarUi {
+	pub stbar: [(Ui, f32, f32); 1],
+    pub ammo: Vec<(Ui, f32, f32)>,
+    pub hp: Vec<(Ui, f32, f32)>,
+    pub arms: Vec<(Ui, f32, f32)>,
+    pub face: [(Ui, f32, f32); 1],
+    pub armor: Vec<(Ui, f32, f32)>,
+    pub keys: Vec<(Ui, f32, f32)>,
+    pub total_ammo: Vec<(Ui, f32, f32)>,
+}
 
-	let (stt_num_width, stys_num_width) = num_widths;
-	let stt_y_offset = 4.0;
+#[allow(dead_code)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum UpdatableUiType {
+	Ammo,
+	Hp,
+    Arms,
+    Face,
+    Armor,
+    Keys,
+    TotalAmmo,
+}
 
-	/* AMMO */
-	let weapon = player_info.inventory.ready_weapon;
-	let ammo = AmmoType::from(weapon);
-
-	if ammo != AmmoType::NoAmmo {
-		let ammo_x_offset = 28.0;
-
-		let _ = big_red(
-			player_info.inventory.ammo[ammo as usize] as i32, 
-			&mut ui_to_render, ammo_x_offset, stbar_y_offset, stt_num_width, stt_y_offset
-		);
+impl STBarUi {
+	pub fn new() -> Self {
+		STBarUi { 
+			stbar: [(Ui::STBAR, 0.0, STBAR_Y_OFFSET)], 
+			ammo: Vec::with_capacity(3), 
+			hp: Vec::with_capacity(5), 
+			arms: Vec::with_capacity(6), 
+			face: [(Ui::STFST00, 149.0, STBAR_Y_OFFSET + 2.0)], 
+			armor: Vec::with_capacity(4), 
+			keys: Vec::with_capacity(3), 
+			total_ammo: Vec::with_capacity(24) 
+		}
 	}
+}
 
-	/* HEALTH */
-	let health_x_offset = 90.0; 
-	ui_to_render.push((Ui::STTPRCNT, health_x_offset, stbar_y_offset + stt_y_offset));
+pub fn get_stbar(player_info: &PlayerInfo, stbar_ui: &mut STBarUi) {
+	update_ammo_ui(&player_info.inventory, &mut stbar_ui.ammo);
+	
+	update_hp_ui(&player_info.hp, &mut stbar_ui.hp);
 
-	let idx = big_red(
-		player_health.0.abs(), 
-		&mut ui_to_render, health_x_offset - stt_num_width, stbar_y_offset, stt_num_width, stt_y_offset
-	);
+	update_arms_ui(&player_info.inventory.weapon_owned, &mut stbar_ui.arms);
+	
+	update_armor_ui(player_info.stats.armor_points, &mut stbar_ui.armor);
 
-	if player_health.0.is_negative() {
+	update_keys_ui(&player_info.inventory.cards, &mut stbar_ui.keys);
+
+	update_total_ammo_ui(&player_info.inventory, &mut stbar_ui.total_ammo);
+}
+
+pub fn update_total_ammo_ui(inventory: &PlayerInventory, ui_to_render: &mut Vec<(Ui, f32, f32)>) {
+	let total_ammo_x_offset = 289.0;
+	let total_ammo_y_offset = 5.0;
+	let distance_y_total_ammo = 6.0;
+
+	ui_to_render.clear();
+	
+	yellow(inventory.ammo[AmmoType::Clip as usize], 
+		ui_to_render, total_ammo_x_offset, total_ammo_y_offset);
+	yellow(if inventory.backpack { 400 } else { 200 }, 
+		ui_to_render, total_ammo_x_offset + 25.0, total_ammo_y_offset);
+		
+	yellow(inventory.ammo[AmmoType::Shell as usize], 
+		ui_to_render, total_ammo_x_offset, total_ammo_y_offset + distance_y_total_ammo);
+	yellow(if inventory.backpack { 100 } else { 50 }, 
+		ui_to_render, total_ammo_x_offset + 25.0, total_ammo_y_offset + distance_y_total_ammo);
+		
+	yellow(inventory.ammo[AmmoType::Missile as usize], 
+		ui_to_render, total_ammo_x_offset, total_ammo_y_offset + distance_y_total_ammo * 2.0);
+	yellow(if inventory.backpack { 100 } else { 50 }, 
+		ui_to_render, total_ammo_x_offset + 25.0, total_ammo_y_offset + distance_y_total_ammo * 2.0);
+		
+	yellow(inventory.ammo[AmmoType::Cell as usize], 
+		ui_to_render, total_ammo_x_offset, total_ammo_y_offset + distance_y_total_ammo * 3.0);
+	yellow(if inventory.backpack { 600 } else { 300 }, 
+		ui_to_render, total_ammo_x_offset + 25.0, total_ammo_y_offset + distance_y_total_ammo * 3.0);
+}
+
+pub fn update_keys_ui(cards: &[bool; NUMCARDS], ui_to_render: &mut Vec<(Ui, f32, f32)>) {
+	let keys_x_offset = 239.0;
+
+	ui_to_render.clear();
+
+	if cards[Card::BlueSkull as usize] {
 		ui_to_render.push((
-			Ui::STTMINUS, 
-			health_x_offset - stt_num_width * idx,
-			stbar_y_offset + stt_y_offset
+			Ui::STKEYS3,
+			keys_x_offset,
+			STBAR_Y_OFFSET + 3.1
+		));
+	} else if cards[Card::BlueCard as usize] {
+		ui_to_render.push((
+			Ui::STKEYS0,
+			keys_x_offset,
+			STBAR_Y_OFFSET + 4.0
 		));
 	}
+
+	if cards[Card::YellowSkull as usize] {
+		ui_to_render.push((
+			Ui::STKEYS4,
+			keys_x_offset,
+			STBAR_Y_OFFSET + 13.1
+		));
+	} else if cards[Card::YellowCard as usize] {
+		ui_to_render.push((
+			Ui::STKEYS1,
+			keys_x_offset,
+			STBAR_Y_OFFSET + 14.0
+		));
+	}
+
+	if cards[Card::RedSkull as usize] {
+		ui_to_render.push((
+			Ui::STKEYS5,
+			keys_x_offset,
+			STBAR_Y_OFFSET + 23.1
+		));
+	} else if cards[Card::RedCard as usize] {
+		ui_to_render.push((
+			Ui::STKEYS2,
+			keys_x_offset,
+			STBAR_Y_OFFSET + 24.0
+		));
+	}
+}
+
+pub fn update_armor_ui(armor_points: u32, ui_to_render: &mut Vec<(Ui, f32, f32)>) {
+	let armor_x_offset = 221.0; 
+
+	ui_to_render.clear();
 	
-	/* ARMS */
-	let arms_x_offset = 110.0;
+	ui_to_render.push((Ui::STTPRCNT, armor_x_offset, STBAR_Y_OFFSET + NUM_Y_OFFSET));
+
+	big_red(armor_points as i32, ui_to_render, armor_x_offset);
+}
+
+pub fn update_face_ui(ui_to_render: &mut [(Ui, f32, f32); 1]) {
+	ui_to_render[0] = (Ui::STFST00, 149.0, STBAR_Y_OFFSET + 2.0);
+}
+
+pub fn update_arms_ui(weapon_owned: &[bool; NUMWEAPONS], ui_to_render: &mut Vec<(Ui, f32, f32)>) {
+	let arms_x_offset = 111.0;
 	let arms_y_offset = 4.0;
 	let distance_x_arms = 12.0;
 	let distance_y_arms = 10.0;
-	let weapon_owned = &player_info.inventory.weapon_owned;
+
+	ui_to_render.clear();
+
+	ui_to_render.push((
+		Ui::STARMS,
+		104.0,
+		STBAR_Y_OFFSET
+	));
 	
 	ui_to_render.push((
 		match weapon_owned[WeaponType::Pistol as usize] {
@@ -55,7 +169,7 @@ pub fn get_stbar(player_info: &PlayerInfo, player_health: &Health, stbar_height:
 			false => single_gray(2)
 		},
 		arms_x_offset,
-		stbar_y_offset + arms_y_offset
+		STBAR_Y_OFFSET + arms_y_offset
 	));
 
 	ui_to_render.push((
@@ -64,7 +178,7 @@ pub fn get_stbar(player_info: &PlayerInfo, player_health: &Health, stbar_height:
 			_ => single_yellow(3),
 		},
 		arms_x_offset + distance_x_arms,
-		stbar_y_offset + arms_y_offset
+		STBAR_Y_OFFSET + arms_y_offset
 	));
 
 	ui_to_render.push((
@@ -73,7 +187,7 @@ pub fn get_stbar(player_info: &PlayerInfo, player_health: &Health, stbar_height:
 			false => single_gray(4)
 		},
 		arms_x_offset + distance_x_arms * 2.0,
-		stbar_y_offset + arms_y_offset
+		STBAR_Y_OFFSET + arms_y_offset
 	));
 
 	ui_to_render.push((
@@ -82,7 +196,7 @@ pub fn get_stbar(player_info: &PlayerInfo, player_health: &Health, stbar_height:
 			false => single_gray(5)
 		},
 		arms_x_offset,
-		stbar_y_offset + arms_y_offset + distance_y_arms
+		STBAR_Y_OFFSET + arms_y_offset + distance_y_arms
 	));
 
 	ui_to_render.push((
@@ -91,7 +205,7 @@ pub fn get_stbar(player_info: &PlayerInfo, player_health: &Health, stbar_height:
 			false => single_gray(6)
 		},
 		arms_x_offset + distance_x_arms,
-		stbar_y_offset + arms_y_offset + distance_y_arms
+		STBAR_Y_OFFSET + arms_y_offset + distance_y_arms
 	));
 
 	ui_to_render.push((
@@ -100,174 +214,127 @@ pub fn get_stbar(player_info: &PlayerInfo, player_health: &Health, stbar_height:
 			false => single_gray(7)
 		},
 		arms_x_offset + distance_x_arms * 2.0,
-		stbar_y_offset + arms_y_offset + distance_y_arms
+		STBAR_Y_OFFSET + arms_y_offset + distance_y_arms
 	));
+}
 
-	/* FACE */
-	ui_to_render.push((
-		Ui::STFST00,
-		149.0,
-		stbar_y_offset + 2.0
-	));
+pub fn update_hp_ui(player_health: &Health, ui_to_render: &mut Vec<(Ui, f32, f32)>) {
+	let health_x_offset = 90.0; 
+	
+	ui_to_render.clear();
 
-	/* ARMOR */
-	let armor_x_offset = 221.0; 
-	ui_to_render.push((Ui::STTPRCNT, armor_x_offset, stbar_y_offset + stt_y_offset));
+	ui_to_render.push((Ui::STTPRCNT, health_x_offset, STBAR_Y_OFFSET + NUM_Y_OFFSET));
 
-	let _ = big_red(
-		player_info.stats.armor_points as i32, 
-		&mut ui_to_render, armor_x_offset - stt_num_width, stbar_y_offset, stt_num_width, stt_y_offset
-	);
+	let idx = big_red(player_health.0.abs(), ui_to_render, health_x_offset);
 
-	/* KEYS */
-	let keys_x_offset = 239.0;
-	if player_info.inventory.cards[Card::BlueSkull as usize] {
+	if player_health.0.is_negative() {
 		ui_to_render.push((
-			Ui::STKEYS3,
-			keys_x_offset,
-			stbar_y_offset + 3.1
-		));
-	} else if player_info.inventory.cards[Card::BlueCard as usize] {
-		ui_to_render.push((
-			Ui::STKEYS0,
-			keys_x_offset,
-			stbar_y_offset + 4.0
+			Ui::STTMINUS, 
+			health_x_offset - STT_NUM_WIDTH * idx - 6.0,
+			STBAR_Y_OFFSET + NUM_Y_OFFSET + 5.0
 		));
 	}
+}
 
-	if player_info.inventory.cards[Card::YellowSkull as usize] {
-		ui_to_render.push((
-			Ui::STKEYS4,
-			keys_x_offset,
-			stbar_y_offset + 13.1
-		));
-	} else if player_info.inventory.cards[Card::YellowCard as usize] {
-		ui_to_render.push((
-			Ui::STKEYS1,
-			keys_x_offset,
-			stbar_y_offset + 14.0
-		));
+pub fn update_ammo_ui(inventory: &PlayerInventory, ui_to_render: &mut Vec<(Ui, f32, f32)>) {
+	let weapon = inventory.ready_weapon;
+	let ammo_type = AmmoType::from(weapon);
+
+	ui_to_render.clear();
+
+	if ammo_type != AmmoType::NoAmmo {
+		let ammo_x_offset = 44.0;
+
+		big_red(inventory.ammo[ammo_type as usize] as i32, ui_to_render, ammo_x_offset);
 	}
-
-	if player_info.inventory.cards[Card::RedSkull as usize] {
-		ui_to_render.push((
-			Ui::STKEYS5,
-			keys_x_offset,
-			stbar_y_offset + 23.1
-		));
-	} else if player_info.inventory.cards[Card::RedCard as usize] {
-		ui_to_render.push((
-			Ui::STKEYS2,
-			keys_x_offset,
-			stbar_y_offset + 24.0
-		));
-	}
-
-	/* TOTAL AMMO */
-	let total_ammo_x_offset = 284.0;
-	let total_ammo_y_offset = 5.0;
-	let distance_y_total_ammo = 6.0;
-	for ammo in AmmoType::iter() {
-		match ammo {
-			AmmoType::Clip => {
-				yellow(player_info.inventory.ammo[ammo as usize], 
-					&mut ui_to_render, total_ammo_x_offset, stbar_y_offset, stys_num_width, total_ammo_y_offset);
-				yellow(player_info.inventory.ammo[ammo as usize], 
-					&mut ui_to_render, total_ammo_x_offset + 25.0, stbar_y_offset, stys_num_width, total_ammo_y_offset);
-			}
-			AmmoType::Shell => {
-				yellow(player_info.inventory.ammo[ammo as usize], 
-					&mut ui_to_render, total_ammo_x_offset, stbar_y_offset, stys_num_width, total_ammo_y_offset + distance_y_total_ammo);
-				yellow(player_info.inventory.ammo[ammo as usize], 
-					&mut ui_to_render, total_ammo_x_offset + 25.0, stbar_y_offset, stys_num_width, total_ammo_y_offset + distance_y_total_ammo);
-			}
-			AmmoType::Missile => {
-				yellow(player_info.inventory.ammo[ammo as usize], 
-					&mut ui_to_render, total_ammo_x_offset, stbar_y_offset, stys_num_width, total_ammo_y_offset + distance_y_total_ammo * 2.0);
-				yellow(player_info.inventory.ammo[ammo as usize], 
-					&mut ui_to_render, total_ammo_x_offset + 25.0, stbar_y_offset, stys_num_width, total_ammo_y_offset + distance_y_total_ammo * 2.0);
-			}
-			AmmoType::Cell => {
-				yellow(player_info.inventory.ammo[ammo as usize], 
-					&mut ui_to_render, total_ammo_x_offset, stbar_y_offset, stys_num_width, total_ammo_y_offset + distance_y_total_ammo * 3.0);
-				yellow(player_info.inventory.ammo[ammo as usize], 
-					&mut ui_to_render, total_ammo_x_offset + 25.0, stbar_y_offset, stys_num_width, total_ammo_y_offset + distance_y_total_ammo * 3.0);
-			}
-			AmmoType::NoAmmo => {}
-		}
-	}
-
-	ui_to_render
 }
 
 fn big_red(
 	mut n: i32, 
-	ui_to_render: &mut Vec<(Ui, f32, f32)>, 
+	ui_to_render: &mut Vec<(Ui, f32, f32)>,
 	num_x_offset: f32, 
-	stbar_y_offset: f32,
-	stt_num_width: f32,
-	stt_y_offset: f32,
 ) -> f32 {
-	let mut idx = 0.0;
+	let num_digits = if n < 10 { 1 } else if n < 100 { 2 } else { 3 };
+
+	let mut offset_1 = 0.0;
 
 	let ones = n % 10;
+	if ones == 1 {
+		offset_1 += 2.0;
+	}
 	ui_to_render.push((
 		single_big_red(ones), 
-		num_x_offset - stt_num_width * idx,
-		stbar_y_offset + stt_y_offset
+		num_x_offset - STT_NUM_WIDTH + offset_1,
+		STBAR_Y_OFFSET + NUM_Y_OFFSET
 	));
-	idx += 1.0;
 	n -= ones;
 	n /= 10;
 
-	while n > 0 {
+	if num_digits >= 2 {
 		let ones = n % 10;
+		if ones == 1 {
+			offset_1 += 2.0;
+		}
 		ui_to_render.push((
 			single_big_red(ones), 
-			num_x_offset - stt_num_width * idx,
-			stbar_y_offset + stt_y_offset
+			num_x_offset - STT_NUM_WIDTH * 2.0 + offset_1,
+			STBAR_Y_OFFSET + NUM_Y_OFFSET
 		));
-		idx += 1.0;
 		n -= ones;
 		n /= 10;
 	}
 
-	idx
+	if num_digits == 3 {
+		let ones = n % 10;
+		if ones == 1 {
+			offset_1 = 2.0;
+		}
+		ui_to_render.push((
+			single_big_red(ones), 
+			num_x_offset - STT_NUM_WIDTH * 3.0 + offset_1,
+			STBAR_Y_OFFSET + NUM_Y_OFFSET
+		)); 
+	}
+
+	num_digits as f32
 }
 
 fn yellow(
 	mut n: u32, 
-	ui_to_render: &mut Vec<(Ui, f32, f32)>, 
+	ui_to_render: &mut Vec<(Ui, f32, f32)>,
 	num_x_offset: f32, 
-	stbar_y_offset: f32,
-	stt_num_width: f32,
-	stt_y_offset: f32,
-) -> f32 {
-	let mut idx = 0.0;
+	num_y_offset: f32,
+) {
+	let num_digits = if n < 10 { 1 } else if n < 100 { 2 } else { 3 };
 
 	let ones = n % 10;
 	ui_to_render.push((
 		single_yellow(ones), 
-		num_x_offset - stt_num_width * idx,
-		stbar_y_offset + stt_y_offset
+		num_x_offset - STYS_NUM_WIDTH,
+		STBAR_Y_OFFSET + num_y_offset
 	));
-	idx += 1.0;
 	n -= ones;
 	n /= 10;
 
-	while n > 0 {
+	if num_digits >= 2 {
 		let ones = n % 10;
 		ui_to_render.push((
 			single_yellow(ones), 
-			num_x_offset - stt_num_width * idx,
-			stbar_y_offset + stt_y_offset
+			num_x_offset - STYS_NUM_WIDTH * 2.0,
+			STBAR_Y_OFFSET + num_y_offset
 		));
-		idx += 1.0;
 		n -= ones;
 		n /= 10;
 	}
 
-	idx
+	if num_digits == 3 {
+		let ones = n % 10;
+		ui_to_render.push((
+			single_yellow(ones), 
+			num_x_offset - STYS_NUM_WIDTH * 3.0,
+			STBAR_Y_OFFSET + num_y_offset
+		));
+	}
 }
 
 fn single_big_red(n: i32) -> Ui {

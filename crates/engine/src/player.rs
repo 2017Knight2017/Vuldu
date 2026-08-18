@@ -1,7 +1,7 @@
-use crate::{CurrentSector, NUMAMMO, NUMCARDS, NUMWEAPONS, PlayerMarker, PlayerRotation, PlayerShoot, PlayerState, Position, SfxEvent, Velocity, WeaponType};
+use crate::{CurrentSector, Health, NUMAMMO, NUMCARDS, NUMWEAPONS, PlayerMarker, PlayerRotation, PlayerState, Position, Velocity, WeaponType};
 use std::f64::consts::TAU;
-use hecs::{CommandBuffer, Entity, World};
-use wad_parser::{Level, to_u64};
+use hecs::{Entity, World};
+use wad_parser::Level;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PlayerCamera {
@@ -11,7 +11,7 @@ pub struct PlayerCamera {
     pub bob: f32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PlayerStats {
     pub state: PlayerState,
     pub armor_points: u32,
@@ -35,7 +35,7 @@ impl Default for PlayerInventory {
     fn default() -> Self {
         PlayerInventory {
             ready_weapon: WeaponType::Pistol,
-            pending_weapon: WeaponType::Pistol,
+            pending_weapon: WeaponType::NoChange,
             backpack: false,
             cards: [false; NUMCARDS],
             weapon_owned: [true, true, false, false, false, false, false, false, false],
@@ -49,6 +49,20 @@ pub struct PlayerInfo {
     pub entity: Entity,
     pub inventory: PlayerInventory,
     pub stats: PlayerStats,
+    pub hp: Health,
+}
+
+impl Default for PlayerStats {
+    fn default() -> Self {
+        PlayerStats { 
+            state: PlayerState::Live, 
+            armor_points: 0, 
+            is_super_armor: false, 
+            kill_count: 0, 
+            item_count: 0, 
+            secret_count: 0 
+        }
+    }
 }
 
 impl PlayerInfo {
@@ -57,6 +71,7 @@ impl PlayerInfo {
             entity: Entity::DANGLING, 
             inventory: PlayerInventory::default(), 
             stats: PlayerStats::default(),
+            hp: Health(100),
         }
     }
 }
@@ -70,17 +85,19 @@ pub struct PlayerInput {
     pub move_up: bool,
     pub move_down: bool,
     pub shoot: bool,
+    pub switch_fist_chainsaw: bool,
+    pub choose_pistol: bool,
+    pub choose_shotgun: bool,
+    pub choose_chaingun: bool,
+    pub choose_rlauncher: bool,
+    pub choose_plasma: bool,
+    pub choose_bfg: bool,
     pub mouse_delta_x: f32,
 }
 
-pub fn handle_position_input(
-    world: &World,
-    input: &PlayerInput,
-    command_buffer: &mut CommandBuffer,
-    audio_buffer: &mut Vec<SfxEvent>
-) {
-    let mut query = world.query::<(Entity, &mut Velocity, &PlayerRotation)>();
-    for (entity, velocity, rotation) in query.iter() {
+pub fn handle_position_input(world: &World, input: &PlayerInput) {
+    let mut query = world.query::<(&mut Velocity, &PlayerRotation)>();
+    for (velocity, rotation) in query.iter() {
         let mut move_forward = 0.0;
         let mut move_sideways = 0.0;
         let mut move_vertically = 0.0;
@@ -105,11 +122,6 @@ pub fn handle_position_input(
         velocity.x += thrust_x as f32 * 0.2; 
         velocity.z += thrust_z as f32 * 0.2;
         velocity.y += move_vertically * 4.0;
-
-        if input.shoot{
-            command_buffer.insert_one(entity, PlayerShoot);
-            audio_buffer.push(SfxEvent { sfx_id: to_u64(b"DSPISTOL"), pos: None });
-        }
     }
 }
 

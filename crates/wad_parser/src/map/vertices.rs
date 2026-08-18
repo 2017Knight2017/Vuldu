@@ -74,14 +74,14 @@ struct Edge {
 }
 
 impl Level {
-	pub fn get_walls_vertices(&self, texture_ids: &FxHashMap<u64, (TextureId, u32, u32, bool)>) -> (Vec<GpuVertex>, Vec<u32>) {
+	pub fn get_walls_vertices(&mut self, texture_ids: &FxHashMap<u64, (TextureId, u32, u32, bool)>) -> (Vec<GpuVertex>, Vec<u32>) {
 	    let mut gpu_vertices = Vec::new();
 	    let mut gpu_indices = Vec::new();
 
 		let segs = &self.geom.segs;
 		let vertices = &self.geom.vertices;
 		let sides_geom = &self.geom.sides;
-		let sides_state = &self.state.sides;
+		let sides_state = &mut self.state.sides;
 		let lines = &self.geom.lines;
 		let sectors = &self.state.sectors;
 		
@@ -100,7 +100,7 @@ impl Level {
 				Some(idx) => idx,
 			};
 			
-			let front_side = &sides_state[front_side_idx.0];
+			let front_side = &mut sides_state[front_side_idx.0];
 	        let front_sector = &sectors[sides_geom[front_side_idx.0].sector.0];
 	        let back_sector = match back_side_idx_opt {
 				Some(idx) => Some((&sides_geom[idx.0], &sectors[sides_geom[idx.0].sector.0])),
@@ -120,9 +120,9 @@ impl Level {
 				v_offset: f32, 
 				fake_flat_name: &[u8], 
 				other_sector_ceilingpic: &[u8]
-			| {
+			| -> Option<TextureId> {
             	let wall_height = y_high - y_low;
-            	if wall_height <= 0.0 { return; }
+            	if wall_height <= 0.0 { return None; }
 
             	let is_fake_wall = tex_name.is_empty() || tex_name[0] == 0x2d;
 				
@@ -211,6 +211,8 @@ impl Level {
 	            gpu_indices.push(start_idx + 2);
 	            gpu_indices.push(start_idx + 1);
 	            gpu_indices.push(start_idx + 3);
+
+				Some(final_tex_id)
 	        };
 
 			let dont_peg_top = line.flags.contains(LineFlags::DONT_PEG_TOP);
@@ -230,7 +232,8 @@ impl Level {
                 	    0.0
                 	};
 
-        	        add_wall_quad(
+					
+        	        front_side.mid_tex = add_wall_quad(
 						front_sector.floor_h, 
 						front_sector.ceil_h, 
 						&front_side.midtexture, 
@@ -253,7 +256,7 @@ impl Level {
                             offset - tex_h
                         };
 
-						add_wall_quad(
+						front_side.top_tex = add_wall_quad(
 							b_sector.ceil_h, 
 							front_sector.ceil_h, 
 							&front_side.toptexture, 
@@ -276,7 +279,7 @@ impl Level {
 							0.0 
                     	};
 
-        	            add_wall_quad(
+        	            front_side.bottom_tex = add_wall_quad(
 							front_sector.floor_h, 
 							b_sector.floor_h, 
 							&front_side.bottomtexture, 
@@ -289,7 +292,8 @@ impl Level {
         	        if front_side.midtexture[0] != 0x2d {
         	            let mid_low = front_sector.floor_h.max(b_sector.floor_h);
         	            let mid_high = front_sector.ceil_h.min(b_sector.ceil_h);
-        	            add_wall_quad(mid_low, mid_high, &front_side.midtexture, 0.0, &front_sector.floorpic, &b_sector.ceilingpic);
+        	            front_side.mid_tex = add_wall_quad(mid_low, mid_high, &front_side.midtexture, 
+							0.0, &front_sector.floorpic, &b_sector.ceilingpic);
         	        }
         	    }
         	}
@@ -298,33 +302,33 @@ impl Level {
 	    (gpu_vertices, gpu_indices)
 	}
 
-	pub fn get_flats_vertices(&self, texture_ids: &FxHashMap<u64, (TextureId, u32, u32, bool)>) -> (Vec<GpuVertex>, Vec<u32>, Vec<Vec<LineId>>) {
+	pub fn get_flats_vertices(&mut self, texture_ids: &FxHashMap<u64, (TextureId, u32, u32, bool)>) -> (Vec<GpuVertex>, Vec<u32>) {
 	    let mut gpu_vertices: Vec<GpuVertex> = Vec::new();
 	    let mut gpu_indices: Vec<u32> = Vec::new();
 
+		self.geom.sector_lines = vec![Vec::new(); self.state.sectors.len()];
+
 		let lines = &self.geom.lines;
 		let sides = &self.geom.sides;
-		let sectors = &self.state.sectors;
+		let sectors = &mut self.state.sectors;
 		let vertices = &self.geom.vertices;
-
-		let mut sector_lines = vec![Vec::new(); self.state.sectors.len()];
 
     	for (i, line) in lines.iter().enumerate() {
     	    if let Some(front_side) = line.sides.0 {
 				let sector_idx = sides[front_side.0].sector.0;
 
-    	    	sector_lines[sector_idx].push(LineId(i));
+    	    	self.geom.sector_lines[sector_idx].push(LineId(i));
     	    }
 
     	    if let Some(back_side) = line.sides.1 {
 				let sector_idx = sides[back_side.0].sector.0;
 
-    	        sector_lines[sector_idx].push(LineId(i));
+    	        self.geom.sector_lines[sector_idx].push(LineId(i));
     	    }
     	}
 
-	    for (sector_id, sector) in sectors.iter().enumerate() {
-			let current_sector_lines = &sector_lines[sector_id];
+	    for (sector_id, sector) in sectors.iter_mut().enumerate() {
+			let current_sector_lines = &self.geom.sector_lines[sector_id];
 	        let mut edges: Vec<Edge> = Vec::with_capacity(current_sector_lines.len() * 2);
 
 	        for line_id in current_sector_lines {
@@ -523,16 +527,22 @@ impl Level {
 	            let floor_texture_name = to_u64(&sector.floorpic);
 	            let ceil_texture_name = to_u64(&sector.ceilingpic);
 
-	            let floor_texture_id = if sector.floorpic.starts_with(b"F_SKY1") {
+	            sector.floor_tex = if sector.floorpic.starts_with(b"F_SKY1") {
 					TextureId((u16::MAX - 2) as u32)
 				} else {
-					texture_ids.get(&floor_texture_name).unwrap_or(&(TextureId(0),0,0,false)).0
+					match texture_ids.get(&floor_texture_name){
+						Some(tex) => tex.0,
+						None => TextureId(0)
+					}
 				};
 
-	            let ceil_texture_id = if sector.ceilingpic.starts_with(b"F_SKY1") {
+	            sector.ceil_tex = if sector.ceilingpic.starts_with(b"F_SKY1") {
 					TextureId((u16::MAX - 2) as u32)
 				} else { 
-					texture_ids.get(&ceil_texture_name).unwrap_or(&(TextureId(0),0,0,false)).0 
+					match texture_ids.get(&ceil_texture_name){
+						Some(tex) => tex.0,
+						None => TextureId(0)
+					}
 				};
 
 	            let clamped_light = sector.light.clamp(0, 255) as f32;
@@ -545,7 +555,7 @@ impl Level {
 	                    pos: [pt[0], sector.floor_h, pt[1]],
 	                    texture_pos: [pt[0] / 64.0, pt[1] / 64.0],
 						light_level: modern_light,
-	                    texture_id: floor_texture_id.0,
+	                    texture_id: sector.floor_tex.0,
 	                    colormap_idx,
 						floor_tex_id: 0,
 	                });
@@ -562,7 +572,7 @@ impl Level {
 	                    pos: [pt[0], sector.ceil_h, pt[1]],
 	                    texture_pos: [pt[0] / 64.0, pt[1] / 64.0],
 						light_level: modern_light,
-	                    texture_id: ceil_texture_id.0,
+	                    texture_id: sector.ceil_tex.0,
 	                    colormap_idx,
 						floor_tex_id: 0,
 	                });
@@ -574,7 +584,8 @@ impl Level {
 	            }
 	        }
 	    }
-	    (gpu_vertices, gpu_indices, sector_lines)
+
+	    (gpu_vertices, gpu_indices)
 	}
 
 	pub fn get_sector_by_pos(&self, x: f32, z: f32) -> SectorId {

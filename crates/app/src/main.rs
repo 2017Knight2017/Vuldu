@@ -32,6 +32,7 @@ const TICK_TIME: f32 = 1.0 / TICKRATE as f32;
 struct GameContext {
     world: World,
     level: Level,
+    game_state: GameState,
     blocklists: Vec<Vec<Entity>>,
     sound_targets: Vec<Option<Entity>>,
     world_events: Vec<WorldEvent>,
@@ -67,13 +68,22 @@ impl GameContext {
             mobj_flag_buffer: Vec::new(), 
             command_buffer: CommandBuffer::new(),
             action_buffer: Vec::new(),
-            player_info: PlayerInfo::new()
+            player_info: PlayerInfo::new(),
+            game_state: GameState::Level
         }
     }
 
-    fn tick(&mut self, audio: &mut AudioContext, current_input: &mut PlayerInput, random: &mut Random) {
+    fn tick(
+        &mut self, 
+        audio: &mut AudioContext, 
+        current_input: &mut PlayerInput, 
+        random: &mut Random, 
+        ui_to_update: &mut Vec<UpdatableUiType>
+    ) {
         handle_rotation_input(&self.world, current_input);
-        handle_position_input(&self.world, current_input, &mut self.command_buffer, &mut audio.buffer);
+        handle_position_input(&self.world, current_input);
+        handle_weapons_input(current_input, &mut self.player_info, ui_to_update, 
+            &mut self.command_buffer, &mut audio.buffer);
 
         self.flush_command_buffer();
 
@@ -144,7 +154,7 @@ impl App {
 
     fn update_game_logic(&mut self) {
         while self.time_accumulator >= TICK_TIME {
-            self.game.tick(&mut self.audio, &mut self.current_input, &mut self.random);
+            self.game.tick(&mut self.audio, &mut self.current_input, &mut self.random, &mut self.graphics.ui_to_update);
             self.time_accumulator -= TICK_TIME;
         }
     }
@@ -235,7 +245,7 @@ impl ApplicationHandler for App {
             return;
         }
 
-        self.game.level.geom.sector_lines = self.graphics.setup_level_geometry(&mut renderer, &self.game.level);
+        self.graphics.setup_level_geometry(&mut renderer, &mut self.game.level);
 
         let _ = engine::populate_database(&self.graphics.data).map_err(|e| eprintln!("{}", e));
         engine::spawn_all_things(&mut self.game.world, &self.game.level, &mut self.random, &mut self.game.player_info);
@@ -280,6 +290,13 @@ impl ApplicationHandler for App {
                     PhysicalKey::Code(KeyCode::KeyD) => self.current_input.move_right = is_pressed,
                     PhysicalKey::Code(KeyCode::Space) => self.current_input.move_up = is_pressed,
                     PhysicalKey::Code(KeyCode::ShiftLeft) => self.current_input.move_down = is_pressed,
+                    PhysicalKey::Code(KeyCode::Digit1) => self.current_input.switch_fist_chainsaw = is_pressed,
+                    PhysicalKey::Code(KeyCode::Digit2) => self.current_input.choose_pistol = is_pressed,
+                    PhysicalKey::Code(KeyCode::Digit3) => self.current_input.choose_shotgun = is_pressed,
+                    PhysicalKey::Code(KeyCode::Digit4) => self.current_input.choose_chaingun = is_pressed,
+                    PhysicalKey::Code(KeyCode::Digit5) => self.current_input.choose_rlauncher = is_pressed,
+                    PhysicalKey::Code(KeyCode::Digit6) => self.current_input.choose_plasma = is_pressed,
+                    PhysicalKey::Code(KeyCode::Digit7) => self.current_input.choose_bfg = is_pressed,
                     _ => {}
                 }
             }
@@ -316,7 +333,8 @@ impl ApplicationHandler for App {
             
                 if let Some(window) = &self.window {
                     let alpha = self.time_accumulator / TICK_TIME;
-                    self.graphics.render(window, &self.game.world, &self.game.level, &self.game.player_info, alpha);
+                    self.graphics.render(window, &self.game.world, &self.game.level, 
+                        self.game.game_state, &self.game.player_info, alpha);
 
                     window.request_redraw();
                 }
