@@ -40,7 +40,7 @@ struct GameContext {
     action_buffer: Vec<(Entity, ActionFunc)>,
     command_buffer: CommandBuffer,
     traversal: Traversal,
-    player_info: PlayerInfo
+    player_entity: Entity
 }
 
 struct App {
@@ -68,7 +68,7 @@ impl GameContext {
             mobj_flag_buffer: Vec::new(), 
             command_buffer: CommandBuffer::new(),
             action_buffer: Vec::new(),
-            player_info: PlayerInfo::new(),
+            player_entity: Entity::DANGLING,
             game_state: GameState::Level
         }
     }
@@ -81,9 +81,9 @@ impl GameContext {
         ui_to_update: &mut Vec<UpdatableUiType>
     ) {
         handle_rotation_input(&self.world, current_input);
-        handle_position_input(&self.world, current_input);
-        handle_weapons_input(current_input, &mut self.player_info, ui_to_update, 
-            &mut self.command_buffer, &mut audio.buffer);
+        handle_position_input(&self.world, self.player_entity, current_input);
+        handle_weapons_input(&self.world, self.player_entity, ui_to_update, 
+            &mut self.command_buffer, &mut audio.buffer, current_input);
 
         self.flush_command_buffer();
 
@@ -248,7 +248,7 @@ impl ApplicationHandler for App {
         self.graphics.setup_level_geometry(&mut renderer, &mut self.game.level);
 
         let _ = engine::populate_database(&self.graphics.data).map_err(|e| eprintln!("{}", e));
-        engine::spawn_all_things(&mut self.game.world, &self.game.level, &mut self.random, &mut self.game.player_info);
+        engine::spawn_all_things(&mut self.game.world, &self.game.level, &mut self.random, &mut self.game.player_entity);
         println!("Mobj spawning is done!");
 
         self.graphics.renderer = Some(renderer);
@@ -333,8 +333,8 @@ impl ApplicationHandler for App {
             
                 if let Some(window) = &self.window {
                     let alpha = self.time_accumulator / TICK_TIME;
-                    self.graphics.render(window, &self.game.world, &self.game.level, 
-                        self.game.game_state, &self.game.player_info, alpha);
+                    self.graphics.render(window, &self.game.world, self.game.player_entity, 
+                        &self.game.level, self.game.game_state, alpha);
 
                     window.request_redraw();
                 }

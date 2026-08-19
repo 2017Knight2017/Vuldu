@@ -1,6 +1,6 @@
-use hecs::World;
+use hecs::{Entity, World};
 use renderer::{MAX_SKY, ObjectInstance, SafeRenderer, TextureDescriptor, UiInstance, UniformBufferObject, Vertex};
-use engine::{CurrentSector, EYEHEIGHT, GameState, MonsterRotation, PlayerInfo, PlayerMarker, PlayerRotation, Position, STBarUi, SpriteAnimation, UpdatableUiType, get_stbar, pack_sprite_u64, point_to_angle, update_ammo_ui, update_armor_ui, update_arms_ui, update_face_ui, update_hp_ui, update_keys_ui, update_total_ammo_ui};
+use engine::{CurrentSector, EYEHEIGHT, GameState, Health, MonsterRotation, PlayerInventory, PlayerRotation, PlayerStats, Position, STBarUi, SpriteAnimation, UpdatableUiType, get_stbar, pack_sprite_u64, point_to_angle, update_ammo_ui, update_armor_ui, update_arms_ui, update_face_ui, update_hp_ui, update_keys_ui, update_total_ammo_ui};
 use glam::{Mat4, Vec3};
 use micropool::iter::*;
 use rustc_hash::FxHashMap;
@@ -171,8 +171,6 @@ impl GraphicsContext {
         let obj_vertices: Vec<Vertex> = obj_gpu_vertices.into_iter().map(|v| vertex_to_vertex(v)).collect();
         let ui_vertices: Vec<Vertex> = ui_gpu_vertices.into_iter().map(|v| vertex_to_vertex(v)).collect();
 
-        //renderer.update_object_instances(&[]);
-        //renderer.update_ui_instances(&[]);
         renderer.update_level_geometry(&level_vertices, &level_indices);
         renderer.update_object_geometry(&obj_vertices, &obj_indices);
         renderer.update_ui_geometry(&ui_vertices, &ui_indices);
@@ -182,13 +180,13 @@ impl GraphicsContext {
         &mut self, 
         window: &Window, 
         world: &World, 
+        player_entity: Entity,
         level: &Level,
         game_state: GameState,
-        player_info: &PlayerInfo,
         alpha: f32
     ) {
-        let obj_instances = self.collect_object_instances(world, &level.state.sectors, alpha);
-        let ui_instances = self.collect_ui_instances(game_state, player_info);
+        let obj_instances = self.collect_object_instances(world, player_entity, &level.state.sectors, alpha);
+        let ui_instances = self.collect_ui_instances(world, player_entity, game_state);
         
         let size = window.inner_size();
         if size.width == 0 || size.height == 0 {
@@ -198,7 +196,7 @@ impl GraphicsContext {
         let aspect_ratio = size.width as f32 / size.height as f32;
         let proj = Mat4::perspective_rh(FOV_ANGLE.to_radians(), aspect_ratio, 1.0, 10000.0);
 
-        update_camera_from_player(&mut self.view_matrix, world, alpha);
+        update_camera_from_player(&mut self.view_matrix, world, player_entity, alpha);
 
         let ubo = UniformBufferObject {
             model: Mat4::IDENTITY.to_cols_array(),
@@ -217,15 +215,13 @@ impl GraphicsContext {
         }
     }
 
-	fn collect_object_instances(&self, world: &World, sectors: &[SectorState], alpha: f32) -> Vec<ObjectInstance> {
-	    let mut player_pos = Vec3::ZERO;
+	fn collect_object_instances(&self, world: &World, player_entity: Entity, sectors: &[SectorState], alpha: f32) -> Vec<ObjectInstance> {
+        let pos = world.get::<&Position>(player_entity).unwrap();
 	
-	    for pos in world.query::<&Position>().with::<&PlayerMarker>().iter() {
-	        let lerped_x = pos.prev_x * (1.0 - alpha) + pos.x * alpha;
-	        let lerped_y = pos.prev_y * (1.0 - alpha) + pos.y * alpha;
-	        let lerped_z = pos.prev_z * (1.0 - alpha) + pos.z * alpha;
-	        player_pos = Vec3::new(lerped_x, lerped_y, lerped_z);
-	    }
+	    let lerped_x = pos.prev_x * (1.0 - alpha) + pos.x * alpha;
+	    let lerped_y = pos.prev_y * (1.0 - alpha) + pos.y * alpha;
+	    let lerped_z = pos.prev_z * (1.0 - alpha) + pos.z * alpha;
+	    let player_pos = Vec3::new(lerped_x, lerped_y, lerped_z);
 
         let sprite_offsets = &self.offsets;
 
@@ -317,14 +313,19 @@ impl GraphicsContext {
 
     fn collect_ui_instances(
         &mut self, 
+        world: &World,
+        player_entity: Entity, 
         game_state: GameState, 
-        player_info: &PlayerInfo, 
     ) -> Vec<UiInstance> {
         match game_state {
             GameState::Level | GameState::Demoscreen => {
                 if self.cached_stbar_ui.arms.is_empty() {
-                    get_stbar(player_info, &mut self.cached_stbar_ui);
+                    get_stbar(world, player_entity, &mut self.cached_stbar_ui);
                 } else {
+                    let inventory = world.get::<&PlayerInventory>(player_entity).unwrap();
+	                let stats = world.get::<&PlayerStats>(player_entity).unwrap();
+	                let hp = world.get::<&Health>(player_entity).unwrap();
+                    
                     let mut checked = [false; 7];
 
                     for ui_type in self.ui_to_update.drain(..) {
@@ -334,19 +335,19 @@ impl GraphicsContext {
                     
                         match ui_type {
                             UpdatableUiType::Ammo => 
-                                update_ammo_ui(&player_info.inventory, &mut self.cached_stbar_ui.ammo),
+                                update_ammo_ui(&inventory, &mut self.cached_stbar_ui.ammo),
                             UpdatableUiType::Hp => 
-                                update_hp_ui(&player_info.hp, &mut self.cached_stbar_ui.hp),
+                                update_hp_ui(&hp, &mut self.cached_stbar_ui.hp),
                             UpdatableUiType::Arms => 
-                                update_arms_ui(&player_info.inventory.weapon_owned, &mut self.cached_stbar_ui.arms),
+                                update_arms_ui(&inventory.weapon_owned, &mut self.cached_stbar_ui.arms),
                             UpdatableUiType::Face => 
                                 update_face_ui(&mut self.cached_stbar_ui.face),
                             UpdatableUiType::Armor => 
-                                update_armor_ui(player_info.stats.armor_points, &mut self.cached_stbar_ui.armor),
+                                update_armor_ui(stats.armor_points, &mut self.cached_stbar_ui.armor),
                             UpdatableUiType::Keys => 
-                                update_keys_ui(&player_info.inventory.cards, &mut self.cached_stbar_ui.keys),
+                                update_keys_ui(&inventory.cards, &mut self.cached_stbar_ui.keys),
                             UpdatableUiType::TotalAmmo => 
-                                update_total_ammo_ui(&player_info.inventory, &mut self.cached_stbar_ui.total_ammo),
+                                update_total_ammo_ui(&inventory, &mut self.cached_stbar_ui.total_ammo),
                         }
 
                         checked[ui_type as usize] = true;
@@ -417,25 +418,25 @@ fn vertex_to_vertex(vertex: GpuVertex) -> Vertex {
     }
 }
 
-fn update_camera_from_player(view_matrix: &mut Mat4, world: &World, alpha: f32) {
-    for (position, rotation, _player) in world.query::<(&Position, &PlayerRotation, &PlayerMarker)>().iter() {
+fn update_camera_from_player(view_matrix: &mut Mat4, world: &World, player_entity: Entity, alpha: f32) {
+    let rot = world.get::<&PlayerRotation>(player_entity).unwrap();
+    let pos = world.get::<&Position>(player_entity).unwrap();
 
-        let prev_pos = glam::vec3(position.prev_x, position.prev_y + EYEHEIGHT, position.prev_z);
-        let current_pos = glam::vec3(position.x, position.y + EYEHEIGHT, position.z);
-        let interpolated_pos = prev_pos + (current_pos - prev_pos) * alpha;
+    let prev_pos = glam::vec3(pos.prev_x, pos.prev_y + EYEHEIGHT, pos.prev_z);
+    let current_pos = glam::vec3(pos.x, pos.y + EYEHEIGHT, pos.z);
+    let interpolated_pos = prev_pos + (current_pos - prev_pos) * alpha;
 
-        let angle_diff = rotation.angle.wrapping_sub(rotation.prev_angle) as i32;
-        let interpolated_diff = (angle_diff as f64 * alpha as f64) as i32;
-        let interpolated_angle_u32 = rotation.prev_angle.wrapping_add_signed(interpolated_diff);
+    let angle_diff = rot.angle.wrapping_sub(rot.prev_angle) as i32;
+    let interpolated_diff = (angle_diff as f64 * alpha as f64) as i32;
+    let interpolated_angle_u32 = rot.prev_angle.wrapping_add_signed(interpolated_diff);
 
-        let angle_normalized = interpolated_angle_u32 as f64 / u32::MAX as f64;
-        let angle_rad = (angle_normalized * TAU) as f32;
+    let angle_normalized = interpolated_angle_u32 as f64 / u32::MAX as f64;
+    let angle_rad = (angle_normalized * TAU) as f32;
 
-        let target_dir = glam::vec3(f32::sin(angle_rad), 0.0, f32::cos(angle_rad));
-        let camera_target = interpolated_pos + target_dir;
+    let target_dir = glam::vec3(f32::sin(angle_rad), 0.0, f32::cos(angle_rad));
+    let camera_target = interpolated_pos + target_dir;
 
-        let camera_up = glam::vec3(0.0, 1.0, 0.0);
+    let camera_up = glam::vec3(0.0, 1.0, 0.0);
 
-        *view_matrix = glam::Mat4::look_at_rh(interpolated_pos, camera_target, camera_up);
-    }
+    *view_matrix = glam::Mat4::look_at_rh(interpolated_pos, camera_target, camera_up);
 }

@@ -1,6 +1,7 @@
+use hecs::{Entity, World};
 use wad_parser::{SCREEN_HEIGHT, Ui};
 
-use crate::{AmmoType, Card, Health, NUMCARDS, NUMWEAPONS, PlayerInfo, PlayerInventory, WeaponType};
+use crate::{AmmoType, Card, Health, NUMCARDS, NUMWEAPONS, PlayerInventory, PlayerStats, WeaponType};
 
 const STT_NUM_WIDTH: f32 = 14.0;
 const STYS_NUM_WIDTH: f32 = 4.0; 
@@ -45,18 +46,22 @@ impl STBarUi {
 	}
 }
 
-pub fn get_stbar(player_info: &PlayerInfo, stbar_ui: &mut STBarUi) {
-	update_ammo_ui(&player_info.inventory, &mut stbar_ui.ammo);
+pub fn get_stbar(world: &World, player_entity: Entity, stbar_ui: &mut STBarUi) {
+	let inventory = world.get::<&PlayerInventory>(player_entity).unwrap();
+	let stats = world.get::<&PlayerStats>(player_entity).unwrap();
+	let hp = world.get::<&Health>(player_entity).unwrap();
+
+	update_ammo_ui(&inventory, &mut stbar_ui.ammo);
 	
-	update_hp_ui(&player_info.hp, &mut stbar_ui.hp);
+	update_hp_ui(&hp, &mut stbar_ui.hp);
 
-	update_arms_ui(&player_info.inventory.weapon_owned, &mut stbar_ui.arms);
+	update_arms_ui(&inventory.weapon_owned, &mut stbar_ui.arms);
 	
-	update_armor_ui(player_info.stats.armor_points, &mut stbar_ui.armor);
+	update_armor_ui(stats.armor_points, &mut stbar_ui.armor);
 
-	update_keys_ui(&player_info.inventory.cards, &mut stbar_ui.keys);
+	update_keys_ui(&inventory.cards, &mut stbar_ui.keys);
 
-	update_total_ammo_ui(&player_info.inventory, &mut stbar_ui.total_ammo);
+	update_total_ammo_ui(&inventory, &mut stbar_ui.total_ammo);
 }
 
 pub fn update_total_ammo_ui(inventory: &PlayerInventory, ui_to_render: &mut Vec<(Ui, f32, f32)>) {

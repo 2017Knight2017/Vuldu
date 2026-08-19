@@ -82,6 +82,8 @@ pub fn spawn_mobj(
 			.add(PlayerMarker)
 			.add(PlayerRotation { angle, prev_angle: angle })
         	.add(PlayerCamera { view_z: EYEHEIGHT, view_height: EYEHEIGHT, delta_view_height: 0.0, bob: 0.0 })
+			.add(PlayerInventory::default())
+			.add(PlayerStats::default())
         	.add(WeaponOverlay { state_idx: 0, tics: 0, sx: 0.0, sy: 0.0 });
 	} else {
 		entity_builder
@@ -106,7 +108,7 @@ pub fn spawn_mobj(
     Some(world.spawn(entity_builder.build()))
 }
 
-pub fn spawn_all_things(world: &mut World, level: &Level, random: &mut Random, player_info: &mut PlayerInfo) {
+pub fn spawn_all_things(world: &mut World, level: &Level, random: &mut Random, player_entity: &mut Entity) {
 	let mut player_spawned = false;
 	for thing in level.things.iter() {
 		if thing.type_ == 1 {
@@ -119,7 +121,7 @@ pub fn spawn_all_things(world: &mut World, level: &Level, random: &mut Random, p
 		if let Some(thing_type) = MOBJTYPE_BY_DOOMEDNUM.get(&thing.type_) {
 			let ent_opt = spawn_mobj(level, world, random, *thing_type, thing.x, thing.y, thing.angle);
 			if thing.type_ == 1 { 
-				player_info.entity = ent_opt.unwrap(); 
+				*player_entity = ent_opt.unwrap(); 
 			}
 		}
 	}

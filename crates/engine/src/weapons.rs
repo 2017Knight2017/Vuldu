@@ -1,9 +1,9 @@
-use hecs::CommandBuffer;
+use hecs::{CommandBuffer, Entity, World};
 use serde::Deserialize;
 use strum::EnumIter;
 use wad_parser::to_u64;
 
-use crate::{PlayerInfo, PlayerInput, PlayerInventory, PlayerShoot, SfxEvent, UpdatableUiType};
+use crate::{PlayerInput, PlayerInventory, PlayerShoot, SfxEvent, UpdatableUiType};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter)]
 pub enum WeaponType {
@@ -51,40 +51,41 @@ impl From<WeaponType> for AmmoType {
 }
 
 pub fn handle_weapons_input(
-    input: &PlayerInput, 
-    player_info: &mut PlayerInfo,
+	world: &World,
+    player_entity: Entity,
 	ui_to_update: &mut Vec<UpdatableUiType>,
     command_buffer: &mut CommandBuffer, 
     audio_buffer: &mut Vec<SfxEvent>,
+	input: &PlayerInput, 
 ) {
-	let inventory = &mut player_info.inventory;
+	let mut inventory = world.get::<&mut PlayerInventory>(player_entity).unwrap();
 	let previous_ready_weapon = inventory.ready_weapon;
 
 	if input.switch_fist_chainsaw {
-		if inventory.ready_weapon == WeaponType::Chainsaw || !is_available(WeaponType::Chainsaw, inventory) {
+		if inventory.ready_weapon == WeaponType::Chainsaw || !is_available(WeaponType::Chainsaw, &inventory) {
 			inventory.ready_weapon = WeaponType::Fist;
 		} else {
 			inventory.ready_weapon = WeaponType::Chainsaw;
 		}
 	} else if input.switch_fist_chainsaw && inventory.ready_weapon == WeaponType::Chainsaw {
 		inventory.ready_weapon = WeaponType::Fist;
-	} else if input.choose_pistol && is_available(WeaponType::Pistol, inventory) {
+	} else if input.choose_pistol && is_available(WeaponType::Pistol, &inventory) {
 		inventory.ready_weapon = WeaponType::Pistol;
-	} else if input.choose_shotgun && is_available(WeaponType::SuperShotgun, inventory) {
+	} else if input.choose_shotgun && is_available(WeaponType::SuperShotgun, &inventory) {
 		inventory.ready_weapon = if inventory.ready_weapon == WeaponType::SuperShotgun {
 			WeaponType::Shotgun
 		} else {
 			WeaponType::SuperShotgun
 		};
-	} else if input.choose_shotgun && is_available(WeaponType::Shotgun, inventory) {
+	} else if input.choose_shotgun && is_available(WeaponType::Shotgun, &inventory) {
 		inventory.ready_weapon = WeaponType::Shotgun;
-	} else if input.choose_chaingun && is_available(WeaponType::Chaingun, inventory) {
+	} else if input.choose_chaingun && is_available(WeaponType::Chaingun, &inventory) {
 		inventory.ready_weapon = WeaponType::Chaingun;
-	} else if input.choose_rlauncher && is_available(WeaponType::Missile, inventory) {
+	} else if input.choose_rlauncher && is_available(WeaponType::Missile, &inventory) {
 		inventory.ready_weapon = WeaponType::Missile;
-	} else if input.choose_plasma && is_available(WeaponType::Plasma, inventory) {
+	} else if input.choose_plasma && is_available(WeaponType::Plasma, &inventory) {
 		inventory.ready_weapon = WeaponType::Plasma;
-	} else if input.choose_bfg && is_available(WeaponType::BFG, inventory) {
+	} else if input.choose_bfg && is_available(WeaponType::BFG, &inventory) {
 		inventory.ready_weapon = WeaponType::BFG;
 	}
 
@@ -111,7 +112,7 @@ pub fn handle_weapons_input(
 			ui_to_update.push(UpdatableUiType::TotalAmmo);
 		}
 
-		command_buffer.insert_one(player_info.entity, PlayerShoot);
+		command_buffer.insert_one(player_entity, PlayerShoot);
 
         let sfx_id = match inventory.ready_weapon {
             WeaponType::Fist => to_u64(b"DSPUNCH"),

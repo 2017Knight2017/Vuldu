@@ -1,4 +1,4 @@
-use crate::{CurrentSector, Health, NUMAMMO, NUMCARDS, NUMWEAPONS, PlayerMarker, PlayerRotation, PlayerState, Position, Velocity, WeaponType};
+use crate::{CurrentSector, NUMAMMO, NUMCARDS, NUMWEAPONS, PlayerMarker, PlayerRotation, PlayerState, Position, Velocity, WeaponType};
 use std::f64::consts::TAU;
 use hecs::{Entity, World};
 use wad_parser::Level;
@@ -44,14 +44,6 @@ impl Default for PlayerInventory {
     }
 }
 
-#[derive(Debug)]
-pub struct PlayerInfo {
-    pub entity: Entity,
-    pub inventory: PlayerInventory,
-    pub stats: PlayerStats,
-    pub hp: Health,
-}
-
 impl Default for PlayerStats {
     fn default() -> Self {
         PlayerStats { 
@@ -61,17 +53,6 @@ impl Default for PlayerStats {
             kill_count: 0, 
             item_count: 0, 
             secret_count: 0 
-        }
-    }
-}
-
-impl PlayerInfo {
-    pub fn new() -> Self {
-        PlayerInfo { 
-            entity: Entity::DANGLING, 
-            inventory: PlayerInventory::default(), 
-            stats: PlayerStats::default(),
-            hp: Health(100),
         }
     }
 }
@@ -95,34 +76,34 @@ pub struct PlayerInput {
     pub mouse_delta_x: f32,
 }
 
-pub fn handle_position_input(world: &World, input: &PlayerInput) {
-    let mut query = world.query::<(&mut Velocity, &PlayerRotation)>();
-    for (velocity, rotation) in query.iter() {
-        let mut move_forward = 0.0;
-        let mut move_sideways = 0.0;
-        let mut move_vertically = 0.0;
+pub fn handle_position_input(world: &World, player_ent: Entity, input: &PlayerInput) {
+    let rotation = world.get::<&PlayerRotation>(player_ent).unwrap();
+    let mut velocity = world.get::<&mut Velocity>(player_ent).unwrap();
 
-        if input.move_forward  { move_forward += 1.0; }
-        if input.move_backward { move_forward -= 1.0; }
-        if input.move_right    { move_sideways += 1.0; }
-        if input.move_left     { move_sideways -= 1.0; }
-        if input.move_up       { move_vertically += 1.0; }
-        if input.move_down     { move_vertically -= 1.0; }
+    let mut move_forward = 0.0;
+    let mut move_sideways = 0.0;
+    let mut move_vertically = 0.0;
 
-        let current_angle_rad = (rotation.angle as f64 / u32::MAX as f64) * TAU;
+    if input.move_forward  { move_forward += 1.0; }
+    if input.move_backward { move_forward -= 1.0; }
+    if input.move_right    { move_sideways += 1.0; }
+    if input.move_left     { move_sideways -= 1.0; }
+    if input.move_up       { move_vertically += 1.0; }
+    if input.move_down     { move_vertically -= 1.0; }
 
-        let sin = f64::sin(current_angle_rad);
-        let cos = f64::cos(current_angle_rad);
+    let current_angle_rad = (rotation.angle as f64 / u32::MAX as f64) * TAU;
 
-        let speed = 8.0;
+    let sin = f64::sin(current_angle_rad);
+    let cos = f64::cos(current_angle_rad);
 
-        let thrust_x = (cos * move_sideways + sin * move_forward) * speed;
-        let thrust_z = (-sin * move_sideways + cos * move_forward) * speed;
+    let speed = 8.0;
 
-        velocity.x += thrust_x as f32 * 0.2; 
-        velocity.z += thrust_z as f32 * 0.2;
-        velocity.y += move_vertically * 4.0;
-    }
+    let thrust_x = (cos * move_sideways + sin * move_forward) * speed;
+    let thrust_z = (-sin * move_sideways + cos * move_forward) * speed;
+
+    velocity.x += thrust_x as f32 * 0.2; 
+    velocity.z += thrust_z as f32 * 0.2;
+    velocity.y += move_vertically * 4.0;
 }
 
 pub fn handle_rotation_input(world: &World, input: &PlayerInput) {
