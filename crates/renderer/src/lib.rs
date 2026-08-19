@@ -59,6 +59,10 @@ impl SafeRenderer {
         self.pin_mut().setSkyIndex(idx);
     }
 
+    pub fn set_global_timer(&mut self, global_timer: u32) {
+        self.pin_mut().setGlobalTimer(global_timer);
+    }
+
     pub fn update_level_geometry(&mut self, vertices: &[Vertex], indices: &[u32]) {
         unsafe {
             self.pin_mut().updateLevelGeometry(

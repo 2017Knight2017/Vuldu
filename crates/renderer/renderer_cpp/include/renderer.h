@@ -51,17 +51,12 @@ const std::vector<const char*> validationLayers = {
     "VK_LAYER_KHRONOS_validation"
 };
 
-struct Texture {
-    VkImage image;
-    VkDeviceMemory memory;
-    VkImageView view;
-};
-
 struct PushConstants {
     uint32_t paletteIndex;
     float resolution[2];  
     uint32_t skyIndex;
     float skyWidth;
+    float globalTimer;
 };
 
 class VulkanRenderer {
@@ -89,6 +84,7 @@ public:
     void setPaletteIndex(uint32_t idx);
     void setResolution(uint32_t width, uint32_t height);
     void setSkyIndex(uint32_t idx);
+    void setGlobalTimer(uint32_t global_timer);
     void startFrame(const UniformBufferObject* ubo_ptr);
     void endFrame();
     void drawLevel();
@@ -181,10 +177,12 @@ private:
     VkBuffer colormapBuffer = VK_NULL_HANDLE;
     VkDeviceMemory colormapBufferMemory = VK_NULL_HANDLE;
 
+    float globalTimer = 0.0;
     uint32_t currentPaletteIndex = 0;
     float currentResolution[2];
     uint32_t currentSkyIndex = 0;
     std::vector<float> skyWidths;
+    
     
     void createInstance(const WindowHandles& handles);
     void setupDebugMessenger();

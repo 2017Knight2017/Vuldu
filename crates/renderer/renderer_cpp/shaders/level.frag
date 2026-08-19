@@ -23,6 +23,7 @@ layout(push_constant) uniform LevelConstants {
     float resolution[2];
     uint skyIndex;
     float skyWidth;
+    float globalTimer;
 } lc;
 
 layout(location = 0) in float fragLightLevel;      
@@ -31,8 +32,9 @@ layout(location = 2) flat in uint fragTexId;
 layout(location = 3) flat in uint fragColormapIdx;
 layout(location = 4) flat in uint fragFloorTexId;
 layout(location = 5) in float fragViewZ;
-//layout(location = 6) in vec3 fragBarycentric;
-//layout(location = 7) in vec3 fragTriangleColor;
+layout(location = 6) in float fragScrollDir;
+//layout(location = 7) in vec3 fragBarycentric;
+//layout(location = 8) in vec3 fragTriangleColor;
 
 layout(location = 0) out vec4 outColor;
 
@@ -69,7 +71,8 @@ void main() {
         float rawColor = textureLod(texSamplers[nonuniformEXT(lc.skyIndex)], vec2(skyU, skyV), 0.0).r;
         colorIndex = uint(rawColor * 255.0 + 0.5); 
     } else {
-        float rawColor = textureLod(texSamplers[nonuniformEXT(fragTexId)], fragTexCoord, 0.0).r;
+        float scrolledX = fract(fragTexCoord.x + lc.globalTimer * fragScrollDir);
+        float rawColor = textureLod(texSamplers[nonuniformEXT(fragTexId)], vec2(scrolledX, fragTexCoord.y), 0.0).r;
         colorIndex = uint(rawColor * 255.0 + 0.5);
     }
 

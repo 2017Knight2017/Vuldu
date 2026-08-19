@@ -63,7 +63,8 @@ std::vector<VkVertexInputAttributeDescription> getLevelAttributes() {
         { 2, 0, VK_FORMAT_R32_SFLOAT,       offsetof(Vertex, light_level) },
         { 3, 0, VK_FORMAT_R32_UINT,         offsetof(Vertex, texture_id) },
         { 4, 0, VK_FORMAT_R32_UINT,         offsetof(Vertex, colormap_idx) },
-		{ 5, 0, VK_FORMAT_R32_UINT,         offsetof(Vertex, floor_tex_id) }
+		{ 5, 0, VK_FORMAT_R32_UINT,         offsetof(Vertex, floor_tex_id) },
+		{ 6, 0, VK_FORMAT_R32_SFLOAT,       offsetof(Vertex, scroll_dir) }
     };
 }
 

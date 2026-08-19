@@ -107,6 +107,10 @@ void VulkanRenderer::setSkyIndex(uint32_t idx) {
 	this->currentSkyIndex = idx % MAX_SKY;
 }
 
+void VulkanRenderer::setGlobalTimer(uint32_t global_timer) {
+    this->globalTimer = static_cast<float>(global_timer);
+}
+
 size_t getMaxSky() {
     return MAX_SKY;
 }
@@ -192,6 +196,7 @@ void VulkanRenderer::drawLevel() {
         constants.resolution[1] = this->currentResolution[1];
         constants.skyIndex = this->currentSkyIndex;
         constants.skyWidth = this->skyWidths[this->currentSkyIndex];
+        constants.globalTimer = this->globalTimer;
 
 		vkCmdPushConstants(
             currentCommandBuffer,

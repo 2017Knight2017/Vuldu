@@ -40,7 +40,8 @@ struct GameContext {
     action_buffer: Vec<(Entity, ActionFunc)>,
     command_buffer: CommandBuffer,
     traversal: Traversal,
-    player_entity: Entity
+    player_entity: Entity,
+    global_timer: u32
 }
 
 struct App {
@@ -69,7 +70,8 @@ impl GameContext {
             command_buffer: CommandBuffer::new(),
             action_buffer: Vec::new(),
             player_entity: Entity::DANGLING,
-            game_state: GameState::Level
+            game_state: GameState::Level,
+            global_timer: 0
         }
     }
 
@@ -156,6 +158,7 @@ impl App {
         while self.time_accumulator >= TICK_TIME {
             self.game.tick(&mut self.audio, &mut self.current_input, &mut self.random, &mut self.graphics.ui_to_update);
             self.time_accumulator -= TICK_TIME;
+            self.game.global_timer = self.game.global_timer.wrapping_add(1);
         }
     }
 }
@@ -334,7 +337,7 @@ impl ApplicationHandler for App {
                 if let Some(window) = &self.window {
                     let alpha = self.time_accumulator / TICK_TIME;
                     self.graphics.render(window, &self.game.world, self.game.player_entity, 
-                        &self.game.level, self.game.game_state, alpha);
+                        &self.game.level, self.game.game_state, self.game.global_timer, alpha);
 
                     window.request_redraw();
                 }

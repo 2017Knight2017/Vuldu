@@ -12,6 +12,7 @@ layout(location = 2) in float inLightLevel;
 layout(location = 3) in uint inTexId;
 layout(location = 4) in uint inColormapIdx;
 layout(location = 5) in uint inFloorTexId;
+layout(location = 6) in float inScrollDir;
 
 layout(location = 0) out float fragLightLevel;      
 layout(location = 1) out vec2 fragTexCoord;
@@ -19,8 +20,9 @@ layout(location = 2) flat out uint fragTexId;
 layout(location = 3) flat out uint fragColormapIdx;
 layout(location = 4) flat out uint fragFloorTexId;
 layout(location = 5) out float fragViewZ;
-//layout(location = 6) out vec3 fragBarycentric;
-//layout(location = 7) out vec3 fragTriangleColor;
+layout(location = 6) out float fragScrollDir;
+//layout(location = 7) out vec3 fragBarycentric;
+//layout(location = 8) out vec3 fragTriangleColor;
 
 vec3 hashColor(int id) {
     float r = fract(sin(float(id) * 12.9898) * 43758.5453);
@@ -35,6 +37,7 @@ void main() {
     fragTexId = inTexId;
     fragColormapIdx = inColormapIdx;
     fragFloorTexId = inFloorTexId;
+    fragScrollDir = inScrollDir;
 
     vec4 viewPos = ubo.view * ubo.model * vec4(inPosition, 1.0);
 

@@ -13,6 +13,7 @@ pub struct GpuVertex {
     pub texture_id: u32,
     pub colormap_idx: u32,
     pub floor_tex_id: u32,
+	pub scroll_dir: f32,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -92,6 +93,12 @@ impl Level {
 	        let v2 = vertices[seg.v2 as usize];
 	        let line = &lines[seg.linedef as usize];
 
+			let scroll_dir = match line.special {
+				48 => 1.0,
+				85 => -1.0,
+				_ => 0.0
+			};
+
 	        let front_side_idx_opt = if seg.side == 0 { line.sides.0 } else { line.sides.1 };
 	        let back_side_idx_opt = if seg.side == 0 { line.sides.1 } else { line.sides.0 };
 
@@ -119,7 +126,8 @@ impl Level {
 				tex_name: &[u8], 
 				v_offset: f32, 
 				fake_flat_name: &[u8], 
-				other_sector_ceilingpic: &[u8]
+				other_sector_ceilingpic: &[u8],
+				texture_width: u32,
 			| -> Option<TextureId> {
             	let wall_height = y_high - y_low;
             	if wall_height <= 0.0 { return None; }
@@ -174,7 +182,8 @@ impl Level {
 					light_level: modern_light,
 	                texture_id: final_tex_id.0,
 	                colormap_idx,
-					floor_tex_id: floor_tex_id.0
+					floor_tex_id: floor_tex_id.0,
+					scroll_dir: scroll_dir / texture_width as f32,
 	            });
 
 	            gpu_vertices.push(GpuVertex { 
@@ -183,7 +192,8 @@ impl Level {
 					light_level: modern_light,
 	                texture_id: final_tex_id.0,
 	                colormap_idx,
-					floor_tex_id: floor_tex_id.0
+					floor_tex_id: floor_tex_id.0,
+					scroll_dir: scroll_dir / texture_width as f32,
 	            });
 
 	            gpu_vertices.push(GpuVertex { 
@@ -192,7 +202,8 @@ impl Level {
 					light_level: modern_light,
 	                texture_id: final_tex_id.0,
 	                colormap_idx,
-					floor_tex_id: floor_tex_id.0
+					floor_tex_id: floor_tex_id.0,
+					scroll_dir: scroll_dir / texture_width as f32,
 	            });
 
 	            gpu_vertices.push(GpuVertex { 
@@ -201,7 +212,8 @@ impl Level {
 					light_level: modern_light,
 	                texture_id: final_tex_id.0,
 	                colormap_idx,
-					floor_tex_id: floor_tex_id.0
+					floor_tex_id: floor_tex_id.0,
+					scroll_dir: scroll_dir / texture_width as f32,
 	            });
 			
 	            gpu_indices.push(start_idx + 0);
@@ -220,14 +232,13 @@ impl Level {
 
 	        match back_sector {
         	    None => {
-					let tex_h = match texture_ids.get(&to_u64(&front_side.midtexture)) {
-						Some(tex) => tex.2 as f32,
-						None => 64.0
-					};
+					let (_, tex_w, tex_h, _) = texture_ids
+						.get(&to_u64(&front_side.midtexture))
+						.unwrap_or(&(TextureId(0), 64, 64, false));
                 
                 	let v_offset = if dont_peg_bottom {
                 	    let offset = front_sector.ceil_h - front_sector.floor_h;
-                	    tex_h - offset
+                	    *tex_h as f32 - offset
                 	} else {
                 	    0.0
                 	};
@@ -239,21 +250,21 @@ impl Level {
 						&front_side.midtexture, 
 						v_offset, 
 						&front_sector.floorpic,
-						&[]
+						&[],
+						*tex_w,
 					);
         	    },
         	    Some((_, b_sector)) => {
         	        if front_sector.ceil_h > b_sector.ceil_h {
-						let tex_h = match texture_ids.get(&to_u64(&front_side.toptexture)) {
-							Some(tex) => tex.2 as f32,
-							None => 64.0
-						};
+						let (_, tex_w, tex_h, _) = texture_ids
+							.get(&to_u64(&front_side.midtexture))
+							.unwrap_or(&(TextureId(0), 64, 64, false));
 
 						let v_offset = if dont_peg_top {
 							0.0
                         } else {
 							let offset = b_sector.ceil_h - front_sector.ceil_h;
-                            offset - tex_h
+                            offset - *tex_h as f32
                         };
 
 						front_side.top_tex = add_wall_quad(
@@ -262,19 +273,19 @@ impl Level {
 							&front_side.toptexture, 
 							v_offset, 
 							&front_sector.ceilingpic,
-							&b_sector.ceilingpic
+							&b_sector.ceilingpic,
+							*tex_w
 						);
         	        }
 
         	        if front_sector.floor_h < b_sector.floor_h {
-						let tex_h = match texture_ids.get(&to_u64(&front_side.bottomtexture)) {
-							Some(tex) => tex.2 as f32,
-							None => 64.0
-						};
+						let (_, tex_w, tex_h, _) = texture_ids
+							.get(&to_u64(&front_side.midtexture))
+							.unwrap_or(&(TextureId(0), 64, 64, false));
 
 						let v_offset = if dont_peg_bottom {
     						let offset = front_sector.ceil_h - b_sector.floor_h;
-							offset - tex_h
+							offset - *tex_h as f32
                     	} else {
 							0.0 
                     	};
@@ -285,15 +296,21 @@ impl Level {
 							&front_side.bottomtexture, 
 							v_offset,
 							&b_sector.floorpic,
-							&front_sector.ceilingpic
+							&front_sector.ceilingpic,
+							*tex_w
 						);
         	        }
 
         	        if front_side.midtexture[0] != 0x2d {
+						let tex_w = match texture_ids.get(&to_u64(&front_side.bottomtexture)) {
+							Some(tex) => tex.1,
+							None => 64
+						};
+
         	            let mid_low = front_sector.floor_h.max(b_sector.floor_h);
         	            let mid_high = front_sector.ceil_h.min(b_sector.ceil_h);
         	            front_side.mid_tex = add_wall_quad(mid_low, mid_high, &front_side.midtexture, 
-							0.0, &front_sector.floorpic, &b_sector.ceilingpic);
+							0.0, &front_sector.floorpic, &b_sector.ceilingpic, tex_w);
         	        }
         	    }
         	}
@@ -558,6 +575,7 @@ impl Level {
 	                    texture_id: sector.floor_tex.0,
 	                    colormap_idx,
 						floor_tex_id: 0,
+						scroll_dir: 0.0,
 	                });
 	            }
 	            for chunk in sector_indices.chunks_exact(3) {
@@ -575,6 +593,7 @@ impl Level {
 	                    texture_id: sector.ceil_tex.0,
 	                    colormap_idx,
 						floor_tex_id: 0,
+						scroll_dir: 0.0,
 	                });
 	            }
 	            for chunk in sector_indices.chunks_exact(3) {
@@ -637,6 +656,7 @@ impl Level {
 	            texture_id: 0,
 	            colormap_idx: 0,
 				floor_tex_id: 0,
+				scroll_dir: 0.0,
 	        })
 	        .collect();
 
@@ -664,6 +684,7 @@ impl Level {
 	            texture_id: 0,
 	            colormap_idx: 0,
 				floor_tex_id: 0,
+				scroll_dir: 0.0,
 	        })
 	        .collect();
 

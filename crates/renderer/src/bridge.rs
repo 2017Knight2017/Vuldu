@@ -19,6 +19,7 @@ pub(crate) mod ffi {
         pub texture_id: u32,
         pub colormap_idx: u32,
         pub floor_tex_id: u32,
+        pub scroll_dir: f32
     }
 
     pub struct UniformBufferObject {
@@ -78,6 +79,7 @@ pub(crate) mod ffi {
         fn setPaletteIndex(self: Pin<&mut VulkanRenderer>, idx: u32);
         fn setResolution(self: Pin<&mut VulkanRenderer>, width: u32, height: u32);
         fn setSkyIndex(self: Pin<&mut VulkanRenderer>, idx: u32);
+        fn setGlobalTimer(self: Pin<&mut VulkanRenderer>, global_timer: u32);
         fn getMaxSky() -> usize;
     }
 }

@@ -183,6 +183,7 @@ impl GraphicsContext {
         player_entity: Entity,
         level: &Level,
         game_state: GameState,
+        global_timer: u32,
         alpha: f32
     ) {
         let obj_instances = self.collect_object_instances(world, player_entity, &level.state.sectors, alpha);
@@ -207,6 +208,9 @@ impl GraphicsContext {
         if let Some(renderer) = &mut self.renderer {
             renderer.update_ui_instances(&ui_instances);
             renderer.update_object_instances(&obj_instances);
+
+            renderer.set_global_timer(global_timer);
+
             renderer.start_frame(&ubo);
             renderer.draw_level();
             renderer.draw_objects();
@@ -414,7 +418,8 @@ fn vertex_to_vertex(vertex: GpuVertex) -> Vertex {
         light_level: vertex.light_level, 
         texture_id: vertex.texture_id, 
         colormap_idx: vertex.colormap_idx, 
-        floor_tex_id: vertex.floor_tex_id 
+        floor_tex_id: vertex.floor_tex_id, 
+        scroll_dir: vertex.scroll_dir, 
     }
 }
 
