@@ -179,7 +179,7 @@ void VulkanRenderer::uploadTextureArray(
         VkWriteDescriptorSet descriptorWrite{};
         descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrite.dstSet = this->descriptorSets[i];
-        descriptorWrite.dstBinding = 3;
+        descriptorWrite.dstBinding = 4;
         descriptorWrite.dstArrayElement = 0;
         descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         descriptorWrite.descriptorCount = static_cast<uint32_t>(descriptors.size());
@@ -254,11 +254,14 @@ void VulkanRenderer::createTextureSamplers() {
     }
 }
 
-void VulkanRenderer::uploadPalettes(const float* palettes_ptr, size_t palette_channels_count) {
-    if (palette_channels_count == 0 || palettes_ptr == nullptr) return;
-
-    VkDeviceSize bufferSize = palette_channels_count * sizeof(float);
-
+void VulkanRenderer::createBinding(
+	const void* data_ptr, 
+	VkDeviceSize bufferSize, 
+	VkBuffer& dstBuffer, 
+	VkDeviceMemory& dstBufferMemory,
+    uint32_t dstBinding,
+	bool isStorage
+) {
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
     
@@ -272,38 +275,55 @@ void VulkanRenderer::uploadPalettes(const float* palettes_ptr, size_t palette_ch
 
     void* data;
     vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
-    memcpy(data, palettes_ptr, bufferSize);
+    memcpy(data, data_ptr, bufferSize);
     vkUnmapMemory(this->device, stagingBufferMemory);
+
+    VkBufferUsageFlags usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | (
+        isStorage 
+            ? VK_BUFFER_USAGE_STORAGE_BUFFER_BIT 
+            : VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+        );
 
     createBuffer(
         bufferSize, 
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
+        usage, 
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
-        this->paletteBuffer, 
-        this->paletteBufferMemory 
+        dstBuffer, 
+        dstBufferMemory
     );
 
-    copyBuffer(stagingBuffer, this->paletteBuffer, bufferSize);
+    copyBuffer(stagingBuffer, dstBuffer, bufferSize);
 
     vkDestroyBuffer(this->device, stagingBuffer, nullptr);
     vkFreeMemory(this->device, stagingBufferMemory, nullptr);
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         VkDescriptorBufferInfo bufferInfo{};
-        bufferInfo.buffer = this->paletteBuffer;
+        bufferInfo.buffer = dstBuffer;
         bufferInfo.offset = 0;
         bufferInfo.range = bufferSize;
 
         VkWriteDescriptorSet descriptorWrite{};
         descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrite.dstSet = this->descriptorSets[i];
-        descriptorWrite.dstBinding = 1;
+        descriptorWrite.dstBinding = dstBinding;
         descriptorWrite.descriptorCount = 1;
-        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptorWrite.descriptorType = isStorage 
+            ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
+            : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         descriptorWrite.pBufferInfo = &bufferInfo;
 
         vkUpdateDescriptorSets(this->device, 1, &descriptorWrite, 0, nullptr);
     }
+}
+
+void VulkanRenderer::uploadPalettes(const float* palettes_ptr, size_t palette_channels_count) {
+    if (palette_channels_count == 0 || palettes_ptr == nullptr) return;
+
+    VkDeviceSize bufferSize = palette_channels_count * sizeof(float);
+
+    createBinding(palettes_ptr, bufferSize, this->paletteBuffer, 
+        this->paletteBufferMemory, 1, true);
 }
 
 void VulkanRenderer::uploadColormap(const uint8_t* colormap_ptr, size_t colormap_bytes_count) {
@@ -311,49 +331,15 @@ void VulkanRenderer::uploadColormap(const uint8_t* colormap_ptr, size_t colormap
 
     VkDeviceSize bufferSize = colormap_bytes_count * sizeof(uint8_t);
 
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
-    
-    createBuffer(
-        bufferSize, 
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
-        stagingBuffer, 
-        stagingBufferMemory
-    );
+    createBinding(colormap_ptr, bufferSize, this->colormapBuffer,
+        this->colormapBufferMemory, 2, true);
+}
 
-    void* data;
-    vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
-    memcpy(data, colormap_ptr, bufferSize);
-    vkUnmapMemory(this->device, stagingBufferMemory);
+void VulkanRenderer::uploadAnimLevelInfo(const AnimLevelInfo* info_ptr, size_t info_count) {
+    if (info_count != ANIM_INFO_NUM || info_ptr == nullptr) return;
 
-    createBuffer(
-        bufferSize, 
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, 
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
-        this->colormapBuffer, 
-        this->colormapBufferMemory 
-    );
+    VkDeviceSize bufferSize = info_count * sizeof(AnimLevelInfo);
 
-    copyBuffer(stagingBuffer, this->colormapBuffer, bufferSize);
-
-    vkDestroyBuffer(this->device, stagingBuffer, nullptr);
-    vkFreeMemory(this->device, stagingBufferMemory, nullptr);
-
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        VkDescriptorBufferInfo bufferInfo{};
-        bufferInfo.buffer = this->colormapBuffer;
-        bufferInfo.offset = 0;
-        bufferInfo.range = bufferSize;
-
-        VkWriteDescriptorSet descriptorWrite{};
-        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrite.dstSet = this->descriptorSets[i];
-        descriptorWrite.dstBinding = 2;
-        descriptorWrite.descriptorCount = 1;
-        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        descriptorWrite.pBufferInfo = &bufferInfo;
-
-        vkUpdateDescriptorSets(this->device, 1, &descriptorWrite, 0, nullptr);
-    }
+    createBinding(info_ptr, bufferSize, this->animLevelBuffer, 
+        this->animLevelBufferMemory, 3, true);
 }

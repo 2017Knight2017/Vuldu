@@ -19,7 +19,8 @@ pub(crate) mod ffi {
         pub texture_id: u32,
         pub colormap_idx: u32,
         pub floor_tex_id: u32,
-        pub scroll_dir: f32
+        pub scroll_dir: f32,
+        pub _padding: [u32; 2]
     }
 
     pub struct UniformBufferObject {
@@ -35,18 +36,25 @@ pub(crate) mod ffi {
         pub light_level: f32,
         pub texture_id: u32,
         pub colormap_idx: u32,
+        pub _padding: [u32; 2]
     }
 
     pub struct UiInstance {
         pub pos: [f32; 2],
         pub sprite_size: [f32; 2],
         pub texture_id: u32,
+        pub _padding: [u32; 3]
     }
 
     pub struct TextureDescriptor {
         pub width: u32,
         pub height: u32,
         pub pixel_offset: usize,
+    }
+
+    pub struct AnimLevelInfo {
+        pub texture: u32,
+        pub frames: u32,
     }
 
     extern "Rust" {
@@ -76,6 +84,7 @@ pub(crate) mod ffi {
         unsafe fn uploadPalettes(self: Pin<&mut VulkanRenderer>, palettes_ptr: *const f32, palette_channels_count: usize);
         unsafe fn uploadColormap(self: Pin<&mut VulkanRenderer>, colormap_ptr: *const u8, colormap_bytes_count: usize);
         unsafe fn uploadTextureArray(self: Pin<&mut VulkanRenderer>, descriptors: *const TextureDescriptor, descriptor_count: usize, all_pixels: *const u8, all_pixels_count: usize, sky_widths: *const f32, sky_widths_count: usize);
+        unsafe fn uploadAnimLevelInfo(self: Pin<&mut VulkanRenderer>, info: *const AnimLevelInfo, info_count: usize);
         fn setPaletteIndex(self: Pin<&mut VulkanRenderer>, idx: u32);
         fn setResolution(self: Pin<&mut VulkanRenderer>, width: u32, height: u32);
         fn setSkyIndex(self: Pin<&mut VulkanRenderer>, idx: u32);

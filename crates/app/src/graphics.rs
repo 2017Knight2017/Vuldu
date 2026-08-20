@@ -1,10 +1,10 @@
 use hecs::{Entity, World};
-use renderer::{MAX_SKY, ObjectInstance, SafeRenderer, TextureDescriptor, UiInstance, UniformBufferObject, Vertex};
+use renderer::{ANIM_INFO_NUM, AnimLevelInfo, MAX_SKY, ObjectInstance, SafeRenderer, TextureDescriptor, UiInstance, UniformBufferObject, Vertex};
 use engine::{CurrentSector, EYEHEIGHT, GameState, Health, MonsterRotation, PlayerInventory, PlayerRotation, PlayerStats, Position, STBarUi, SpriteAnimation, UpdatableUiType, get_stbar, pack_sprite_u64, point_to_angle, update_ammo_ui, update_armor_ui, update_arms_ui, update_face_ui, update_hp_ui, update_keys_ui, update_total_ammo_ui};
 use glam::{Mat4, Vec3};
 use micropool::iter::*;
 use rustc_hash::FxHashMap;
-use wad_parser::{DoomPicture, GpuVertex, Level, NUM_UI, SectorState, TextureId, Ui, WadManager, construct_map_name};
+use wad_parser::{DoomPicture, GpuVertex, Level, NUM_UI, SectorState, TextureId, Ui, WadManager, construct_map_name, to_u64};
 use winit::window::Window;
 use std::f64::consts::TAU;
 
@@ -109,20 +109,46 @@ impl GraphicsContext {
             current_gpu_id += 1;
         }
 
+        let mut anim_map: FxHashMap<u64, (u32, usize)> = FxHashMap::from_iter([
+            (to_u64(b"FWATER1"), (4, 0)), (to_u64(b"SWATER1"), (4, 1)), (to_u64(b"LAVA1"), (4, 2)), 
+            (to_u64(b"RROCK05"), (4, 3)), (to_u64(b"SLIME01"), (4, 4)), (to_u64(b"SLIME05"), (4, 5)),
+            (to_u64(b"SLIME09"), (4, 6)), (to_u64(b"BLODGR1"), (4, 7)), (to_u64(b"BLODRIP1"), (4, 8)),
+            (to_u64(b"BFALL1"), (4, 9)), (to_u64(b"SFALL1"), (4, 10)), (to_u64(b"WFALL1"), (4, 11)),
+            (to_u64(b"DBRAIN1"), (4, 12)),
+            (to_u64(b"NUKAGE1"), (3, 13)), (to_u64(b"SLADRIP1"), (3, 14)), (to_u64(b"GSTFONT1"), (3, 15)), 
+            (to_u64(b"FIRELAV2"), (3, 16)), (to_u64(b"FIREMAG1"), (3, 17)), (to_u64(b"ROCKRED1"), (3, 18)), 
+            (to_u64(b"FIREWALA"), (3, 19)), (to_u64(b"BLOOD1"), (3, 20)),
+            (to_u64(b"FIREBLU1"), (2, 21)),
+        ]);
+
+        let mut anim_level_info: [AnimLevelInfo; ANIM_INFO_NUM] = 
+            core::array::from_fn(|_| AnimLevelInfo { texture: 0, frames: 0 });
+        
         for (tex_names, pics) in [(wall_names, wall_pics), (flat_names, flat_pics)] {
             for (idx, pic) in pics.iter().enumerate() {
                 let name = tex_names[idx];
+
+                if let Some((frames, anim_info_idx)) = anim_map.remove(&name) {
+                    anim_level_info[anim_info_idx].texture = current_gpu_id;
+                    anim_level_info[anim_info_idx].frames = frames;
+                }
+                
                 self.data.insert(name, (TextureId(current_gpu_id), pic.width, pic.height, false));
                 descriptors.push(TextureDescriptor {
                     width: pic.width, height: pic.height, pixel_offset: all_pixels.len(),
                 });
                 all_pixels.extend_from_slice(&pic.raw_pixels);
+
                 current_gpu_id += 1;
             }
         }
 
-        let mut ui_insert_idx = 0;
-        for pic in ui_pics {
+        let shown_ui_indices = ui_shown.iter()
+            .enumerate()
+            .filter(|&(_, &shown)| shown)
+            .map(|(idx, _)| idx);
+
+        for (pic, ui_insert_idx) in ui_pics.into_iter().zip(shown_ui_indices) {
             descriptors.push(TextureDescriptor {
                 width: pic.width, 
                 height: pic.height, 
@@ -130,15 +156,14 @@ impl GraphicsContext {
             });
             all_pixels.extend_from_slice(&pic.raw_pixels);
 
-            while !ui_shown[ui_insert_idx] { ui_insert_idx += 1; }
             let tex_id = TextureId(current_gpu_id);
             self.ui_db[ui_insert_idx] = Some((tex_id, pic.width, pic.height));
 
-            ui_insert_idx += 1;
             current_gpu_id += 1;
         }
 
         renderer.upload_texture_array(&descriptors, &all_pixels, &sky_widths_no_name);
+        renderer.upload_anim_level_info(&anim_level_info);
 
         let map_name = construct_map_name(wad_manager.is_doom1, map_num);
         let palettes = wad_manager.get_palettes(&map_name).map_err(|e| format!("PLAYPAL upload failed: {e}"))?;
@@ -283,6 +308,7 @@ impl GraphicsContext {
 	    	    light_level: modern_light,
 	    	    texture_id: tex_id.0,
 	    	    colormap_idx,
+                _padding: [0, 0]
 	    	}
 	    };
 
@@ -380,7 +406,8 @@ impl GraphicsContext {
         UiInstance { 
             pos: [x, y], 
             sprite_size: [width as f32, height as f32], 
-            texture_id: tex_id.0 
+            texture_id: tex_id.0,
+            _padding: [0, 0, 0]
         }
     }
 }
@@ -420,6 +447,7 @@ fn vertex_to_vertex(vertex: GpuVertex) -> Vertex {
         colormap_idx: vertex.colormap_idx, 
         floor_tex_id: vertex.floor_tex_id, 
         scroll_dir: vertex.scroll_dir, 
+        _padding: vertex._padding
     }
 }
 

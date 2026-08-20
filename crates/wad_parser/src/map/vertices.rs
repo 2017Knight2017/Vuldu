@@ -14,6 +14,7 @@ pub struct GpuVertex {
     pub colormap_idx: u32,
     pub floor_tex_id: u32,
 	pub scroll_dir: f32,
+	pub _padding: [u32; 2]
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -184,6 +185,7 @@ impl Level {
 	                colormap_idx,
 					floor_tex_id: floor_tex_id.0,
 					scroll_dir: scroll_dir / texture_width as f32,
+					_padding: [0, 0]
 	            });
 
 	            gpu_vertices.push(GpuVertex { 
@@ -194,6 +196,7 @@ impl Level {
 	                colormap_idx,
 					floor_tex_id: floor_tex_id.0,
 					scroll_dir: scroll_dir / texture_width as f32,
+					_padding: [0, 0]
 	            });
 
 	            gpu_vertices.push(GpuVertex { 
@@ -204,6 +207,7 @@ impl Level {
 	                colormap_idx,
 					floor_tex_id: floor_tex_id.0,
 					scroll_dir: scroll_dir / texture_width as f32,
+					_padding: [0, 0]
 	            });
 
 	            gpu_vertices.push(GpuVertex { 
@@ -214,6 +218,7 @@ impl Level {
 	                colormap_idx,
 					floor_tex_id: floor_tex_id.0,
 					scroll_dir: scroll_dir / texture_width as f32,
+					_padding: [0, 0]
 	            });
 			
 	            gpu_indices.push(start_idx + 0);
@@ -257,7 +262,7 @@ impl Level {
         	    Some((_, b_sector)) => {
         	        if front_sector.ceil_h > b_sector.ceil_h {
 						let (_, tex_w, tex_h, _) = texture_ids
-							.get(&to_u64(&front_side.midtexture))
+							.get(&to_u64(&front_side.toptexture))
 							.unwrap_or(&(TextureId(0), 64, 64, false));
 
 						let v_offset = if dont_peg_top {
@@ -280,7 +285,7 @@ impl Level {
 
         	        if front_sector.floor_h < b_sector.floor_h {
 						let (_, tex_w, tex_h, _) = texture_ids
-							.get(&to_u64(&front_side.midtexture))
+							.get(&to_u64(&front_side.bottomtexture))
 							.unwrap_or(&(TextureId(0), 64, 64, false));
 
 						let v_offset = if dont_peg_bottom {
@@ -576,6 +581,7 @@ impl Level {
 	                    colormap_idx,
 						floor_tex_id: 0,
 						scroll_dir: 0.0,
+						_padding: [0, 0]
 	                });
 	            }
 	            for chunk in sector_indices.chunks_exact(3) {
@@ -594,6 +600,7 @@ impl Level {
 	                    colormap_idx,
 						floor_tex_id: 0,
 						scroll_dir: 0.0,
+						_padding: [0, 0]
 	                });
 	            }
 	            for chunk in sector_indices.chunks_exact(3) {
@@ -657,6 +664,7 @@ impl Level {
 	            colormap_idx: 0,
 				floor_tex_id: 0,
 				scroll_dir: 0.0,
+				_padding: [0, 0]
 	        })
 	        .collect();
 
@@ -685,6 +693,7 @@ impl Level {
 	            colormap_idx: 0,
 				floor_tex_id: 0,
 				scroll_dir: 0.0,
+				_padding: [0, 0]
 	        })
 	        .collect();
 

@@ -1,11 +1,12 @@
 mod bridge; 
 
-pub use bridge::ffi::{WindowHandles, WindowSize, Vertex, UniformBufferObject, TextureDescriptor, ObjectInstance, UiInstance};
+pub use bridge::ffi::{WindowHandles, WindowSize, Vertex, UniformBufferObject, TextureDescriptor, ObjectInstance, UiInstance, AnimLevelInfo};
 use bridge::ffi::{VulkanRenderer, createRenderer, getMaxSky};
 use std::{pin::Pin, sync::OnceLock};
 use cxx::UniquePtr;
 
 pub static MAX_SKY: OnceLock<usize> = OnceLock::new();
+pub const ANIM_INFO_NUM: usize = 22;
 
 pub struct SafeRenderer {
     renderer: UniquePtr<VulkanRenderer>,
@@ -133,6 +134,12 @@ impl SafeRenderer {
     pub fn upload_texture_array(&mut self, descriptors: &[TextureDescriptor], all_pixels: &[u8], sky_widths: &[f32]) {
         unsafe {
             self.pin_mut().uploadTextureArray(descriptors.as_ptr(), descriptors.len(), all_pixels.as_ptr(), all_pixels.len(), sky_widths.as_ptr(), sky_widths.len());
+        }
+    }
+
+    pub fn upload_anim_level_info(&mut self, info: &[AnimLevelInfo]) {
+        unsafe {
+            self.pin_mut().uploadAnimLevelInfo(info.as_ptr(), info.len());
         }
     }
 }

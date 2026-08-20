@@ -16,7 +16,18 @@ layout(binding = 2) readonly buffer ColormapBuffer {
     uint8_t colors[8448];
 } colormap;
 
-layout(binding = 3) uniform sampler2D texSamplers[];
+struct animLevelInfo {
+    uint texId;
+    uint frames;
+};
+
+const uint ANIM_INFO_NUM = 22;
+
+layout(binding = 3) readonly buffer AnimLevelBuffer {
+    animLevelInfo info[ANIM_INFO_NUM];
+} anim;
+
+layout(binding = 4) uniform sampler2D texSamplers[];
 
 layout(push_constant) uniform LevelConstants {
     uint paletteIndex;
@@ -37,6 +48,25 @@ layout(location = 6) in float fragScrollDir;
 //layout(location = 8) in vec3 fragTriangleColor;
 
 layout(location = 0) out vec4 outColor;
+
+const uint ANIM_SPEED = 3;
+
+uint getAnimId() {
+    for (uint i = 0; i < ANIM_INFO_NUM; i++) {
+        uint animStartId = anim.info[i].texId;
+        uint frames = anim.info[i].frames;
+
+        if (fragTexId >= animStartId && fragTexId < (animStartId + frames)) {
+            uint srcFrame = animStartId - fragTexId;
+            uint dividedTimer = uint(lc.globalTimer + 0.5) >> ANIM_SPEED;
+            uint animFrameNum = (srcFrame + dividedTimer) % frames;
+
+            return animStartId + animFrameNum;
+        } 
+    }
+
+    return fragTexId;
+}
 
 const float PI = 3.14159265359;
 
@@ -72,7 +102,7 @@ void main() {
         colorIndex = uint(rawColor * 255.0 + 0.5); 
     } else {
         float scrolledX = fract(fragTexCoord.x + lc.globalTimer * fragScrollDir);
-        float rawColor = textureLod(texSamplers[nonuniformEXT(fragTexId)], vec2(scrolledX, fragTexCoord.y), 0.0).r;
+        float rawColor = textureLod(texSamplers[nonuniformEXT(getAnimId())], vec2(scrolledX, fragTexCoord.y), 0.0).r;
         colorIndex = uint(rawColor * 255.0 + 0.5);
     }
 

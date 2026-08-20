@@ -15,8 +15,9 @@ inline const uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 inline const uint32_t MAX_TEXTURES = 8192;
 inline const uint32_t MAX_SKY = 16;  
 inline const uint32_t MAX_PAL = 14;
-inline const uint32_t MAX_OBJECTS = 100000;
+inline const uint32_t MAX_OBJECTS = 50000;
 inline const uint32_t MAX_UI = 256;
+inline const size_t ANIM_INFO_NUM = 22;
 
 struct WindowHandles;
 struct Vertex;
@@ -24,6 +25,7 @@ struct UniformBufferObject;
 struct TextureDescriptor;
 struct ObjectInstance;
 struct UiInstance;
+struct AnimLevelInfo;
 
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily;
@@ -57,6 +59,7 @@ struct PushConstants {
     uint32_t skyIndex;
     float skyWidth;
     float globalTimer;
+    uint32_t _padding[2];
 };
 
 class VulkanRenderer {
@@ -81,6 +84,7 @@ public:
         const float* sky_widths_ptr, 
         size_t sky_widths_count
     );
+    void uploadAnimLevelInfo(const AnimLevelInfo* info_ptr, size_t info_count);
     void setPaletteIndex(uint32_t idx);
     void setResolution(uint32_t width, uint32_t height);
     void setSkyIndex(uint32_t idx);
@@ -173,9 +177,10 @@ private:
 
     VkBuffer paletteBuffer = VK_NULL_HANDLE;
     VkDeviceMemory paletteBufferMemory = VK_NULL_HANDLE;
-
     VkBuffer colormapBuffer = VK_NULL_HANDLE;
     VkDeviceMemory colormapBufferMemory = VK_NULL_HANDLE;
+    VkBuffer animLevelBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory animLevelBufferMemory = VK_NULL_HANDLE;
 
     float globalTimer = 0.0;
     uint32_t currentPaletteIndex = 0;
@@ -211,15 +216,12 @@ private:
     void createBuffer(VkDeviceSize bufferSize, VkBufferUsageFlags usage, 
         VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
     void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
-    void createImage(
-        uint32_t width, 
-        uint32_t height, 
-        VkFormat format, 
-        VkImageUsageFlags usage, 
-        VkMemoryPropertyFlags properties, 
-        VkImage& image, 
-        VkDeviceMemory& imageMemory
+    void createBinding(const void* data_ptr, VkDeviceSize bufferSize, VkBuffer& dstBuffer, 
+    	VkDeviceMemory& dstBufferMemory, uint32_t dstBinding, bool isStorage
     );
+    void createImage(uint32_t width, uint32_t height, VkFormat format, 
+        VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, 
+        VkDeviceMemory& imageMemory);
     void beginRendering(VkCommandBuffer currentCommandBuffer);
     
     VkCommandBuffer beginSingleTimeCommands();
