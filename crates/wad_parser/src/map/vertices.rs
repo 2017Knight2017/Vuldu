@@ -111,7 +111,7 @@ impl Level {
 			let front_side = &mut sides_state[front_side_idx.0];
 	        let front_sector = &sectors[sides_geom[front_side_idx.0].sector.0];
 	        let back_sector = match back_side_idx_opt {
-				Some(idx) => Some((&sides_geom[idx.0], &sectors[sides_geom[idx.0].sector.0])),
+				Some(idx) => Some(&sectors[sides_geom[idx.0].sector.0]),
 				None => None
 			};
 
@@ -259,7 +259,7 @@ impl Level {
 						*tex_w,
 					);
         	    },
-        	    Some((_, b_sector)) => {
+        	    Some(b_sector) => {
         	        if front_sector.ceil_h > b_sector.ceil_h {
 						let (_, tex_w, tex_h, _) = texture_ids
 							.get(&to_u64(&front_side.toptexture))
@@ -307,7 +307,7 @@ impl Level {
         	        }
 
         	        if front_side.midtexture[0] != 0x2d {
-						let tex_w = match texture_ids.get(&to_u64(&front_side.bottomtexture)) {
+						let tex_w = match texture_ids.get(&to_u64(&front_side.midtexture)) {
 							Some(tex) => tex.1,
 							None => 64
 						};

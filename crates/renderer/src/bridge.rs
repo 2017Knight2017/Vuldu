@@ -86,7 +86,6 @@ pub(crate) mod ffi {
         unsafe fn uploadTextureArray(self: Pin<&mut VulkanRenderer>, descriptors: *const TextureDescriptor, descriptor_count: usize, all_pixels: *const u8, all_pixels_count: usize, sky_widths: *const f32, sky_widths_count: usize);
         unsafe fn uploadAnimLevelInfo(self: Pin<&mut VulkanRenderer>, info: *const AnimLevelInfo, info_count: usize);
         fn setPaletteIndex(self: Pin<&mut VulkanRenderer>, idx: u32);
-        fn setResolution(self: Pin<&mut VulkanRenderer>, width: u32, height: u32);
         fn setSkyIndex(self: Pin<&mut VulkanRenderer>, idx: u32);
         fn setGlobalTimer(self: Pin<&mut VulkanRenderer>, global_timer: u32);
         fn getMaxSky() -> usize;

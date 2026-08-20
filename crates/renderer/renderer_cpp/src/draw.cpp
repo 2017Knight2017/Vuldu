@@ -98,11 +98,6 @@ void VulkanRenderer::setPaletteIndex(uint32_t idx) {
 	this->currentPaletteIndex = idx % MAX_PAL;
 }
 
-void VulkanRenderer::setResolution(uint32_t width, uint32_t height) {
-    this->currentResolution[0] = static_cast<float>(width); 
-    this->currentResolution[1] = static_cast<float>(height);
-}
-
 void VulkanRenderer::setSkyIndex(uint32_t idx) {
 	this->currentSkyIndex = idx % MAX_SKY;
 }
@@ -190,10 +185,12 @@ void VulkanRenderer::drawLevel() {
         vkCmdBindVertexBuffers(currentCommandBuffer, 0, 1, vertexBuffers, offsets);
         vkCmdBindIndexBuffer(currentCommandBuffer, this->levelIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
+        WindowSize currentResolution = get_winit_window_size(this->window_raw_ptr);
+
         PushConstants constants{};
         constants.paletteIndex = this->currentPaletteIndex;
-        constants.resolution[0] = this->currentResolution[0];
-        constants.resolution[1] = this->currentResolution[1];
+        constants.resolution[0] = static_cast<float>(currentResolution.width);
+        constants.resolution[1] = static_cast<float>(currentResolution.height);
         constants.skyIndex = this->currentSkyIndex;
         constants.skyWidth = this->skyWidths[this->currentSkyIndex];
         constants.globalTimer = this->globalTimer;

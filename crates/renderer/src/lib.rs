@@ -52,10 +52,6 @@ impl SafeRenderer {
         self.pin_mut().setPaletteIndex(idx);
     }
 
-    pub fn set_resolution(&mut self, width: u32, height: u32) {
-        self.pin_mut().setResolution(width, height);
-    }
-
     pub fn set_sky_index(&mut self, idx: u32) {
         self.pin_mut().setSkyIndex(idx);
     }

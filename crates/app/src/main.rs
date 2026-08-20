@@ -234,7 +234,6 @@ impl ApplicationHandler for App {
 
         let window_raw_ptr = window_ref as *const Window as usize;
         renderer.init(&handles, window_raw_ptr);
-        renderer.set_resolution(1280, 720);
 
         let sky_idx = if self.wad_manager.is_doom1 { 
             (self.game.level.map_num as u32 - 1) / 9 
@@ -274,10 +273,9 @@ impl ApplicationHandler for App {
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
         match event {
-            WindowEvent::Resized(win_size) => {
+            WindowEvent::Resized(_) => {
                 if let Some(renderer) = &mut self.graphics.renderer {
                     renderer.recreate_swapchain();
-                    renderer.set_resolution(win_size.width, win_size.height);
                 }
             }
 

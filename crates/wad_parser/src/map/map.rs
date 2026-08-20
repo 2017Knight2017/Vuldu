@@ -163,7 +163,7 @@ impl Level {
 				Line { 
 					v1: VertexId(l.v1 as usize), 
 					v2: VertexId(l.v2 as usize), 
-					flags: LineFlags::from_bits(l.flags).unwrap(), 
+					flags: LineFlags::from_bits(l.flags).unwrap_or(LineFlags::NONE), 
 					special: l.special, 
 					tag: l.tag, 
 					sides: (

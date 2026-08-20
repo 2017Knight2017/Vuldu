@@ -56,8 +56,8 @@ uint getAnimId() {
         uint animStartId = anim.info[i].texId;
         uint frames = anim.info[i].frames;
 
-        if (fragTexId >= animStartId && fragTexId < (animStartId + frames)) {
-            uint srcFrame = animStartId - fragTexId;
+        if (fragTexId >= animStartId && fragTexId < animStartId + frames) {
+            uint srcFrame = fragTexId - animStartId;
             uint dividedTimer = uint(lc.globalTimer + 0.5) >> ANIM_SPEED;
             uint animFrameNum = (srcFrame + dividedTimer) % frames;
 

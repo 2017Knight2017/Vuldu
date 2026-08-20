@@ -86,7 +86,6 @@ public:
     );
     void uploadAnimLevelInfo(const AnimLevelInfo* info_ptr, size_t info_count);
     void setPaletteIndex(uint32_t idx);
-    void setResolution(uint32_t width, uint32_t height);
     void setSkyIndex(uint32_t idx);
     void setGlobalTimer(uint32_t global_timer);
     void startFrame(const UniformBufferObject* ubo_ptr);
@@ -184,7 +183,6 @@ private:
 
     float globalTimer = 0.0;
     uint32_t currentPaletteIndex = 0;
-    float currentResolution[2];
     uint32_t currentSkyIndex = 0;
     std::vector<float> skyWidths;
     
