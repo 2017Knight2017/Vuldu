@@ -1,6 +1,6 @@
 use hecs::{Entity, World};
 use renderer::{ANIM_INFO_NUM, AnimLevelInfo, MAX_SKY, ObjectInstance, SafeRenderer, TextureDescriptor, UiInstance, UniformBufferObject, Vertex};
-use engine::{CurrentSector, EYEHEIGHT, GameState, Health, MonsterRotation, PlayerInventory, PlayerRotation, PlayerStats, Position, STBarUi, SpriteAnimation, UpdatableUiType, get_stbar, pack_sprite_u64, point_to_angle, update_ammo_ui, update_armor_ui, update_arms_ui, update_face_ui, update_hp_ui, update_keys_ui, update_total_ammo_ui};
+use engine::{CurrentSector, EYEHEIGHT, GameState, Health, MonsterRotation, PlayerInventory, PlayerRotation, PlayerStats, Position, STBarUi, SpriteAnimation, UpdatableUiType, get_stbar, pack_sprite_u64, fast_atan2, update_ammo_ui, update_armor_ui, update_arms_ui, update_face_ui, update_hp_ui, update_keys_ui, update_total_ammo_ui};
 use glam::{Mat4, Vec3};
 use micropool::iter::*;
 use rustc_hash::FxHashMap;
@@ -13,15 +13,16 @@ const FOV_ANGLE: f32 = 90.0;
 pub struct GraphicsContext {
     pub renderer: Option<SafeRenderer>,
     pub data: FxHashMap<u64, (TextureId, u32, u32, bool)>,
-    pub ui_db: [Option<(TextureId, u32, u32)>; NUM_UI],
-    pub cached_stbar_ui: STBarUi,
     pub ui_to_update: Vec<UpdatableUiType>,
-    pub offsets: Vec<(i16, i16)>,
-    pub view_matrix: Mat4,
+    ui_db: [Option<(TextureId, u32, u32)>; NUM_UI],
+    cached_stbar_ui: STBarUi,
+    offsets: Vec<(i16, i16)>,
+    view_matrix: Mat4,
+    wireframe: bool
 }
 
 impl GraphicsContext {
-	pub fn new() -> Self {
+	pub fn new(wireframe: bool) -> Self {
 		Self { 
 			renderer: None, 
             data: FxHashMap::default(), 
@@ -29,7 +30,8 @@ impl GraphicsContext {
             cached_stbar_ui: STBarUi::new(),
             ui_to_update: Vec::new(),
             offsets: Vec::new(), 
-            view_matrix: Mat4::default()
+            view_matrix: Mat4::default(),
+            wireframe
 		}
 	}
 
@@ -196,6 +198,7 @@ impl GraphicsContext {
         let obj_vertices: Vec<Vertex> = obj_gpu_vertices.into_iter().map(|v| vertex_to_vertex(v)).collect();
         let ui_vertices: Vec<Vertex> = ui_gpu_vertices.into_iter().map(|v| vertex_to_vertex(v)).collect();
 
+        renderer.set_wireframe(self.wireframe);
         renderer.update_level_geometry(&level_vertices, &level_indices);
         renderer.update_object_geometry(&obj_vertices, &obj_indices);
         renderer.update_ui_geometry(&ui_vertices, &ui_indices);
@@ -234,6 +237,7 @@ impl GraphicsContext {
             renderer.update_ui_instances(&ui_instances);
             renderer.update_object_instances(&obj_instances);
 
+            renderer.set_camera_yaw(calculate_camera_yaw(&ubo.view));
             renderer.set_global_timer(global_timer);
 
             renderer.start_frame(&ubo);
@@ -268,7 +272,7 @@ impl GraphicsContext {
 			};
 
 	    	let to_player = player_pos - monster_pos;
-			let angle_to_player = point_to_angle(to_player.x, to_player.z);
+			let angle_to_player = fast_atan2(to_player.x, to_player.z);
 
 			let view_angle = angle_to_player.wrapping_sub(monster_angle);
 
@@ -283,8 +287,9 @@ impl GraphicsContext {
         	let tex_width = cached.width;
         	let tex_height = cached.height;
         	let need_flip = cached.need_flip;
-				// first 16 indices are reserved for sky textures,
-				// so we have to subtract MAX_SKY from the actual index
+			
+            // first 16 indices are reserved for sky textures,
+            // so we have to subtract MAX_SKY from the actual index
 			let (left_offset, top_offset) = sprite_offsets[tex_id.0 as usize - MAX_SKY.get().unwrap()];  
 
 			let mut final_width = tex_width as f32;
@@ -471,5 +476,11 @@ fn update_camera_from_player(view_matrix: &mut Mat4, world: &World, player_entit
 
     let camera_up = glam::vec3(0.0, 1.0, 0.0);
 
-    *view_matrix = glam::Mat4::look_at_rh(interpolated_pos, camera_target, camera_up);
+    *view_matrix = Mat4::look_at_rh(interpolated_pos, camera_target, camera_up);
+}
+
+fn calculate_camera_yaw(view_matrix_array: &[f32; 16]) -> f32 {
+    let yaw_u32 = fast_atan2(view_matrix_array[10], view_matrix_array[2]);
+
+    (yaw_u32 as f64 / u32::MAX as f64 * TAU) as f32
 }

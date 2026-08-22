@@ -59,6 +59,14 @@ impl SafeRenderer {
     pub fn set_global_timer(&mut self, global_timer: u32) {
         self.pin_mut().setGlobalTimer(global_timer);
     }
+    
+    pub fn set_camera_yaw(&mut self, camera_yaw: f32) {
+        self.pin_mut().setCameraYaw(camera_yaw);
+    }
+
+    pub fn set_wireframe(&mut self, flag: bool) {
+        self.pin_mut().setWireframe(flag);
+    }
 
     pub fn update_level_geometry(&mut self, vertices: &[Vertex], indices: &[u32]) {
         unsafe {

@@ -106,6 +106,14 @@ void VulkanRenderer::setGlobalTimer(uint32_t global_timer) {
     this->globalTimer = static_cast<float>(global_timer);
 }
 
+void VulkanRenderer::setCameraYaw(float camera_yaw) {
+    this->cameraYaw = camera_yaw;
+}
+
+void VulkanRenderer::setWireframe(bool flag) {
+    this->wireframe = flag;
+}
+
 size_t getMaxSky() {
     return MAX_SKY;
 }
@@ -192,13 +200,15 @@ void VulkanRenderer::drawLevel() {
         constants.resolution[0] = static_cast<float>(currentResolution.width);
         constants.resolution[1] = static_cast<float>(currentResolution.height);
         constants.skyIndex = this->currentSkyIndex;
-        constants.skyWidth = this->skyWidths[this->currentSkyIndex];
+        constants.widthFactor = PIXELS_IN_PANORAMA / this->skyWidths[this->currentSkyIndex];
         constants.globalTimer = this->globalTimer;
+        constants.cameraYaw = this->cameraYaw;
+        constants.wireframe = this->wireframe;
 
 		vkCmdPushConstants(
             currentCommandBuffer,
             this->levelPipelineLayout,
-            VK_SHADER_STAGE_FRAGMENT_BIT,
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
             0,
             sizeof(PushConstants),
             &constants 

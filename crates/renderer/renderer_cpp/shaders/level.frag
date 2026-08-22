@@ -16,25 +16,16 @@ layout(binding = 2) readonly buffer ColormapBuffer {
     uint8_t colors[8448];
 } colormap;
 
-struct animLevelInfo {
-    uint texId;
-    uint frames;
-};
-
-const uint ANIM_INFO_NUM = 22;
-
-layout(binding = 3) readonly buffer AnimLevelBuffer {
-    animLevelInfo info[ANIM_INFO_NUM];
-} anim;
-
 layout(binding = 4) uniform sampler2D texSamplers[];
 
 layout(push_constant) uniform LevelConstants {
     uint paletteIndex;
     float resolution[2];
     uint skyIndex;
-    float skyWidth;
+    float widthFactor;
     float globalTimer;
+    float cameraYaw;
+    bool wireframe;
 } lc;
 
 layout(location = 0) in float fragLightLevel;      
@@ -44,31 +35,12 @@ layout(location = 3) flat in uint fragColormapIdx;
 layout(location = 4) flat in uint fragFloorTexId;
 layout(location = 5) in float fragViewZ;
 layout(location = 6) in float fragScrollDir;
-//layout(location = 7) in vec3 fragBarycentric;
-//layout(location = 8) in vec3 fragTriangleColor;
+layout(location = 7) in vec3 fragBarycentric;
+layout(location = 8) in vec3 fragTriangleColor;
 
 layout(location = 0) out vec4 outColor;
 
-const uint ANIM_SPEED = 3;
-
-uint getAnimId() {
-    for (uint i = 0; i < ANIM_INFO_NUM; i++) {
-        uint animStartId = anim.info[i].texId;
-        uint frames = anim.info[i].frames;
-
-        if (fragTexId >= animStartId && fragTexId < animStartId + frames) {
-            uint srcFrame = fragTexId - animStartId;
-            uint dividedTimer = uint(lc.globalTimer + 0.5) >> ANIM_SPEED;
-            uint animFrameNum = (srcFrame + dividedTimer) % frames;
-
-            return animStartId + animFrameNum;
-        } 
-    }
-
-    return fragTexId;
-}
-
-const float PI = 3.14159265359;
+const float TAU = 6.2831853071; 
 
 void main() {
     uint colorIndex = 0;
@@ -87,13 +59,8 @@ void main() {
     
     // sky walls or sky ceilings
     } else if (fragTexId == 65534 || fragTexId == 65533) {
-        vec3 forward = normalize(vec3(ubo.view[0][2], ubo.view[1][2], ubo.view[2][2]));
-        float cameraYaw = atan(forward.x, forward.z);
-
-        float widthFactor = 1024.0 / lc.skyWidth;
-
-        float skyU = (cameraYaw + PI) / (2.0 * PI) * widthFactor;
-        skyU += screenUV.x * (0.4 * widthFactor);
+        float skyU = lc.cameraYaw / TAU * lc.widthFactor;
+        skyU += screenUV.x * (0.4 * lc.widthFactor);
         skyU = fract(skyU);
 
         float skyV = screenUV.y * 1.6;
@@ -102,7 +69,7 @@ void main() {
         colorIndex = uint(rawColor * 255.0 + 0.5); 
     } else {
         float scrolledX = fract(fragTexCoord.x + lc.globalTimer * fragScrollDir);
-        float rawColor = textureLod(texSamplers[nonuniformEXT(getAnimId())], vec2(scrolledX, fragTexCoord.y), 0.0).r;
+        float rawColor = textureLod(texSamplers[nonuniformEXT(fragTexId)], vec2(scrolledX, fragTexCoord.y), 0.0).r;
         colorIndex = uint(rawColor * 255.0 + 0.5);
     }
 
@@ -111,24 +78,28 @@ void main() {
     }
 
     /// COLORMAP shadows
-    uint finalColormapIdx = (fragTexId == 65534 || fragTexId == 65533) ? 0 : fragColormapIdx;
-    uint colormapOffset = (finalColormapIdx * 256) | colorIndex;
-    uint shadedIndex = uint(colormap.colors[colormapOffset]);
-    
-    uint colorPosition = (lc.paletteIndex * 256) | shadedIndex;
-    vec4 colormapColor = pal.colors[colorPosition];
-    
-    outColor = vec4(colormapColor.rgb, 1.0);
+    if (!lc.wireframe) {
+        uint finalColormapIdx = (fragTexId == 65534 || fragTexId == 65533) ? 0 : fragColormapIdx;
+        uint colormapOffset = (finalColormapIdx << 8) | colorIndex;
+        uint shadedIndex = uint(colormap.colors[colormapOffset]);
 
-    /// 256-unit shadows
-    //vec3 modernColor = pal.colors[(lc.paletteIndex * 256) | colorIndex].rgb * fragLightLevel;
-    //outColor = vec4(modernColor.rgb, 1.0);  
+        uint colorPosition = (lc.paletteIndex << 8) | shadedIndex;
+        vec4 colormapColor = pal.colors[colorPosition];
 
-    /// WIREMAP
-    //vec3 d = fwidth(fragBarycentric);
-    //vec3 thickness = d * 1.5;
-    //vec3 edge = smoothstep(vec3(0.0), thickness, fragBarycentric);
-    //float minEdge = min(min(edge.x, edge.y), edge.z);
-    //float isEdge = 1.0 - minEdge;
-    //outColor = vec4(mix(vec3(1.0), fragTriangleColor, isEdge), 1.0);
+        outColor = vec4(colormapColor.rgb, 1.0);
+
+        /// 256-unit shadows
+        //vec3 modernColor = pal.colors[(lc.paletteIndex << 8) | colorIndex].rgb * fragLightLevel;
+
+        //outColor = vec4(modernColor.rgb, 1.0);  
+    } else {
+        vec3 d = fwidth(fragBarycentric);
+        vec3 thickness = d * 1.5;
+        vec3 edge = smoothstep(vec3(0.0), thickness, fragBarycentric);
+
+        float minEdge = min(min(edge.x, edge.y), edge.z);
+        float isEdge = 1.0 - minEdge;
+
+        outColor = vec4(mix(vec3(1.0), fragTriangleColor, isEdge), 1.0);
+    }
 }

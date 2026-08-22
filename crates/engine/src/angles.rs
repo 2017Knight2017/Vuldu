@@ -2,7 +2,7 @@ pub	const ANG45: u32 = 0x20000000;
 pub	const ANG90: u32 = 0x40000000;
 pub	const ANG180: u32 = 0x80000000;
 
-pub fn point_to_angle(dx: f32, dy: f32) -> u32 {
+pub fn fast_atan2(dx: f32, dy: f32) -> u32 {
     if dx == 0.0 && dy == 0.0 {
         return 0;
     }

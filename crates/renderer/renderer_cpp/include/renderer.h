@@ -18,6 +18,7 @@ inline const uint32_t MAX_PAL = 14;
 inline const uint32_t MAX_OBJECTS = 50000;
 inline const uint32_t MAX_UI = 256;
 inline const size_t ANIM_INFO_NUM = 22;
+inline const float PIXELS_IN_PANORAMA = 1024.0;
 
 struct WindowHandles;
 struct Vertex;
@@ -57,9 +58,11 @@ struct PushConstants {
     uint32_t paletteIndex;
     float resolution[2];  
     uint32_t skyIndex;
-    float skyWidth;
+    float widthFactor;
     float globalTimer;
-    uint32_t _padding[2];
+    float cameraYaw;
+    bool wireframe;
+    bool _padding[3];
 };
 
 class VulkanRenderer {
@@ -88,6 +91,8 @@ public:
     void setPaletteIndex(uint32_t idx);
     void setSkyIndex(uint32_t idx);
     void setGlobalTimer(uint32_t global_timer);
+    void setCameraYaw(float camera_yaw);
+    void setWireframe(bool flag);
     void startFrame(const UniformBufferObject* ubo_ptr);
     void endFrame();
     void drawLevel();
@@ -185,6 +190,8 @@ private:
     uint32_t currentPaletteIndex = 0;
     uint32_t currentSkyIndex = 0;
     std::vector<float> skyWidths;
+    float cameraYaw = 0.0;
+    bool wireframe = false;
     
     
     void createInstance(const WindowHandles& handles);

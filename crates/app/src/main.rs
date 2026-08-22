@@ -380,7 +380,7 @@ fn main() -> Result<(), String> {
     let mut app = App {
         window: None,
         wad_manager,
-        graphics: GraphicsContext::new(),
+        graphics: GraphicsContext::new(args.wireframe),
         game: GameContext::new(level),
         audio: AudioContext::new()?,
         random: Random::default(),

@@ -29,7 +29,7 @@ void VulkanRenderer::createDescriptorSetLayout() {
     animLevelLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     animLevelLayoutBinding.descriptorCount = 1;
     animLevelLayoutBinding.pImmutableSamplers = nullptr;
-    animLevelLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    animLevelLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     
     VkDescriptorSetLayoutBinding textureSamplerLayoutBinding{};
     textureSamplerLayoutBinding.binding = 4;

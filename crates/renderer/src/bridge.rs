@@ -87,7 +87,9 @@ pub(crate) mod ffi {
         unsafe fn uploadAnimLevelInfo(self: Pin<&mut VulkanRenderer>, info: *const AnimLevelInfo, info_count: usize);
         fn setPaletteIndex(self: Pin<&mut VulkanRenderer>, idx: u32);
         fn setSkyIndex(self: Pin<&mut VulkanRenderer>, idx: u32);
+        fn setWireframe(self: Pin<&mut VulkanRenderer>, flag: bool);
         fn setGlobalTimer(self: Pin<&mut VulkanRenderer>, global_timer: u32);
+        fn setCameraYaw(self: Pin<&mut VulkanRenderer>, camera_yaw: f32);
         fn getMaxSky() -> usize;
     }
 }

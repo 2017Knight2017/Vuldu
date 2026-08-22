@@ -485,7 +485,7 @@ void VulkanRenderer::createLevelPipeline(
 	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
 	VkPushConstantRange pushConstantRange{};
-	pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; 
+	pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT; 
 	pushConstantRange.offset = 0;
 	pushConstantRange.size = sizeof(PushConstants);
 

@@ -2,7 +2,7 @@ use hecs::{Entity, World};
 use strum::IntoEnumIterator;
 use wad_parser::Level;
 
-use crate::{DIAGS, Direction, InstantMoveIntent, MELEERANGE, MobjFlagCommand, MobjFlags, MobjInfo, MobjNum, MobjType, MonsterRotation, OPPOSITE, Position, Random, WorldEvent, p_move, point_to_angle};
+use crate::{DIAGS, Direction, InstantMoveIntent, MELEERANGE, MobjFlagCommand, MobjFlags, MobjInfo, MobjNum, MobjType, MonsterRotation, OPPOSITE, Position, Random, WorldEvent, p_move, fast_atan2};
 
 pub fn aprox_xz_distance(src: (f32, f32), dst: (f32, f32)) -> f32 {
 	let dx = (src.0 - dst.0).abs();
@@ -21,7 +21,7 @@ pub fn in_fov(pos: &Position, rot: &MonsterRotation, player_pos: &Position) -> b
     }
 
     let move_dir = rot.move_dir.unwrap() as u32;
-	let angle_to_player = point_to_angle(-(player_pos.x - pos.x), player_pos.z - pos.z) >> 29;
+	let angle_to_player = fast_atan2(-(player_pos.x - pos.x), player_pos.z - pos.z) >> 29;
 
     return angle_to_player == (move_dir.wrapping_sub(2) & 0b111) 
         || angle_to_player == (move_dir.wrapping_sub(1) & 0b111) 
