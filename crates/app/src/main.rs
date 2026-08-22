@@ -1,8 +1,9 @@
 mod graphics;
 mod parse_commandline;
 mod sound_player;
+mod cheats;
 
-use crate::graphics::{GraphicsContext, GraphicsFlags};
+use crate::{cheats::cheat_system, graphics::{GraphicsContext, GraphicsFlags}};
 use parse_commandline::Args;
 use sound_player::*;
 use renderer::*;
@@ -11,17 +12,11 @@ use wad_parser::*;
 use engine::*;
 use hecs::{CommandBuffer, Entity, World};
 use winit::{
-    application::ApplicationHandler, 
-    dpi::LogicalSize, 
-    error::OsError, 
-    event::{DeviceEvent, DeviceId, ElementState, MouseButton, WindowEvent}, 
-    event_loop::{ActiveEventLoop, ControlFlow, EventLoop}, 
-    keyboard::{KeyCode, PhysicalKey}, 
-    window::{CursorGrabMode, Window, WindowId}
+    application::ApplicationHandler, dpi::LogicalSize, error::OsError, event::{DeviceEvent, DeviceId, ElementState, MouseButton, WindowEvent}, event_loop::{ActiveEventLoop, ControlFlow, EventLoop}, keyboard::{KeyCode, NativeKeyCode::Unidentified, PhysicalKey}, window::{CursorGrabMode, Window, WindowId}
 };
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle, RawDisplayHandle, RawWindowHandle};
 use clap::Parser;
-use std::time::Instant;
+use std::{collections::VecDeque, error::Error, time::Instant};
 
 #[cfg(target_os = "macos")]
 use objc2::{msg_send, runtime::AnyObject};
@@ -55,6 +50,7 @@ struct App {
     is_shutting_down: bool,
     last_frame_time: Instant,
     time_accumulator: f32,
+    last_buttons_pressed: VecDeque<PhysicalKey>
 }
 
 impl GameContext {
@@ -80,8 +76,9 @@ impl GameContext {
         audio: &mut AudioContext, 
         current_input: &mut PlayerInput, 
         random: &mut Random, 
-        ui_to_update: &mut Vec<UpdatableUiType>
-    ) {
+        ui_to_update: &mut Vec<UpdatableUiType>,
+        last_buttons: &mut VecDeque<PhysicalKey>
+    ) -> Result<(), Box<dyn Error>> {
         handle_rotation_input(&self.world, current_input);
         handle_position_input(&self.world, self.player_entity, current_input);
         handle_weapons_input(&self.world, self.player_entity, ui_to_update, 
@@ -109,18 +106,22 @@ impl GameContext {
         friction_system(&self.world);
 
         let pending_moves = try_move_system(&self.world, &self.level,
-            random, &mut self.blocklists, &mut self.world_events);
+            random, &self.blocklists, &mut self.world_events);
 
         apply_player_movement_system(&self.world, &self.level);
         apply_monster_movement_system(&self.world, pending_moves, &self.level, &mut self.blocklists);
 
-        execute_events_system(&mut self.world_events);
+        cheat_system(last_buttons, &mut self.world_events);
+
+        execute_events_system(&mut self.world_events, &self.world, self.player_entity, ui_to_update)?;
         apply_mobj_flags_system(&mut self.mobj_flag_buffer, &self.world);
 
         audio.system(&self.world);
         animation_system(&self.world);
 
         current_input.mouse_delta_x = 0.0;
+        
+        Ok(())
     }
 
     fn flush_command_buffer(&mut self) {
@@ -147,19 +148,20 @@ impl App {
         Ok(window)
     }
 
-    fn handle_fatal_error(&mut self, event_loop: &ActiveEventLoop, renderer: &mut SafeRenderer, msg: &str) {
-        eprintln!("[FATAL] {}", msg);
-        self.is_shutting_down = true;
-        renderer.shutdown();
-        event_loop.exit();
-    }
-
-    fn update_game_logic(&mut self) {
+    fn update_game_logic(&mut self) -> Result<(), Box<dyn Error>> {
         while self.time_accumulator >= TICK_TIME {
-            self.game.tick(&mut self.audio, &mut self.current_input, &mut self.random, &mut self.graphics.ui_to_update);
+            self.game.tick(
+                &mut self.audio, 
+                &mut self.current_input, 
+                &mut self.random, 
+                &mut self.graphics.ui_to_update,
+                &mut self.last_buttons_pressed
+            )?;
             self.time_accumulator -= TICK_TIME;
             self.game.global_timer = self.game.global_timer.wrapping_add(1);
         }
+
+        Ok(())
     }
 }
 
@@ -243,14 +245,15 @@ impl ApplicationHandler for App {
         renderer.set_sky_index(sky_idx);
 
         if let Err(err) = self.graphics.load_and_upload_textures(&mut renderer, &self.wad_manager, self.game.level.map_num) {
-            self.handle_fatal_error(event_loop, &mut renderer, &err);
+            handle_fatal_error(&mut self.is_shutting_down, event_loop, &mut Some(renderer), &err);
             return;
         }
 
         self.graphics.setup_level_geometry(&mut renderer, &mut self.game.level);
 
         let _ = engine::populate_database(&self.graphics.data).map_err(|e| eprintln!("{}", e));
-        engine::spawn_all_things(&mut self.game.world, &self.game.level, &mut self.random, &mut self.game.player_entity);
+        engine::spawn_all_things(&mut self.game.world, &self.game.level, 
+            &mut self.random, &mut self.game.player_entity, &mut self.game.blocklists);
         println!("Mobj spawning is done!");
 
         self.graphics.renderer = Some(renderer);
@@ -283,6 +286,11 @@ impl ApplicationHandler for App {
                 if event.repeat { return; }
 
                 let is_pressed = event.state == ElementState::Pressed;
+
+                if self.last_buttons_pressed[0] != event.physical_key {
+                    self.last_buttons_pressed.pop_back();
+                    self.last_buttons_pressed.push_front(event.physical_key);
+                }
                 
                 match event.physical_key {
                     PhysicalKey::Code(KeyCode::KeyW) => self.current_input.move_forward = is_pressed,
@@ -330,7 +338,10 @@ impl ApplicationHandler for App {
                 self.last_frame_time = current_time;
                 self.time_accumulator += delta_time;
             
-                self.update_game_logic();
+                if let Err(err) = self.update_game_logic() {
+                    handle_fatal_error(&mut self.is_shutting_down, event_loop, 
+                        &mut self.graphics.renderer, &err.to_string());
+                };
             
                 if let Some(window) = &self.window {
                     let alpha = self.time_accumulator / TICK_TIME;
@@ -362,6 +373,16 @@ fn get_sky_texture_index(map: u8) -> u32 {
     }
 }
 
+fn handle_fatal_error(is_shutting_down: &mut bool, event_loop: &ActiveEventLoop, renderer: &mut Option<SafeRenderer>, msg: &str) {
+    eprintln!("[FATAL] {}", msg);
+    *is_shutting_down = true;
+    if let Some(renderer) = renderer {
+        renderer.shutdown();
+    }
+    
+    event_loop.exit();
+}
+
 fn main() -> Result<(), String> {
     let mut wad_manager = WadManager::new();
 
@@ -390,6 +411,7 @@ fn main() -> Result<(), String> {
         current_input: PlayerInput::default(),
         last_frame_time: Instant::now(),
         time_accumulator: 0.0,
+        last_buttons_pressed: VecDeque::from_iter([PhysicalKey::Unidentified(Unidentified); 8]),
     };
     event_loop.run_app(&mut app).unwrap();
 

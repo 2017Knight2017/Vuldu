@@ -372,7 +372,7 @@ pub fn try_move_system(
     world: &World,
     level: &Level,
     random: &mut Random,
-    blocklists: &mut [Vec<Entity>],
+    blocklists: &[Vec<Entity>],
     world_events: &mut Vec<WorldEvent>
 ) -> PendingMoves {
     let db = DB.get().unwrap();
