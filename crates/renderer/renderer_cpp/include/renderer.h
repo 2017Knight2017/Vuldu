@@ -61,8 +61,7 @@ struct PushConstants {
     float widthFactor;
     float globalTimer;
     float cameraYaw;
-    bool wireframe;
-    bool _padding[3];
+    uint32_t flags;
 };
 
 class VulkanRenderer {
@@ -92,7 +91,7 @@ public:
     void setSkyIndex(uint32_t idx);
     void setGlobalTimer(uint32_t global_timer);
     void setCameraYaw(float camera_yaw);
-    void setWireframe(bool flag);
+    void setFlags(bool wireframe, bool byte_shadows);
     void startFrame(const UniformBufferObject* ubo_ptr);
     void endFrame();
     void drawLevel();
@@ -192,6 +191,7 @@ private:
     std::vector<float> skyWidths;
     float cameraYaw = 0.0;
     bool wireframe = false;
+    bool byteShadows = false;
     
     
     void createInstance(const WindowHandles& handles);
@@ -222,8 +222,7 @@ private:
         VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
     void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
     void createBinding(const void* data_ptr, VkDeviceSize bufferSize, VkBuffer& dstBuffer, 
-    	VkDeviceMemory& dstBufferMemory, uint32_t dstBinding, bool isStorage
-    );
+    	VkDeviceMemory& dstBufferMemory, uint32_t dstBinding);
     void createImage(uint32_t width, uint32_t height, VkFormat format, 
         VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, 
         VkDeviceMemory& imageMemory);

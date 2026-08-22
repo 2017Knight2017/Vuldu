@@ -64,8 +64,8 @@ impl SafeRenderer {
         self.pin_mut().setCameraYaw(camera_yaw);
     }
 
-    pub fn set_wireframe(&mut self, flag: bool) {
-        self.pin_mut().setWireframe(flag);
+    pub fn set_flags(&mut self, wireframe: bool, byte_shadows: bool) {
+        self.pin_mut().setFlags(wireframe, byte_shadows);
     }
 
     pub fn update_level_geometry(&mut self, vertices: &[Vertex], indices: &[u32]) {

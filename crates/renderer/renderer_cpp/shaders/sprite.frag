@@ -14,6 +14,7 @@ layout(binding = 4) uniform sampler2D texSamplers[];
 
 layout(push_constant) uniform SpriteConstants {
     uint paletteIndex;
+    uint flags;
 } sc;
 
 layout(location = 0) in vec2 fragTexCoord;
@@ -23,6 +24,8 @@ layout(location = 3) flat in uint fragColormapIdx;
 
 layout(location = 0) out vec4 outColor;
 
+const uint BYTE_SHADOWS = 2;
+
 void main() {
     float rawColor = textureLod(texSamplers[nonuniformEXT(fragTexId)], fragTexCoord, 0.0).r;
     uint colorIndex = uint(rawColor * 255.0 + 0.5);
@@ -31,16 +34,16 @@ void main() {
         discard;
     }
 
-    // COLORMAP shadows
-    uint colormapOffset = (fragColormapIdx * 256) | colorIndex;
-    uint shadedIndex = uint(colormap.colors[colormapOffset]);
-    
-    uint colorPosition = (sc.paletteIndex * 256) | shadedIndex;
-    vec4 finalColor = pal.colors[colorPosition];
+    if (!bool(sc.flags & BYTE_SHADOWS)) {
+        uint colormapOffset = (fragColormapIdx << 8) | colorIndex;
+        uint shadedIndex = uint(colormap.colors[colormapOffset]);
 
-    outColor = vec4(finalColor.rgb, 1.0);
+        uint colorPosition = (sc.paletteIndex << 8) | shadedIndex;
+        vec4 finalColor = pal.colors[colorPosition];
 
-    // 256-unit shadows
-    //vec3 modernColor = pal.colors[(sc.paletteIndex * 256) | colorIndex].rgb * fragLightLevel;
-    //outColor = vec4(modernColor.rgb, 1.0);
+        outColor = vec4(finalColor.rgb, 1.0);
+    } else {
+        vec3 modernColor = pal.colors[(sc.paletteIndex << 8) | colorIndex].rgb * fragLightLevel;
+        outColor = vec4(modernColor.rgb, 1.0);
+    }
 }

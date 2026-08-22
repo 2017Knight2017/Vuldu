@@ -259,8 +259,7 @@ void VulkanRenderer::createBinding(
 	VkDeviceSize bufferSize, 
 	VkBuffer& dstBuffer, 
 	VkDeviceMemory& dstBufferMemory,
-    uint32_t dstBinding,
-	bool isStorage
+    uint32_t dstBinding
 ) {
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
@@ -278,11 +277,7 @@ void VulkanRenderer::createBinding(
     memcpy(data, data_ptr, bufferSize);
     vkUnmapMemory(this->device, stagingBufferMemory);
 
-    VkBufferUsageFlags usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | (
-        isStorage 
-            ? VK_BUFFER_USAGE_STORAGE_BUFFER_BIT 
-            : VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
-        );
+    VkBufferUsageFlags usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 
     createBuffer(
         bufferSize, 
@@ -308,9 +303,7 @@ void VulkanRenderer::createBinding(
         descriptorWrite.dstSet = this->descriptorSets[i];
         descriptorWrite.dstBinding = dstBinding;
         descriptorWrite.descriptorCount = 1;
-        descriptorWrite.descriptorType = isStorage 
-            ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
-            : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         descriptorWrite.pBufferInfo = &bufferInfo;
 
         vkUpdateDescriptorSets(this->device, 1, &descriptorWrite, 0, nullptr);
@@ -323,7 +316,7 @@ void VulkanRenderer::uploadPalettes(const float* palettes_ptr, size_t palette_ch
     VkDeviceSize bufferSize = palette_channels_count * sizeof(float);
 
     createBinding(palettes_ptr, bufferSize, this->paletteBuffer, 
-        this->paletteBufferMemory, 1, true);
+        this->paletteBufferMemory, 1);
 }
 
 void VulkanRenderer::uploadColormap(const uint8_t* colormap_ptr, size_t colormap_bytes_count) {
@@ -332,7 +325,7 @@ void VulkanRenderer::uploadColormap(const uint8_t* colormap_ptr, size_t colormap
     VkDeviceSize bufferSize = colormap_bytes_count * sizeof(uint8_t);
 
     createBinding(colormap_ptr, bufferSize, this->colormapBuffer,
-        this->colormapBufferMemory, 2, true);
+        this->colormapBufferMemory, 2);
 }
 
 void VulkanRenderer::uploadAnimLevelInfo(const AnimLevelInfo* info_ptr, size_t info_count) {
@@ -341,5 +334,5 @@ void VulkanRenderer::uploadAnimLevelInfo(const AnimLevelInfo* info_ptr, size_t i
     VkDeviceSize bufferSize = info_count * sizeof(AnimLevelInfo);
 
     createBinding(info_ptr, bufferSize, this->animLevelBuffer, 
-        this->animLevelBufferMemory, 3, true);
+        this->animLevelBufferMemory, 3);
 }

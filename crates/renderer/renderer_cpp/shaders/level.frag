@@ -25,7 +25,7 @@ layout(push_constant) uniform LevelConstants {
     float widthFactor;
     float globalTimer;
     float cameraYaw;
-    bool wireframe;
+    uint flags; 
 } lc;
 
 layout(location = 0) in float fragLightLevel;      
@@ -41,6 +41,9 @@ layout(location = 8) in vec3 fragTriangleColor;
 layout(location = 0) out vec4 outColor;
 
 const float TAU = 6.2831853071; 
+
+const uint WIREMAP = 1;
+const uint BYTE_SHADOWS = 2;
 
 void main() {
     uint colorIndex = 0;
@@ -77,21 +80,22 @@ void main() {
         discard;
     }
 
-    /// COLORMAP shadows
-    if (!lc.wireframe) {
-        uint finalColormapIdx = (fragTexId == 65534 || fragTexId == 65533) ? 0 : fragColormapIdx;
-        uint colormapOffset = (finalColormapIdx << 8) | colorIndex;
-        uint shadedIndex = uint(colormap.colors[colormapOffset]);
+    if (!bool(lc.flags & WIREMAP)) {
+        /// COLORMAP shadows
+        if (!bool(lc.flags & BYTE_SHADOWS)) {
+            uint finalColormapIdx = (fragTexId == 65534 || fragTexId == 65533) ? 0 : fragColormapIdx;
+            uint colormapOffset = (finalColormapIdx << 8) | colorIndex;
+            uint shadedIndex = uint(colormap.colors[colormapOffset]);
 
-        uint colorPosition = (lc.paletteIndex << 8) | shadedIndex;
-        vec4 colormapColor = pal.colors[colorPosition];
+            uint colorPosition = (lc.paletteIndex << 8) | shadedIndex;
+            vec4 colormapColor = pal.colors[colorPosition];
 
-        outColor = vec4(colormapColor.rgb, 1.0);
+            outColor = vec4(colormapColor.rgb, 1.0);
+        } else {
+            vec3 modernColor = pal.colors[(lc.paletteIndex << 8) | colorIndex].rgb * fragLightLevel;
 
-        /// 256-unit shadows
-        //vec3 modernColor = pal.colors[(lc.paletteIndex << 8) | colorIndex].rgb * fragLightLevel;
-
-        //outColor = vec4(modernColor.rgb, 1.0);  
+            outColor = vec4(modernColor.rgb, 1.0);  
+        }
     } else {
         vec3 d = fwidth(fragBarycentric);
         vec3 thickness = d * 1.5;

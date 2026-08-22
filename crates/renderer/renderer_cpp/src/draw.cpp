@@ -110,8 +110,9 @@ void VulkanRenderer::setCameraYaw(float camera_yaw) {
     this->cameraYaw = camera_yaw;
 }
 
-void VulkanRenderer::setWireframe(bool flag) {
-    this->wireframe = flag;
+void VulkanRenderer::setFlags(bool wireframe, bool byte_shadows) {
+    this->wireframe = wireframe;
+    this->byteShadows = byte_shadows;
 }
 
 size_t getMaxSky() {
@@ -173,125 +174,122 @@ void VulkanRenderer::startFrame(const UniformBufferObject* ubo_ptr) {
 }
 
 void VulkanRenderer::drawLevel() {
+    if (this->levelVertexBuffer == VK_NULL_HANDLE || this->levelVertexCount == 0) return;
+
     VkCommandBuffer currentCommandBuffer = this->commandBuffers[this->currentFrame];
-
-    if (this->levelVertexBuffer != VK_NULL_HANDLE && this->levelVertexCount > 0) {
-        vkCmdBindPipeline(currentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->levelPipeline);
+    
+    vkCmdBindPipeline(currentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->levelPipeline);
         
-        vkCmdBindDescriptorSets(
-            currentCommandBuffer, 
-            VK_PIPELINE_BIND_POINT_GRAPHICS, 
-            this->levelPipelineLayout, 
-            0, 1, 
-            &this->descriptorSets[this->currentFrame], 
-            0, nullptr
-        );
+    vkCmdBindDescriptorSets(
+        currentCommandBuffer, 
+        VK_PIPELINE_BIND_POINT_GRAPHICS, 
+        this->levelPipelineLayout, 
+        0, 1, 
+        &this->descriptorSets[this->currentFrame], 
+        0, nullptr
+    );
         
-        VkBuffer vertexBuffers[] = {this->levelVertexBuffer};
-        VkDeviceSize offsets[] = {0};
+    VkBuffer vertexBuffers[] = {this->levelVertexBuffer};
+    VkDeviceSize offsets[] = {0};
 
-        vkCmdBindVertexBuffers(currentCommandBuffer, 0, 1, vertexBuffers, offsets);
-        vkCmdBindIndexBuffer(currentCommandBuffer, this->levelIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindVertexBuffers(currentCommandBuffer, 0, 1, vertexBuffers, offsets);
+    vkCmdBindIndexBuffer(currentCommandBuffer, this->levelIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-        WindowSize currentResolution = get_winit_window_size(this->window_raw_ptr);
+    PushConstants constants{};
+    constants.paletteIndex = this->currentPaletteIndex;
+    constants.resolution[0] = static_cast<float>(this->swapChainExtent.width);
+    constants.resolution[1] = static_cast<float>(this->swapChainExtent.height);
+    constants.skyIndex = this->currentSkyIndex;
+    constants.widthFactor = PIXELS_IN_PANORAMA / this->skyWidths[this->currentSkyIndex];
+    constants.globalTimer = this->globalTimer;
+    constants.cameraYaw = this->cameraYaw;
+    constants.flags = (this->byteShadows << 1) | this->wireframe;
 
-        PushConstants constants{};
-        constants.paletteIndex = this->currentPaletteIndex;
-        constants.resolution[0] = static_cast<float>(currentResolution.width);
-        constants.resolution[1] = static_cast<float>(currentResolution.height);
-        constants.skyIndex = this->currentSkyIndex;
-        constants.widthFactor = PIXELS_IN_PANORAMA / this->skyWidths[this->currentSkyIndex];
-        constants.globalTimer = this->globalTimer;
-        constants.cameraYaw = this->cameraYaw;
-        constants.wireframe = this->wireframe;
+	vkCmdPushConstants(
+        currentCommandBuffer,
+        this->levelPipelineLayout,
+        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+        0,
+        sizeof(PushConstants),
+        &constants 
+    );
 
-		vkCmdPushConstants(
-            currentCommandBuffer,
-            this->levelPipelineLayout,
-            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-            0,
-            sizeof(PushConstants),
-            &constants 
-        );
-
-        vkCmdDrawIndexed(currentCommandBuffer, this->levelIndexCount, 1, 0, 0, 0);
-    }
+    vkCmdDrawIndexed(currentCommandBuffer, this->levelIndexCount, 1, 0, 0, 0);
 }
 
 void VulkanRenderer::drawObjects() {
+    if (this->objectVertexBuffer == VK_NULL_HANDLE || this->objectIndexCount == 0) return;
+    
     VkCommandBuffer currentCommandBuffer = this->commandBuffers[this->currentFrame];
-
-    if (this->objectVertexBuffer != VK_NULL_HANDLE && this->objectIndexCount > 0) {
         
-        vkCmdBindPipeline(currentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->spritePipeline);
+    vkCmdBindPipeline(currentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->spritePipeline);
         
-        vkCmdBindDescriptorSets(
-            currentCommandBuffer, 
-            VK_PIPELINE_BIND_POINT_GRAPHICS, 
-            this->spritePipelineLayout, 
-            0, 1, 
-            &this->descriptorSets[this->currentFrame], 
-            0, nullptr
-        );
+    vkCmdBindDescriptorSets(
+        currentCommandBuffer, 
+        VK_PIPELINE_BIND_POINT_GRAPHICS, 
+        this->spritePipelineLayout, 
+        0, 1, 
+        &this->descriptorSets[this->currentFrame], 
+        0, nullptr
+    );
         
-        VkBuffer vertexBuffers[] = {this->objectVertexBuffer, this->objectInstanceBuffers[this->currentFrame]};
-        VkDeviceSize offsets[] = {0, 0};
-        vkCmdBindVertexBuffers(currentCommandBuffer, 0, 2, vertexBuffers, offsets);
+    VkBuffer vertexBuffers[] = {this->objectVertexBuffer, this->objectInstanceBuffers[this->currentFrame]};
+    VkDeviceSize offsets[] = {0, 0};
+    vkCmdBindVertexBuffers(currentCommandBuffer, 0, 2, vertexBuffers, offsets);
         
-        vkCmdBindIndexBuffer(currentCommandBuffer, this->objectIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindIndexBuffer(currentCommandBuffer, this->objectIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-        PushConstants constants{};
-        constants.paletteIndex = this->currentPaletteIndex;
+    PushConstants constants{};
+    constants.paletteIndex = this->currentPaletteIndex;
+    constants.flags = this->byteShadows << 1;
 
-        vkCmdPushConstants(
-            currentCommandBuffer,
-            this->spritePipelineLayout,
-            VK_SHADER_STAGE_FRAGMENT_BIT,
-            0,                    
-            sizeof(uint32_t),
-            &constants 
-        );
+    vkCmdPushConstants(
+        currentCommandBuffer,
+        this->spritePipelineLayout,
+        VK_SHADER_STAGE_FRAGMENT_BIT,
+        0,                    
+        sizeof(uint32_t) + sizeof(uint32_t),
+        &constants 
+    );
 
-        vkCmdDrawIndexed(currentCommandBuffer, this->objectIndexCount, this->activeObjectsCount, 0, 0, 0);
-    }
+    vkCmdDrawIndexed(currentCommandBuffer, this->objectIndexCount, this->activeObjectsCount, 0, 0, 0);
 }
 
 void VulkanRenderer::drawUi() {
+    if (this->uiVertexBuffer == VK_NULL_HANDLE || this->uiIndexCount == 0) return;
+    
     VkCommandBuffer currentCommandBuffer = this->commandBuffers[this->currentFrame];
-
-    if (this->uiVertexBuffer != VK_NULL_HANDLE && this->uiIndexCount > 0) {
         
-        vkCmdBindPipeline(currentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->uiPipeline);
+    vkCmdBindPipeline(currentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->uiPipeline);
         
-        vkCmdBindDescriptorSets(
-            currentCommandBuffer, 
-            VK_PIPELINE_BIND_POINT_GRAPHICS, 
-            this->uiPipelineLayout, 
-            0, 1, 
-            &this->descriptorSets[this->currentFrame], 
-            0, nullptr
-        );
+    vkCmdBindDescriptorSets(
+        currentCommandBuffer, 
+        VK_PIPELINE_BIND_POINT_GRAPHICS, 
+        this->uiPipelineLayout, 
+        0, 1, 
+        &this->descriptorSets[this->currentFrame], 
+        0, nullptr
+    );
         
-        VkBuffer vertexBuffers[] = {this->uiVertexBuffer, this->uiInstanceBuffers[this->currentFrame]};
-        VkDeviceSize offsets[] = {0, 0};
-        vkCmdBindVertexBuffers(currentCommandBuffer, 0, 2, vertexBuffers, offsets);
+    VkBuffer vertexBuffers[] = {this->uiVertexBuffer, this->uiInstanceBuffers[this->currentFrame]};
+    VkDeviceSize offsets[] = {0, 0};
+    vkCmdBindVertexBuffers(currentCommandBuffer, 0, 2, vertexBuffers, offsets);
         
-        vkCmdBindIndexBuffer(currentCommandBuffer, this->uiIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindIndexBuffer(currentCommandBuffer, this->uiIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-        PushConstants constants{};
-        constants.paletteIndex = this->currentPaletteIndex;
+    PushConstants constants{};
+    constants.paletteIndex = this->currentPaletteIndex;
 
-        vkCmdPushConstants(
-            currentCommandBuffer,
-            this->uiPipelineLayout,
-            VK_SHADER_STAGE_FRAGMENT_BIT,
-            0,                    
-            sizeof(uint32_t),
-            &constants 
-        );
+    vkCmdPushConstants(
+        currentCommandBuffer,
+        this->uiPipelineLayout,
+        VK_SHADER_STAGE_FRAGMENT_BIT,
+        0,                    
+        sizeof(uint32_t),
+        &constants 
+    );
 
-        vkCmdDrawIndexed(currentCommandBuffer, this->uiIndexCount, this->activeUiCount, 0, 0, 0);
-    }
+    vkCmdDrawIndexed(currentCommandBuffer, this->uiIndexCount, this->activeUiCount, 0, 0, 0);
 }
 
 void VulkanRenderer::endFrame() {
@@ -332,7 +330,6 @@ void VulkanRenderer::endFrame() {
 	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = &this->swapChain;
 	presentInfo.pImageIndices = &this->currentImageIndex;
-	presentInfo.pResults = nullptr;  // Optional
 
 	VkResult presentResult = vkQueuePresentKHR(this->presentQueue, &presentInfo);
 

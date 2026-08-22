@@ -10,6 +10,17 @@ use std::f64::consts::TAU;
 
 const FOV_ANGLE: f32 = 90.0;
 
+pub struct GraphicsFlags {
+    wireframe: bool,
+    byte_shadows: bool,
+}
+
+impl GraphicsFlags {
+    pub fn new(wireframe: bool, byte_shadows: bool) -> Self {
+        GraphicsFlags { wireframe, byte_shadows }
+    }
+}
+
 pub struct GraphicsContext {
     pub renderer: Option<SafeRenderer>,
     pub data: FxHashMap<u64, (TextureId, u32, u32, bool)>,
@@ -18,11 +29,11 @@ pub struct GraphicsContext {
     cached_stbar_ui: STBarUi,
     offsets: Vec<(i16, i16)>,
     view_matrix: Mat4,
-    wireframe: bool
+    flags: GraphicsFlags
 }
 
 impl GraphicsContext {
-	pub fn new(wireframe: bool) -> Self {
+	pub fn new(flags: GraphicsFlags) -> Self {
 		Self { 
 			renderer: None, 
             data: FxHashMap::default(), 
@@ -31,7 +42,7 @@ impl GraphicsContext {
             ui_to_update: Vec::new(),
             offsets: Vec::new(), 
             view_matrix: Mat4::default(),
-            wireframe
+            flags 
 		}
 	}
 
@@ -198,7 +209,7 @@ impl GraphicsContext {
         let obj_vertices: Vec<Vertex> = obj_gpu_vertices.into_iter().map(|v| vertex_to_vertex(v)).collect();
         let ui_vertices: Vec<Vertex> = ui_gpu_vertices.into_iter().map(|v| vertex_to_vertex(v)).collect();
 
-        renderer.set_wireframe(self.wireframe);
+        renderer.set_flags(self.flags.wireframe, self.flags.byte_shadows);
         renderer.update_level_geometry(&level_vertices, &level_indices);
         renderer.update_object_geometry(&obj_vertices, &obj_indices);
         renderer.update_ui_geometry(&ui_vertices, &ui_indices);

@@ -2,7 +2,7 @@ mod graphics;
 mod parse_commandline;
 mod sound_player;
 
-use crate::graphics::GraphicsContext;
+use crate::graphics::{GraphicsContext, GraphicsFlags};
 use parse_commandline::Args;
 use sound_player::*;
 use renderer::*;
@@ -377,10 +377,12 @@ fn main() -> Result<(), String> {
     let event_loop = EventLoop::new().unwrap();
     event_loop.set_control_flow(ControlFlow::Poll);
 
+    let flags = GraphicsFlags::new(args.wireframe, args.byte_shadows);
+
     let mut app = App {
         window: None,
         wad_manager,
-        graphics: GraphicsContext::new(args.wireframe),
+        graphics: GraphicsContext::new(flags),
         game: GameContext::new(level),
         audio: AudioContext::new()?,
         random: Random::default(),
