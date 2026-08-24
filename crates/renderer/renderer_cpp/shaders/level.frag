@@ -80,23 +80,7 @@ void main() {
         discard;
     }
 
-    if (!bool(lc.flags & WIREMAP)) {
-        /// COLORMAP shadows
-        if (!bool(lc.flags & BYTE_SHADOWS)) {
-            uint finalColormapIdx = (fragTexId == 65534 || fragTexId == 65533) ? 0 : fragColormapIdx;
-            uint colormapOffset = (finalColormapIdx << 8) | colorIndex;
-            uint shadedIndex = uint(colormap.colors[colormapOffset]);
-
-            uint colorPosition = (lc.paletteIndex << 8) | shadedIndex;
-            vec4 colormapColor = pal.colors[colorPosition];
-
-            outColor = vec4(colormapColor.rgb, 1.0);
-        } else {
-            vec3 modernColor = pal.colors[(lc.paletteIndex << 8) | colorIndex].rgb * fragLightLevel;
-
-            outColor = vec4(modernColor.rgb, 1.0);  
-        }
-    } else {
+    if (bool(lc.flags & WIREMAP)) {
         vec3 d = fwidth(fragBarycentric);
         vec3 thickness = d * 1.5;
         vec3 edge = smoothstep(vec3(0.0), thickness, fragBarycentric);
@@ -105,5 +89,24 @@ void main() {
         float isEdge = 1.0 - minEdge;
 
         outColor = vec4(mix(vec3(1.0), fragTriangleColor, isEdge), 1.0);
+
+        return;
+    } 
+    
+    if (bool(lc.flags & BYTE_SHADOWS)) {
+        vec3 modernColor = pal.colors[(lc.paletteIndex << 8) | colorIndex].rgb * fragLightLevel;
+
+        outColor = vec4(modernColor.rgb, 1.0);  
+
+        return;
     }
+
+    uint finalColormapIdx = (fragTexId == 65534 || fragTexId == 65533) ? 0 : fragColormapIdx;
+    uint colormapOffset = (finalColormapIdx << 8) | colorIndex;
+    uint shadedIndex = uint(colormap.colors[colormapOffset]);
+
+    uint colorPosition = (lc.paletteIndex << 8) | shadedIndex;
+    vec4 colormapColor = pal.colors[colorPosition];
+
+    outColor = vec4(colormapColor.rgb, 1.0);
 }

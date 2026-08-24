@@ -12,7 +12,7 @@ use wad_parser::*;
 use engine::*;
 use hecs::{CommandBuffer, Entity, World};
 use winit::{
-    application::ApplicationHandler, dpi::LogicalSize, error::OsError, event::{DeviceEvent, DeviceId, ElementState, MouseButton, WindowEvent}, event_loop::{ActiveEventLoop, ControlFlow, EventLoop}, keyboard::{KeyCode, NativeKeyCode::Unidentified, PhysicalKey}, window::{CursorGrabMode, Window, WindowId}
+    application::ApplicationHandler, dpi::LogicalSize, error::OsError, event::{DeviceEvent, DeviceId, ElementState, MouseButton, WindowEvent}, event_loop::{ActiveEventLoop, ControlFlow, EventLoop}, keyboard::{KeyCode, PhysicalKey}, window::{CursorGrabMode, Window, WindowId}
 };
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle, RawDisplayHandle, RawWindowHandle};
 use clap::Parser;
@@ -27,7 +27,9 @@ const TICK_TIME: f32 = 1.0 / TICKRATE as f32;
 struct GameContext {
     world: World,
     level: Level,
-    game_state: GameState,
+    state: GameState,
+    skill: SkillLevel,
+    fast_monsters: bool,
     blocklists: Vec<Vec<Entity>>,
     sound_targets: Vec<Option<Entity>>,
     world_events: Vec<WorldEvent>,
@@ -50,11 +52,11 @@ struct App {
     is_shutting_down: bool,
     last_frame_time: Instant,
     time_accumulator: f32,
-    last_buttons_pressed: VecDeque<PhysicalKey>
+    last_buttons_pressed: VecDeque<Option<PhysicalKey>>
 }
 
 impl GameContext {
-    fn new(level: Level) -> Self {
+    fn new(level: Level, skill: SkillLevel, fast_monsters: bool) -> Self {
         Self { 
             world: World::new(), 
             sound_targets: vec![None; level.state.sectors.len()],
@@ -66,8 +68,10 @@ impl GameContext {
             command_buffer: CommandBuffer::new(),
             action_buffer: Vec::new(),
             player_entity: Entity::DANGLING,
-            game_state: GameState::Level,
-            global_timer: 0
+            state: GameState::Level,
+            global_timer: 0,
+            skill,
+            fast_monsters
         }
     }
 
@@ -77,9 +81,9 @@ impl GameContext {
         current_input: &mut PlayerInput, 
         random: &mut Random, 
         ui_to_update: &mut Vec<UpdatableUiType>,
-        last_buttons: &mut VecDeque<PhysicalKey>
-    ) -> Result<(), Box<dyn Error>> {
-        handle_rotation_input(&self.world, current_input);
+        last_buttons: &mut VecDeque<Option<PhysicalKey>>
+    ) {
+        handle_rotation_input(&self.world, self.player_entity, current_input);
         handle_position_input(&self.world, self.player_entity, current_input);
         handle_weapons_input(&self.world, self.player_entity, ui_to_update, 
             &mut self.command_buffer, &mut audio.buffer, current_input);
@@ -100,8 +104,9 @@ impl GameContext {
         self.flush_command_buffer();
 
         ai_system(&self.world, &mut self.action_buffer);
-        action_system(&self.world, &mut self.action_buffer, random, &self.level, SkillLevel::Hard, 
-            false, &mut audio.buffer, &self.blocklists, &mut self.world_events, &mut self.mobj_flag_buffer);
+        action_system(&self.world, &mut self.action_buffer, random, &self.level, self.skill, 
+            self.fast_monsters, &mut audio.buffer, &self.blocklists, &mut self.world_events, 
+            &mut self.mobj_flag_buffer);
 
         friction_system(&self.world);
 
@@ -113,15 +118,13 @@ impl GameContext {
 
         cheat_system(last_buttons, &mut self.world_events);
 
-        execute_events_system(&mut self.world_events, &self.world, self.player_entity, ui_to_update)?;
+        execute_events_system(&mut self.world_events, &self.world, self.player_entity, ui_to_update);
         apply_mobj_flags_system(&mut self.mobj_flag_buffer, &self.world);
 
         audio.system(&self.world);
         animation_system(&self.world);
 
         current_input.mouse_delta_x = 0.0;
-        
-        Ok(())
     }
 
     fn flush_command_buffer(&mut self) {
@@ -155,8 +158,8 @@ impl App {
                 &mut self.current_input, 
                 &mut self.random, 
                 &mut self.graphics.ui_to_update,
-                &mut self.last_buttons_pressed
-            )?;
+                &mut self.last_buttons_pressed,
+            );
             self.time_accumulator -= TICK_TIME;
             self.game.global_timer = self.game.global_timer.wrapping_add(1);
         }
@@ -287,9 +290,9 @@ impl ApplicationHandler for App {
 
                 let is_pressed = event.state == ElementState::Pressed;
 
-                if self.last_buttons_pressed[0] != event.physical_key {
+                if self.last_buttons_pressed[0] != Some(event.physical_key) {
                     self.last_buttons_pressed.pop_back();
-                    self.last_buttons_pressed.push_front(event.physical_key);
+                    self.last_buttons_pressed.push_front(Some(event.physical_key));
                 }
                 
                 match event.physical_key {
@@ -346,7 +349,7 @@ impl ApplicationHandler for App {
                 if let Some(window) = &self.window {
                     let alpha = self.time_accumulator / TICK_TIME;
                     self.graphics.render(window, &self.game.world, self.game.player_entity, 
-                        &self.game.level, self.game.game_state, self.game.global_timer, alpha);
+                        &self.game.level, self.game.state, self.game.global_timer, alpha);
 
                     window.request_redraw();
                 }
@@ -404,14 +407,14 @@ fn main() -> Result<(), String> {
         window: None,
         wad_manager,
         graphics: GraphicsContext::new(flags),
-        game: GameContext::new(level),
+        game: GameContext::new(level, SkillLevel::from(args.skill_level), args.fast_monsters),
         audio: AudioContext::new()?,
         random: Random::default(),
         is_shutting_down: false,
         current_input: PlayerInput::default(),
         last_frame_time: Instant::now(),
         time_accumulator: 0.0,
-        last_buttons_pressed: VecDeque::from_iter([PhysicalKey::Unidentified(Unidentified); 8]),
+        last_buttons_pressed: VecDeque::from_iter([None; 8]),
     };
     event_loop.run_app(&mut app).unwrap();
 

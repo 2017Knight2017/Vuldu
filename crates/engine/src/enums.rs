@@ -1130,6 +1130,19 @@ pub enum SkillLevel {
     Nightmare
 }
 
+impl From<u8> for SkillLevel {
+    fn from(value: u8) -> Self {
+        match value {
+            0 => SkillLevel::Baby,
+            1 => SkillLevel::Easy,
+            2 => SkillLevel::Medium,
+            3 => SkillLevel::Hard,
+            4 => SkillLevel::Nightmare,
+            _ => panic!("Incorrect skill level! Must be a number between 0 (I'm too young to die) to 4 (Nightmare!) inclusively.")
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub enum MobjFlagNum {
     // Call P_SpecialThing when touched.

@@ -23,7 +23,10 @@ pub fn spawn_mobj(
 	};
 
 	let normalized_deg = ((angle_raw as i32 % 360) + 360) % 360;
-	let angle = (normalized_deg / 45) as u32 * ANG45;
+	let mut angle = (normalized_deg / 45) as u32 * ANG45;
+	if mobj_type == MobjNum::Player {
+		angle = angle.wrapping_sub(ANG90);
+	}
 
 	let dir_index = (normalized_deg / 45) as u32;
 	let move_dir = Direction::try_from(dir_index).expect("Error while parsing move_dir");

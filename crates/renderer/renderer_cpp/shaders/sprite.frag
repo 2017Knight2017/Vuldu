@@ -34,16 +34,19 @@ void main() {
         discard;
     }
 
-    if (!bool(sc.flags & BYTE_SHADOWS)) {
-        uint colormapOffset = (fragColormapIdx << 8) | colorIndex;
-        uint shadedIndex = uint(colormap.colors[colormapOffset]);
-
-        uint colorPosition = (sc.paletteIndex << 8) | shadedIndex;
-        vec4 finalColor = pal.colors[colorPosition];
-
-        outColor = vec4(finalColor.rgb, 1.0);
-    } else {
+    if (bool(sc.flags & BYTE_SHADOWS)) {
         vec3 modernColor = pal.colors[(sc.paletteIndex << 8) | colorIndex].rgb * fragLightLevel;
+
         outColor = vec4(modernColor.rgb, 1.0);
-    }
+
+        return;
+    } 
+
+    uint colormapOffset = (fragColormapIdx << 8) | colorIndex;
+    uint shadedIndex = uint(colormap.colors[colormapOffset]);
+
+    uint colorPosition = (sc.paletteIndex << 8) | shadedIndex;
+    vec4 finalColor = pal.colors[colorPosition];
+
+    outColor = vec4(finalColor.rgb, 1.0);
 }

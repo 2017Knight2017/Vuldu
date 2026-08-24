@@ -106,18 +106,17 @@ pub fn handle_position_input(world: &World, player_ent: Entity, input: &PlayerIn
     velocity.y += move_vertically * 4.0;
 }
 
-pub fn handle_rotation_input(world: &World, input: &PlayerInput) {
-    let mut query = world.query::<&mut PlayerRotation>();
-    for rotation in query.iter() {
-        let sensitivity = 0.008; 
-        let angle_delta_rad = input.mouse_delta_x * sensitivity;
-        let factor = (angle_delta_rad as f64) / TAU;
+pub fn handle_rotation_input(world: &World, player_ent: Entity, input: &PlayerInput) {
+    let mut rotation = world.get::<&mut PlayerRotation>(player_ent).unwrap();
+    
+    let sensitivity = 0.008; 
+    let angle_delta_rad = input.mouse_delta_x * sensitivity;
+    let factor = (angle_delta_rad as f64) / TAU;
 
-        let angle_delta = (factor * u32::MAX as f64) as i32;
+    let angle_delta = (factor * u32::MAX as f64) as i32;
 
-        rotation.prev_angle = rotation.angle;
-        rotation.angle = rotation.angle.wrapping_add_signed(angle_delta);
-    }
+    rotation.prev_angle = rotation.angle;
+    rotation.angle = rotation.angle.wrapping_add_signed(angle_delta);
 }
 
 pub fn apply_player_movement_system(world: &World, map: &Level) {

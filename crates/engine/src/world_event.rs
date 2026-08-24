@@ -1,5 +1,3 @@
-use std::error::Error;
-
 use hecs::{Entity, World};
 
 use crate::{NUMCARDS, NUMWEAPONS, PlayerInventory, UpdatableUiType};
@@ -29,7 +27,7 @@ pub fn execute_events_system(
     world: &World, 
     player_ent: Entity,
     ui_to_update: &mut Vec<UpdatableUiType>
-) -> Result<(), Box<dyn Error>> {
+) {
 	for event in world_events.drain(..) {
 		match event {
 			WorldEvent::DamageMobj { target: _, inflictor: _, damage: _ } => {
@@ -42,7 +40,8 @@ pub fn execute_events_system(
                 
 			}
             WorldEvent::CheatIDKFA => {
-                let mut inventory = world.get::<&mut PlayerInventory>(player_ent)?;
+                let mut inventory = world.get::<&mut PlayerInventory>(player_ent).unwrap();
+
                 inventory.backpack = true;
                 inventory.ammo = [400, 100, 100, 600];
                 inventory.weapon_owned = [true; NUMWEAPONS];
@@ -57,7 +56,8 @@ pub fn execute_events_system(
                 println!("Very Happy Ammo Added");
             }
             WorldEvent::CheatIDFA => {
-                let mut inventory = world.get::<&mut PlayerInventory>(player_ent)?;
+                let mut inventory = world.get::<&mut PlayerInventory>(player_ent).unwrap();
+
                 inventory.backpack = true;
                 inventory.ammo = [400, 100, 100, 600];
                 inventory.weapon_owned = [true; NUMWEAPONS];
@@ -77,6 +77,4 @@ pub fn execute_events_system(
             }
 		}
 	}
-
-    Ok(())
 }

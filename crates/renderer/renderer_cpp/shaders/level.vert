@@ -24,7 +24,7 @@ layout(push_constant) uniform LevelConstants {
     float widthFactor;
     float globalTimer;
     float cameraYaw;
-    bool wireframe;
+    uint flags;
 } lc;
 
 layout(location = 0) in vec3 inPosition;
@@ -74,6 +74,8 @@ vec3 hashColor(int id) {
     return vec3(r, g, b);
 }
 
+const uint WIREMAP = 1;
+
 void main() {
     fragLightLevel = inLightLevel;
     fragScrollDir = inScrollDir;
@@ -93,8 +95,7 @@ void main() {
     //    gl_Position.z = gl_Position.w;
     //}
 
-    /// WIREMAP
-    if (lc.wireframe) {
+    if (bool(lc.flags & WIREMAP)) {
         int localIndex = gl_VertexIndex % 3;
     
         if (localIndex == 0)      fragBarycentric = vec3(1.0, 0.0, 0.0);
