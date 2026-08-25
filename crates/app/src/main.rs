@@ -16,7 +16,7 @@ use winit::{
 };
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle, RawDisplayHandle, RawWindowHandle};
 use clap::Parser;
-use std::{collections::VecDeque, error::Error, time::Instant};
+use std::{collections::VecDeque, error::Error, time::{Duration, Instant}};
 
 #[cfg(target_os = "macos")]
 use objc2::{msg_send, runtime::AnyObject};
@@ -35,7 +35,8 @@ struct App {
     is_shutting_down: bool,
     last_frame_time: Instant,
     time_accumulator: f32,
-    last_buttons_pressed: VecDeque<Option<PhysicalKey>>
+    last_buttons_pressed: VecDeque<Option<PhysicalKey>>,
+    target_frame_duration: Duration,
 }
 
 impl App {
@@ -87,8 +88,13 @@ impl ApplicationHandler for App {
                 return;
             }
         };
-        self.window = Some(window);
 
+        let hz = get_monitor_refresh_rate(&window);
+        let margin = 10;
+        self.target_frame_duration = Duration::from_secs_f64(1.0 / (hz + margin) as f64);
+
+        self.window = Some(window);
+        
         self.audio.data = self.wad_manager.bake_sfx();
         let mut renderer = SafeRenderer::new();
 
@@ -243,35 +249,74 @@ impl ApplicationHandler for App {
                 if self.is_shutting_down { 
                     return; 
                 }
-            
+
                 let current_time = Instant::now();
-                let delta_time = current_time.duration_since(self.last_frame_time).as_secs_f32().min(0.25);
+                let delta_time = current_time
+                    .duration_since(self.last_frame_time)
+                    .as_secs_f32()
+                    .min(0.25);
                 self.last_frame_time = current_time;
+                
                 self.time_accumulator += delta_time;
-            
+
                 if let Err(err) = self.update_game_logic() {
-                    handle_fatal_error(&mut self.is_shutting_down, event_loop, 
-                        &mut self.graphics.renderer, &err.to_string());
+                    handle_fatal_error(
+                        &mut self.is_shutting_down, 
+                        event_loop, 
+                        &mut self.graphics.renderer, 
+                        &err.to_string()
+                    );
+                    return;
                 };
-            
+
                 if let Some(window) = &self.window {
                     let alpha = self.time_accumulator / TICK_TIME;
-                    self.graphics.render(window, &self.game.world, self.game.player_entity, 
-                        &self.game.level, self.game.state, self.game.global_timer, alpha);
-
-                    window.request_redraw();
+                    self.graphics.render(
+                        window, 
+                        &self.game.world, 
+                        self.game.player_entity, 
+                        &self.game.level, 
+                        self.game.state, 
+                        self.game.global_timer, 
+                        alpha
+                    );
                 }
             }
-
             _ => (),
         }
     }
 
-    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
-        if let Some(window) = &self.window {
-            window.request_redraw();
+    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+        if self.is_shutting_down {
+            return;
+        }
+
+        let next_frame_time = self.last_frame_time + self.target_frame_duration;
+        let now = Instant::now();
+
+        if now >= next_frame_time {
+            if let Some(window) = &self.window {
+                window.request_redraw();
+            }
+        } else {
+            event_loop.set_control_flow(ControlFlow::WaitUntil(next_frame_time));
         }
     }
+}
+
+fn get_monitor_refresh_rate(window: &Window) -> u32 {
+    if let Some(monitor) = window.current_monitor() {
+        let max_refresh_rate = monitor
+            .video_modes()
+            .map(|mode| mode.refresh_rate_millihertz())
+            .max();
+
+        if let Some(mhz) = max_refresh_rate {
+            return (mhz as f32 / 1000.0).round() as u32;
+        }
+    }
+
+    60
 }
 
 fn get_sky_texture_index(map: u8) -> u32 {
@@ -330,6 +375,7 @@ fn main() -> Result<(), String> {
         last_frame_time: Instant::now(),
         time_accumulator: 0.0,
         last_buttons_pressed: VecDeque::from_iter([None; 8]),
+        target_frame_duration: Duration::default(),
     };
     event_loop.run_app(&mut app).unwrap();
 
