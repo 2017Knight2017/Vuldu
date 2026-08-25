@@ -1,17 +1,41 @@
 use crate::*;
 use hecs::{Entity, World, EntityBuilder};
-use wad_parser::map::Level;
+use wad_parser::{map::Level, wad_types::ThingFlags};
 
 pub fn spawn_mobj(
-	level: & Level,
+	level: &Level,
 	world: &mut World, 
 	random: &mut Random,
 	mobj_type_raw: Option<MobjNum>, 
 	x_raw: i16, 
 	z_raw: i16, 
 	angle_raw: i16,
-	blocklists: &mut [Vec<Entity>]
+	thing_flags: ThingFlags,
+	blocklists: &mut [Vec<Entity>],
+	cfg: &GameConfig
 ) -> Option<Entity> {
+	if !thing_flags.contains(ThingFlags::SPAWN_ON_EASY) 
+    && (cfg.skill == SkillLevel::Baby || cfg.skill == SkillLevel::Easy) { 
+		return None; 
+	} else if !thing_flags.contains(ThingFlags::SPAWN_ON_MED)
+    && cfg.skill == SkillLevel::Medium {
+		return None;
+	} else if !thing_flags.contains(ThingFlags::SPAWN_ON_HARD)
+    && (cfg.skill == SkillLevel::Hard || cfg.skill == SkillLevel::Nightmare) {
+		return None;
+	}
+
+	if thing_flags.contains(ThingFlags::NOT_SINGLEPLR) 
+	&& !(cfg.dmatch || cfg.coop) {
+		return None;
+	} else if thing_flags.contains(ThingFlags::NOT_COOP)
+	&& cfg.coop {
+		return None;
+	} else if thing_flags.contains(ThingFlags::NOT_DMATCH)
+	&& cfg.dmatch {
+		return None;
+	}
+	
 	let x = x_raw as f32;
 	let z = z_raw as f32;
 
@@ -34,6 +58,19 @@ pub fn spawn_mobj(
 	let db = DB.get().unwrap();
 	let mobj_info = db.mobjinfo.get(&mobj_type)
 		.expect(&format!("[FATAL] mobj_info with {:?} was not found!", mobj_type));
+
+	let mut mobj_flags = mobj_info.flags
+		.iter()
+		.map(|&a| MobjFlags::from(a))
+		.collect::<MobjFlags>();
+
+	if mobj_type != MobjNum::Player && mobj_flags.contains(MobjFlags::SHOOTABLE) && cfg.no_monsters {
+		return None;
+	}
+
+	if thing_flags.contains(ThingFlags::AMBUSH) {
+		mobj_flags.insert(MobjFlags::AMBUSH);
+	}
 
 	let spawn_state = match mobj_info.spawn_state {
 		Some(state) => state,
@@ -60,13 +97,8 @@ pub fn spawn_mobj(
 		};
 	}
 
-	let flags = mobj_info.flags
-		.iter()
-		.map(|&a| MobjFlags::from(a))
-		.collect::<MobjFlags>();
-
 	let sector_idx = level.get_sector_by_pos(x, z);
-	let y = if flags.contains(MobjFlags::SPAWN_CEILING) {
+	let y = if mobj_flags.contains(MobjFlags::SPAWN_CEILING) {
 		level.state.sectors[sector_idx.0].ceil_h - mobj_info.height
 	} else {
 		level.state.sectors[sector_idx.0].floor_h
@@ -82,7 +114,7 @@ pub fn spawn_mobj(
 		.add(Position { x, y, z, prev_x: x, prev_y: y, prev_z: z })
 		.add(CurrentSector(sector_idx))
 		.add(Velocity::default())
-		.add(MobjType { type_: mobj_type, flags })
+		.add(MobjType { type_: mobj_type, flags: mobj_flags })
 		.add(Health(mobj_info.spawn_health));
 
 	if mobj_type == MobjNum::Player {
@@ -124,7 +156,8 @@ pub fn spawn_all_things(
 	level: &Level, 
 	random: &mut Random, 
 	player_entity: &mut Entity, 
-	blocklists: &mut [Vec<Entity>]
+	blocklists: &mut [Vec<Entity>], 
+	cfg: &GameConfig
 ) {
 	let mut player_spawned = false;
 	for thing in level.things.iter() {
@@ -135,9 +168,11 @@ pub fn spawn_all_things(
             player_spawned = true;
 		}
 
+		let thing_flags = ThingFlags::from_bits(thing.flags).unwrap_or(ThingFlags::NONE);
+
 		if let Some(thing_type) = MOBJTYPE_BY_DOOMEDNUM.get(&thing.type_) {
 			let ent_opt = spawn_mobj(level, world, random, *thing_type, 
-				thing.x, thing.y, thing.angle, blocklists);
+				thing.x, thing.y, thing.angle, thing_flags, blocklists, cfg);
 			if thing.type_ == 1 { 
 				*player_entity = ent_opt.unwrap(); 
 			}

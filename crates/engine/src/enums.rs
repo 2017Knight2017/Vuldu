@@ -1357,3 +1357,11 @@ impl TryFrom<u32> for Direction {
         }
     }
 }
+
+pub struct GameConfig {
+	pub skill: SkillLevel,
+	pub fast_monsters: bool,
+	pub coop: bool,
+	pub dmatch: bool,
+    pub no_monsters: bool
+}

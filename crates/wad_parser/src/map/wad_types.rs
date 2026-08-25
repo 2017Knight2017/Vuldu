@@ -1,3 +1,5 @@
+use bitflags::bitflags;
+
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct MapVertex
@@ -83,5 +85,20 @@ pub struct MapThing
 	pub y: i16,
 	pub angle: i16,
 	pub type_: u16,
-	pub options: u16,
+	pub flags: u16,
+}
+
+bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+    pub struct ThingFlags: u16 {
+        const NONE          = 0;
+        const SPAWN_ON_EASY = 1 << 0;
+        const SPAWN_ON_MED  = 1 << 1;
+        const SPAWN_ON_HARD = 1 << 2;
+        const AMBUSH        = 1 << 3;
+        const NOT_SINGLEPLR = 1 << 4;
+        const NOT_DMATCH    = 1 << 5;
+        const NOT_COOP      = 1 << 6;
+        const FRIENDLY      = 1 << 7;
+    }
 }

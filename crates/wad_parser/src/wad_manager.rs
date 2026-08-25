@@ -117,8 +117,8 @@ impl WadManager {
             _ => return Err(format!("There is no maplump with name '{}'", String::from_utf8_lossy(lump_name)))
         };
 
-        if let Some(map_) = self.map_directory.get(map_name) {
-            let lump = map_[lump_idx];
+        if let Some(map) = self.map_directory.get(map_name) {
+            let lump = map[lump_idx];
             let wad = &self.wads[lump.wad_index];
 
             let start = lump.offset;

@@ -2,15 +2,15 @@ mod graphics;
 mod parse_commandline;
 mod sound_player;
 mod cheats;
+mod game_loop;
 
-use crate::{cheats::cheat_system, graphics::{GraphicsContext, GraphicsFlags}};
+use crate::{game_loop::GameContext, graphics::{GraphicsContext, GraphicsFlags}};
 use parse_commandline::Args;
 use sound_player::*;
 use renderer::*;
 use wad_parser::map::Level;
 use wad_parser::*;
 use engine::*;
-use hecs::{CommandBuffer, Entity, World};
 use winit::{
     application::ApplicationHandler, dpi::LogicalSize, error::OsError, event::{DeviceEvent, DeviceId, ElementState, MouseButton, WindowEvent}, event_loop::{ActiveEventLoop, ControlFlow, EventLoop}, keyboard::{KeyCode, PhysicalKey}, window::{CursorGrabMode, Window, WindowId}
 };
@@ -24,23 +24,6 @@ use objc2::{msg_send, runtime::AnyObject};
 const TICKRATE: u32 = 35;
 const TICK_TIME: f32 = 1.0 / TICKRATE as f32;
 
-struct GameContext {
-    world: World,
-    level: Level,
-    state: GameState,
-    skill: SkillLevel,
-    fast_monsters: bool,
-    blocklists: Vec<Vec<Entity>>,
-    sound_targets: Vec<Option<Entity>>,
-    world_events: Vec<WorldEvent>,
-    mobj_flag_buffer: Vec<MobjFlagCommand>,
-    action_buffer: Vec<(Entity, ActionFunc)>,
-    command_buffer: CommandBuffer,
-    traversal: Traversal,
-    player_entity: Entity,
-    global_timer: u32
-}
-
 struct App {
     window: Option<Window>,
     wad_manager: WadManager,
@@ -53,84 +36,6 @@ struct App {
     last_frame_time: Instant,
     time_accumulator: f32,
     last_buttons_pressed: VecDeque<Option<PhysicalKey>>
-}
-
-impl GameContext {
-    fn new(level: Level, skill: SkillLevel, fast_monsters: bool) -> Self {
-        Self { 
-            world: World::new(), 
-            sound_targets: vec![None; level.state.sectors.len()],
-            blocklists: vec![Vec::new(); level.geom.blockmap.row_num * level.geom.blockmap.col_num], 
-            traversal: Traversal::for_level(&level),
-            level, 
-            world_events: Vec::new(), 
-            mobj_flag_buffer: Vec::new(), 
-            command_buffer: CommandBuffer::new(),
-            action_buffer: Vec::new(),
-            player_entity: Entity::DANGLING,
-            state: GameState::Level,
-            global_timer: 0,
-            skill,
-            fast_monsters
-        }
-    }
-
-    fn tick(
-        &mut self, 
-        audio: &mut AudioContext, 
-        current_input: &mut PlayerInput, 
-        random: &mut Random, 
-        ui_to_update: &mut Vec<UpdatableUiType>,
-        last_buttons: &mut VecDeque<Option<PhysicalKey>>
-    ) {
-        handle_rotation_input(&self.world, self.player_entity, current_input);
-        handle_position_input(&self.world, self.player_entity, current_input);
-        handle_weapons_input(&self.world, self.player_entity, ui_to_update, 
-            &mut self.command_buffer, &mut audio.buffer, current_input);
-
-        self.flush_command_buffer();
-
-        propagate_sound_system(&self.world, &self.level, &mut self.sound_targets,
-            &mut self.traversal, &mut self.command_buffer);
-
-        self.flush_command_buffer();
-
-        check_sound_system(&self.world, &mut self.level, random, &mut self.command_buffer,
-            &mut self.sound_targets, &mut self.traversal, &mut audio.buffer, &mut self.action_buffer);
-
-        //check_sight_system(&self.world, &self.level, &mut self.traversal, random, 
-        //    &mut self.command_buffer, &mut audio.buffer, &mut self.action_buffer);
-
-        self.flush_command_buffer();
-
-        ai_system(&self.world, &mut self.action_buffer);
-        action_system(&self.world, &mut self.action_buffer, random, &self.level, self.skill, 
-            self.fast_monsters, &mut audio.buffer, &self.blocklists, &mut self.world_events, 
-            &mut self.mobj_flag_buffer);
-
-        friction_system(&self.world);
-
-        let pending_moves = try_move_system(&self.world, &self.level,
-            random, &self.blocklists, &mut self.world_events);
-
-        apply_player_movement_system(&self.world, &self.level);
-        apply_monster_movement_system(&self.world, pending_moves, &self.level, &mut self.blocklists);
-
-        cheat_system(last_buttons, &mut self.world_events);
-
-        execute_events_system(&mut self.world_events, &self.world, self.player_entity, ui_to_update);
-        apply_mobj_flags_system(&mut self.mobj_flag_buffer, &self.world);
-
-        audio.system(&self.world);
-        animation_system(&self.world);
-
-        current_input.mouse_delta_x = 0.0;
-    }
-
-    fn flush_command_buffer(&mut self) {
-        self.command_buffer.run_on(&mut self.world);
-        self.command_buffer.clear();
-    }
 }
 
 impl App {
@@ -247,7 +152,9 @@ impl ApplicationHandler for App {
         };
         renderer.set_sky_index(sky_idx);
 
-        if let Err(err) = self.graphics.load_and_upload_textures(&mut renderer, &self.wad_manager, self.game.level.map_num) {
+        if let Err(err) = self.graphics.load_and_upload_textures(&mut renderer, 
+            &self.wad_manager, self.game.level.map_num)
+        {
             handle_fatal_error(&mut self.is_shutting_down, event_loop, &mut Some(renderer), &err);
             return;
         }
@@ -256,7 +163,8 @@ impl ApplicationHandler for App {
 
         let _ = engine::populate_database(&self.graphics.data).map_err(|e| eprintln!("{}", e));
         engine::spawn_all_things(&mut self.game.world, &self.game.level, 
-            &mut self.random, &mut self.game.player_entity, &mut self.game.blocklists);
+            &mut self.random, &mut self.game.player_entity, 
+            &mut self.game.blocklists, &self.game.config);
         println!("Mobj spawning is done!");
 
         self.graphics.renderer = Some(renderer);
@@ -401,13 +309,20 @@ fn main() -> Result<(), String> {
     let event_loop = EventLoop::new().unwrap();
     event_loop.set_control_flow(ControlFlow::Poll);
 
-    let flags = GraphicsFlags::new(args.wireframe, args.byte_shadows);
+    let graphics_flags = GraphicsFlags::new(args.wireframe, args.byte_shadows);
+    let game_config = GameConfig {
+        skill: SkillLevel::from(args.skill_level),
+        fast_monsters: args.fast_monsters,
+        coop: args.coop,
+        dmatch: args.deathmatch,
+        no_monsters: args.no_monsters,
+    };
 
     let mut app = App {
         window: None,
         wad_manager,
-        graphics: GraphicsContext::new(flags),
-        game: GameContext::new(level, SkillLevel::from(args.skill_level), args.fast_monsters),
+        graphics: GraphicsContext::new(graphics_flags),
+        game: GameContext::new(level, game_config),
         audio: AudioContext::new()?,
         random: Random::default(),
         is_shutting_down: false,
