@@ -154,7 +154,9 @@ impl Level {
 
 		let vertexes_bytes = wad_manager.get_map_data(b"VERTEXES", &map_name)?;
 		level.geom.vertices = vertexes_bytes
-			.chunks_exact(size_of::<MapVertex>())
+			.as_chunks::<{ size_of::<MapVertex>() }>()
+			.0
+			.iter()
 			.map(|chunk| {
 				let v = unsafe { read_unaligned(chunk.as_ptr() as *const MapVertex) };
 				(v.x as f32, v.y as f32)
@@ -163,7 +165,9 @@ impl Level {
 
 		let linedefs_bytes = wad_manager.get_map_data(b"LINEDEFS", &map_name)?;
 		level.geom.lines = linedefs_bytes
-			.chunks_exact(size_of::<MapLinedef>())
+			.as_chunks::<{ size_of::<MapLinedef>() }>()
+			.0
+			.iter()
 			.map(|chunk| {
 				let l = unsafe { read_unaligned(chunk.as_ptr() as *const MapLinedef) };
 				let (v1_x, v1_y) = level.geom.vertices[l.v1 as usize];
@@ -204,7 +208,9 @@ impl Level {
 		level.state.sides.resize_with(sides_num, SideState::default);
 
 		sidedefs_bytes
-			.chunks_exact(size_of::<MapSidedef>())
+			.as_chunks::<{ size_of::<MapSidedef>() }>()
+			.0
+			.iter()
 			.enumerate()
 			.for_each(|(idx, chunk)| {
 				let s = unsafe { read_unaligned(chunk.as_ptr() as *const MapSidedef) };
@@ -226,13 +232,17 @@ impl Level {
 
 		let segs_bytes = wad_manager.get_map_data(b"SEGS\0\0\0\0", &map_name)?;
 		level.geom.segs = segs_bytes
-			.chunks_exact(size_of::<MapSegment>())
+			.as_chunks::<{ size_of::<MapSegment>() }>()
+			.0
+			.iter()
 			.map(|chunk| unsafe { read_unaligned(chunk.as_ptr() as *const MapSegment) })
 			.collect();
 
 		let ssectors_bytes = wad_manager.get_map_data(b"SSECTORS", &map_name)?;
 		level.geom.subsectors = ssectors_bytes
-			.chunks_exact(size_of::<MapSubsector>())
+			.as_chunks::<{ size_of::<MapSubsector>() }>()
+			.0
+			.iter()
 			.map(|chunk| unsafe { read_unaligned(chunk.as_ptr() as *const MapSubsector) })
 			.collect();
 
@@ -257,7 +267,9 @@ impl Level {
 
 		let sectors_bytes = wad_manager.get_map_data(b"SECTORS\0", &map_name)?;
 		level.state.sectors = sectors_bytes
-			.chunks_exact(size_of::<MapSector>())
+			.as_chunks::<{ size_of::<MapSector>() }>()
+			.0
+			.iter()
 			.map(|chunk| {
 				let s = unsafe { read_unaligned(chunk.as_ptr() as *const MapSector) };
 				SectorState {
@@ -284,14 +296,22 @@ impl Level {
 
 		let things_bytes = wad_manager.get_map_data(b"THINGS\0\0", &map_name)?;
 		level.things = things_bytes
-			.chunks_exact(size_of::<MapThing>())
-			.map(|chunk| unsafe { read_unaligned(chunk.as_ptr() as *const MapThing) })
+			.as_chunks::<{ size_of::<MapThing>() }>()
+			.0
+			.iter()
+			.map(|chunk: &[u8; size_of::<MapThing>()]| unsafe {
+				read_unaligned(chunk.as_ptr() as *const MapThing)
+			})
 			.collect();
 
 		let nodes_bytes = wad_manager.get_map_data(b"NODES\0\0\0", &map_name)?;
 		level.geom.nodes = nodes_bytes
-			.chunks_exact(size_of::<MapNode>())
-			.map(|chunk| unsafe { read_unaligned(chunk.as_ptr() as *const MapNode) })
+			.as_chunks::<{ size_of::<MapNode>() }>()
+			.0
+			.iter()
+			.map(|chunk: &[u8; size_of::<MapNode>()]| unsafe {
+				read_unaligned(chunk.as_ptr() as *const MapNode)
+			})
 			.collect();
 
 		let blockmap_bytes = wad_manager.get_map_data(b"BLOCKMAP", &map_name)?;
@@ -380,29 +400,17 @@ impl Level {
 	pub fn get_opening(&self, line_id: LineId) -> Option<Opening> {
 		let line = &self.geom.lines[line_id.0];
 
-		let (front_side_id_opt, back_side_id_opt) = line.sides;
-
-		let (front_ceil, front_floor) = match front_side_id_opt {
-			Some(id) => {
-				let side = &self.geom.sides[id.0];
-				let sector = &self.state.sectors[side.sector.0];
-				(sector.ceil_h, sector.floor_h)
-			}
-			None => return None,
+		let get_sector = |side_id_opt: Option<SideId>| -> Option<&SectorState> {
+			let side = &self.geom.sides[side_id_opt?.0];
+			Some(&self.state.sectors[side.sector.0])
 		};
 
-		let (back_ceil, back_floor) = match back_side_id_opt {
-			Some(id) => {
-				let side = &self.geom.sides[id.0];
-				let sector = &self.state.sectors[side.sector.0];
-				(sector.ceil_h, sector.floor_h)
-			}
-			None => return None,
-		};
+		let front_sector = get_sector(line.sides.0)?;
+		let back_sector = get_sector(line.sides.1)?;
 
-		let top = front_ceil.min(back_ceil);
-		let floor_high = front_floor.max(back_floor);
-		let floor_low = front_floor.min(back_floor);
+		let top = front_sector.ceil_h.min(back_sector.ceil_h);
+		let floor_high = front_sector.floor_h.max(back_sector.floor_h);
+		let floor_low = front_sector.floor_h.min(back_sector.floor_h);
 
 		Some(Opening {
 			top,

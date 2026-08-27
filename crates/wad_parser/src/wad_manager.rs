@@ -158,7 +158,7 @@ impl WadManager {
 			.get(pal_lump.offset..pal_lump.offset + pal_lump.size)
 			.ok_or_else(|| "PLAYPAL lump is not found!".to_string())?;
 
-		for rgb in pal_data.chunks_exact(3).take(14 * 256) {
+		for rgb in pal_data.as_chunks::<3>().0.iter().take(14 * 256) {
 			all_palettes_data.push(rgb[0] as f32 / 255.0);
 			all_palettes_data.push(rgb[1] as f32 / 255.0);
 			all_palettes_data.push(rgb[2] as f32 / 255.0);

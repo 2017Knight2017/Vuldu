@@ -167,10 +167,12 @@ impl WadManager {
 		max_sky: usize,
 	) -> Result<(TextureBundle, TextureBundle, Vec<f32>), String> {
 		let all_patchnames_raw = self.get_data(b"PNAMES")?;
-		let patch_names: Vec<&[u8]> = all_patchnames_raw
+		let patch_names: Vec<&[u8; 8]> = all_patchnames_raw
 			.get(4..)
 			.ok_or_else(|| "Failed to get PNAMES data".to_string())?
-			.chunks_exact(8)
+			.as_chunks::<8>()
+			.0
+			.iter()
 			.collect();
 
 		let patches = patch_names
@@ -197,10 +199,8 @@ impl WadManager {
 		let mut all_map_textures = Vec::new();
 		for (texture_raw, offsets) in &texture_lumps {
 			for &offset in offsets {
-				match self.parse_texture_lump(texture_raw, offset as usize) {
-					Ok(map_texture) => all_map_textures.push(map_texture),
-					Err(err) => return Err(err),
-				}
+				let map_texture = self.parse_texture_lump(texture_raw, offset as usize)?;
+				all_map_textures.push(map_texture);
 			}
 		}
 
@@ -348,7 +348,9 @@ impl WadManager {
     	    ))?;
 
 		let patches: Vec<MapPatch> = patches_bytes
-			.chunks_exact(size_of::<MapPatch>())
+			.as_chunks::<{ size_of::<MapPatch>() }>()
+			.0
+			.iter()
 			.map(|chunk| unsafe { read_unaligned(chunk.as_ptr() as *const MapPatch) })
 			.collect();
 
@@ -367,9 +369,9 @@ impl WadManager {
 		let mut baked_flats = Vec::new();
 
 		for wad in self.wads.iter() {
-			let chunks = wad.data[wad.dir_offset..].chunks_exact(16);
+			let chunks = wad.data[wad.dir_offset..].as_chunks::<16>().0;
 
-			let f_start_pos = chunks.clone().enumerate().find_map(|(idx, chunk)| {
+			let f_start_pos = chunks.iter().enumerate().find_map(|(idx, chunk)| {
 				let name = &chunk[8..16];
 				if name.starts_with(b"F_START") || name.starts_with(b"FF_START") {
 					Some(idx)
@@ -378,7 +380,7 @@ impl WadManager {
 				}
 			});
 
-			let f_end_pos = chunks.clone().enumerate().find_map(|(idx, chunk)| {
+			let f_end_pos = chunks.iter().enumerate().find_map(|(idx, chunk)| {
 				let name = &chunk[8..16];
 				if name.starts_with(b"F_END") || name.starts_with(b"FF_END") {
 					Some(idx)
@@ -430,9 +432,9 @@ impl WadManager {
 		let mut baked_objects = Vec::new();
 
 		for wad in self.wads.iter() {
-			let chunks = wad.data[wad.dir_offset..].chunks_exact(16);
+			let chunks = wad.data[wad.dir_offset..].as_chunks::<16>().0;
 
-			let s_start_pos = chunks.clone().enumerate().find_map(|(idx, chunk)| {
+			let s_start_pos = chunks.iter().enumerate().find_map(|(idx, chunk)| {
 				let name = &chunk[8..16];
 				if name.starts_with(b"S_START") || name.starts_with(b"SS_START") {
 					Some(idx)
@@ -441,7 +443,7 @@ impl WadManager {
 				}
 			});
 
-			let s_end_pos = chunks.clone().enumerate().find_map(|(idx, chunk)| {
+			let s_end_pos = chunks.iter().enumerate().find_map(|(idx, chunk)| {
 				let name = &chunk[8..16];
 				if name.starts_with(b"S_END") || name.starts_with(b"SS_END") {
 					Some(idx)
@@ -532,7 +534,7 @@ pub fn decode_column_picture(pic_data: &[u8], name: &[u8]) -> Result<DoomPicture
 
 	let column_pointers = &pic_data[8..8 + total_columns_size];
 
-	for (col_idx, chunk) in column_pointers.chunks_exact(4).enumerate() {
+	for (col_idx, chunk) in column_pointers.as_chunks::<4>().0.iter().enumerate() {
 		let col_offset = u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]) as usize;
 
 		let mut pointer = col_offset;
@@ -614,7 +616,9 @@ fn parse_texture_header(raw_data: &[u8], lump_name: &str) -> Result<Vec<u32>, St
 		.ok_or_else(|| format!("Failed to get offsets_bytes from {}", lump_name))?;
 
 	let offsets: Vec<u32> = offsets_bytes
-		.chunks_exact(std::mem::size_of::<u32>())
+		.as_chunks::<{ size_of::<u32>() }>()
+		.0
+		.iter()
 		.map(|chunk| unsafe { read_unaligned(chunk.as_ptr() as *const u32) })
 		.collect();
 

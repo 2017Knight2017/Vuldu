@@ -644,7 +644,7 @@ impl Level {
 						_padding: [0, 0, 0],
 					});
 				}
-				for chunk in sector_indices.chunks_exact(3) {
+				for chunk in sector_indices.as_chunks::<3>().0 {
 					gpu_indices.push(floor_start_idx + chunk[0]);
 					gpu_indices.push(floor_start_idx + chunk[1]);
 					gpu_indices.push(floor_start_idx + chunk[2]);
@@ -662,7 +662,7 @@ impl Level {
 						_padding: [0, 0, 0],
 					});
 				}
-				for chunk in sector_indices.chunks_exact(3) {
+				for chunk in sector_indices.as_chunks::<3>().0 {
 					gpu_indices.push(ceil_start_idx + chunk[0]);
 					gpu_indices.push(ceil_start_idx + chunk[2]);
 					gpu_indices.push(ceil_start_idx + chunk[1]);
