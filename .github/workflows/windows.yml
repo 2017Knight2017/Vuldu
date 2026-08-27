@@ -20,6 +20,11 @@ jobs:
       - name: Cache Cargo Dependencies
         uses: Swatinem/rust-cache@v2
 
+      - name: Check formatting and lints
+        run: |
+          cargo fmt -- --check
+          cargo clippy --all-targets --all-features -- -D warnings
+
       - name: Prepare Vulkan SDK
         uses: humbletim/setup-vulkan-sdk@v1.2.1
         with:

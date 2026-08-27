@@ -1,15 +1,15 @@
-use phf::{Map, phf_map};
 use crate::{Direction, MobjNum};
+use phf::{Map, phf_map};
 
-pub	const NUMAMMO: usize = 4;
-pub	const NUMPOWERS: usize = 6;
-pub	const NUMWEAPONS: usize = 9;
-pub	const NUMCARDS: usize = 6;
-pub	const NUMSPRITES: usize = 137;
+pub const NUMAMMO: usize = 4;
+pub const NUMPOWERS: usize = 6;
+pub const NUMWEAPONS: usize = 9;
+pub const NUMCARDS: usize = 6;
+pub const NUMSPRITES: usize = 137;
 pub const NUMSTATES: usize = 966;
 pub const NUMMOBJTYPES: usize = 137;
 
-pub	const FRICTION: f32 = 0.9375;
+pub const FRICTION: f32 = 0.9375;
 
 pub const TRANSLATION: u32 = 0xc000000;
 pub const TRANSSHIFT: u32 = 26;
@@ -38,18 +38,18 @@ pub const DIAGS: [Direction; 4] = [
 	Direction::NorthWest,
 	Direction::NorthEast,
 	Direction::SouthWest,
-	Direction::SouthEast
+	Direction::SouthEast,
 ];
 
 pub const OPPOSITE: [Direction; 8] = [
-    Direction::West, 
-    Direction::SouthWest, 
-    Direction::South, 
-    Direction::SouthEast, 
-    Direction::East, 
-    Direction::NorthEast, 
-    Direction::North, 
-    Direction::NorthWest, 
+	Direction::West,
+	Direction::SouthWest,
+	Direction::South,
+	Direction::SouthEast,
+	Direction::East,
+	Direction::NorthEast,
+	Direction::North,
+	Direction::NorthWest,
 ];
 
 pub const NUMQUITMESSAGES: usize = 21;
@@ -61,7 +61,6 @@ pub const ENDMESSAGE: [&str; NUMQUITMESSAGES] = [
 	"don't leave yet -- there's a\ndemon around that corner!",
 	"ya know, next time you come in here\ni'm gonna toast ya.",
 	"go ahead and leave. see if i care.",
-
 	"you want to quit?\nthen, thou hast lost an eighth!",
 	"don't go now, there's a \ndimensional shambler waiting\nat the dos prompt!",
 	"get outta here and go back\nto your boring programs.",
@@ -69,7 +68,6 @@ pub const ENDMESSAGE: [&str; NUMQUITMESSAGES] = [
 	"look, bud. you leave now\nand you forfeit your body count!",
 	"just leave. when you come\nback, i'll be waiting with a bat.",
 	"you're lucky i don't smack\nyou for thinking about leaving.",
-
 	"fuck you, pussy!\nget the fuck out!",
 	"you quit and i'll jizz\nin your cystholes!",
 	"if you leave, i'll make\nthe lord drink my jizz.",

@@ -7,16 +7,16 @@ use crate::{PlayerInput, PlayerInventory, PlayerShoot, SfxEvent, UpdatableUiType
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumIter)]
 pub enum WeaponType {
-    Fist,
-    Pistol,
-    Shotgun,
-    Chaingun,
-    Missile,
-    Plasma,
-    BFG,
-    Chainsaw,
-    SuperShotgun,
-    NoChange
+	Fist,
+	Pistol,
+	Shotgun,
+	Chaingun,
+	Missile,
+	Plasma,
+	BFG,
+	Chainsaw,
+	SuperShotgun,
+	NoChange,
 }
 
 impl WeaponType {
@@ -24,45 +24,47 @@ impl WeaponType {
 		match *self {
 			WeaponType::BFG => 40,
 			WeaponType::SuperShotgun => 2,
-			_ => 1
+			_ => 1,
 		}
 	}
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, EnumIter)]
 pub enum AmmoType {
-    Clip,
-    Shell,
-    Missile,
-    Cell,
-    NoAmmo
+	Clip,
+	Shell,
+	Missile,
+	Cell,
+	NoAmmo,
 }
 
 impl From<WeaponType> for AmmoType {
-    fn from(value: WeaponType) -> Self {
-        match value {
+	fn from(value: WeaponType) -> Self {
+		match value {
 			WeaponType::Pistol | WeaponType::Chaingun => AmmoType::Clip,
 			WeaponType::Shotgun | WeaponType::SuperShotgun => AmmoType::Shell,
 			WeaponType::Missile => AmmoType::Missile,
 			WeaponType::Plasma | WeaponType::BFG => AmmoType::Cell,
-			WeaponType::Fist | WeaponType::Chainsaw | WeaponType::NoChange => AmmoType::NoAmmo
+			WeaponType::Fist | WeaponType::Chainsaw | WeaponType::NoChange => AmmoType::NoAmmo,
 		}
-    }
+	}
 }
 
 pub fn handle_weapons_input(
 	world: &World,
-    player_entity: Entity,
+	player_entity: Entity,
 	ui_to_update: &mut Vec<UpdatableUiType>,
-    command_buffer: &mut CommandBuffer, 
-    audio_buffer: &mut Vec<SfxEvent>,
-	input: &PlayerInput, 
+	command_buffer: &mut CommandBuffer,
+	audio_buffer: &mut Vec<SfxEvent>,
+	input: &PlayerInput,
 ) {
 	let mut inventory = world.get::<&mut PlayerInventory>(player_entity).unwrap();
 	let previous_ready_weapon = inventory.ready_weapon;
 
 	if input.switch_fist_chainsaw {
-		if inventory.ready_weapon == WeaponType::Chainsaw || !is_available(WeaponType::Chainsaw, &inventory) {
+		if inventory.ready_weapon == WeaponType::Chainsaw
+			|| !is_available(WeaponType::Chainsaw, &inventory)
+		{
 			inventory.ready_weapon = WeaponType::Fist;
 		} else {
 			inventory.ready_weapon = WeaponType::Chainsaw;
@@ -93,7 +95,7 @@ pub fn handle_weapons_input(
 		ui_to_update.push(UpdatableUiType::Ammo);
 	}
 
-    if input.shoot && inventory.pending_weapon == WeaponType::NoChange {
+	if input.shoot && inventory.pending_weapon == WeaponType::NoChange {
 		let ammo_per_shot = inventory.ready_weapon.ammo_spent_per_shot();
 		let ammo_type = AmmoType::from(inventory.ready_weapon);
 
@@ -114,20 +116,20 @@ pub fn handle_weapons_input(
 
 		command_buffer.insert_one(player_entity, PlayerShoot);
 
-        let sfx_id = match inventory.ready_weapon {
-            WeaponType::Fist => to_u64(b"DSPUNCH"),
-            WeaponType::SuperShotgun => to_u64(b"DSDSHTGN"),
-            WeaponType::Shotgun => to_u64(b"DSSHOTGN"),
-            WeaponType::Pistol | WeaponType::Chaingun => to_u64(b"DSPISTOL"),
-            WeaponType::Chainsaw => to_u64(b"DSSAWUP"),
-            WeaponType::Missile => to_u64(b"DSRLAUNC"),
-            WeaponType::Plasma => to_u64(b"DSPLASMA"),
-            WeaponType::BFG => to_u64(b"DSBFG"),
-            WeaponType::NoChange => unreachable!()
-        };
+		let sfx_id = match inventory.ready_weapon {
+			WeaponType::Fist => to_u64(b"DSPUNCH"),
+			WeaponType::SuperShotgun => to_u64(b"DSDSHTGN"),
+			WeaponType::Shotgun => to_u64(b"DSSHOTGN"),
+			WeaponType::Pistol | WeaponType::Chaingun => to_u64(b"DSPISTOL"),
+			WeaponType::Chainsaw => to_u64(b"DSSAWUP"),
+			WeaponType::Missile => to_u64(b"DSRLAUNC"),
+			WeaponType::Plasma => to_u64(b"DSPLASMA"),
+			WeaponType::BFG => to_u64(b"DSBFG"),
+			WeaponType::NoChange => unreachable!(),
+		};
 
 		audio_buffer.push(SfxEvent { sfx_id, pos: None });
-    }
+	}
 }
 
 fn choose_best(inventory: &PlayerInventory) -> WeaponType {
@@ -154,10 +156,10 @@ fn choose_best(inventory: &PlayerInventory) -> WeaponType {
 
 fn is_available(weapon: WeaponType, inventory: &PlayerInventory) -> bool {
 	let ammo_type = AmmoType::from(weapon);
-	if ammo_type == AmmoType::NoAmmo { 
+	if ammo_type == AmmoType::NoAmmo {
 		inventory.weapon_owned[weapon as usize]
 	} else {
-		inventory.weapon_owned[weapon as usize] && 
-		inventory.ammo[AmmoType::from(weapon) as usize] >= weapon.ammo_spent_per_shot()
+		inventory.weapon_owned[weapon as usize]
+			&& inventory.ammo[AmmoType::from(weapon) as usize] >= weapon.ammo_spent_per_shot()
 	}
 }

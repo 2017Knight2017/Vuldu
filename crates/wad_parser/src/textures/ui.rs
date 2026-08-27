@@ -1,6 +1,6 @@
 use crate::{DoomPicture, WadManager, decode_column_picture};
 
-pub const NUM_UI: usize = 362; 
+pub const NUM_UI: usize = 362;
 pub const SCREEN_WIDTH: f32 = 320.0;
 pub const SCREEN_HEIGHT: f32 = 200.0;
 
@@ -742,9 +742,13 @@ impl WadManager {
 		let mut ui_textures = Vec::with_capacity(NUM_UI);
 
 		for (ui_idx, &ui_name) in UI_LUMPNAMES.iter().enumerate() {
-			let Ok(data) = self.get_data(ui_name) else { continue };
-			let Ok(pic) = decode_column_picture(data, ui_name) else { continue };
-			
+			let Ok(data) = self.get_data(ui_name) else {
+				continue;
+			};
+			let Ok(pic) = decode_column_picture(data, ui_name) else {
+				continue;
+			};
+
 			ui_shown[ui_idx] = true;
 			ui_textures.push(pic);
 		}

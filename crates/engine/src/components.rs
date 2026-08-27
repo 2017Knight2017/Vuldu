@@ -1,6 +1,6 @@
+use crate::{CachedStateSprite, Direction, MobjFlags, MobjNum, StateNum};
 use hecs::Entity;
 use wad_parser::SectorId;
-use crate::{CachedStateSprite, Direction, MobjFlags, MobjNum, StateNum};
 
 macro_rules! define_markers {
     ($($name:ident);* $(;)?) => {
@@ -22,22 +22,22 @@ pub struct Position {
 }
 
 pub struct InstantMoveIntent {
-    pub dx: f32,
-    pub dy: f32,
-    pub dz: f32,
-    pub new_sector: Option<SectorId>
+	pub dx: f32,
+	pub dy: f32,
+	pub dz: f32,
+	pub new_sector: Option<SectorId>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PlayerRotation {
 	pub angle: u32,
-    pub prev_angle: u32,
+	pub prev_angle: u32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MonsterRotation {
 	pub move_dir: Option<Direction>,
-    pub move_count: i32,
+	pub move_count: i32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -55,31 +55,31 @@ pub struct ReactionTime(pub u32);
 
 #[derive(Debug, Clone, Copy)]
 pub struct SpriteAnimation {
-    pub cached_rotations: [CachedStateSprite; 9],
-    pub top_offset_shift: i16
+	pub cached_rotations: [CachedStateSprite; 9],
+	pub top_offset_shift: i16,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct MobjAi {
-    pub current_state: StateNum,
-    pub tics_left: i32,
-    pub threshold: u32,
-    pub reaction_time: u32
+	pub current_state: StateNum,
+	pub tics_left: i32,
+	pub threshold: u32,
+	pub reaction_time: u32,
 }
 
 define_markers! {
-    PlayerMarker;
-    Active;
-    Idle;
-    PlayerShoot;
+	PlayerMarker;
+	Active;
+	Idle;
+	PlayerShoot;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct WeaponOverlay {
-    pub state_idx: u32,
-    pub tics: i32,
-    pub sx: f32,
-    pub sy: f32,
+	pub state_idx: u32,
+	pub tics: i32,
+	pub sx: f32,
+	pub sy: f32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -87,8 +87,8 @@ pub struct CurrentSector(pub SectorId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MobjType {
-    pub type_: MobjNum,
-    pub flags: MobjFlags,
+	pub type_: MobjNum,
+	pub flags: MobjFlags,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

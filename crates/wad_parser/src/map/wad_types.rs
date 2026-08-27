@@ -2,44 +2,40 @@ use bitflags::bitflags;
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct MapVertex
-{
+pub(crate) struct MapVertex {
 	pub(crate) x: i16,
 	pub(crate) y: i16,
 }
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct MapSidedef
-{
+pub(crate) struct MapSidedef {
 	pub(crate) textureoffset: i16,
 	pub(crate) rowoffset: i16,
-  	pub(crate) toptexture: [u8; 8],
-  	pub(crate) bottomtexture: [u8; 8],
-  	pub(crate) midtexture: [u8; 8],
+	pub(crate) toptexture: [u8; 8],
+	pub(crate) bottomtexture: [u8; 8],
+	pub(crate) midtexture: [u8; 8],
 	pub(crate) sector: u16,
 }
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct MapLinedef
-{
+pub(crate) struct MapLinedef {
 	pub(crate) v1: u16,
 	pub(crate) v2: u16,
 	pub(crate) flags: u16,
 	pub(crate) special: u16,
 	pub(crate) tag: u16,
-	pub(crate) sidenum: [u16; 2]	
+	pub(crate) sidenum: [u16; 2],
 }
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct MapSector
-{
+pub(crate) struct MapSector {
 	pub(crate) floorheight: i16,
 	pub(crate) ceilingheight: i16,
-  	pub(crate) floorpic: [u8; 8],
-  	pub(crate) ceilingpic:[u8; 8],
+	pub(crate) floorpic: [u8; 8],
+	pub(crate) ceilingpic: [u8; 8],
 	pub(crate) lightlevel: u16,
 	pub(crate) special: u16,
 	pub(crate) tag: u16,
@@ -47,16 +43,14 @@ pub(crate) struct MapSector
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
-pub struct MapSubsector
-{
+pub struct MapSubsector {
 	pub numsegs: u16,
-	pub firstseg: u16	
+	pub firstseg: u16,
 }
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
-pub struct MapSegment
-{
+pub struct MapSegment {
 	pub v1: u16,
 	pub v2: u16,
 	pub angle: i16,
@@ -67,8 +61,7 @@ pub struct MapSegment
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
-pub struct MapNode
-{
+pub struct MapNode {
 	pub x: i16,
 	pub y: i16,
 	pub dx: i16,
@@ -77,10 +70,9 @@ pub struct MapNode
 	pub children: [u16; 2],
 }
 
-#[repr(C)] 
+#[repr(C)]
 #[derive(Debug, Clone, Copy)]
-pub struct MapThing
-{
+pub struct MapThing {
 	pub x: i16,
 	pub y: i16,
 	pub angle: i16,
@@ -89,16 +81,16 @@ pub struct MapThing
 }
 
 bitflags! {
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-    pub struct ThingFlags: u16 {
-        const NONE          = 0;
-        const SPAWN_ON_EASY = 1 << 0;
-        const SPAWN_ON_MED  = 1 << 1;
-        const SPAWN_ON_HARD = 1 << 2;
-        const AMBUSH        = 1 << 3;
-        const NOT_SINGLEPLR = 1 << 4;
-        const NOT_DMATCH    = 1 << 5;
-        const NOT_COOP      = 1 << 6;
-        const FRIENDLY      = 1 << 7;
-    }
+	#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+	pub struct ThingFlags: u16 {
+		const NONE          = 0;
+		const SPAWN_ON_EASY = 1 << 0;
+		const SPAWN_ON_MED  = 1 << 1;
+		const SPAWN_ON_HARD = 1 << 2;
+		const AMBUSH        = 1 << 3;
+		const NOT_SINGLEPLR = 1 << 4;
+		const NOT_DMATCH    = 1 << 5;
+		const NOT_COOP      = 1 << 6;
+		const FRIENDLY      = 1 << 7;
+	}
 }
