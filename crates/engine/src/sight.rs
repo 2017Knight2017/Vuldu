@@ -204,7 +204,7 @@ impl<'a> SightContext<'a> {
     }
 }
 
-
+#[allow(clippy::too_many_arguments)]
 pub fn p_check_sight(
     pos: &Position, 
     cur_sector: &CurrentSector,

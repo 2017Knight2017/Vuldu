@@ -12,6 +12,7 @@ pub(crate) struct MoveContext {
     spec_hit: Vec<LineId>,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn p_move(
     ent: Entity,
 	pos: &Position,
@@ -81,6 +82,7 @@ pub(crate) fn p_move(
     true
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn p_try_move(
     ent: Entity,
     pos: &Position,
@@ -122,7 +124,7 @@ pub(crate) fn p_try_move(
 	}
 
 	if !mobj_type.flags.contains(MobjFlags::NO_CLIP) {
-		if ((ctx.ceiling_y - ctx.floor_y) as f32) < mobj_info.height {
+		if (ctx.ceiling_y - ctx.floor_y) < mobj_info.height {
             return (false, false, ctx);
         }
 
@@ -152,6 +154,7 @@ pub(crate) fn p_try_move(
     (true, true, ctx)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn p_check_pos(
     ctx: &mut MoveContext,
     ent: Entity,
@@ -188,11 +191,10 @@ fn p_check_pos(
                 }
 
                 let mut query = world.query_one::<(&MobjType, &Position, Option<&Target>)>(other_entity);
-                if let Ok((other_type, other_pos, raw_target)) = query.get() {
-                    if !pit_check_thing(ent, mobj_type, goal_pos, raw_target, other_entity, other_type, other_pos, random, world_events) {
+                if let Ok((other_type, other_pos, raw_target)) = query.get()
+                    && !pit_check_thing(ent, mobj_type, goal_pos, raw_target, other_entity, other_type, other_pos, random, world_events) {
                         return false;
                     }
-                }
             }
 
             for &line_idx in level.geom.blockmap.blocklists[idx].iter() {
@@ -206,6 +208,7 @@ fn p_check_pos(
     true
 }
 
+#[allow(clippy::too_many_arguments)]
 fn pit_check_thing(
 	ent: Entity,
 	mobj_type: &MobjType,
@@ -320,7 +323,7 @@ fn pit_check_line(
         return true;
     }
 
-    if p_box_on_line_side(&bbox, &line, level) != -1 {
+    if p_box_on_line_side(&bbox, line, level) != -1 {
         return true;
     }
 

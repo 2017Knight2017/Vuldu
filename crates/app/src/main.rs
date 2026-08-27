@@ -187,7 +187,7 @@ impl ApplicationHandler for App {
                 self.current_input.mouse_delta_x += delta.0 as f32;
             },
 
-            _ => {}
+            _ => unimplemented!()
         }
     }
 
@@ -232,7 +232,7 @@ impl ApplicationHandler for App {
 
                 match button {
                     MouseButton::Left => self.current_input.shoot = is_pressed,
-                    _ => {}
+                    _ => unimplemented!()
                 }
             }
 
@@ -340,7 +340,7 @@ fn handle_fatal_error(is_shutting_down: &mut bool, event_loop: &ActiveEventLoop,
 }
 
 fn main() -> Result<(), String> {
-    let mut wad_manager = WadManager::new();
+    let mut wad_manager = WadManager::default();
 
     let args = Args::parse();
 

@@ -23,13 +23,14 @@ pub fn in_fov(pos: &Position, rot: &MonsterRotation, player_pos: &Position) -> b
     let move_dir = rot.move_dir.unwrap() as u32;
 	let angle_to_player = fast_atan2(player_pos.x - pos.x, player_pos.z - pos.z) >> 29;
 
-    return angle_to_player == (move_dir.wrapping_sub(2) & 0b111) 
+    angle_to_player == (move_dir.wrapping_sub(2) & 0b111) 
         || angle_to_player == (move_dir.wrapping_sub(1) & 0b111) 
         || angle_to_player == move_dir 
         || angle_to_player == ((move_dir + 1) & 0b111) 
-        || angle_to_player == ((move_dir + 2) & 0b111);
+        || angle_to_player == ((move_dir + 2) & 0b111)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn p_check_melee_range(
     pos: &Position,
     cur_sector: &CurrentSector,
@@ -53,6 +54,7 @@ pub fn p_check_melee_range(
     dist < MELEERANGE - 20.0 + target_radius
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn p_check_missile_range(
     ent: Entity,
     pos: &Position,
@@ -115,9 +117,10 @@ pub fn p_check_missile_range(
         dist = 160.0;
     }
 
-    return (random.p() as f32) >= dist;
+    (random.p() as f32) >= dist
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn p_new_chase_dir(
     ent: Entity,
     pos: &Position,
@@ -134,10 +137,7 @@ pub fn p_new_chase_dir(
     mobj_flag_buffer: &mut Vec<MobjFlagCommand>
 ) {
     let old_dir = rot.move_dir;
-    let turnaround = match old_dir {
-        Some(dir) => Some(OPPOSITE[dir as usize]),
-        None => None
-    };
+    let turnaround = old_dir.map(|dir| OPPOSITE[dir as usize]);
     
     let dx = target_pos.x - pos.x;
     let dz = target_pos.z - pos.z;

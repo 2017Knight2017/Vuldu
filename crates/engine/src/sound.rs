@@ -33,7 +33,7 @@ pub struct Pass<'a>(pub &'a mut Traversal);
 
 impl Pass<'_> {
     pub fn visit_line(&mut self, l: LineId) -> bool {
-        let slot = &mut self.0.lines[l.0 as usize];
+        let slot = &mut self.0.lines[l.0];
 
         if *slot == self.0.generation { 
 			false 
@@ -44,7 +44,7 @@ impl Pass<'_> {
     }
 
     pub fn improve_sector(&mut self, sector_id: SectorId, cost: u8) -> bool {
-        let i = sector_id.0 as usize;
+        let i = sector_id.0;
 
         if self.0.sectors[i] != self.0.generation {
             self.0.sectors[i] = self.0.generation;
@@ -104,6 +104,7 @@ pub fn propagate_sound_system(
 	}
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn wake_up_monster(
 	ent: Entity,
 	pos: &Position,

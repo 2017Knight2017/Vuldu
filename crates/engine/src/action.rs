@@ -123,6 +123,7 @@ pub fn set_mobj_state(
 	}
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn action_system(
 	world: &World, 
     action_buffer: &mut Vec<(Entity, ActionFunc)>,
@@ -157,13 +158,14 @@ pub fn action_system(
 					action_buffer,
 					traversal
 				),
-				_ => {}
+				_ => todo!()
 			}
 		}
 	}
 }
 
 /// Must be called after propagate_sound_system
+#[allow(clippy::too_many_arguments)]
 pub fn check_sound_system( 
 	world: &World,
 	level: &mut Level,
@@ -242,7 +244,7 @@ pub fn check_sight_system(
                 continue;
             }
 
-        	if !in_fov(&pos, &rot, &player_pos) {
+        	if !in_fov(pos, rot, player_pos) {
         	    continue;
         	}
 
@@ -273,6 +275,7 @@ pub fn check_sight_system(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn chase(
 	world: &World,
 	ent: Entity,
@@ -346,8 +349,8 @@ pub fn chase(
     }
 
 	let target_info = &db.mobjinfo[&target_type.type_];
-    if let Some(melee_state) = mobj_info.melee_state {
-        if p_check_melee_range(pos, cur_sector, mobj_info.height,
+    if let Some(melee_state) = mobj_info.melee_state
+        && p_check_melee_range(pos, cur_sector, mobj_info.height,
     		target_pos, target_cur_sector, target_info.height, target_info.radius,
 			level, traversal) 
 		{
@@ -361,7 +364,6 @@ pub fn chase(
 			set_mobj_state(ent, ai, anim, melee_state, action_buffer, 0);
             return;
         }
-    }
 
     let mut check_missile = true;
 	

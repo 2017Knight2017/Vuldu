@@ -187,7 +187,7 @@ pub fn populate_database(texture_data: &FxHashMap<u64, (TextureId, u32, u32, boo
         let &(tex_id, width, height, need_flip) = texture_data.get(&key_0).unwrap_or(&(TextureId(0), 64, 64, false));
         cached_rotations[0] = CachedStateSprite { tex_id, width, height, need_flip };
 
-        for rot in 1..=8 as usize {
+        for rot in 1..=8_usize {
             let lookup_key = pack_sprite_u64(&tex_prefix, frame_letter, rot as u8);
             
             if !texture_data.contains_key(&lookup_key) {

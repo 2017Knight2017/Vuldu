@@ -38,7 +38,7 @@ impl GraphicsContext {
 			renderer: None, 
             data: FxHashMap::default(), 
             ui_db: [None; NUM_UI],
-            cached_stbar_ui: STBarUi::new(),
+            cached_stbar_ui: STBarUi::default(),
             ui_to_update: Vec::new(),
             offsets: Vec::new(), 
             view_matrix: Mat4::default(),
@@ -49,7 +49,7 @@ impl GraphicsContext {
 	pub fn load_and_upload_textures(&mut self, renderer: &mut SafeRenderer, wad_manager: &WadManager, map_num: u8) -> Result<(), String> {
         let max_sky = *MAX_SKY.get().unwrap();
 
-        let (wall_names, wall_pics, sky_names, sky_pics, sky_widths) = 
+        let ((wall_names, wall_pics), (sky_names, sky_pics), sky_widths) = 
             wad_manager.bake_walls(max_sky).map_err(|e| format!("Wall baking failed: {e}"))?;
         println!("[load_and_upload_textures] walls are baked");
 
@@ -197,17 +197,17 @@ impl GraphicsContext {
         let (obj_gpu_vertices, obj_indices) = level.get_objects_vertices();
         let (ui_gpu_vertices, ui_indices) = level.get_ui_vertices();
 
-        let mut level_vertices: Vec<Vertex> = wall_vertices.into_iter().map(|v| vertex_to_vertex(v)).collect();
+        let mut level_vertices: Vec<Vertex> = wall_vertices.into_iter().map(vertex_to_vertex).collect();
         let mut level_indices = wall_indices;
 
         let vertex_offset = level_vertices.len() as u32; 
-        level_vertices.extend(flat_vertices.into_iter().map(|v| vertex_to_vertex(v)));
+        level_vertices.extend(flat_vertices.into_iter().map(vertex_to_vertex));
         for idx in flat_indices {
             level_indices.push(vertex_offset + idx);
         }
 
-        let obj_vertices: Vec<Vertex> = obj_gpu_vertices.into_iter().map(|v| vertex_to_vertex(v)).collect();
-        let ui_vertices: Vec<Vertex> = ui_gpu_vertices.into_iter().map(|v| vertex_to_vertex(v)).collect();
+        let obj_vertices: Vec<Vertex> = obj_gpu_vertices.into_iter().map(vertex_to_vertex).collect();
+        let ui_vertices: Vec<Vertex> = ui_gpu_vertices.into_iter().map(vertex_to_vertex).collect();
 
         renderer.set_flags(self.flags.wireframe, self.flags.byte_shadows);
         renderer.update_level_geometry(&level_vertices, &level_indices);
@@ -215,6 +215,7 @@ impl GraphicsContext {
         renderer.update_ui_geometry(&ui_vertices, &ui_indices);
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn render(
         &mut self, 
         window: &Window, 
@@ -331,7 +332,7 @@ impl GraphicsContext {
         const PARALLEL_THRESHOLD: usize = 2000;
 		
         if lower_bound < PARALLEL_THRESHOLD {
-            iter.map(|ent| process_entity(ent)).collect()
+            iter.map(&process_entity).collect()
         } else {
             let entities_to_process = iter.collect::<Vec<_>>();
 

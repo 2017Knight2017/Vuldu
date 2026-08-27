@@ -4,6 +4,8 @@ use rustc_hash::{FxBuildHasher, FxHashMap};
 
 pub const NF_SUBSECTOR: usize = 0x8000; 
 
+pub type TextureData = (TextureId, u32, u32, bool);
+
 // GpuVertex MUST equal to renderer::Vertex
 #[repr(C)]
 pub struct GpuVertex {
@@ -75,7 +77,7 @@ struct Edge {
 }
 
 impl Level {
-	pub fn get_walls_vertices(&mut self, texture_ids: &FxHashMap<u64, (TextureId, u32, u32, bool)>) -> (Vec<GpuVertex>, Vec<u32>) {
+	pub fn get_walls_vertices(&mut self, texture_ids: &FxHashMap<u64, TextureData>) -> (Vec<GpuVertex>, Vec<u32>) {
 	    let mut gpu_vertices = Vec::new();
 	    let mut gpu_indices = Vec::new();
 
@@ -106,13 +108,10 @@ impl Level {
 			let front_side = &mut sides_state[front_side_idx.0];
 	        let front_sector = &sectors[sides_geom[front_side_idx.0].sector.0];
 
-	        let back_sector = match back_side_idx_opt {
-				Some(idx) => Some(&sectors[sides_geom[idx.0].sector.0]),
-				None => None
-			};
+	        let back_sector = back_side_idx_opt.map(|idx| &sectors[sides_geom[idx.0].sector.0]);
 
-	        let dx = (v2.0 - v1.0) as f32;
-	        let dy = (v2.1 - v1.1) as f32;
+	        let dx = v2.0 - v1.0;
+	        let dy = v2.1 - v1.1;
 	        let wall_length = (dx * dx + dy * dy).sqrt();
 	        let tex_offset = front_side.col_offset as f32;
 			let row_offset = front_side.row_offset as f32;
@@ -210,7 +209,7 @@ impl Level {
 					_padding: [0, 0, 0]
 	            });
 			
-	            gpu_indices.push(start_idx + 0);
+	            gpu_indices.push(start_idx);
 	            gpu_indices.push(start_idx + 1);
 	            gpu_indices.push(start_idx + 2);
 
@@ -313,7 +312,7 @@ impl Level {
 	    (gpu_vertices, gpu_indices)
 	}
 
-	pub fn get_flats_vertices(&mut self, texture_ids: &FxHashMap<u64, (TextureId, u32, u32, bool)>) -> (Vec<GpuVertex>, Vec<u32>) {
+	pub fn get_flats_vertices(&mut self, texture_ids: &FxHashMap<u64, TextureData>) -> (Vec<GpuVertex>, Vec<u32>) {
 	    let mut gpu_vertices: Vec<GpuVertex> = Vec::new();
 	    let mut gpu_indices: Vec<u32> = Vec::new();
 
@@ -345,15 +344,9 @@ impl Level {
 	        for line_id in current_sector_lines {
 				let line = &lines[line_id.0];
 
-				let sector_front = match line.sides.0 {
-					Some(side_id) => Some(sides[side_id.0].sector.0),
-					None => None
-				};
+				let sector_front = line.sides.0.map(|side_id| sides[side_id.0].sector.0);
 			
-    			let sector_back = match line.sides.1 {
-					Some(side_id) => Some(sides[side_id.0].sector.0),
-					None => None
-				};
+    			let sector_back = line.sides.1.map(|side_id| sides[side_id.0].sector.0);
 						
     			if sector_front == Some(sector_id) && sector_back == Some(sector_id) {
     			    continue;
@@ -374,7 +367,7 @@ impl Level {
 	        if edges.is_empty() { continue; }
 
 			let mut adjacency: FxHashMap<(i32, i32), Vec<usize>> =
-            	FxHashMap::with_capacity_and_hasher(edges.len(), FxBuildHasher::default());
+            	FxHashMap::with_capacity_and_hasher(edges.len(), FxBuildHasher);
 
 			for (idx, edge) in edges.iter().enumerate() {
         	    adjacency.entry(edge.v1).or_default().push(idx);
@@ -462,12 +455,11 @@ impl Level {
 	            let mut is_hole = false;
 
 	            for (outer, outer_aabb) in &outer_sectors {
-            	    if poly_aabb.intersects_aabb(outer_aabb) {
-            	        if poly_loop.iter().any(|&pt| point_in_polygon(pt, outer)) {
+            	    if poly_aabb.intersects_aabb(outer_aabb)
+            	        && poly_loop.iter().any(|&pt| point_in_polygon(pt, outer)) {
             	            is_hole = true;
             	            break;
             	        }
-            	    }
             	}
 
 	            if is_hole {

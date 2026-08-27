@@ -4,6 +4,8 @@ use rayon::prelude::*;
 use std::ptr::read_unaligned;
 use std::mem::size_of;
 
+type TextureBundle = (Vec<u64>, Vec<DoomPicture>);
+
 #[repr(C)]
 #[derive(Clone, Copy)]
 struct MapPatch {
@@ -161,7 +163,7 @@ pub static SPRITE_NAMES: Map<i16, Option<&'static str>> = phf_map! {
 
 impl WadManager {
 	pub fn bake_walls(&self, max_sky: usize) -> 
-		Result<(Vec<u64>, Vec<DoomPicture>, Vec<u64>, Vec<DoomPicture>, Vec<f32>), String> 
+		Result<(TextureBundle, TextureBundle, Vec<f32>), String> 
 	{
 		let all_patchnames_raw = self.get_data(b"PNAMES")?;
 		let patch_names: Vec<&[u8]> = all_patchnames_raw.get(4..)
@@ -174,7 +176,7 @@ impl WadManager {
 			.map(|name| {
 				let data = self.get_data(name);
 				match data {
-					Ok(data) => decode_column_picture(&data, name),
+					Ok(data) => decode_column_picture(data, name),
 					Err(err) => Err(err)
 				}
 			})
@@ -182,11 +184,11 @@ impl WadManager {
 
 		let mut texture_lumps = Vec::new();
     	let texture1_raw = self.get_data(b"TEXTURE1")?;
-    	let offsets1 = parse_texture_header(&texture1_raw, "TEXTURE1")?;
+    	let offsets1 = parse_texture_header(texture1_raw, "TEXTURE1")?;
     	texture_lumps.push((texture1_raw, offsets1));
 
     	if let Ok(texture2_raw) = self.get_data(b"TEXTURE2") {
-    	    let offsets2 = parse_texture_header(&texture2_raw, "TEXTURE2")?;
+    	    let offsets2 = parse_texture_header(texture2_raw, "TEXTURE2")?;
     	    texture_lumps.push((texture2_raw, offsets2));
     	}
 
@@ -288,7 +290,7 @@ impl WadManager {
 			}
     	}
 
-	    Ok((wall_tex_names, wall_textures, sky_tex_names, sky_textures, sky_widths))
+	    Ok(((wall_tex_names, wall_textures), (sky_tex_names, sky_textures), sky_widths))
 	}
 
 	pub fn parse_texture_lump(&self, lump_data: &[u8], offset: usize) -> Result<MapTexture, String> {
@@ -331,7 +333,7 @@ impl WadManager {
 	    })
 	}
 
-	pub fn bake_flats(&self) -> Result<(Vec<u64>, Vec<DoomPicture>), String> {
+	pub fn bake_flats(&self) -> Result<TextureBundle, String> {
 		let mut flats_names = Vec::new();
 		let mut baked_flats = Vec::new();
 

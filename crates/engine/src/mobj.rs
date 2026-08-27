@@ -1,54 +1,43 @@
 use crate::*;
 use hecs::{Entity, World, EntityBuilder};
-use wad_parser::{map::Level, wad_types::ThingFlags};
+use wad_parser::{map::Level, wad_types::{MapThing, ThingFlags}};
 
+#[allow(clippy::too_many_arguments)]
 pub fn spawn_mobj(
 	level: &Level,
 	world: &mut World, 
 	random: &mut Random,
-	mobj_type_raw: Option<MobjNum>, 
-	x_raw: i16, 
-	z_raw: i16, 
-	angle_raw: i16,
-	thing_flags: ThingFlags,
+	thing: &MapThing,
 	blocklists: &mut [Vec<Entity>],
 	cfg: &GameConfig
 ) -> Option<Entity> {
-	if !thing_flags.contains(ThingFlags::SPAWN_ON_EASY) 
-    && (cfg.skill == SkillLevel::Baby || cfg.skill == SkillLevel::Easy) { 
-		return None; 
-	} else if !thing_flags.contains(ThingFlags::SPAWN_ON_MED)
-    && cfg.skill == SkillLevel::Medium {
-		return None;
-	} else if !thing_flags.contains(ThingFlags::SPAWN_ON_HARD)
-    && (cfg.skill == SkillLevel::Hard || cfg.skill == SkillLevel::Nightmare) {
-		return None;
-	}
+	let thing_type = (*MOBJTYPE_BY_DOOMEDNUM.get(&thing.type_)?)?;
+	let thing_flags = ThingFlags::from_bits(thing.flags).unwrap_or(ThingFlags::NONE);
 
-	if thing_flags.contains(ThingFlags::NOT_SINGLEPLR) 
-	&& !(cfg.dmatch || cfg.coop) {
-		return None;
-	} else if thing_flags.contains(ThingFlags::NOT_COOP)
-	&& cfg.coop {
-		return None;
-	} else if thing_flags.contains(ThingFlags::NOT_DMATCH)
-	&& cfg.dmatch {
-		return None;
+	if (!thing_flags.contains(ThingFlags::SPAWN_ON_EASY) 
+    && (cfg.skill == SkillLevel::Baby || cfg.skill == SkillLevel::Easy))
+	|| (!thing_flags.contains(ThingFlags::SPAWN_ON_MED)
+    && cfg.skill == SkillLevel::Medium)
+	|| (!thing_flags.contains(ThingFlags::SPAWN_ON_HARD)
+    && (cfg.skill == SkillLevel::Hard || cfg.skill == SkillLevel::Nightmare))
+	|| (thing_flags.contains(ThingFlags::NOT_SINGLEPLR) 
+	&& !(cfg.dmatch || cfg.coop))
+	|| (thing_flags.contains(ThingFlags::NOT_COOP)
+	&& cfg.coop)
+	|| (thing_flags.contains(ThingFlags::NOT_DMATCH)
+	&& cfg.dmatch)
+	{ 
+		return None; 
 	}
 	
-	let x = x_raw as f32;
-	let z = z_raw as f32;
+	let x = thing.x as f32;
+	let z = thing.y as f32;
 
 	let (row, col) = level.geom.blockmap.world_to_grid(x, z);
-	
-	let mobj_type = match mobj_type_raw {
-		Some(mobj) => mobj,
-		None => return None
-	};
 
-	let normalized_deg = ((angle_raw as i32 % 360) + 360) % 360;
+	let normalized_deg = ((thing.angle as i32 % 360) + 360) % 360;
 	let mut angle = (normalized_deg / 45) as u32 * ANG45;
-	if mobj_type == MobjNum::Player {
+	if thing_type == MobjNum::Player {
 		angle = angle.wrapping_sub(ANG90);
 	}
 
@@ -56,15 +45,15 @@ pub fn spawn_mobj(
 	let move_dir = Direction::try_from(dir_index).expect("Error while parsing move_dir");
 
 	let db = DB.get().unwrap();
-	let mobj_info = db.mobjinfo.get(&mobj_type)
-		.expect(&format!("[FATAL] mobj_info with {:?} was not found!", mobj_type));
+	let mobj_info = db.mobjinfo.get(&thing_type)
+		.unwrap_or_else(|| panic!("[FATAL] mobj_info with {:?} was not found!", thing_type));
 
 	let mut mobj_flags = mobj_info.flags
 		.iter()
 		.map(|&a| MobjFlags::from(a))
 		.collect::<MobjFlags>();
 
-	if mobj_type != MobjNum::Player && mobj_flags.contains(MobjFlags::SHOOTABLE) && cfg.no_monsters {
+	if thing_type != MobjNum::Player && mobj_flags.contains(MobjFlags::SHOOTABLE) && cfg.no_monsters {
 		return None;
 	}
 
@@ -72,10 +61,7 @@ pub fn spawn_mobj(
 		mobj_flags.insert(MobjFlags::AMBUSH);
 	}
 
-	let spawn_state = match mobj_info.spawn_state {
-		Some(state) => state,
-		None => return None
-	};
+	let spawn_state = mobj_info.spawn_state?;
 
 	let spawn_state_data = db.states.get(&spawn_state)
     	.expect("Spawn state not found in database!");
@@ -114,10 +100,10 @@ pub fn spawn_mobj(
 		.add(Position { x, y, z, prev_x: x, prev_y: y, prev_z: z })
 		.add(CurrentSector(sector_idx))
 		.add(Velocity::default())
-		.add(MobjType { type_: mobj_type, flags: mobj_flags })
+		.add(MobjType { type_: thing_type, flags: mobj_flags })
 		.add(Health(mobj_info.spawn_health));
 
-	if mobj_type == MobjNum::Player {
+	if thing_type == MobjNum::Player {
 		entity_builder
 			.add(PlayerMarker)
 			.add(PlayerRotation { angle, prev_angle: angle })
@@ -168,14 +154,9 @@ pub fn spawn_all_things(
             player_spawned = true;
 		}
 
-		let thing_flags = ThingFlags::from_bits(thing.flags).unwrap_or(ThingFlags::NONE);
-
-		if let Some(thing_type) = MOBJTYPE_BY_DOOMEDNUM.get(&thing.type_) {
-			let ent_opt = spawn_mobj(level, world, random, *thing_type, 
-				thing.x, thing.y, thing.angle, thing_flags, blocklists, cfg);
-			if thing.type_ == 1 { 
-				*player_entity = ent_opt.unwrap(); 
-			}
+		let ent_opt = spawn_mobj(level, world, random, thing, blocklists, cfg);
+		if thing.type_ == 1 { 
+			*player_entity = ent_opt.unwrap(); 
 		}
 	}
 }

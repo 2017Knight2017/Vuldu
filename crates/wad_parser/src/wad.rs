@@ -21,8 +21,10 @@ pub struct ParsedLump {
     pub size: usize,
 }
 
+type MapLumps = ([u8; 8], [ParsedLump; 10]);
+
 impl Wad {
-    pub fn open<P: AsRef<Path>>(path: P) -> Result<(Self, Vec<ParsedLump>, Vec<([u8; 8], [ParsedLump; 10])>), String> {
+    pub fn open<P: AsRef<Path>>(path: P) -> Result<(Self, Vec<ParsedLump>, Vec<MapLumps>), String> {
         let data = read(&path).map_err(|e| e.to_string())?;
 
         if data.len() < 12 {
@@ -38,7 +40,7 @@ impl Wad {
         let dir_offset = u32::from_le_bytes(data[8..12].try_into().unwrap()) as usize;
 
         let mut parsed_lumps = Vec::with_capacity(num_lumps);
-        let mut maps: Vec<([u8; 8], [ParsedLump; 10])> = Vec::new();
+        let mut maps: Vec<MapLumps> = Vec::new();
         
         let mut current_dir_pos = dir_offset;
         let dir_end = dir_offset + num_lumps * 16;
@@ -59,7 +61,7 @@ impl Wad {
             let is_map = name.starts_with(b"MAP") || (name[0] == b'E' && name[2] == b'M');
             if !is_map { continue; }
 
-            let mut map: ([u8; 8], [ParsedLump; 10]) = (name, [ParsedLump::default(); 10]);
+            let mut map: MapLumps = (name, [ParsedLump::default(); 10]);
 
             for i in 0..10 {
                 if current_dir_pos + 16 > data.len() { break; }

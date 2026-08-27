@@ -12,6 +12,12 @@ pub struct SafeRenderer {
     renderer: UniquePtr<VulkanRenderer>,
 }
 
+impl Default for SafeRenderer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SafeRenderer {
     pub fn new() -> Self {
         let _ = MAX_SKY.set(getMaxSky());

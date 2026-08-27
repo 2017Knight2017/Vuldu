@@ -139,8 +139,10 @@ pub struct Opening {
 
 impl Level {
     pub fn load(wad_manager: &WadManager, map_num: u8) -> Result<Self, String> {
-		let mut level = Level::default();
-		level.map_num = map_num;
+		let mut level = Level {
+		    map_num,
+		    .. Default::default()
+		};
 
 		let map_name = construct_map_name(wad_manager.is_doom1, map_num);
 
@@ -184,8 +186,8 @@ impl Level {
 
 		let sidedefs_bytes = wad_manager.get_map_data(b"SIDEDEFS", &map_name)?;
 		let sides_num = sidedefs_bytes.len() / size_of::<MapSidedef>();
-		level.geom.sides.resize_with(sides_num, || Side::default());
-		level.state.sides.resize_with(sides_num, || SideState::default());
+		level.geom.sides.resize_with(sides_num, Side::default);
+		level.state.sides.resize_with(sides_num, SideState::default);
 		
 		sidedefs_bytes
     		.chunks_exact(size_of::<MapSidedef>())

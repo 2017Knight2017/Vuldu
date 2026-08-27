@@ -2,6 +2,7 @@ use std::path::Path;
 use rustc_hash::FxHashMap;
 use crate::{Lump, Wad};
 
+#[derive(Default)]
 pub struct WadManager {
     pub is_doom1: bool,
     pub wads: Vec<Wad>,
@@ -12,25 +13,13 @@ pub struct WadManager {
 }
 
 impl WadManager {
-    pub fn new() -> Self {
-        Self {
-            is_doom1: false,
-            wads: Vec::new(),
-            map_directory: FxHashMap::default(),
-            directory: FxHashMap::default(),
-            palettes: Vec::new(),
-            colormaps: Vec::new(),
-        }
-    }
-
     pub fn add_wad<P: AsRef<Path>>(&mut self, path: P) -> Result<(), String> {
         let path_ref = path.as_ref();
         
-        if let Some(file_name) = path_ref.file_name().and_then(|os_str| os_str.to_str()) {
-            if file_name.to_uppercase() == "DOOM.WAD" {
+        if let Some(file_name) = path_ref.file_name().and_then(|os_str| os_str.to_str())
+            && file_name.to_uppercase() == "DOOM.WAD" {
                 self.is_doom1 = true;
             }
-        }
 
         let (wad, parsed_lumps, parsed_maps) = Wad::open(path)?;
         
@@ -142,7 +131,7 @@ impl WadManager {
 
         let pal_lump = self.palettes[pal_wad_index].unwrap();
 		let pal_data = self.wads[pal_wad_index].data.get(pal_lump.offset..pal_lump.offset + pal_lump.size)
-            .ok_or_else(|| format!("PLAYPAL lump is not found!"))?;
+            .ok_or_else(|| "PLAYPAL lump is not found!".to_string())?;
         
         for rgb in pal_data.chunks_exact(3).take(14 * 256) {
             all_palettes_data.push(rgb[0] as f32 / 255.0);
@@ -163,7 +152,7 @@ impl WadManager {
 
         let clm_lump = self.colormaps[clm_wad_index].unwrap();
         let clm_data = self.wads[clm_wad_index].data.get(clm_lump.offset..clm_lump.offset + clm_lump.size)
-            .ok_or_else(|| format!("COLORMAP lump is not found!"))?;
+            .ok_or_else(|| "COLORMAP lump is not found!".to_string())?;
 		
         Ok(clm_data)
     }

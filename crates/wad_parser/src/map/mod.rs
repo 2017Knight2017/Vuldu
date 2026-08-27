@@ -1,6 +1,6 @@
-pub mod map;
+pub mod core;
 pub mod vertices;
 pub mod wad_types;
 
-pub use map::*;
+pub use core::*;
 pub use vertices::*;

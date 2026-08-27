@@ -2,7 +2,7 @@ use rustc_hash::FxHashMap;
 
 use crate::{WadManager, to_u64};
 
-pub const SFX_NAMES: [&'static [u8]; 108] = [
+pub const SFX_NAMES: [&[u8]; 108] = [
     b"DSPISTOL",
     b"DSSHOTGN",
     b"DSSGCOCK",
@@ -149,12 +149,11 @@ impl WadManager {
         let mut sound_cache: FxHashMap<u64, DoomSfx> = FxHashMap::default();
 
         for sound_name in SFX_NAMES {
-            if let Ok(raw_bytes) = self.get_data(sound_name) {
-                if let Ok(doom_sound) = DoomSfx::parse(raw_bytes) {
+            if let Ok(raw_bytes) = self.get_data(sound_name)
+                && let Ok(doom_sound) = DoomSfx::parse(raw_bytes) {
                     
                     sound_cache.insert(to_u64(sound_name), doom_sound); 
                 }
-            }
         }
 
         sound_cache

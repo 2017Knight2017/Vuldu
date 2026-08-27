@@ -1,5 +1,5 @@
-pub mod textures;
-pub mod ui_textures_table;
+pub mod surfaces;
+pub mod ui;
 
-pub use textures::*;
-pub use ui_textures_table::*;
+pub use surfaces::*;
+pub use ui::*;

@@ -1,13 +1,13 @@
 use clap::Parser;
 use std::path::PathBuf;
 
-const SKILL_HELP: &'static str = "Difficulty, from I'm Too Young To Die (0) to Nightmare! (4) inclusively.";
-const WIREFRAME_HELP: &'static str = "Switch the renderer to the Wireframe mode, with no wall textures shown. It's useful when, for example, you want to check how well level surfaces got triangulated.";
-const BYTE_SHADOWS_HELP: &'static str = "Make shadows submit values of light in 0..255 range (default range is 0..32).";
-const FAST_MONSTERS_HELP: &'static str = "Currently does nothing.";
-const COOP_HELP: &'static str = "Turn on the Co-op mode. Currently just spawns additional objects on a level.";
-const DEATHMATCH_HELP: &'static str = "Turn on the Deathmatch mode. Currently just prevents keys from spawning on a level.";
-const NO_MONSTERS_HELP: &'static str = "Prevent monsters from spawning.";
+const SKILL_HELP: &str = "Difficulty, from I'm Too Young To Die (0) to Nightmare! (4) inclusively.";
+const WIREFRAME_HELP: &str = "Switch the renderer to the Wireframe mode, with no wall textures shown. It's useful when, for example, you want to check how well level surfaces got triangulated.";
+const BYTE_SHADOWS_HELP: &str = "Make shadows submit values of light in 0..255 range (default range is 0..32).";
+const FAST_MONSTERS_HELP: &str = "Currently does nothing.";
+const COOP_HELP: &str = "Turn on the Co-op mode. Currently just spawns additional objects on a level.";
+const DEATHMATCH_HELP: &str = "Turn on the Deathmatch mode. Currently just prevents keys from spawning on a level.";
+const NO_MONSTERS_HELP: &str = "Prevent monsters from spawning.";
 
 #[derive(Parser, Debug)]
 #[command(name = "Vuldu")]

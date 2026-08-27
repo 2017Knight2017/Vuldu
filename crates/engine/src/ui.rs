@@ -31,9 +31,9 @@ pub enum UpdatableUiType {
     TotalAmmo,
 }
 
-impl STBarUi {
-	pub fn new() -> Self {
-		STBarUi { 
+impl Default for STBarUi {
+    fn default() -> Self {
+        STBarUi { 
 			stbar: [(Ui::STBAR, 0.0, STBAR_Y_OFFSET)], 
 			ammo: Vec::with_capacity(3), 
 			hp: Vec::with_capacity(5), 
@@ -43,7 +43,7 @@ impl STBarUi {
 			keys: Vec::with_capacity(3), 
 			total_ammo: Vec::with_capacity(24) 
 		}
-	}
+    }
 }
 
 pub fn get_stbar(world: &World, player_entity: Entity, stbar_ui: &mut STBarUi) {

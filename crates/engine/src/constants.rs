@@ -53,7 +53,7 @@ pub const OPPOSITE: [Direction; 8] = [
 ];
 
 pub const NUMQUITMESSAGES: usize = 21;
-pub const ENDMESSAGE: [&'static str; NUMQUITMESSAGES] = [
+pub const ENDMESSAGE: [&str; NUMQUITMESSAGES] = [
 	"please don't leave, there's more\ndemons to toast!",
 	"let's beat it -- this is turning\ninto a bloodbath!",
 	"i wouldn't leave if i were you.\ndos is much worse.",
