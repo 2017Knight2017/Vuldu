@@ -1,13 +1,6 @@
 use std::collections::VecDeque;
 
-use engine::{
-	ActionFunc, GameConfig, GameState, MobjFlagCommand, PlayerInput, Random, Traversal,
-	UpdatableUiType, WorldEvent, action_system, ai_system, animation_system,
-	apply_mobj_flags_system, apply_monster_movement_system, apply_player_movement_system,
-	check_sight_system, check_sound_system, execute_events_system, friction_system,
-	handle_position_input, handle_rotation_input, handle_weapons_input, propagate_sound_system,
-	try_move_system,
-};
+use engine::*;
 use hecs::{CommandBuffer, Entity, World};
 use wad_parser::Level;
 use winit::keyboard::PhysicalKey;
@@ -141,8 +134,14 @@ impl GameContext {
 		execute_events_system(
 			&mut self.world_events,
 			&self.world,
+			&self.level,
 			self.player_entity,
 			ui_to_update,
+			&mut self.command_buffer,
+			&mut audio.buffer,
+			&mut self.blocklists,
+			&self.config,
+			self.global_timer,
 		);
 		apply_mobj_flags_system(&mut self.mobj_flag_buffer, &self.world);
 

@@ -486,7 +486,7 @@ impl RejectTable {
 pub const MAPBLOCKSIZE: f32 = 128.0;
 
 impl Blockmap {
-	pub fn get_line_blocklist(&self, line: &Line, v1: (f32, f32), v2: (f32, f32)) -> Vec<usize> {
+	fn get_line_blocklist(&self, line: &Line, v1: (f32, f32), v2: (f32, f32)) -> Vec<usize> {
 		let mut result = Vec::new();
 		let origin_x = self.origin_x as f32;
 		let origin_z = self.origin_z as f32;

@@ -14,7 +14,7 @@ pub struct PlayerCamera {
 	pub bob: f32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct PlayerStats {
 	pub state: PlayerState,
 	pub armor_points: u32,
@@ -22,6 +22,12 @@ pub struct PlayerStats {
 	pub kill_count: i32,
 	pub item_count: i32,
 	pub secret_count: i32,
+	pub berserk_timestamp: Option<u32>,
+	pub rad_suit_timestamp: Option<u32>,
+	pub goggles_timestamp: Option<u32>,
+	pub invuln_timestamp: Option<u32>,
+	pub invis_timestamp: Option<u32>,
+	pub computer_area_map: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -43,19 +49,6 @@ impl Default for PlayerInventory {
 			cards: [false; NUMCARDS],
 			weapon_owned: [true, true, false, false, false, false, false, false, false],
 			ammo: [50, 0, 0, 0],
-		}
-	}
-}
-
-impl Default for PlayerStats {
-	fn default() -> Self {
-		PlayerStats {
-			state: PlayerState::Live,
-			armor_points: 0,
-			is_super_armor: false,
-			kill_count: 0,
-			item_count: 0,
-			secret_count: 0,
 		}
 	}
 }

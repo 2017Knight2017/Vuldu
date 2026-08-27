@@ -1,9 +1,4 @@
-use engine::{
-	CurrentSector, EYEHEIGHT, GameState, Health, MonsterRotation, PlayerInventory, PlayerRotation,
-	PlayerStats, Position, STBarUi, SpriteAnimation, UpdatableUiType, fast_atan2, get_stbar,
-	pack_sprite_u64, update_ammo_ui, update_armor_ui, update_arms_ui, update_face_ui, update_hp_ui,
-	update_keys_ui, update_total_ammo_ui,
-};
+use engine::*;
 use glam::{Mat4, Vec3};
 use hecs::{Entity, World};
 use micropool::iter::*;

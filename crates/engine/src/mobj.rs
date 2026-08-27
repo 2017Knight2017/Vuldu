@@ -1,5 +1,5 @@
 use crate::*;
-use hecs::{Entity, EntityBuilder, World};
+use hecs::{CommandBuffer, Entity, EntityBuilder, World};
 use wad_parser::{
 	map::Level,
 	wad_types::{MapThing, ThingFlags},
@@ -35,7 +35,7 @@ pub fn spawn_mobj(
 	let x = thing.x as f32;
 	let z = thing.y as f32;
 
-	let (row, col) = level.geom.blockmap.world_to_grid(x, z);
+	let (col, row) = level.geom.blockmap.world_to_grid(x, z);
 
 	let normalized_deg = ((thing.angle as i32 % 360) + 360) % 360;
 	let mut angle = (normalized_deg / 45) as u32 * ANG45;
@@ -170,7 +170,7 @@ pub fn spawn_mobj(
 	};
 
 	let entity = world.spawn(entity_builder.build());
-	blocklists[row + level.geom.blockmap.col_num + col].push(entity);
+	blocklists[row * level.geom.blockmap.col_num + col].push(entity);
 
 	Some(entity)
 }
@@ -197,4 +197,21 @@ pub fn spawn_all_things(
 			*player_entity = ent_opt.unwrap();
 		}
 	}
+}
+
+pub fn kill_mobj(
+	ent: Entity,
+	world: &World,
+	level: &Level,
+	cmd: &mut CommandBuffer,
+	blocklists: &mut [Vec<Entity>],
+) {
+	let Ok(pos) = world.get::<&Position>(ent) else {
+		return;
+	};
+
+	let (col, row) = level.geom.blockmap.world_to_grid(pos.x, pos.z);
+	blocklists[row * level.geom.blockmap.col_num + col].retain(|&e| e != ent);
+
+	cmd.despawn(ent);
 }

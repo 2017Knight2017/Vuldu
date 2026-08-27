@@ -207,7 +207,7 @@ impl ApplicationHandler for App {
 		_device_id: DeviceId,
 		event: DeviceEvent,
 	) {
-        #[allow(clippy::single_match)]
+		#[allow(clippy::single_match)]
 		match event {
 			DeviceEvent::MouseMotion { delta } => {
 				self.current_input.mouse_delta_x += delta.0 as f32;
@@ -279,7 +279,7 @@ impl ApplicationHandler for App {
 			WindowEvent::MouseInput { state, button, .. } => {
 				let is_pressed = state == ElementState::Pressed;
 
-                #[allow(clippy::single_match)]
+				#[allow(clippy::single_match)]
 				match button {
 					MouseButton::Left => self.current_input.shoot = is_pressed,
 					_ => {}

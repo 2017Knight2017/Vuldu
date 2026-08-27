@@ -112,21 +112,6 @@ impl<'a> SightContext<'a> {
 				continue;
 			}
 
-			let (Some(front_side_id), Some(back_side_id)) = line.sides else {
-				continue;
-			};
-
-			let front_sector = &level.state.sectors[level.geom.sides[front_side_id.0].sector.0];
-			let back_sector = &level.state.sectors[level.geom.sides[back_side_id.0].sector.0];
-
-			// We already checked whether sides are None,
-			// so unwrap() is safe here.
-			let open = level.get_opening(line_id).unwrap();
-
-			if open.floor_high >= open.top {
-				continue;
-			}
-
 			let seg_v1_x = level.geom.vertices[seg.v1 as usize].0;
 			let seg_v1_z = level.geom.vertices[seg.v1 as usize].1;
 			let seg_v2_x = level.geom.vertices[seg.v2 as usize].0;
@@ -156,6 +141,21 @@ impl<'a> SightContext<'a> {
 			if !line.flags.contains(LineFlags::TWO_SIDED) {
 				return false;
 			}
+
+			let (Some(front_side_id), Some(back_side_id)) = line.sides else {
+				return false;
+			};
+
+			// We already checked whether sides are None,
+			// so unwrap() is safe here.
+			let open = level.get_opening(line_id).unwrap();
+
+			if open.floor_high >= open.top {
+				return false;
+			}
+
+			let front_sector = &level.state.sectors[level.geom.sides[front_side_id.0].sector.0];
+			let back_sector = &level.state.sectors[level.geom.sides[back_side_id.0].sector.0];
 
 			let frac = p_intercept_vector2(&self.strace, &divl);
 
