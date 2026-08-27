@@ -4,7 +4,7 @@ pub fn p_point_on_line_side(x: f32, y: f32, line: &Line, level: &Level) -> i32 {
     let v1 = level.geom.vertices[line.v1.0];
 
     if line.delta.0 == 0.0 {
-        if line.delta.0 <= v1.0 {
+        if x <= v1.0 {
             return if line.delta.1 > 0.0 { 1 } else { 0 };
         }
         return if line.delta.1 < 0.0 { 1 } else { 0 };

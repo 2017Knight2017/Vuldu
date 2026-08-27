@@ -7,7 +7,7 @@ use rodio::{
 };
 use std::num::NonZero;
 use std::f32::consts::TAU;
-use hecs::World;
+use hecs::{Entity, World};
 
 const EAR_HALF_WIDTH: f32 = 0.08;
 const MAX_AUDIBLE_DIST: f32 = 600.0;
@@ -86,12 +86,9 @@ impl AudioContext {
         })
     }
 
-    pub fn system(&mut self, world: &World) {
-        let mut query = world.query::<(&Position, &PlayerRotation)>();
-        let (p_pos, p_rot) = match query.iter().next() {
-            Some(player) => player,
-            None => return,
-        };
+    pub fn system(&mut self, world: &World, player_ent: Entity) {
+        let Ok(p_pos) = world.get::<&Position>(player_ent) else { return };
+        let Ok(p_rot) = world.get::<&PlayerRotation>(player_ent) else { return };
 
         for event in self.buffer.drain(..) {
             let sound = match self.data.get(&event.sfx_id) {

@@ -17,6 +17,7 @@ pub mod p_move;
 pub mod world_event;
 pub mod bbox;
 pub mod ui;
+pub mod special_lines;
 
 pub use components::*;
 pub use enums::*;
@@ -37,3 +38,4 @@ pub use p_move::*;
 pub use world_event::*;
 pub use bbox::*;
 pub use ui::*;
+pub use special_lines::*;

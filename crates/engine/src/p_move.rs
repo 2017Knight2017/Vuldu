@@ -1,10 +1,10 @@
 use hecs::{Entity, World};
 use rustc_hash::FxHashMap;
 use wad_parser::{AABB, Level, LineFlags, LineId, SectorId};
-use crate::{Active, CurrentSector, DB, FLOATSPEED, InstantMoveIntent, MAXRADIUS, MAXSPECHIT, MobjFlagCommand, MobjFlags, MobjInfo, MobjNum, MobjType, MonsterRotation, Position, Random, Target, Velocity, WorldEvent, XSPEED, YSPEED, p_box_on_line_side};
+use crate::{Active, CurrentSector, DB, FLOATSPEED, InstantMoveIntent, MAXRADIUS, MobjFlagCommand, MobjFlags, MobjInfo, MobjNum, MobjType, MonsterRotation, Position, Random, Target, Velocity, WorldEvent, XSPEED, YSPEED, p_box_on_line_side, p_use_special_line};
 
 #[derive(Debug, Clone)]
-struct MoveContext {
+pub(crate) struct MoveContext {
     ceilingline_idx: Option<LineId>, 
     ceiling_y: f32, 
     floor_y: f32, 
@@ -12,7 +12,7 @@ struct MoveContext {
     spec_hit: Vec<LineId>,
 }
 
-pub fn p_move(
+pub(crate) fn p_move(
     ent: Entity,
 	pos: &Position,
 	rot: &MonsterRotation,
@@ -26,16 +26,12 @@ pub fn p_move(
     world_events: &mut Vec<WorldEvent>,
     mobj_flag_buffer: &mut Vec<MobjFlagCommand>
 ) -> bool {
-    if rot.move_dir.is_none() {
-        return false;
-    }
+    let Some(move_dir) = rot.move_dir else { return false };
 
-    let move_dir = rot.move_dir.unwrap();
+    let try_x = pos.x + mobj_info.speed * XSPEED[move_dir as usize];
+    let try_z = pos.z + mobj_info.speed * YSPEED[move_dir as usize];
 
-    let try_x = pos.x + mobj_info.speed * 0.41 * XSPEED[move_dir as usize];
-    let try_z = pos.z + mobj_info.speed * 0.41 * YSPEED[move_dir as usize];
-
-    let (try_ok, float_ok) = p_try_move(
+    let (try_ok, float_ok, mut ctx) = p_try_move(
         ent,
         pos, 
         (try_x, pos.y, try_z), 
@@ -49,65 +45,65 @@ pub fn p_move(
         world_events
     );
     
-    if let Some(new_sector) = imi.new_sector {
-        if !try_ok {
-            if mobj_type.flags.contains(MobjFlags::FLOAT) && float_ok {
-                if pos.y < level.state.sectors[new_sector.0].floor_h {
-                    imi.dy += FLOATSPEED;
-                } else {
-                    imi.dy -= FLOATSPEED;
-                }
-
-                mobj_flag_buffer.push(MobjFlagCommand::Add { ent, flag: MobjFlags::IN_FLOAT });
-                return true;
+    if !try_ok {
+        if mobj_type.flags.contains(MobjFlags::FLOAT) && float_ok {
+            if pos.y < ctx.floor_y {
+                imi.dy += FLOATSPEED;
+            } else {
+                imi.dy -= FLOATSPEED;
             }
 
-            //if ctx.spec_hit.is_empty() {
-            //    return false;
-            //}
-            //
-            //let mut good = false;
-            //
-            //for line_idx in ctx.spec_hit.drain(..) {
-            //    if p_use_special_line(actor, line_idx, 0, ctx) {
-            //        good = true;
-            //    }
-            //}
-            //
-            //return good;
-        } else {
-            mobj_flag_buffer.push(MobjFlagCommand::Remove { ent, flag: MobjFlags::IN_FLOAT });
+            mobj_flag_buffer.push(MobjFlagCommand::Add { ent, flag: MobjFlags::IN_FLOAT });
+            return true;
         }
 
-        if !mobj_type.flags.contains(MobjFlags::FLOAT) {
-            imi.dy = level.state.sectors[new_sector.0].floor_h - pos.y;
+        if ctx.spec_hit.is_empty() {
+            return false;
         }
+            
+        let mut good = false;
+            
+        for line_id in ctx.spec_hit.drain(..) {
+            if p_use_special_line(mobj_type, &level.geom.lines[line_id.0]) {
+                good = true;
+            }
+        }
+            
+        return good;
+    } else {
+        mobj_flag_buffer.push(MobjFlagCommand::Remove { ent, flag: MobjFlags::IN_FLOAT });
+    }
+
+    if !mobj_type.flags.contains(MobjFlags::FLOAT) {
+        imi.dy = ctx.floor_y - pos.y;
     }
 
     true
 }
 
-pub fn p_try_move(
+pub(crate) fn p_try_move(
     ent: Entity,
     pos: &Position,
     goal_pos: (f32, f32, f32),
 	mobj_type: &MobjType,
 	mobj_info: &MobjInfo,
     imi: &mut InstantMoveIntent,
-	map: &Level, 
+	level: &Level, 
     world: &World,
     random: &mut Random,
     blocklists: &[Vec<Entity>],
     world_events: &mut Vec<WorldEvent>
-) -> (bool, bool) {
+) -> (bool, bool, MoveContext) {
 	// (try_ok, float_ok)
 
+    let goal_sector_id = level.get_sector_by_pos(goal_pos.0, goal_pos.2);
+    let goal_sector = &level.state.sectors[goal_sector_id.0];
     let mut ctx = MoveContext { 
         ceilingline_idx: None, 
-        ceiling_y: f32::MAX, 
-        floor_y: f32::MIN, 
-        dropoff_y: f32::MAX, 
-        spec_hit: Vec::with_capacity(MAXSPECHIT) 
+        ceiling_y: goal_sector.ceil_h, 
+        floor_y: goal_sector.floor_h, 
+        dropoff_y: goal_sector.floor_h, 
+        spec_hit: Vec::new(), 
     };
 
 	if !p_check_pos(
@@ -116,44 +112,44 @@ pub fn p_try_move(
         mobj_type,
         goal_pos,
         mobj_info,
-        map,
+        level,
         world,
         random,
         blocklists,
         world_events
     ) {
-		return (false, false)
+		return (false, false, ctx)
 	}
 
 	if !mobj_type.flags.contains(MobjFlags::NO_CLIP) {
 		if ((ctx.ceiling_y - ctx.floor_y) as f32) < mobj_info.height {
-            return (false, false);
+            return (false, false, ctx);
         }
 
         if !mobj_type.flags.contains(MobjFlags::TELEPORT) &&
             ctx.ceiling_y - pos.y < mobj_info.height
         {
-            return (false, true);
+            return (false, true, ctx);
         }
 
         if !mobj_type.flags.contains(MobjFlags::TELEPORT) &&
             ctx.floor_y - pos.y > 24.0 
         {
-            return (false, true);
+            return (false, true, ctx);
         }
 
         if !mobj_type.flags.intersects(MobjFlags::DROP_OFF | MobjFlags::FLOAT) &&
             ctx.floor_y - ctx.dropoff_y > 24.0
         {
-            return (false, true);
+            return (false, true, ctx);
         }
 	}
 
     imi.dx = goal_pos.0 - pos.x;
     imi.dz = goal_pos.2 - pos.z;
-    imi.new_sector = Some(map.get_sector_by_pos(goal_pos.0, goal_pos.2));
+    imi.new_sector = Some(level.get_sector_by_pos(goal_pos.0, goal_pos.2));
 
-    (true, true)
+    (true, true, ctx)
 }
 
 fn p_check_pos(
@@ -243,7 +239,7 @@ fn pit_check_thing(
     }
 
     if mobj_type.flags.contains(MobjFlags::SKULL_FLY) {
-        let damage = ((random.p() % 8) as u32 + 1) * mobj_info.damage;
+        let damage = ((random.p() & 0b111) as u32 + 1) * mobj_info.damage;
 
         world_events.push(WorldEvent::DamageMobj {
             target: other_ent,
@@ -287,7 +283,7 @@ fn pit_check_thing(
             return !other_type.flags.contains(MobjFlags::SOLID);
         }
 
-        let damage = ((random.p() % 8) as u32 + 1) * mobj_info.damage;
+        let damage = ((random.p() % 0b111) as u32 + 1) * mobj_info.damage;
         world_events.push(WorldEvent::DamageMobj {
             target: other_ent,
             inflictor: ent,
@@ -353,9 +349,7 @@ fn pit_check_line(
         }
 
         if line.special != 0 {
-            if ctx.spec_hit.len() < 8 {
-                ctx.spec_hit.push(line_id);
-            }
+            ctx.spec_hit.push(line_id);
         }
     } else {
         return false; 
@@ -399,13 +393,13 @@ pub fn try_move_system(
         if can_move {
             let (prev_col, prev_row) = level.geom.blockmap.world_to_grid(pos.x, pos.z);
 
-            let prev_x = pos.x + imi.dx;
-            let prev_y = pos.y + imi.dy;
-            let prev_z = pos.z + imi.dz;
+            let prev_x = pos.x;
+            let prev_y = pos.y;
+            let prev_z = pos.z;
 
-            let new_x = prev_x + velocity.x;
-            let new_y = prev_y + velocity.y;
-            let new_z = prev_z + velocity.z;
+            let new_x = prev_x + imi.dx + velocity.x;
+            let new_y = prev_y + imi.dy + velocity.y;
+            let new_z = prev_z + imi.dz + velocity.z;
 
             let (new_col, new_row) = level.geom.blockmap.world_to_grid(new_x, new_z);
 
@@ -420,11 +414,11 @@ pub fn try_move_system(
             velocity.x = 0.0;
             velocity.y = 0.0;
             velocity.z = 0.0;
-
-            imi.dx = 0.0;
-            imi.dy = 0.0;
-            imi.dz = 0.0;
         }
+
+        imi.dx = 0.0;
+        imi.dy = 0.0;
+        imi.dz = 0.0;
 
         imi.new_sector = None;
     }
@@ -434,7 +428,7 @@ pub fn try_move_system(
 
 pub fn apply_monster_movement_system(
     world: &World,
-    pending_moves: PendingMoves,
+    mut pending_moves: PendingMoves,
     level: &Level,
     blocklists: &mut [Vec<Entity>],
 ) {
@@ -442,15 +436,11 @@ pub fn apply_monster_movement_system(
         .query::<(Entity, &mut Position, &mut CurrentSector)>()
         .with::<&Active>();
     for (ent, pos, current_sector) in query.iter() {
-        let (prev_x, prev_y, prev_z,
+        let Some((prev_x, prev_y, prev_z,
             new_x, new_y, new_z,
             prev_col, prev_row,
             new_col, new_row,
-            new_sector) = match pending_moves.get(&ent) 
-        {
-            Some(data) => *data,
-            None => continue 
-        };
+            new_sector)) = pending_moves.remove(&ent) else { continue };
 
         pos.prev_x = prev_x;
         pos.prev_y = prev_y;

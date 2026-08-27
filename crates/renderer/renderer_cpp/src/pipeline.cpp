@@ -60,11 +60,10 @@ std::vector<VkVertexInputAttributeDescription> getLevelAttributes() {
     return {
         { 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, pos) },
         { 1, 0, VK_FORMAT_R32G32_SFLOAT,    offsetof(Vertex, texture_pos) },
-        { 2, 0, VK_FORMAT_R32_SFLOAT,       offsetof(Vertex, light_level) },
+        { 2, 0, VK_FORMAT_R32_UINT,         offsetof(Vertex, light_level) },
         { 3, 0, VK_FORMAT_R32_UINT,         offsetof(Vertex, texture_id) },
-        { 4, 0, VK_FORMAT_R32_UINT,         offsetof(Vertex, colormap_idx) },
-		{ 5, 0, VK_FORMAT_R32_UINT,         offsetof(Vertex, floor_tex_id) },
-		{ 6, 0, VK_FORMAT_R32_SFLOAT,       offsetof(Vertex, scroll_dir) }
+		{ 4, 0, VK_FORMAT_R32_UINT,         offsetof(Vertex, floor_tex_id) },
+		{ 5, 0, VK_FORMAT_R32_SFLOAT,       offsetof(Vertex, scroll_dir) }
     };
 }
 
@@ -82,9 +81,8 @@ std::vector<VkVertexInputAttributeDescription> getSpriteAttributes() {
         { 2, 1, VK_FORMAT_R32G32B32_SFLOAT, offsetof(ObjectInstance, pos) },
         { 3, 1, VK_FORMAT_R32G32_SFLOAT,    offsetof(ObjectInstance, sprite_offset) },
 		{ 4, 1, VK_FORMAT_R32G32_SFLOAT,    offsetof(ObjectInstance, sprite_size) },
-        { 5, 1, VK_FORMAT_R32_SFLOAT,       offsetof(ObjectInstance, light_level) },
+        { 5, 1, VK_FORMAT_R32_UINT,         offsetof(ObjectInstance, light_level) },
         { 6, 1, VK_FORMAT_R32_UINT,         offsetof(ObjectInstance, texture_id) },
-        { 7, 1, VK_FORMAT_R32_UINT,         offsetof(ObjectInstance, colormap_idx) }
     };
 }
 

@@ -2,7 +2,7 @@ use hecs::{Entity, World};
 use strum::IntoEnumIterator;
 use wad_parser::Level;
 
-use crate::{DIAGS, Direction, InstantMoveIntent, MELEERANGE, MobjFlagCommand, MobjFlags, MobjInfo, MobjNum, MobjType, MonsterRotation, OPPOSITE, Position, Random, WorldEvent, p_move, fast_atan2};
+use crate::{CurrentSector, DB, DIAGS, Direction, InstantMoveIntent, MELEERANGE, MobjFlagCommand, MobjFlags, MobjInfo, MobjNum, MobjType, MonsterRotation, OPPOSITE, Position, Random, Traversal, WorldEvent, fast_atan2, p_check_sight, p_move};
 
 pub fn aprox_xz_distance(src: (f32, f32), dst: (f32, f32)) -> f32 {
 	let dx = (src.0 - dst.0).abs();
@@ -21,7 +21,7 @@ pub fn in_fov(pos: &Position, rot: &MonsterRotation, player_pos: &Position) -> b
     }
 
     let move_dir = rot.move_dir.unwrap() as u32;
-	let angle_to_player = fast_atan2(-(player_pos.x - pos.x), player_pos.z - pos.z) >> 29;
+	let angle_to_player = fast_atan2(player_pos.x - pos.x, player_pos.z - pos.z) >> 29;
 
     return angle_to_player == (move_dir.wrapping_sub(2) & 0b111) 
         || angle_to_player == (move_dir.wrapping_sub(1) & 0b111) 
@@ -30,8 +30,23 @@ pub fn in_fov(pos: &Position, rot: &MonsterRotation, player_pos: &Position) -> b
         || angle_to_player == ((move_dir + 2) & 0b111);
 }
 
-pub fn p_check_melee_range(pos: &Position, target_pos: &Position, target_radius: f32) -> bool {
-    // TODO: if !p_check_sight(...) { return false; }
+pub fn p_check_melee_range(
+    pos: &Position,
+    cur_sector: &CurrentSector,
+    height: f32,
+    target_pos: &Position,
+    target_cur_sector: &CurrentSector,
+    target_height: f32,
+    target_radius: f32,
+    level: &Level,
+    traversal: &mut Traversal, 
+) -> bool {
+    if !p_check_sight(pos, cur_sector, height,
+        target_pos, target_cur_sector, target_height,
+        level, traversal) 
+    { 
+        return false; 
+    }
 
     let dist = aprox_xz_distance((target_pos.x, target_pos.z), (pos.x, pos.z));
 
@@ -41,13 +56,25 @@ pub fn p_check_melee_range(pos: &Position, target_pos: &Position, target_radius:
 pub fn p_check_missile_range(
     ent: Entity,
     pos: &Position,
+    cur_sector: &CurrentSector,
     mobj_type: &MobjType,
-    target_pos: &Position, 
+    target_pos: &Position,
+    target_cur_sector: &CurrentSector,
+    target_height: f32,
+    level: &Level,
+    traversal: &mut Traversal, 
     random: &mut Random,
     is_melee_state_none: bool,
     mobj_flag_buffer: &mut Vec<MobjFlagCommand>
 ) -> bool {
-    // TODO: if !p_check_sight(...) { return false; }
+    let db = DB.get().unwrap();
+    if !p_check_sight(
+        pos, cur_sector, db.mobjinfo[&mobj_type.type_].height,
+        target_pos, target_cur_sector, target_height,
+        level, traversal
+    ) { 
+        return false; 
+    }
 	
     if mobj_type.flags.contains(MobjFlags::JUST_HIT) {
         mobj_flag_buffer.push(MobjFlagCommand::Remove { ent, flag: MobjFlags::JUST_HIT });
@@ -140,18 +167,9 @@ pub fn p_new_chase_dir(
     let mut try_walk = |dir: Option<Direction>| -> bool {
         rot.move_dir = dir;
         p_move(
-            ent,
-            pos,
-            rot,
-            mobj_type,
-            mobj_info,
-            imi,
-            map,
-            world,
-            random,
-            blocklists,
-            world_events,
-            mobj_flag_buffer,
+            ent, pos, rot, mobj_type, mobj_info,
+            imi, map, world, random, blocklists,
+            world_events, mobj_flag_buffer,
         )
     };
 

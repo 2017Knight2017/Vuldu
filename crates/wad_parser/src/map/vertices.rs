@@ -9,12 +9,11 @@ pub const NF_SUBSECTOR: usize = 0x8000;
 pub struct GpuVertex {
     pub pos: [f32; 3],
     pub texture_pos: [f32; 2],
-    pub light_level: f32,
+    pub light_level: u32,
     pub texture_id: u32,
-    pub colormap_idx: u32,
     pub floor_tex_id: u32,
 	pub scroll_dir: f32,
-	pub _padding: [u32; 2]
+	pub _padding: [u32; 3]
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -103,13 +102,10 @@ impl Level {
 	        let front_side_idx_opt = if seg.side == 0 { line.sides.0 } else { line.sides.1 };
 	        let back_side_idx_opt = if seg.side == 0 { line.sides.1 } else { line.sides.0 };
 
-	        let front_side_idx = match front_side_idx_opt {
-				None => continue,
-				Some(idx) => idx,
-			};
-			
+	        let Some(front_side_idx) = front_side_idx_opt else { continue };
 			let front_side = &mut sides_state[front_side_idx.0];
 	        let front_sector = &sectors[sides_geom[front_side_idx.0].sector.0];
+
 	        let back_sector = match back_side_idx_opt {
 				Some(idx) => Some(&sectors[sides_geom[idx.0].sector.0]),
 				None => None
@@ -172,53 +168,46 @@ impl Level {
             	}
 
 	            let start_idx = gpu_vertices.len() as u32;
-
-	            let clamped_light = front_sector.light.clamp(0, 255) as f32;
-	            let modern_light = clamped_light / 255.0;
-	            let colormap_idx = 31 - ((clamped_light / 8.0).floor() as u32).clamp(0, 31);
+	            let light_level = front_sector.light.clamp(0, 255) as u32;
 
 	            gpu_vertices.push(GpuVertex { 
 	                pos: [v1.0, y_low, v1.1],
 	                texture_pos: [u_start, v_end],
-					light_level: modern_light,
+					light_level,
 	                texture_id: final_tex_id.0,
-	                colormap_idx,
 					floor_tex_id: floor_tex_id.0,
 					scroll_dir: scroll_dir / texture_width as f32,
-					_padding: [0, 0]
+					_padding: [0, 0, 0]
 	            });
 
 	            gpu_vertices.push(GpuVertex { 
 	                pos: [v2.0, y_low, v2.1],
 	                texture_pos: [u_end, v_end],
-					light_level: modern_light,
+					light_level,
 	                texture_id: final_tex_id.0,
-	                colormap_idx,
 					floor_tex_id: floor_tex_id.0,
 					scroll_dir: scroll_dir / texture_width as f32,
-					_padding: [0, 0]
+					_padding: [0, 0, 0]
 	            });
 
 	            gpu_vertices.push(GpuVertex { 
 	                pos: [v1.0, y_high, v1.1],
 	                texture_pos: [u_start, v_start],
-					light_level: modern_light,
+					light_level,
 	                texture_id: final_tex_id.0,
-	                colormap_idx,
 					floor_tex_id: floor_tex_id.0,
 					scroll_dir: scroll_dir / texture_width as f32,
-					_padding: [0, 0]
+					_padding: [0, 0, 0]
 	            });
 
 	            gpu_vertices.push(GpuVertex { 
 	                pos: [v2.0, y_high, v2.1],
 	                texture_pos: [u_end, v_start],
-					light_level: modern_light,
+					light_level,
 	                texture_id: final_tex_id.0,
-	                colormap_idx,
 					floor_tex_id: floor_tex_id.0,
 					scroll_dir: scroll_dir / texture_width as f32,
-					_padding: [0, 0]
+					_padding: [0, 0, 0]
 	            });
 			
 	            gpu_indices.push(start_idx + 0);
@@ -552,7 +541,7 @@ impl Level {
 	            sector.floor_tex = if sector.floorpic.starts_with(b"F_SKY1") {
 					TextureId((u16::MAX - 2) as u32)
 				} else {
-					match texture_ids.get(&floor_texture_name){
+					match texture_ids.get(&floor_texture_name) {
 						Some(tex) => tex.0,
 						None => TextureId(0)
 					}
@@ -561,27 +550,24 @@ impl Level {
 	            sector.ceil_tex = if sector.ceilingpic.starts_with(b"F_SKY1") {
 					TextureId((u16::MAX - 2) as u32)
 				} else { 
-					match texture_ids.get(&ceil_texture_name){
+					match texture_ids.get(&ceil_texture_name) {
 						Some(tex) => tex.0,
 						None => TextureId(0)
 					}
 				};
 
-	            let clamped_light = sector.light.clamp(0, 255) as f32;
-	            let modern_light = clamped_light / 255.0;
-	            let colormap_idx = 31 - ((clamped_light / 8.0).floor() as u32).clamp(0, 31);
+	            let light_level = sector.light.clamp(0, 255) as u32;
 
 	            let floor_start_idx = gpu_vertices.len() as u32;
 	            for pt in &flat_points {
 	                gpu_vertices.push(GpuVertex { 
 	                    pos: [pt[0], sector.floor_h, pt[1]],
 	                    texture_pos: [pt[0] / 64.0, pt[1] / 64.0],
-						light_level: modern_light,
+						light_level,
 	                    texture_id: sector.floor_tex.0,
-	                    colormap_idx,
 						floor_tex_id: 0,
 						scroll_dir: 0.0,
-						_padding: [0, 0]
+						_padding: [0, 0, 0]
 	                });
 	            }
 	            for chunk in sector_indices.chunks_exact(3) {
@@ -595,12 +581,11 @@ impl Level {
 	                gpu_vertices.push(GpuVertex { 
 	                    pos: [pt[0], sector.ceil_h, pt[1]],
 	                    texture_pos: [pt[0] / 64.0, pt[1] / 64.0],
-						light_level: modern_light,
+						light_level,
 	                    texture_id: sector.ceil_tex.0,
-	                    colormap_idx,
 						floor_tex_id: 0,
 						scroll_dir: 0.0,
-						_padding: [0, 0]
+						_padding: [0, 0, 0]
 	                });
 	            }
 	            for chunk in sector_indices.chunks_exact(3) {
@@ -659,12 +644,11 @@ impl Level {
 	            texture_pos,
 
 				// stub values; they are used from ObjectInstance instead
-	            light_level: 1.0,
+	            light_level: 0,
 	            texture_id: 0,
-	            colormap_idx: 0,
 				floor_tex_id: 0,
 				scroll_dir: 0.0,
-				_padding: [0, 0]
+				_padding: [0, 0, 0]
 	        })
 	        .collect();
 
@@ -688,12 +672,11 @@ impl Level {
 	            texture_pos,
 
 				// stub values; they are used from UiInstance instead
-	            light_level: 1.0,
+	            light_level: 0,
 	            texture_id: 0,
-	            colormap_idx: 0,
 				floor_tex_id: 0,
 				scroll_dir: 0.0,
-				_padding: [0, 0]
+				_padding: [0, 0, 0]
 	        })
 	        .collect();
 

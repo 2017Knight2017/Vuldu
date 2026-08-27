@@ -26,19 +26,19 @@ impl Traversal {
             self.sectors.fill(0);
             self.generation = 1;
         }
-        Pass { traversal: self }
+        Pass(self)
     }
 }
-pub struct Pass<'a> { traversal: &'a mut Traversal }
+pub struct Pass<'a>(pub &'a mut Traversal);
 
 impl Pass<'_> {
     pub fn visit_line(&mut self, l: LineId) -> bool {
-        let slot = &mut self.traversal.lines[l.0 as usize];
+        let slot = &mut self.0.lines[l.0 as usize];
 
-        if *slot == self.traversal.generation { 
+        if *slot == self.0.generation { 
 			false 
 		} else { 
-			*slot = self.traversal.generation; 
+			*slot = self.0.generation; 
 			true 
 		}
     }
@@ -46,12 +46,12 @@ impl Pass<'_> {
     pub fn improve_sector(&mut self, sector_id: SectorId, cost: u8) -> bool {
         let i = sector_id.0 as usize;
 
-        if self.traversal.sectors[i] != self.traversal.generation {
-            self.traversal.sectors[i] = self.traversal.generation;
-            self.traversal.sector_cost[i] = cost;
+        if self.0.sectors[i] != self.0.generation {
+            self.0.sectors[i] = self.0.generation;
+            self.0.sector_cost[i] = cost;
             true
-        } else if cost < self.traversal.sector_cost[i] {
-            self.traversal.sector_cost[i] = cost;
+        } else if cost < self.0.sector_cost[i] {
+            self.0.sector_cost[i] = cost;
             true
         } else {
             false
@@ -76,10 +76,7 @@ pub fn propagate_sound(
         sound_targets[sector_id.0] = Some(emitter);
 
         for &line_id in level.geom.sector_lines[sector_id.0].iter() {
-            let open = match level.get_opening(line_id) {
-				Some(opening) => opening,
-				None => continue
-			};
+            let Some(open) = level.get_opening(line_id) else { continue };
 
             if open.top <= open.floor_high { continue; }
 

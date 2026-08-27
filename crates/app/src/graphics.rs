@@ -312,19 +312,15 @@ impl GraphicsContext {
         	}
 
 			let sector = &sectors[current_sector.0.0];
-
-			let clamped_light = sector.light.clamp(0, 255) as f32;
-	    	let modern_light = clamped_light / 255.0;
-	    	let colormap_idx = 31 - ((clamped_light / 8.0).floor() as u32).clamp(0, 31);
+            let light_level = sector.light.clamp(0, 255) as u32;
 
 	    	ObjectInstance {
 	    	    pos: [lerped_x, lerped_y, lerped_z],
 	    	    sprite_offset: [final_left_offset, (top_offset + anim.top_offset_shift) as f32],
 				sprite_size: [final_width, tex_height as f32],
-	    	    light_level: modern_light,
+	    	    light_level,
 	    	    texture_id: tex_id.0,
-	    	    colormap_idx,
-                _padding: [0, 0]
+                _padding: [0, 0, 0]
 	    	}
 	    };
 
@@ -460,7 +456,6 @@ fn vertex_to_vertex(vertex: GpuVertex) -> Vertex {
         texture_pos: vertex.texture_pos, 
         light_level: vertex.light_level, 
         texture_id: vertex.texture_id, 
-        colormap_idx: vertex.colormap_idx, 
         floor_tex_id: vertex.floor_tex_id, 
         scroll_dir: vertex.scroll_dir, 
         _padding: vertex._padding

@@ -1,5 +1,5 @@
 use wad_parser::{Level, LineFlags, LineId, NF_SUBSECTOR, SubsectorId};
-use crate::{CurrentSector, PLAYERHEIGHT, Pass, Position, Traversal};
+use crate::{CurrentSector, Pass, Position, Traversal};
 
 #[derive(Debug, Clone, Copy)]
 pub struct DivLine {
@@ -68,9 +68,9 @@ pub struct SightContext<'a> {
 
 impl<'a> SightContext<'a> {
     pub fn new(t1_pos: (f32, f32, f32), t1_height: f32, t2_pos: (f32, f32, f32), t2_height: f32, pass: Pass<'a>) -> Self {
-        let sight_ystart = t1_pos.2 + t1_height - (t1_height * 0.25);
-        let top_slope = (t2_pos.2 + t2_height) - sight_ystart;
-        let bottom_slope = t2_pos.2 - sight_ystart;
+        let sight_ystart = t1_pos.1 + t1_height - (t1_height * 0.25);
+        let top_slope = (t2_pos.1 + t2_height) - sight_ystart;
+        let bottom_slope = t2_pos.1 - sight_ystart;
 
         let strace = DivLine {
             x: t1_pos.0,
@@ -92,22 +92,22 @@ impl<'a> SightContext<'a> {
 
     pub fn cross_subsector(&mut self, subsector_id: SubsectorId, level: &Level) -> bool {
         let subsector = &level.geom.subsectors[subsector_id.0];
-        let mut seg_idx = subsector.firstseg as usize;
 
-        for _ in 0..subsector.numsegs {
-            let seg = &level.geom.segs[seg_idx];
-            seg_idx += 1;
+        let min = subsector.firstseg as usize;
+        let max = (subsector.firstseg + subsector.numsegs) as usize;
+
+        for i in min..max {
+            let seg = &level.geom.segs[i];
 
             let line_id = LineId(seg.linedef as usize);
             let line = &level.geom.lines[line_id.0];
 
-            if !line.flags.contains(LineFlags::TWO_SIDED) {
-                return false;
+            if !self.pass.visit_line(line_id) {
+                continue;
             }
 
-            let (front_side_id, back_side_id) = match line.sides {
-                (Some(front_id), Some(back_id)) => (front_id, back_id),
-                _ => return false
+            let (Some(front_side_id), Some(back_side_id)) = line.sides else {
+                continue
             };
 
             let front_sector = &level.state.sectors[level.geom.sides[front_side_id.0].sector.0];
@@ -118,7 +118,7 @@ impl<'a> SightContext<'a> {
             let open = level.get_opening(line_id).unwrap();  
 
             if open.floor_high >= open.top {
-                return false;
+                continue;
             }
 
 			let seg_v1_x = level.geom.vertices[seg.v1 as usize].0;
@@ -147,6 +147,10 @@ impl<'a> SightContext<'a> {
                 continue;
             }
 
+            if !line.flags.contains(LineFlags::TWO_SIDED) {
+                return false;
+            }
+
             let frac = p_intercept_vector2(&self.strace, &divl);
 
             if front_sector.floor_h != back_sector.floor_h {
@@ -172,7 +176,7 @@ impl<'a> SightContext<'a> {
     }
 
     pub fn cross_bsp_node(&mut self, bspnum: usize, level: &Level) -> bool {
-        if (bspnum & NF_SUBSECTOR) != 0 {
+        if bspnum & NF_SUBSECTOR != 0 {
             if bspnum == u16::MAX as usize {
                 return self.cross_subsector(SubsectorId(0), level);
             } else {
@@ -205,12 +209,13 @@ pub fn p_check_sight(
     pos: &Position, 
     cur_sector: &CurrentSector,
 	height: f32, 
-    player_pos: &Position,
-    player_cur_sector: &CurrentSector, 
+    target_pos: &Position,
+    target_cur_sector: &CurrentSector, 
+    target_height: f32,
 	level: &Level,
 	traversal: &mut Traversal
 ) -> bool {
-    if level.geom.reject_table.is_rejected(cur_sector.0, player_cur_sector.0, level.state.sectors.len()) {
+    if level.geom.reject_table.is_rejected(cur_sector.0, target_cur_sector.0, level.state.sectors.len()) {
         return false;
     }
 
@@ -219,8 +224,8 @@ pub fn p_check_sight(
     let mut context = SightContext::new(
 		(pos.x, pos.y, pos.z), 
 		height, 
-		(player_pos.x, player_pos.y, player_pos.z), 
-		PLAYERHEIGHT, 
+		(target_pos.x, target_pos.y, target_pos.z), 
+		target_height, 
 		pass
 	);
 

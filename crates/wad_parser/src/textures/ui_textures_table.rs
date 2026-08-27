@@ -742,15 +742,8 @@ impl WadManager {
 		let mut ui_textures = Vec::with_capacity(NUM_UI);
 
 		for (ui_idx, &ui_name) in UI_LUMPNAMES.iter().enumerate() {
-			let data = match self.get_data(ui_name) {
-				Ok(data) => data,
-				Err(_) => continue
-			};
-
-			let pic = match decode_column_picture(data, ui_name) {
-				Ok(pic) => pic,
-				Err(_) => continue
-			};
+			let Ok(data) = self.get_data(ui_name) else { continue };
+			let Ok(pic) = decode_column_picture(data, ui_name) else { continue };
 			
 			ui_shown[ui_idx] = true;
 			ui_textures.push(pic);

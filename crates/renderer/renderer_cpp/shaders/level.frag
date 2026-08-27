@@ -28,15 +28,14 @@ layout(push_constant) uniform LevelConstants {
     uint flags; 
 } lc;
 
-layout(location = 0) in float fragLightLevel;      
+layout(location = 0) flat in uint fragLightLevel;      
 layout(location = 1) in vec2 fragTexCoord;
 layout(location = 2) flat in uint fragTexId;
-layout(location = 3) flat in uint fragColormapIdx;
-layout(location = 4) flat in uint fragFloorTexId;
-layout(location = 5) in float fragViewZ;
-layout(location = 6) in float fragScrollDir;
-layout(location = 7) in vec3 fragBarycentric;
-layout(location = 8) in vec3 fragTriangleColor;
+layout(location = 3) flat in uint fragFloorTexId;
+layout(location = 4) in float fragViewZ;
+layout(location = 5) in float fragScrollDir;
+layout(location = 6) in vec3 fragBarycentric;
+layout(location = 7) in vec3 fragTriangleColor;
 
 layout(location = 0) out vec4 outColor;
 
@@ -94,14 +93,15 @@ void main() {
     } 
     
     if (bool(lc.flags & BYTE_SHADOWS)) {
-        vec3 modernColor = pal.colors[(lc.paletteIndex << 8) | colorIndex].rgb * fragLightLevel;
+        vec3 modernColor = pal.colors[(lc.paletteIndex << 8) | colorIndex].rgb * float(fragLightLevel);
 
         outColor = vec4(modernColor.rgb, 1.0);  
 
         return;
     }
 
-    uint finalColormapIdx = (fragTexId == 65534 || fragTexId == 65533) ? 0 : fragColormapIdx;
+    uint colormapIdx = 31 - (fragLightLevel >> 3);
+    uint finalColormapIdx = (fragTexId == 65534 || fragTexId == 65533) ? 0 : colormapIdx;
     uint colormapOffset = (finalColormapIdx << 8) | colorIndex;
     uint shadedIndex = uint(colormap.colors[colormapOffset]);
 

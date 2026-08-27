@@ -15,12 +15,11 @@ pub(crate) mod ffi {
     pub struct Vertex {
         pub pos: [f32; 3],
         pub texture_pos: [f32; 2],
-        pub light_level: f32,
+        pub light_level: u32,
         pub texture_id: u32,
-        pub colormap_idx: u32,
         pub floor_tex_id: u32,
         pub scroll_dir: f32,
-        pub _padding: [u32; 2]
+        pub _padding: [u32; 3]
     }
 
     pub struct UniformBufferObject {
@@ -33,10 +32,9 @@ pub(crate) mod ffi {
         pub pos: [f32; 3],
         pub sprite_offset: [f32; 2],
         pub sprite_size: [f32; 2],
-        pub light_level: f32,
+        pub light_level: u32,
         pub texture_id: u32,
-        pub colormap_idx: u32,
-        pub _padding: [u32; 2]
+        pub _padding: [u32; 3]
     }
 
     pub struct UiInstance {

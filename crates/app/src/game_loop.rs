@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use engine::{ActionFunc, GameConfig, GameState, MobjFlagCommand, PlayerInput, Random, Traversal, UpdatableUiType, WorldEvent, action_system, ai_system, animation_system, apply_mobj_flags_system, apply_monster_movement_system, apply_player_movement_system, check_sound_system, execute_events_system, friction_system, handle_position_input, handle_rotation_input, handle_weapons_input, propagate_sound_system, try_move_system};
+use engine::{ActionFunc, GameConfig, GameState, MobjFlagCommand, PlayerInput, Random, Traversal, UpdatableUiType, WorldEvent, action_system, ai_system, animation_system, apply_mobj_flags_system, apply_monster_movement_system, apply_player_movement_system, check_sight_system, check_sound_system, execute_events_system, friction_system, handle_position_input, handle_rotation_input, handle_weapons_input, propagate_sound_system, try_move_system};
 use hecs::{CommandBuffer, Entity, World};
 use wad_parser::Level;
 use winit::keyboard::PhysicalKey;
@@ -65,15 +65,15 @@ impl GameContext {
         check_sound_system(&self.world, &mut self.level, random, &mut self.command_buffer,
             &mut self.sound_targets, &mut self.traversal, &mut audio.buffer, &mut self.action_buffer);
 
-        //check_sight_system(&self.world, &self.level, &mut self.traversal, random, 
-        //    &mut self.command_buffer, &mut audio.buffer, &mut self.action_buffer);
+        check_sight_system(&self.world, &self.level, &mut self.traversal, random, 
+            &mut self.command_buffer, &mut audio.buffer, &mut self.action_buffer);
 
         self.flush_command_buffer();
 
         ai_system(&self.world, &mut self.action_buffer);
         action_system(&self.world, &mut self.action_buffer, random, &self.level, self.config.skill, 
             self.config.fast_monsters, &mut audio.buffer, &self.blocklists, &mut self.world_events, 
-            &mut self.mobj_flag_buffer);
+            &mut self.mobj_flag_buffer, &mut self.traversal);
 
         friction_system(&self.world);
 
@@ -88,7 +88,7 @@ impl GameContext {
         execute_events_system(&mut self.world_events, &self.world, self.player_entity, ui_to_update);
         apply_mobj_flags_system(&mut self.mobj_flag_buffer, &self.world);
 
-        audio.system(&self.world);
+        audio.system(&self.world, self.player_entity);
         animation_system(&self.world);
 
         current_input.mouse_delta_x = 0.0;

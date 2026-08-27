@@ -31,7 +31,7 @@ void main() {
 
     uint shadedIndex = uint(colormap.colors[(7 << 8) | colorIndex]);
 
-    uint colorPosition = (uc.paletteIndex * 256) | shadedIndex;
+    uint colorPosition = (uc.paletteIndex << 8) | shadedIndex;
     vec4 finalColor = pal.colors[colorPosition];
 
     outColor = vec4(finalColor.rgb, 1.0);

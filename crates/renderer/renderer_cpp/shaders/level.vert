@@ -29,21 +29,19 @@ layout(push_constant) uniform LevelConstants {
 
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec2 inTexCoord;
-layout(location = 2) in float inLightLevel;
+layout(location = 2) in uint inLightLevel;
 layout(location = 3) in uint inTexId;
-layout(location = 4) in uint inColormapIdx;
-layout(location = 5) in uint inFloorTexId;
-layout(location = 6) in float inScrollDir;
+layout(location = 4) in uint inFloorTexId;
+layout(location = 5) in float inScrollDir;
 
-layout(location = 0) out float fragLightLevel;      
+layout(location = 0) flat out uint fragLightLevel;      
 layout(location = 1) out vec2 fragTexCoord;
 layout(location = 2) flat out uint fragTexId;
-layout(location = 3) flat out uint fragColormapIdx;
-layout(location = 4) flat out uint fragFloorTexId;
-layout(location = 5) out float fragViewZ;
-layout(location = 6) out float fragScrollDir;
-layout(location = 7) out vec3 fragBarycentric;
-layout(location = 8) out vec3 fragTriangleColor;
+layout(location = 3) flat out uint fragFloorTexId;
+layout(location = 4) out float fragViewZ;
+layout(location = 5) out float fragScrollDir;
+layout(location = 6) out vec3 fragBarycentric;
+layout(location = 7) out vec3 fragTriangleColor;
 
 const uint ANIM_SPEED = 3;
 
@@ -81,7 +79,6 @@ void main() {
     fragScrollDir = inScrollDir;
     fragTexCoord = inTexCoord;
     fragTexId = getAnimId();
-    fragColormapIdx = inColormapIdx;
     fragFloorTexId = inFloorTexId;
 
     vec4 viewPos = ubo.view * ubo.model * vec4(inPosition, 1.0);

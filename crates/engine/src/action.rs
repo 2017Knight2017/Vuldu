@@ -1,7 +1,7 @@
 use hecs::{CommandBuffer, Entity, World};
 use serde::Deserialize;
 use wad_parser::{Level, to_u64};
-use crate::{CurrentSector, DB, Health, Idle, InstantMoveIntent, MobjAi, MobjFlagCommand, MobjFlags, MobjType, MonsterRotation, PlayerMarker, Position, Random, SfxEvent, SkillLevel, SpriteAnimation, StateNum, Target, Traversal, WorldEvent, in_fov, p_check_melee_range, p_check_sight, p_move, p_new_chase_dir, wake_up_monster};
+use crate::{CurrentSector, DB, Health, Idle, InstantMoveIntent, MobjAi, MobjFlagCommand, MobjFlags, MobjType, MonsterRotation, PLAYERHEIGHT, PlayerMarker, Position, Random, SfxEvent, SkillLevel, SpriteAnimation, StateNum, Target, Traversal, WorldEvent, in_fov, p_check_melee_range, p_check_missile_range, p_check_sight, p_move, p_new_chase_dir, wake_up_monster};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub enum ActionFunc {
@@ -134,6 +134,7 @@ pub fn action_system(
     blocklists: &[Vec<Entity>],
     world_events: &mut Vec<WorldEvent>,
     mobj_flag_buffer: &mut Vec<MobjFlagCommand>,
+	traversal: &mut Traversal
 ) {
 	let mut local_queue = Vec::new();
 
@@ -153,7 +154,8 @@ pub fn action_system(
 					blocklists,
 					world_events,
 					mobj_flag_buffer,
-					action_buffer
+					action_buffer,
+					traversal
 				),
 				_ => {}
 			}
@@ -180,24 +182,23 @@ pub fn check_sound_system(
 	for (entity, anim, ai, pos, current_sector, mobj_type) in query.iter() {
         if let Some(sound_target_entity) = sound_targets[current_sector.0.0] {            
             if mobj_type.flags.contains(MobjFlags::AMBUSH) {
-				let mut target_query = world.query_one::<(&Position, &CurrentSector)>(sound_target_entity);
-
-                match target_query.get() {
-                    Ok((target_pos, target_sector)) => {
-						if !p_check_sight( 
-							pos, 
-							current_sector,
-							db.mobjinfo[&mobj_type.type_].height,
-							target_pos,
-							target_sector,
-							level,
-							traversal
-						) {
-                	        continue;
-                	    }
-					}
-					Err(_) => continue
-                } 
+				
+				let Ok(target_pos) = world.get::<&Position>(sound_target_entity) else { continue };
+                let Ok(target_sector) = world.get::<&CurrentSector>(sound_target_entity) else { continue };
+				let Ok(target_type) = world.get::<&MobjType>(sound_target_entity) else { continue };
+                    
+				if !p_check_sight( 
+					pos, 
+					current_sector,
+					db.mobjinfo[&mobj_type.type_].height,
+					&target_pos,
+					&target_sector,
+					db.mobjinfo[&target_type.type_].height,
+					level,
+					traversal
+				) {
+                    continue;
+                }
             }
 
             wake_up_monster(
@@ -251,6 +252,7 @@ pub fn check_sight_system(
 				db.mobjinfo[&mobj_type.type_].height,
 				player_pos,
 				player_sector,
+				PLAYERHEIGHT,
 				level,
 				traversal
 			) {
@@ -275,14 +277,15 @@ pub fn chase(
 	world: &World,
 	ent: Entity,
     random: &mut Random,
-    map: &Level,
+    level: &Level,
     game_skill: SkillLevel,
     fast_monsters: bool,
     audio_buffer: &mut Vec<SfxEvent>,
 	blocklists: &[Vec<Entity>],
 	world_events: &mut Vec<WorldEvent>,
 	mobj_flag_buffer: &mut Vec<MobjFlagCommand>,
-	action_buffer: &mut Vec<(Entity, ActionFunc)>
+	action_buffer: &mut Vec<(Entity, ActionFunc)>,
+	traversal: &mut Traversal,
 ) {
     let db = DB.get().unwrap();
 
@@ -293,11 +296,11 @@ pub fn chase(
 		&mut SpriteAnimation,
 		&MobjType, 
 		&Position, 
+		&CurrentSector,
 		&Target
 	)>(ent);
-    let (rot, ai, imi, anim, mobj_type, pos, target) = match query.get() {
-        Ok(components) => components,
-        Err(_) => return,
+    let Ok((rot, ai, imi, anim, mobj_type, pos, cur_sector, target)) = query.get() else {
+    	return
     };
     
 	let mobj_info = &db.mobjinfo[&mobj_type.type_];
@@ -307,15 +310,13 @@ pub fn chase(
 		return;
     }
 
-	let mut target_query = world.query_one::<(&Health, &Position)>(target.0);
-	let (target_hp, target_pos) = match target_query.get() {
-		Ok(data) => data,
-		Err(_) => {
-			if let Some(spawn_state) = mobj_info.spawn_state {
-				set_mobj_state(ent, ai, anim, spawn_state, action_buffer, 0);
-        	}
-        	return;
-		}
+	let mut target_query = world.query_one::<(&Health, &Position, &CurrentSector, &MobjType)>(target.0);
+	let Ok((target_hp, target_pos, target_cur_sector, target_type)) = target_query.get() else 
+	{
+		if let Some(spawn_state) = mobj_info.spawn_state {
+			set_mobj_state(ent, ai, anim, spawn_state, action_buffer, 0);
+    	}
+    	return;
 	};
 
 	if target_hp.0 <= 0 {
@@ -338,14 +339,18 @@ pub fn chase(
         if game_skill != SkillLevel::Nightmare && !fast_monsters {
             p_new_chase_dir(
     			ent, pos, rot, mobj_type, mobj_info, imi, target_pos,
-    			map, world, random, blocklists, world_events, mobj_flag_buffer
+    			level, world, random, blocklists, world_events, mobj_flag_buffer
     		);
         }
         return;
     }
 
+	let target_info = &db.mobjinfo[&target_type.type_];
     if let Some(melee_state) = mobj_info.melee_state {
-        if p_check_melee_range(pos, target_pos, mobj_info.radius) {
+        if p_check_melee_range(pos, cur_sector, mobj_info.height,
+    		target_pos, target_cur_sector, target_info.height, target_info.radius,
+			level, traversal) 
+		{
             if let Some(attack_sound) = &mobj_info.attack_sound {
                 audio_buffer.push(SfxEvent {
                     sfx_id: to_u64(attack_sound),
@@ -358,46 +363,43 @@ pub fn chase(
         }
     }
 
-    //let mut check_missile = true;
-	//
-    //if let Some(missile_state) = mobj_info.missile_state {
-    //    if game_skill != SkillLevel::Nightmare && !fast_monsters && rot.move_count != 0 {
-    //        check_missile = false;
-    //    }
-	//
-    //    if check_missile && p_check_missile_range(
-	//		ent,
-	//		pos, 
-	//		mobj_type, 
-	//		target_pos, 
-	//		random, 
-	//		mobj_info.melee_state.is_none(),
-	//		mobj_flag_buffer
-	//	) {
-	//		set_mobj_state(ent, ai, anim, missile_state, action_buffer, 0);
-    //        return;
-    //    }
-    //}
+    let mut check_missile = true;
+	
+    if let Some(missile_state) = mobj_info.missile_state {
+        if game_skill != SkillLevel::Nightmare && !fast_monsters && rot.move_count != 0 {
+            check_missile = false;
+        }
+	
+        if check_missile && p_check_missile_range(
+			ent, pos, cur_sector, mobj_type,
+    		target_pos, target_cur_sector, target_info.height,
+    		level, traversal, random,
+    		mobj_info.melee_state.is_none(),
+    		mobj_flag_buffer
+		) {
+			set_mobj_state(ent, ai, anim, missile_state, action_buffer, 0);
+            return;
+        }
+    }
 
     rot.move_count -= 1;
     if rot.move_count < 0 || !p_move(
-		ent, pos, rot, mobj_type, mobj_info, imi, map, world,
+		ent, pos, rot, mobj_type, mobj_info, imi, level, world,
 		random, blocklists, world_events, mobj_flag_buffer
 	) {
         p_new_chase_dir(
     	    ent, pos, rot, mobj_type, mobj_info, imi, target_pos,
-    	    map, world, random, blocklists, world_events, mobj_flag_buffer
+    	    level, world, random, blocklists, world_events, mobj_flag_buffer
     	);
 		
     	rot.move_count = (random.p() & 0b111) as i32;
     }
 
-    if let Some(active_sound) = &mobj_info.active_sound {
-        if random.p() < 3 {
-            audio_buffer.push(SfxEvent {
-        	    sfx_id: to_u64(active_sound),
-        	    pos: Some((pos.x, pos.y, pos.z)),
-        	});
-        }
+    let Some(active_sound) = &mobj_info.active_sound else { return };
+    if random.p() < 3 {
+        audio_buffer.push(SfxEvent {
+    	    sfx_id: to_u64(active_sound),
+    	    pos: Some((pos.x, pos.y, pos.z)),
+    	});
     }
 }
