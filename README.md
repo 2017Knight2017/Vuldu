@@ -74,8 +74,17 @@ the load.
 The project is designed so that the crates are loosely coupled with each other in a *strictly one-way order*:
 
 <center><b> ↓ Renderer ↓ </b></center>
+
+---
+
 <center><b> > App < </b></center>
+
+---
+
 <center><b> ↑ Engine ↑ </b></center>
+
+---
+
 <center><b> ↑ Wad Parser ↑ </b></center>
 
 ### Renderer

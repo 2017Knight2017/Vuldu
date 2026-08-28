@@ -75,9 +75,15 @@ DOOM2.WAD). Для запуска откройте командную строк
 с другом в *строго одностороннем порядке*:
 <center><b> ↓ Renderer ↓</b></center>
 
+---
+
 <center><b> > App < </b></center>
 
+---
+
 <center><b> ↑ Engine ↑ </b></center>
+
+----
 
 <center><b> ↑ Wad Parser ↑ </b></center>
 
