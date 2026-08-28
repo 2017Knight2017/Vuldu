@@ -27,9 +27,9 @@ pub fn in_fov(pos: &Position, rot: &MonsterRotation, player_pos: &Position) -> b
 	let move_dir = rot.move_dir.unwrap() as u32;
 	let angle_to_player = fast_atan2(player_pos.x - pos.x, player_pos.z - pos.z) >> 29;
 
-    // after the division above, miracles of rounding happen
-    angle_to_player == (move_dir.wrapping_sub(2) & 0b111)
-	    || angle_to_player == (move_dir.wrapping_sub(1) & 0b111)
+	// after the division above, miracles of rounding happen
+	angle_to_player == (move_dir.wrapping_sub(2) & 0b111)
+		|| angle_to_player == (move_dir.wrapping_sub(1) & 0b111)
 		|| angle_to_player == move_dir
 		|| angle_to_player == ((move_dir + 1) & 0b111)
 }
