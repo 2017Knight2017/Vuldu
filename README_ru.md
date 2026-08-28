@@ -144,4 +144,4 @@ cargo run -- -i DOOM2.WAD
 ```
 
 ## License
-Vuldu is licensed under **GNU General Public License 3.0**.
+Vuldu лицензирован в соответствии с **GNU General Public License 3.0**.
