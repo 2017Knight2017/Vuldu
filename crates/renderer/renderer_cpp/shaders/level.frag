@@ -93,7 +93,7 @@ void main() {
     } 
     
     if (bool(lc.flags & BYTE_SHADOWS)) {
-        vec3 modernColor = pal.colors[(lc.paletteIndex << 8) | colorIndex].rgb * float(fragLightLevel);
+        vec3 modernColor = pal.colors[(lc.paletteIndex << 8) | colorIndex].rgb * (float(fragLightLevel) / 255.0);
 
         outColor = vec4(modernColor.rgb, 1.0);  
 
