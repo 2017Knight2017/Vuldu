@@ -53,6 +53,7 @@ pub(crate) mod ffi {
 	pub struct AnimLevelInfo {
 		pub texture: u32,
 		pub frames: u32,
+		pub _padding: [u32; 2],
 	}
 
 	extern "Rust" {
@@ -111,7 +112,7 @@ pub(crate) mod ffi {
 		);
 		unsafe fn uploadPalettes(
 			self: Pin<&mut VulkanRenderer>,
-			palettes_ptr: *const f32,
+			palettes_ptr: *const u8,
 			palette_channels_count: usize,
 		);
 		unsafe fn uploadColormap(
@@ -139,6 +140,7 @@ pub(crate) mod ffi {
 		fn setGlobalTimer(self: Pin<&mut VulkanRenderer>, global_timer: u32);
 		fn setCameraYaw(self: Pin<&mut VulkanRenderer>, camera_yaw: f32);
 		fn getMaxSky() -> usize;
+		fn getMaxTextures() -> usize;
 	}
 }
 

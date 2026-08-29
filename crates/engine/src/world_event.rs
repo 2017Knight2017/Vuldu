@@ -66,7 +66,7 @@ pub fn execute_events_system(
 					continue;
 				};
 
-				if let Ok(()) = special_item_effect(
+				if special_item_effect(
 					&item_type,
 					&mut inventory,
 					&mut stats,
@@ -75,8 +75,10 @@ pub fn execute_events_system(
 					audio_buffer,
 					cfg,
 					global_timer,
-				) {
-					if item_type.type_ == MobjNum::Misc11 && hp.0 < 50 {
+				)
+				.is_some()
+				{
+					if item_type.type_ == MobjNum::Misc11 && hp.0 < 25 {
 						println!("Picked up a medikit that you REALLY need!")
 					} else {
 						println!(
@@ -84,7 +86,6 @@ pub fn execute_events_system(
 							PICKUP_MESSAGES[item_type.type_ as usize - MobjNum::Misc0 as usize]
 						);
 					}
-
 					kill_mobj(special_item, world, level, cmd, blocklists);
 				}
 			}
@@ -134,7 +135,7 @@ fn special_item_effect(
 	audio_buffer: &mut Vec<SfxEvent>,
 	cfg: &GameConfig,
 	global_timer: u32,
-) -> Result<(), ()> {
+) -> Option<()> {
 	const CLIP_IDX: usize = AmmoType::Clip as usize;
 	const MISSILE_IDX: usize = AmmoType::Missile as usize;
 	const CELL_IDX: usize = AmmoType::Cell as usize;
@@ -156,9 +157,9 @@ fn special_item_effect(
 					pos: None,
 				});
 
-				Ok(())
+				Some(())
 			} else {
-				Err(())
+				None
 			}
 		}
 		MobjNum::Misc1 => {
@@ -172,9 +173,9 @@ fn special_item_effect(
 					pos: None,
 				});
 
-				Ok(())
+				Some(())
 			} else {
-				Err(())
+				None
 			}
 		}
 		MobjNum::Misc2 => {
@@ -183,12 +184,12 @@ fn special_item_effect(
 
 			ui_to_update.push(UpdatableUiType::Hp);
 			ui_to_update.push(UpdatableUiType::Face);
-
 			audio_buffer.push(SfxEvent {
 				sfx_id: to_u64(b"DSITEMUP"),
 				pos: None,
 			});
-			Ok(())
+
+			Some(())
 		}
 		MobjNum::Misc3 => {
 			stats.armor_points = (stats.armor_points + 1).min(200);
@@ -200,7 +201,7 @@ fn special_item_effect(
 				pos: None,
 			});
 
-			Ok(())
+			Some(())
 		}
 		MobjNum::Misc4 => {
 			inventory.cards[Card::BlueCard as usize] = true;
@@ -211,7 +212,7 @@ fn special_item_effect(
 				pos: None,
 			});
 
-			Ok(())
+			Some(())
 		}
 		MobjNum::Misc5 => {
 			inventory.cards[Card::RedCard as usize] = true;
@@ -222,7 +223,7 @@ fn special_item_effect(
 				pos: None,
 			});
 
-			Ok(())
+			Some(())
 		}
 		MobjNum::Misc6 => {
 			inventory.cards[Card::YellowCard as usize] = true;
@@ -233,7 +234,7 @@ fn special_item_effect(
 				pos: None,
 			});
 
-			Ok(())
+			Some(())
 		}
 		MobjNum::Misc7 => {
 			inventory.cards[Card::YellowSkull as usize] = true;
@@ -244,7 +245,7 @@ fn special_item_effect(
 				pos: None,
 			});
 
-			Ok(())
+			Some(())
 		}
 		MobjNum::Misc8 => {
 			inventory.cards[Card::RedSkull as usize] = true;
@@ -255,7 +256,7 @@ fn special_item_effect(
 				pos: None,
 			});
 
-			Ok(())
+			Some(())
 		}
 		MobjNum::Misc9 => {
 			inventory.cards[Card::BlueSkull as usize] = true;
@@ -266,7 +267,7 @@ fn special_item_effect(
 				pos: None,
 			});
 
-			Ok(())
+			Some(())
 		}
 		MobjNum::Misc10 => {
 			if hp.0 < 100 {
@@ -278,9 +279,9 @@ fn special_item_effect(
 					pos: None,
 				});
 
-				Ok(())
+				Some(())
 			} else {
-				Err(())
+				None
 			}
 		}
 		MobjNum::Misc11 => {
@@ -293,9 +294,9 @@ fn special_item_effect(
 					pos: None,
 				});
 
-				Ok(())
+				Some(())
 			} else {
-				Err(())
+				None
 			}
 		}
 		MobjNum::Misc12 => {
@@ -308,7 +309,7 @@ fn special_item_effect(
 				pos: None,
 			});
 
-			Ok(())
+			Some(())
 		}
 		MobjNum::Misc13 => {
 			if hp.0 < 100 {
@@ -323,7 +324,7 @@ fn special_item_effect(
 			});
 			stats.berserk_timestamp = Some(global_timer);
 
-			Ok(())
+			Some(())
 		}
 		MobjNum::Misc14 => {
 			stats.rad_suit_timestamp = Some(global_timer);
@@ -332,7 +333,7 @@ fn special_item_effect(
 				sfx_id: to_u64(b"DSGETPOW"),
 				pos: None,
 			});
-			Ok(())
+			Some(())
 		}
 		MobjNum::Misc15 => {
 			if !stats.computer_area_map {
@@ -343,9 +344,10 @@ fn special_item_effect(
 					sfx_id: to_u64(b"DSGETPOW"),
 					pos: None,
 				});
-				Ok(())
+
+				Some(())
 			} else {
-				Err(())
+				None
 			}
 		}
 		MobjNum::Misc16 => {
@@ -357,7 +359,7 @@ fn special_item_effect(
 				pos: None,
 			});
 
-			Ok(())
+			Some(())
 		}
 		MobjNum::Inv => {
 			stats.invuln_timestamp = Some(global_timer);
@@ -369,7 +371,7 @@ fn special_item_effect(
 				pos: None,
 			});
 
-			Ok(())
+			Some(())
 		}
 		MobjNum::Ins => {
 			// TODO: make the player's weapon partially invisible
@@ -381,7 +383,7 @@ fn special_item_effect(
 				pos: None,
 			});
 
-			Ok(())
+			Some(())
 		}
 		MobjNum::Mega => {
 			hp.0 = 200;
@@ -396,7 +398,7 @@ fn special_item_effect(
 				pos: None,
 			});
 
-			Ok(())
+			Some(())
 		}
 		MobjNum::Clip => {
 			let max_ammo = max_ammo[CLIP_IDX] << inventory.backpack as u32;
@@ -413,9 +415,9 @@ fn special_item_effect(
 					pos: None,
 				});
 
-				Ok(())
+				Some(())
 			} else {
-				Err(())
+				None
 			}
 		}
 		MobjNum::Misc17 => {
@@ -432,9 +434,9 @@ fn special_item_effect(
 					pos: None,
 				});
 
-				Ok(())
+				Some(())
 			} else {
-				Err(())
+				None
 			}
 		}
 		MobjNum::Misc18 => {
@@ -451,9 +453,9 @@ fn special_item_effect(
 					pos: None,
 				});
 
-				Ok(())
+				Some(())
 			} else {
-				Err(())
+				None
 			}
 		}
 		MobjNum::Misc19 => {
@@ -470,9 +472,9 @@ fn special_item_effect(
 					pos: None,
 				});
 
-				Ok(())
+				Some(())
 			} else {
-				Err(())
+				None
 			}
 		}
 		MobjNum::Misc20 => {
@@ -489,9 +491,9 @@ fn special_item_effect(
 					pos: None,
 				});
 
-				Ok(())
+				Some(())
 			} else {
-				Err(())
+				None
 			}
 		}
 		MobjNum::Misc21 => {
@@ -508,9 +510,9 @@ fn special_item_effect(
 					pos: None,
 				});
 
-				Ok(())
+				Some(())
 			} else {
-				Err(())
+				None
 			}
 		}
 		MobjNum::Misc22 => {
@@ -527,9 +529,9 @@ fn special_item_effect(
 					pos: None,
 				});
 
-				Ok(())
+				Some(())
 			} else {
-				Err(())
+				None
 			}
 		}
 		MobjNum::Misc23 => {
@@ -546,9 +548,9 @@ fn special_item_effect(
 					pos: None,
 				});
 
-				Ok(())
+				Some(())
 			} else {
-				Err(())
+				None
 			}
 		}
 		MobjNum::Misc24 => {
@@ -571,7 +573,7 @@ fn special_item_effect(
 				pos: None,
 			});
 
-			Ok(())
+			Some(())
 		}
 		MobjNum::Misc25 => {
 			let max_ammo = max_ammo[CELL_IDX] << inventory.backpack as u32;
@@ -609,9 +611,9 @@ fn special_item_effect(
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
-				if cfg.dmatch { Err(()) } else { Ok(()) }
+				if cfg.dmatch { None } else { Some(()) }
 			} else {
-				Err(())
+				None
 			}
 		}
 		MobjNum::Misc26 => {
@@ -631,9 +633,9 @@ fn special_item_effect(
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
-				if cfg.dmatch { Err(()) } else { Ok(()) }
+				if cfg.dmatch { None } else { Some(()) }
 			} else {
-				Err(())
+				None
 			}
 		}
 		MobjNum::Misc27 => {
@@ -672,9 +674,9 @@ fn special_item_effect(
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
-				if cfg.dmatch { Err(()) } else { Ok(()) }
+				if cfg.dmatch { None } else { Some(()) }
 			} else {
-				Err(())
+				None
 			}
 		}
 		MobjNum::Misc28 => {
@@ -713,9 +715,9 @@ fn special_item_effect(
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
-				if cfg.dmatch { Err(()) } else { Ok(()) }
+				if cfg.dmatch { None } else { Some(()) }
 			} else {
-				Err(())
+				None
 			}
 		}
 		MobjNum::Chaingun => {
@@ -755,9 +757,9 @@ fn special_item_effect(
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
-				if cfg.dmatch { Err(()) } else { Ok(()) }
+				if cfg.dmatch { None } else { Some(()) }
 			} else {
-				Err(())
+				None
 			}
 		}
 		MobjNum::Shotgun => {
@@ -797,9 +799,9 @@ fn special_item_effect(
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
-				if cfg.dmatch { Err(()) } else { Ok(()) }
+				if cfg.dmatch { None } else { Some(()) }
 			} else {
-				Err(())
+				None
 			}
 		}
 		MobjNum::Supershotgun => {
@@ -838,9 +840,9 @@ fn special_item_effect(
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
-				if cfg.dmatch { Err(()) } else { Ok(()) }
+				if cfg.dmatch { None } else { Some(()) }
 			} else {
-				Err(())
+				None
 			}
 		}
 		_ => unreachable!(),

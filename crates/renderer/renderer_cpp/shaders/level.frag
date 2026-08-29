@@ -1,26 +1,14 @@
 #version 450
 #extension GL_EXT_nonuniform_qualifier : enable
-#extension GL_EXT_shader_8bit_storage : require
 
-layout(binding = 0) uniform UniformBufferObject {
-    mat4 model;
-    mat4 view;
-    mat4 proj;
-} ubo;
-
-layout(binding = 1) readonly buffer PaletteBuffer {
-    vec4 colors[3584]; 
-} pal;
-
-layout(binding = 2) readonly buffer ColormapBuffer {
-    uint8_t colors[8448];
-} colormap;
+layout(binding = 1) uniform sampler2D palTex;
+layout(binding = 2) uniform usampler2D colormapTex;
 
 layout(binding = 4) uniform sampler2D texSamplers[];
 
 layout(push_constant) uniform LevelConstants {
+    vec2 resolution;
     uint paletteIndex;
-    float resolution[2];
     uint skyIndex;
     float widthFactor;
     float globalTimer;
@@ -45,40 +33,6 @@ const uint WIREMAP = 1;
 const uint BYTE_SHADOWS = 2;
 
 void main() {
-    uint colorIndex = 0;
-
-    vec2 res = vec2(lc.resolution[0], lc.resolution[1]);
-    vec2 screenUV = gl_FragCoord.xy / res; 
-
-    // untextured walls
-    if (fragTexId == 65535) {
-        float scale = fragViewZ * 0.04;
-
-        vec2 floorUV = screenUV * scale; 
-
-        float rawColor = textureLod(texSamplers[nonuniformEXT(fragFloorTexId)], floorUV, 0.0).r;
-        colorIndex = uint(rawColor * 255.0 + 0.5);
-    
-    // sky walls or sky ceilings
-    } else if (fragTexId == 65534 || fragTexId == 65533) {
-        float skyU = lc.cameraYaw / TAU * lc.widthFactor;
-        skyU += screenUV.x * (0.4 * lc.widthFactor);
-        skyU = fract(skyU);
-
-        float skyV = screenUV.y * 1.6;
-
-        float rawColor = textureLod(texSamplers[nonuniformEXT(lc.skyIndex)], vec2(skyU, skyV), 0.0).r;
-        colorIndex = uint(rawColor * 255.0 + 0.5); 
-    } else {
-        float scrolledX = fract(fragTexCoord.x + lc.globalTimer * fragScrollDir);
-        float rawColor = textureLod(texSamplers[nonuniformEXT(fragTexId)], vec2(scrolledX, fragTexCoord.y), 0.0).r;
-        colorIndex = uint(rawColor * 255.0 + 0.5);
-    }
-
-    if (colorIndex == 255) {
-        discard;
-    }
-
     if (bool(lc.flags & WIREMAP)) {
         vec3 d = fwidth(fragBarycentric);
         vec3 thickness = d * 1.5;
@@ -91,22 +45,49 @@ void main() {
 
         return;
     } 
+
+    vec2 screenUV = gl_FragCoord.xy / lc.resolution; 
+    uint targetTexId;
+    vec2 targetUV;
+
+    // untextured walls
+    if (fragTexId == 65535) {
+        float scale = fragViewZ * 0.04;
+
+        targetUV = screenUV * scale; 
+        targetTexId = fragFloorTexId;
+        
+    // sky walls or sky ceilings
+    } else if (fragTexId == 65534 || fragTexId == 65533) {
+        float skyU = lc.cameraYaw / TAU * lc.widthFactor;
+        skyU += screenUV.x * (0.4 * lc.widthFactor);
+        skyU = fract(skyU);
+
+        float skyV = screenUV.y * 1.6;
+
+        targetUV = vec2(skyU, skyV);
+        targetTexId = lc.skyIndex;
+    } else {
+        float scrolledX = fract(fragTexCoord.x + lc.globalTimer * fragScrollDir);
+        targetUV = vec2(scrolledX, fragTexCoord.y);
+        targetTexId = fragTexId;
+    }
+
+    float rawColor = textureLod(texSamplers[nonuniformEXT(targetTexId)], targetUV, 0.0).r;
+    uint colorIndex = uint(rawColor * 255.0 + 0.5);
+    if (colorIndex == 255) {
+        discard;
+    }
     
     if (bool(lc.flags & BYTE_SHADOWS)) {
-        vec3 modernColor = pal.colors[(lc.paletteIndex << 8) | colorIndex].rgb * (float(fragLightLevel) / 255.0);
-
-        outColor = vec4(modernColor.rgb, 1.0);  
+        outColor = texelFetch(palTex, ivec2(colorIndex, lc.paletteIndex), 0) * (float(fragLightLevel) / 255.0);  
 
         return;
     }
 
     uint colormapIdx = 31 - (fragLightLevel >> 3);
     uint finalColormapIdx = (fragTexId == 65534 || fragTexId == 65533) ? 0 : colormapIdx;
-    uint colormapOffset = (finalColormapIdx << 8) | colorIndex;
-    uint shadedIndex = uint(colormap.colors[colormapOffset]);
+    uint shadedIndex = texelFetch(colormapTex, ivec2(colorIndex, finalColormapIdx), 0).r;
 
-    uint colorPosition = (lc.paletteIndex << 8) | shadedIndex;
-    vec4 colormapColor = pal.colors[colorPosition];
-
-    outColor = vec4(colormapColor.rgb, 1.0);
+    outColor = texelFetch(palTex, ivec2(shadedIndex, lc.paletteIndex), 0);
 }

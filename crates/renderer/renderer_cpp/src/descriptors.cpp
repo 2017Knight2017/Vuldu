@@ -12,21 +12,21 @@ void VulkanRenderer::createDescriptorSetLayout() {
 
     VkDescriptorSetLayoutBinding paletteLayoutBinding{};
     paletteLayoutBinding.binding = 1;
-    paletteLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    paletteLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     paletteLayoutBinding.descriptorCount = 1;
     paletteLayoutBinding.pImmutableSamplers = nullptr;
     paletteLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
     VkDescriptorSetLayoutBinding colormapLayoutBinding{};
     colormapLayoutBinding.binding = 2;
-    colormapLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    colormapLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     colormapLayoutBinding.descriptorCount = 1;
     colormapLayoutBinding.pImmutableSamplers = nullptr;
     colormapLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
     VkDescriptorSetLayoutBinding animLevelLayoutBinding{};
     animLevelLayoutBinding.binding = 3;
-    animLevelLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    animLevelLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     animLevelLayoutBinding.descriptorCount = 1;
     animLevelLayoutBinding.pImmutableSamplers = nullptr;
     animLevelLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
@@ -137,11 +137,11 @@ void VulkanRenderer::createDescriptorPool() {
 	std::array<VkDescriptorPoolSize, 5> poolSizes{};
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	poolSizes[0].descriptorCount = MAX_FRAMES_IN_FLIGHT;
-    poolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	poolSizes[1].descriptorCount = MAX_FRAMES_IN_FLIGHT;
-    poolSizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    poolSizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	poolSizes[2].descriptorCount = MAX_FRAMES_IN_FLIGHT;
-    poolSizes[3].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    poolSizes[3].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	poolSizes[3].descriptorCount = MAX_FRAMES_IN_FLIGHT;
     poolSizes[4].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	poolSizes[4].descriptorCount = MAX_FRAMES_IN_FLIGHT * MAX_TEXTURES;

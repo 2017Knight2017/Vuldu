@@ -143,7 +143,7 @@ impl WadManager {
 		}
 	}
 
-	pub fn get_palettes(&self, map_name: &[u8; 8]) -> Result<Vec<f32>, String> {
+	pub fn get_palettes(&self, map_name: &[u8; 8]) -> Result<Vec<u8>, String> {
 		let mut all_palettes_data = Vec::with_capacity(14 * 256 * 4);
 
 		let map_wad_index = self.map_directory[map_name][0].wad_index;
@@ -159,10 +159,10 @@ impl WadManager {
 			.ok_or_else(|| "PLAYPAL lump is not found!".to_string())?;
 
 		for rgb in pal_data.as_chunks::<3>().0.iter().take(14 * 256) {
-			all_palettes_data.push(rgb[0] as f32 / 255.0);
-			all_palettes_data.push(rgb[1] as f32 / 255.0);
-			all_palettes_data.push(rgb[2] as f32 / 255.0);
-			all_palettes_data.push(1.0);
+			all_palettes_data.push(rgb[0]);
+			all_palettes_data.push(rgb[1]);
+			all_palettes_data.push(rgb[2]);
+			all_palettes_data.push(255);
 		}
 
 		Ok(all_palettes_data)

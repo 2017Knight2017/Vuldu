@@ -11,15 +11,15 @@ struct animLevelInfo {
     uint frames;
 };
 
-const uint ANIM_INFO_NUM = 22;
+const uint MAX_TEXTURES = 8192;
 
-layout(binding = 3) readonly buffer AnimLevelBuffer {
-    animLevelInfo info[ANIM_INFO_NUM];
+layout(binding = 3) uniform AnimLevelBuffer {
+    animLevelInfo info[MAX_TEXTURES];
 } anim;
 
 layout(push_constant) uniform LevelConstants {
+    vec2 resolution;
     uint paletteIndex;
-    float resolution[2];
     uint skyIndex;
     float widthFactor;
     float globalTimer;
@@ -46,33 +46,42 @@ layout(location = 7) out vec3 fragTriangleColor;
 const uint ANIM_SPEED = 3;
 
 uint getAnimId() {
-    for (uint i = 0; i < ANIM_INFO_NUM; i++) {
-        uint animStartId = anim.info[i].texId;
-        uint frames = anim.info[i].frames;
+    animLevelInfo info = anim.info[inTexId];
 
-        if (inTexId >= animStartId && inTexId < animStartId + frames) {
-            uint srcFrame = inTexId - animStartId;
-            uint dividedTimer = uint(lc.globalTimer + 0.5) >> ANIM_SPEED;
+    uint frames = info.frames;
+    if (frames == 0) return inTexId;
 
-            uint animFrameNum = frames == 2 || frames == 4 
-                ? (srcFrame + dividedTimer) & (frames - 1)
-                : (srcFrame + dividedTimer) % 3;
+    uint animStartId = info.texId;
 
-            return animStartId + animFrameNum;
-        } 
-    }
+    uint srcFrame = inTexId - animStartId;
+    uint dividedTimer = uint(lc.globalTimer + 0.5) >> ANIM_SPEED;
 
-    return inTexId;
+    uint animFrameNum = frames == 2 || frames == 4 
+        ? (srcFrame + dividedTimer) & (frames - 1)
+        : (srcFrame + dividedTimer) % 3;
+
+    return animStartId + animFrameNum;
 }
 
-vec3 hashColor(int id) {
-    float r = fract(sin(float(id) * 12.9898) * 43758.5453);
-    float g = fract(sin(float(id) * 78.233) * 43758.5453);
-    float b = fract(sin(float(id) * 45.164) * 43758.5453);
+vec3 hashColor(uint id) {
+    uint state = id * 747796405u + 2891336453u;
+    uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+    uint hashedColor = (word >> 22u) ^ word;
+
+    float r = float(hashedColor & 0xFFu) / 255.0;
+    float g = float((hashedColor >> 8) & 0xFFu) / 255.0;
+    float b = float((hashedColor >> 16) & 0xFFu) / 255.0;
+
     return vec3(r, g, b);
 }
 
 const uint WIREMAP = 1;
+
+const vec3 BARY[3] = vec3[3](
+    vec3(1.0, 0.0, 0.0),
+    vec3(0.0, 1.0, 0.0),
+    vec3(0.0, 0.0, 1.0)
+);
 
 void main() {
     fragLightLevel = inLightLevel;
@@ -83,7 +92,7 @@ void main() {
 
     vec4 viewPos = ubo.view * ubo.model * vec4(inPosition, 1.0);
 
-    fragViewZ = abs(viewPos.z);
+    fragViewZ = viewPos.z;
 
     gl_Position = ubo.proj * viewPos;
 
@@ -93,13 +102,9 @@ void main() {
     //}
 
     if (bool(lc.flags & WIREMAP)) {
-        int localIndex = gl_VertexIndex % 3;
-    
-        if (localIndex == 0)      fragBarycentric = vec3(1.0, 0.0, 0.0);
-        else if (localIndex == 1) fragBarycentric = vec3(0.0, 1.0, 0.0);
-        else                      fragBarycentric = vec3(0.0, 0.0, 1.0);
+        fragBarycentric = BARY[gl_VertexIndex % 3];
 
-        int triangleID = gl_VertexIndex / 3;
+        uint triangleID = uint(gl_VertexIndex / 3);
         fragTriangleColor = hashColor(triangleID);
     }
 }

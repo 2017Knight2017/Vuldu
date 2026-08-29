@@ -1,11 +1,6 @@
-<center>
-
 [![Vuldu Showcase](https://i.ytimg.com/vi/SZ2nbXC-9_A/maxresdefault.jpg)](http://www.youtube.com/watch?feature=player_embedded&v=SZ2nbXC-9_A)
 
-</center>
-
 # Vuldu
-
 **Vul[kan] du[um]** is a Doom port written by me
 completely from scratch in Rust, with Vulkan 
 rendering and the ECS pattern in the game loop. The 
@@ -47,8 +42,7 @@ using `./vuldu -h`
 - *[rayon](https://github.com/rayon-rs/rayon)* 
 and 
 *[micropool](https://github.com/DouglasDwyer/micropool)* 
-=> Parallelization
-of computations
+=> Parallelization of computations
 
 It is important to note that I deliberately chose 
 two libraries for multithreading, as they work 
@@ -73,21 +67,9 @@ the load.
 ## Project Architecture
 The project is designed so that the crates are loosely coupled with each other in a *strictly one-way order*:
 
-<center><b> ↓ Renderer ↓ </b></center>
+<details>
+<summary><b>↓ Renderer ↓</b></summary>
 
----
-
-<center><b> > App < </b></center>
-
----
-
-<center><b> ↑ Engine ↑ </b></center>
-
----
-
-<center><b> ↑ Wad Parser ↑ </b></center>
-
-### Renderer
 The FFI bridge leads to `renderer_cpp/`, where the Vulkan
 class is implemented in C++ and safely abstracted in
 `src/lib.rs` for subsequent use of its methods in
@@ -98,8 +80,36 @@ draw calls in mind.
 Objects and UI make extensive use of **Instancing**,
 allowing tens of thousands of instances to be displayed
 on screen with almost no impact on FPS.
+</details>
 
-### Wad Parser
+<details>
+<summary><b> > App < </b></summary>
+
+The main coordination center of the project. In
+`App::resumed()` you can find the window initialization 
+code, while `WindowEvent::RedrawRequested` contains the 
+code for redrawing it.
+
+Overall, in *App*, all other crates are merged together
+in the form of `GraphicsContext` and `GameContext`, while 
+also handling audio and user input.
+</details>
+
+<details>
+<summary><b> ↑ Engine ↑ </b></summary>
+
+This is where all ECS systems related to movement,
+vision, sound propagation, etc. live. *Engine* can
+modify level and entity data during gameplay.
+
+There is more code inspired by John Carmack's 
+[original source code](https://github.com/id-Software/DOOM/tree/master/linuxdoom-1.10) 
+here than anywhere else in the project.
+</details>
+
+<details>
+<summary><b> ↑ Wad Parser ↑ </b></summary>
+
 In this crate, bytes from the wad are converted into 
 textures and levels. All file resource management is 
 handled through the `WadManager` object, which stores 
@@ -110,25 +120,7 @@ are converted into an array of PLAYPAL color indices.
 In `src/vertices/`, sectors and the linedefs surrounding 
 them are triangulated into floors and walls and turned 
 into a fully-fledged 3D scene.
-
-### Engine
-This is where all ECS systems related to movement,
-vision, sound propagation, etc. live. *Engine* can
-modify level and entity data during gameplay.
-
-There is more code inspired by John Carmack's 
-[original source code](https://github.com/id-Software/DOOM/tree/master/linuxdoom-1.10) 
-here than anywhere else in the project.
-
-### App
-The main coordination center of the project. In
-`App::resumed()` you can find the window initialization 
-code, while `WindowEvent::RedrawRequested` contains the 
-code for redrawing it.
-
-Overall, in *App*, all other crates are merged together
-in the form of `GraphicsContext` and `GameContext`, while 
-also handling audio and user input.
+</details>
 
 ## Building
 For a local build, you need the

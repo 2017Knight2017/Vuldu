@@ -1,14 +1,8 @@
 #version 450
 #extension GL_EXT_nonuniform_qualifier : enable
-#extension GL_EXT_shader_8bit_storage : require
 
-layout(binding = 1) readonly buffer PaletteBuffer {
-    vec4 colors[3584]; 
-} pal;
-
-layout(binding = 2) readonly buffer ColormapBuffer {
-    uint8_t colors[8448];
-} colormap;
+layout(binding = 1) uniform sampler2D palTex;
+layout(binding = 2) uniform usampler2D colormapTex;
 
 layout(binding = 4) uniform sampler2D texSamplers[];
 
@@ -29,10 +23,7 @@ void main() {
         discard;
     }
 
-    uint shadedIndex = uint(colormap.colors[(7 << 8) | colorIndex]);
+    uint shadedIndex = texelFetch(colormapTex, ivec2(colorIndex, 7), 0).r;
 
-    uint colorPosition = (uc.paletteIndex << 8) | shadedIndex;
-    vec4 finalColor = pal.colors[colorPosition];
-
-    outColor = vec4(finalColor.rgb, 1.0);
+    outColor = texelFetch(palTex, ivec2(shadedIndex, uc.paletteIndex), 0);
 }

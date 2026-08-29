@@ -3,6 +3,7 @@
 #include <vulkan/vulkan_beta.h>
 #include <memory>
 #include <vector>
+#include <array>
 #include <optional>
 
 #ifdef DEBUG_MODE
@@ -17,7 +18,6 @@ inline const uint32_t MAX_SKY = 16;
 inline const uint32_t MAX_PAL = 14;
 inline const uint32_t MAX_OBJECTS = 50000;
 inline const uint32_t MAX_UI = 256;
-inline const size_t ANIM_INFO_NUM = 22;
 inline const float PIXELS_IN_PANORAMA = 1024.0;
 
 struct WindowHandles;
@@ -55,8 +55,8 @@ const std::vector<const char*> validationLayers = {
 };
 
 struct PushConstants {
+    std::array<float, 2> resolution;
     uint32_t paletteIndex;
-    float resolution[2];  
     uint32_t skyIndex;
     float widthFactor;
     float globalTimer;
@@ -76,7 +76,7 @@ public:
     void updateUiGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint32_t* indices_ptr, size_t index_count);
     void updateObjectInstances(const ObjectInstance* instances_ptr, size_t instances_count);
     void updateUiInstances(const UiInstance* instances_ptr, size_t instances_count);
-    void uploadPalettes(const float* palettes_ptr, size_t colormap_bytes_count);
+    void uploadPalettes(const uint8_t* palettes_ptr, size_t colormap_bytes_count);
     void uploadColormap(const uint8_t* colormap_ptr, size_t colormap_bytes_count);
     void uploadTextureArray(
         const TextureDescriptor* descriptors_ptr, 
@@ -178,10 +178,13 @@ private:
     std::vector<VkSemaphore> renderFinishedSemaphores;
     std::vector<VkFence> inFlightFences;
 
-    VkBuffer paletteBuffer = VK_NULL_HANDLE;
-    VkDeviceMemory paletteBufferMemory = VK_NULL_HANDLE;
-    VkBuffer colormapBuffer = VK_NULL_HANDLE;
-    VkDeviceMemory colormapBufferMemory = VK_NULL_HANDLE;
+    VkImage paletteImage = VK_NULL_HANDLE;
+    VkDeviceMemory paletteImageMemory = VK_NULL_HANDLE;
+    VkImageView paletteImageView = VK_NULL_HANDLE;
+    VkImage colormapImage = VK_NULL_HANDLE;
+    VkDeviceMemory colormapImageMemory = VK_NULL_HANDLE;
+    VkImageView colormapImageView = VK_NULL_HANDLE;
+
     VkBuffer animLevelBuffer = VK_NULL_HANDLE;
     VkDeviceMemory animLevelBufferMemory = VK_NULL_HANDLE;
 
@@ -190,8 +193,7 @@ private:
     uint32_t currentSkyIndex = 0;
     std::vector<float> skyWidths;
     float cameraYaw = 0.0;
-    bool wireframe = false;
-    bool byteShadows = false;
+    uint32_t flags = 0;
     
     
     void createInstance(const WindowHandles& handles);
@@ -221,12 +223,24 @@ private:
     void createBuffer(VkDeviceSize bufferSize, VkBufferUsageFlags usage, 
         VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
     void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
-    void createBinding(const void* data_ptr, VkDeviceSize bufferSize, VkBuffer& dstBuffer, 
+    void createBufferBinding(const void* data_ptr, VkDeviceSize bufferSize, VkBuffer& dstBuffer, 
     	VkDeviceMemory& dstBufferMemory, uint32_t dstBinding);
     void createImage(uint32_t width, uint32_t height, VkFormat format, 
         VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, 
         VkDeviceMemory& imageMemory);
     void beginRendering(VkCommandBuffer currentCommandBuffer);
+
+    void createDataTexture(
+        const void* data_ptr, 
+        size_t width,
+        size_t height,
+        size_t colorSize,
+        VkFormat format,
+        VkImage& dstImage, 
+        VkDeviceMemory& dstImageMemory,
+        VkImageView& dstImageView,
+        uint32_t dstBinding
+    );
     
     VkCommandBuffer beginSingleTimeCommands();
     void endSingleTimeCommands(VkCommandBuffer commandBuffer);
@@ -274,3 +288,4 @@ private:
 
 std::unique_ptr<VulkanRenderer> createRenderer();
 size_t getMaxSky();
+size_t getMaxTextures();

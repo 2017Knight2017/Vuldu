@@ -111,12 +111,20 @@ void VulkanRenderer::setCameraYaw(float camera_yaw) {
 }
 
 void VulkanRenderer::setFlags(bool wireframe, bool byte_shadows) {
-    this->wireframe = wireframe;
-    this->byteShadows = byte_shadows;
+    const uint32_t WIREFRAME_BIT    = 1 << 0;
+    const uint32_t BYTE_SHADOWS_BIT = 1 << 1;
+
+    this->flags = (this->flags & ~(WIREFRAME_BIT | BYTE_SHADOWS_BIT))
+        | (static_cast<uint32_t>(wireframe) << 0)
+        | (static_cast<uint32_t>(byte_shadows) << 1);
 }
 
 size_t getMaxSky() {
     return MAX_SKY;
+}
+
+size_t getMaxTextures() {
+    return MAX_TEXTURES;
 }
 
 void VulkanRenderer::startFrame(const UniformBufferObject* ubo_ptr) {
@@ -161,8 +169,8 @@ void VulkanRenderer::startFrame(const UniformBufferObject* ubo_ptr) {
 	VkViewport viewport{};
     viewport.x = 0.0f;
     viewport.y = 0.0f;
-    viewport.width = (float) this->swapChainExtent.width;
-    viewport.height = (float) this->swapChainExtent.height;
+    viewport.width = static_cast<float>(this->swapChainExtent.width);
+    viewport.height = static_cast<float>(this->swapChainExtent.height);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
     vkCmdSetViewport(currentCommandBuffer, 0, 1, &viewport);
@@ -196,14 +204,16 @@ void VulkanRenderer::drawLevel() {
     vkCmdBindIndexBuffer(currentCommandBuffer, this->levelIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
     PushConstants constants{};
+    constants.resolution = {
+        static_cast<float>(this->swapChainExtent.width),
+        static_cast<float>(this->swapChainExtent.height)
+    };
     constants.paletteIndex = this->currentPaletteIndex;
-    constants.resolution[0] = static_cast<float>(this->swapChainExtent.width);
-    constants.resolution[1] = static_cast<float>(this->swapChainExtent.height);
     constants.skyIndex = this->currentSkyIndex;
     constants.widthFactor = PIXELS_IN_PANORAMA / this->skyWidths[this->currentSkyIndex];
     constants.globalTimer = this->globalTimer;
     constants.cameraYaw = this->cameraYaw;
-    constants.flags = (this->byteShadows << 1) | this->wireframe;
+    constants.flags = this->flags;
 
 	vkCmdPushConstants(
         currentCommandBuffer,
@@ -241,7 +251,7 @@ void VulkanRenderer::drawObjects() {
 
     PushConstants constants{};
     constants.paletteIndex = this->currentPaletteIndex;
-    constants.flags = this->byteShadows << 1;
+    constants.flags = this->flags;
 
     vkCmdPushConstants(
         currentCommandBuffer,

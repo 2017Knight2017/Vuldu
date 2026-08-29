@@ -4,12 +4,12 @@ pub use bridge::ffi::{
 	AnimLevelInfo, ObjectInstance, TextureDescriptor, UiInstance, UniformBufferObject, Vertex,
 	WindowHandles, WindowSize,
 };
-use bridge::ffi::{VulkanRenderer, createRenderer, getMaxSky};
+use bridge::ffi::{VulkanRenderer, createRenderer, getMaxSky, getMaxTextures};
 use cxx::UniquePtr;
 use std::{pin::Pin, sync::OnceLock};
 
 pub static MAX_SKY: OnceLock<usize> = OnceLock::new();
-pub const ANIM_INFO_NUM: usize = 22;
+pub static MAX_TEXTURES: OnceLock<usize> = OnceLock::new();
 
 pub struct SafeRenderer {
 	renderer: UniquePtr<VulkanRenderer>,
@@ -24,6 +24,7 @@ impl Default for SafeRenderer {
 impl SafeRenderer {
 	pub fn new() -> Self {
 		let _ = MAX_SKY.set(getMaxSky());
+		let _ = MAX_TEXTURES.set(getMaxTextures());
 		Self {
 			renderer: createRenderer(),
 		}
@@ -45,7 +46,7 @@ impl SafeRenderer {
 		self.pin_mut().recreateSwapChain();
 	}
 
-	pub fn upload_palettes(&mut self, palettes: &[f32]) {
+	pub fn upload_palettes(&mut self, palettes: &[u8]) {
 		unsafe {
 			self.pin_mut()
 				.uploadPalettes(palettes.as_ptr(), palettes.len());

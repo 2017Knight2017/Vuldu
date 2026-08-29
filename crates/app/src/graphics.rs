@@ -3,7 +3,7 @@ use glam::{Mat4, Vec3};
 use hecs::{Entity, World};
 use micropool::iter::*;
 use renderer::{
-	ANIM_INFO_NUM, AnimLevelInfo, MAX_SKY, ObjectInstance, SafeRenderer, TextureDescriptor,
+	AnimLevelInfo, MAX_SKY, MAX_TEXTURES, ObjectInstance, SafeRenderer, TextureDescriptor,
 	UiInstance, UniformBufferObject, Vertex,
 };
 use rustc_hash::FxHashMap;
@@ -149,44 +149,48 @@ impl GraphicsContext {
 			current_gpu_id += 1;
 		}
 
-		let mut anim_map: FxHashMap<u64, (u32, usize)> = FxHashMap::from_iter([
-			(to_u64(b"FWATER1"), (4, 0)),
-			(to_u64(b"SWATER1"), (4, 1)),
-			(to_u64(b"LAVA1"), (4, 2)),
-			(to_u64(b"RROCK05"), (4, 3)),
-			(to_u64(b"SLIME01"), (4, 4)),
-			(to_u64(b"SLIME05"), (4, 5)),
-			(to_u64(b"SLIME09"), (4, 6)),
-			(to_u64(b"BLODGR1"), (4, 7)),
-			(to_u64(b"BLODRIP1"), (4, 8)),
-			(to_u64(b"BFALL1"), (4, 9)),
-			(to_u64(b"SFALL1"), (4, 10)),
-			(to_u64(b"WFALL1"), (4, 11)),
-			(to_u64(b"DBRAIN1"), (4, 12)),
-			(to_u64(b"NUKAGE1"), (3, 13)),
-			(to_u64(b"SLADRIP1"), (3, 14)),
-			(to_u64(b"GSTFONT1"), (3, 15)),
-			(to_u64(b"FIRELAV2"), (3, 16)),
-			(to_u64(b"FIREMAG1"), (3, 17)),
-			(to_u64(b"ROCKRED1"), (3, 18)),
-			(to_u64(b"FIREWALA"), (3, 19)),
-			(to_u64(b"BLOOD1"), (3, 20)),
-			(to_u64(b"FIREBLU1"), (2, 21)),
+		let mut anim_map: FxHashMap<u64, u32> = FxHashMap::from_iter([
+			(to_u64(b"FWATER1"), 4),
+			(to_u64(b"SWATER1"), 4),
+			(to_u64(b"LAVA1"), 4),
+			(to_u64(b"RROCK05"), 4),
+			(to_u64(b"SLIME01"), 4),
+			(to_u64(b"SLIME05"), 4),
+			(to_u64(b"SLIME09"), 4),
+			(to_u64(b"BLODGR1"), 4),
+			(to_u64(b"BLODRIP1"), 4),
+			(to_u64(b"BFALL1"), 4),
+			(to_u64(b"SFALL1"), 4),
+			(to_u64(b"WFALL1"), 4),
+			(to_u64(b"DBRAIN1"), 4),
+			(to_u64(b"NUKAGE1"), 3),
+			(to_u64(b"SLADRIP1"), 3),
+			(to_u64(b"GSTFONT1"), 3),
+			(to_u64(b"FIRELAV2"), 3),
+			(to_u64(b"FIREMAG1"), 3),
+			(to_u64(b"ROCKRED1"), 3),
+			(to_u64(b"FIREWALA"), 3),
+			(to_u64(b"BLOOD1"), 3),
+			(to_u64(b"FIREBLU1"), 2),
 		]);
 
-		let mut anim_level_info: [AnimLevelInfo; ANIM_INFO_NUM] =
-			core::array::from_fn(|_| AnimLevelInfo {
-				texture: 0,
-				frames: 0,
-			});
+		let mut anim_level_info = Vec::new();
+		anim_level_info.resize_with(*MAX_TEXTURES.get().unwrap(), || AnimLevelInfo {
+			texture: 0,
+			frames: 0,
+			_padding: [0, 0],
+		});
 
 		for (tex_names, pics) in [(wall_names, wall_pics), (flat_names, flat_pics)] {
 			for (idx, pic) in pics.iter().enumerate() {
 				let name = tex_names[idx];
 
-				if let Some((frames, anim_info_idx)) = anim_map.remove(&name) {
-					anim_level_info[anim_info_idx].texture = current_gpu_id;
-					anim_level_info[anim_info_idx].frames = frames;
+				if let Some(frames) = anim_map.remove(&name) {
+					let gpu_idx = current_gpu_id as usize;
+					for i in 0..frames as usize {
+						anim_level_info[gpu_idx + i].texture = current_gpu_id;
+						anim_level_info[gpu_idx + i].frames = frames;
+					}
 				}
 
 				self.data.insert(

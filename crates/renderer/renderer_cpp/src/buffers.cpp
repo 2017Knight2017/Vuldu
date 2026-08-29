@@ -37,8 +37,6 @@ void VulkanRenderer::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDevice
 	VkCommandBuffer commandBuffer = beginSingleTimeCommands();
 
 	VkBufferCopy copyRegion{};
-	copyRegion.srcOffset = 0; // Optional
-	copyRegion.dstOffset = 0; // Optional
 	copyRegion.size = size;
 	vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 
@@ -254,7 +252,7 @@ void VulkanRenderer::createTextureSamplers() {
     }
 }
 
-void VulkanRenderer::createBinding(
+void VulkanRenderer::createBufferBinding(
 	const void* data_ptr, 
 	VkDeviceSize bufferSize, 
 	VkBuffer& dstBuffer, 
@@ -277,7 +275,7 @@ void VulkanRenderer::createBinding(
     memcpy(data, data_ptr, bufferSize);
     vkUnmapMemory(this->device, stagingBufferMemory);
 
-    VkBufferUsageFlags usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+    VkBufferUsageFlags usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 
     createBuffer(
         bufferSize, 
@@ -303,36 +301,136 @@ void VulkanRenderer::createBinding(
         descriptorWrite.dstSet = this->descriptorSets[i];
         descriptorWrite.dstBinding = dstBinding;
         descriptorWrite.descriptorCount = 1;
-        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         descriptorWrite.pBufferInfo = &bufferInfo;
 
         vkUpdateDescriptorSets(this->device, 1, &descriptorWrite, 0, nullptr);
     }
 }
 
-void VulkanRenderer::uploadPalettes(const float* palettes_ptr, size_t palette_channels_count) {
+void VulkanRenderer::createDataTexture(
+    const void* data_ptr, 
+    size_t width,
+    size_t height,
+    size_t colorSize,
+    VkFormat format,
+    VkImage& dstImage, 
+    VkDeviceMemory& dstImageMemory,
+    VkImageView& dstImageView,
+    uint32_t dstBinding
+) {
+    VkDeviceSize imageSize = width * height * colorSize;
+
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    createBuffer(
+        imageSize, 
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
+        stagingBuffer, 
+        stagingBufferMemory
+    );
+
+    void* data;
+    vkMapMemory(this->device, stagingBufferMemory, 0, imageSize, 0, &data);
+    memcpy(data, data_ptr, imageSize);
+    vkUnmapMemory(this->device, stagingBufferMemory);
+
+    createImage(
+        width, height, format, 
+        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
+        dstImage, dstImageMemory
+    );
+
+    VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+
+    changeImageLayout(
+        commandBuffer, 
+        VK_IMAGE_LAYOUT_UNDEFINED, 
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
+        {&dstImage, 1}
+    );
+    
+    VkBufferImageCopy region{};
+    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.imageSubresource.layerCount = 1;
+    region.imageExtent = { 
+        static_cast<uint32_t>(width), 
+        static_cast<uint32_t>(height), 
+        1 
+    };
+
+    vkCmdCopyBufferToImage(commandBuffer, stagingBuffer, dstImage, 
+                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+    changeImageLayout(
+        commandBuffer, 
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
+        {&dstImage, 1}
+    );
+
+    endSingleTimeCommands(commandBuffer);
+
+    createImageView(this->device, dstImage, format, VK_IMAGE_ASPECT_COLOR_BIT, &dstImageView);
+    
+    vkDestroyBuffer(this->device, stagingBuffer, nullptr);
+    vkFreeMemory(this->device, stagingBufferMemory, nullptr);
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        VkDescriptorImageInfo imageInfo{};
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageInfo.imageView = dstImageView;
+        imageInfo.sampler = this->textureSampler;
+
+        VkWriteDescriptorSet descriptorWrite{};
+        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite.dstSet = this->descriptorSets[i];
+        descriptorWrite.dstBinding = dstBinding;
+        descriptorWrite.descriptorCount = 1;
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrite.pImageInfo = &imageInfo;
+
+        vkUpdateDescriptorSets(this->device, 1, &descriptorWrite, 0, nullptr);
+    }
+}
+
+void VulkanRenderer::uploadPalettes(const uint8_t* palettes_ptr, size_t palette_channels_count) {
     if (palette_channels_count == 0 || palettes_ptr == nullptr) return;
 
-    VkDeviceSize bufferSize = palette_channels_count * sizeof(float);
+    size_t colorsCount = palette_channels_count >> 2;
 
-    createBinding(palettes_ptr, bufferSize, this->paletteBuffer, 
-        this->paletteBufferMemory, 1);
+    createDataTexture(
+        palettes_ptr, 
+        256,
+        colorsCount / 256,
+        sizeof(float),
+        VK_FORMAT_R8G8B8A8_UNORM, 
+        this->paletteImage, this->paletteImageMemory, this->paletteImageView, 
+        1
+    );
 }
 
 void VulkanRenderer::uploadColormap(const uint8_t* colormap_ptr, size_t colormap_bytes_count) {
     if (colormap_bytes_count == 0 || colormap_ptr == nullptr) return;
 
-    VkDeviceSize bufferSize = colormap_bytes_count * sizeof(uint8_t);
-
-    createBinding(colormap_ptr, bufferSize, this->colormapBuffer,
-        this->colormapBufferMemory, 2);
+    createDataTexture(
+        colormap_ptr, 
+        256,
+        colormap_bytes_count / 256,
+        sizeof(uint8_t),
+        VK_FORMAT_R8_UINT, 
+        this->colormapImage, this->colormapImageMemory, this->colormapImageView, 
+        2
+    );
 }
 
 void VulkanRenderer::uploadAnimLevelInfo(const AnimLevelInfo* info_ptr, size_t info_count) {
-    if (info_count != ANIM_INFO_NUM || info_ptr == nullptr) return;
+    if (info_count == 0 || info_ptr == nullptr) return;
 
-    VkDeviceSize bufferSize = info_count * sizeof(AnimLevelInfo);
+    VkDeviceSize bufferSize = (MAX_TEXTURES >> 2) * sizeof(AnimLevelInfo);
 
-    createBinding(info_ptr, bufferSize, this->animLevelBuffer, 
+    createBufferBinding(info_ptr, bufferSize, this->animLevelBuffer, 
         this->animLevelBufferMemory, 3);
 }
