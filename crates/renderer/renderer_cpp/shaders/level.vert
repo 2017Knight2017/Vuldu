@@ -84,6 +84,8 @@ const vec3 BARY[3] = vec3[3](
     vec3(0.0, 0.0, 1.0)
 );
 
+const uint SKY_CEIL = 65533;
+
 void main() {
     fragLightLevel = inLightLevel;
     fragScrollDir = inScrollDir;
@@ -97,8 +99,7 @@ void main() {
 
     gl_Position = ubo.proj * viewPos;
 
-    // sky ceilings
-    //if (inTexId == 65533) {
+    //if (inTexId == SKY_CEIL) {
     //    gl_Position.z = gl_Position.w;
     //}
 

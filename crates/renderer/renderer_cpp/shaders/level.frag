@@ -32,6 +32,10 @@ const float TAU = 6.2831853071;
 const uint WIREMAP = 1;
 const uint BYTE_SHADOWS = 2;
 
+const uint UNTEXED_WALL = 65535;
+const uint SKY_WALL = 65534;
+const uint SKY_CEIL = 65533;
+
 void main() {
     if (bool(lc.flags & WIREMAP)) {
         vec3 d = fwidth(fragBarycentric);
@@ -50,15 +54,13 @@ void main() {
     uint targetTexId;
     vec2 targetUV;
 
-    // untextured walls
-    if (fragTexId == 65535) {
+    if (fragTexId == UNTEXED_WALL) {
         float scale = fragViewZ * 0.04;
 
         targetUV = screenUV * scale; 
         targetTexId = fragFloorTexId;
-        
-    // sky walls or sky ceilings
-    } else if (fragTexId == 65534 || fragTexId == 65533) {
+
+    } else if (fragTexId == SKY_WALL || fragTexId == SKY_CEIL) {
         float skyU = lc.cameraYaw / TAU * lc.widthFactor;
         skyU += screenUV.x * (0.4 * lc.widthFactor);
         skyU = fract(skyU);
@@ -67,6 +69,7 @@ void main() {
 
         targetUV = vec2(skyU, skyV);
         targetTexId = lc.skyIndex;
+        
     } else {
         float scrolledX = fract(fragTexCoord.x + lc.globalTimer * fragScrollDir);
         targetUV = vec2(scrolledX, fragTexCoord.y);

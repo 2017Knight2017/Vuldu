@@ -399,7 +399,6 @@ impl GraphicsContext {
 				sprite_size: [final_width, tex_height as f32],
 				light_level,
 				texture_id: tex_id.0,
-				_padding: [0, 0, 0],
 			}
 		};
 
@@ -510,7 +509,6 @@ impl GraphicsContext {
 			pos: [x, y],
 			sprite_size: [width as f32, height as f32],
 			texture_id: tex_id.0,
-			_padding: [0, 0, 0],
 		}
 	}
 }
@@ -549,7 +547,6 @@ fn vertex_to_vertex(vertex: GpuVertex) -> Vertex {
 		texture_id: vertex.texture_id,
 		floor_tex_id: vertex.floor_tex_id,
 		scroll_dir: vertex.scroll_dir,
-		_padding: vertex._padding,
 	}
 }
 

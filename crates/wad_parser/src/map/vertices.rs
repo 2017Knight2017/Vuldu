@@ -3,6 +3,9 @@ use earcut::Earcut;
 use rustc_hash::{FxBuildHasher, FxHashMap};
 
 pub const NF_SUBSECTOR: usize = 0x8000;
+const UNTEXED_WALL_ID: TextureId = TextureId(65535);
+const SKY_WALL_ID: TextureId = TextureId(65534);
+const SKY_CEIL_ID: TextureId = TextureId(65533);
 
 pub type TextureData = (TextureId, u32, u32, bool);
 
@@ -15,7 +18,6 @@ pub struct GpuVertex {
 	pub texture_id: u32,
 	pub floor_tex_id: u32,
 	pub scroll_dir: f32,
-	pub _padding: [u32; 3],
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -176,9 +178,9 @@ impl Level {
 					|| (other_sector_ceilingpic.starts_with(b"F_SKY1")
 						&& fake_flat_name.starts_with(b"F_SKY1"))
 				{
-					(TextureId((u16::MAX - 1) as u32), TextureId(0))
+					(SKY_WALL_ID, TextureId(0))
 				} else if is_fake_wall {
-					(TextureId(u16::MAX as u32), tex_id)
+					(UNTEXED_WALL_ID, tex_id)
 				} else {
 					(tex_id, TextureId(0))
 				};
@@ -213,7 +215,6 @@ impl Level {
 					texture_id: final_tex_id.0,
 					floor_tex_id: floor_tex_id.0,
 					scroll_dir: scroll_dir / texture_width as f32,
-					_padding: [0, 0, 0],
 				});
 
 				gpu_vertices.push(GpuVertex {
@@ -223,7 +224,6 @@ impl Level {
 					texture_id: final_tex_id.0,
 					floor_tex_id: floor_tex_id.0,
 					scroll_dir: scroll_dir / texture_width as f32,
-					_padding: [0, 0, 0],
 				});
 
 				gpu_vertices.push(GpuVertex {
@@ -233,7 +233,6 @@ impl Level {
 					texture_id: final_tex_id.0,
 					floor_tex_id: floor_tex_id.0,
 					scroll_dir: scroll_dir / texture_width as f32,
-					_padding: [0, 0, 0],
 				});
 
 				gpu_vertices.push(GpuVertex {
@@ -243,7 +242,6 @@ impl Level {
 					texture_id: final_tex_id.0,
 					floor_tex_id: floor_tex_id.0,
 					scroll_dir: scroll_dir / texture_width as f32,
-					_padding: [0, 0, 0],
 				});
 
 				gpu_indices.push(start_idx);
@@ -613,7 +611,7 @@ impl Level {
 				let ceil_texture_name = to_u64(&sector.ceilingpic);
 
 				sector.floor_tex = if sector.floorpic.starts_with(b"F_SKY1") {
-					TextureId((u16::MAX - 2) as u32)
+					SKY_CEIL_ID
 				} else {
 					match texture_ids.get(&floor_texture_name) {
 						Some(tex) => tex.0,
@@ -622,7 +620,7 @@ impl Level {
 				};
 
 				sector.ceil_tex = if sector.ceilingpic.starts_with(b"F_SKY1") {
-					TextureId((u16::MAX - 2) as u32)
+					SKY_CEIL_ID
 				} else {
 					match texture_ids.get(&ceil_texture_name) {
 						Some(tex) => tex.0,
@@ -641,7 +639,6 @@ impl Level {
 						texture_id: sector.floor_tex.0,
 						floor_tex_id: 0,
 						scroll_dir: 0.0,
-						_padding: [0, 0, 0],
 					});
 				}
 				for chunk in sector_indices.as_chunks::<3>().0 {
@@ -659,7 +656,6 @@ impl Level {
 						texture_id: sector.ceil_tex.0,
 						floor_tex_id: 0,
 						scroll_dir: 0.0,
-						_padding: [0, 0, 0],
 					});
 				}
 				for chunk in sector_indices.as_chunks::<3>().0 {
@@ -722,7 +718,6 @@ impl Level {
 				texture_id: 0,
 				floor_tex_id: 0,
 				scroll_dir: 0.0,
-				_padding: [0, 0, 0],
 			})
 			.collect();
 
@@ -750,7 +745,6 @@ impl Level {
 				texture_id: 0,
 				floor_tex_id: 0,
 				scroll_dir: 0.0,
-				_padding: [0, 0, 0],
 			})
 			.collect();
 

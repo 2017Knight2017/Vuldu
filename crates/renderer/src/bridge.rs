@@ -19,7 +19,6 @@ pub(crate) mod ffi {
 		pub texture_id: u32,
 		pub floor_tex_id: u32,
 		pub scroll_dir: f32,
-		pub _padding: [u32; 3],
 	}
 
 	pub struct UniformBufferObject {
@@ -34,14 +33,12 @@ pub(crate) mod ffi {
 		pub sprite_size: [f32; 2],
 		pub light_level: u32,
 		pub texture_id: u32,
-		pub _padding: [u32; 3],
 	}
 
 	pub struct UiInstance {
 		pub pos: [f32; 2],
 		pub sprite_size: [f32; 2],
 		pub texture_id: u32,
-		pub _padding: [u32; 3],
 	}
 
 	pub struct TextureDescriptor {
