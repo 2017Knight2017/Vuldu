@@ -123,8 +123,8 @@ size_t getMaxSky() {
     return MAX_SKY;
 }
 
-size_t getMaxTextures() {
-    return MAX_TEXTURES;
+size_t getAnimInfoSize() {
+    return ANIM_INFO_SIZE;
 }
 
 void VulkanRenderer::startFrame(const UniformBufferObject* ubo_ptr) {

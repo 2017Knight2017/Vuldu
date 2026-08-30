@@ -140,7 +140,7 @@ pub(crate) mod ffi {
 		fn setGlobalTimer(self: Pin<&mut VulkanRenderer>, global_timer: u32);
 		fn setCameraYaw(self: Pin<&mut VulkanRenderer>, camera_yaw: f32);
 		fn getMaxSky() -> usize;
-		fn getMaxTextures() -> usize;
+		fn getAnimInfoSize() -> usize;
 	}
 }
 

@@ -11,10 +11,10 @@ struct animLevelInfo {
     uint frames;
 };
 
-const uint MAX_TEXTURES = 8192;
+const uint ANIM_INFO_SIZE = 4096;
 
 layout(binding = 3) uniform AnimLevelBuffer {
-    animLevelInfo info[MAX_TEXTURES];
+    animLevelInfo info[ANIM_INFO_SIZE];
 } anim;
 
 layout(push_constant) uniform LevelConstants {
@@ -46,6 +46,7 @@ layout(location = 7) out vec3 fragTriangleColor;
 const uint ANIM_SPEED = 3;
 
 uint getAnimId() {
+    if (inTexId >= ANIM_INFO_SIZE) return inTexId;
     animLevelInfo info = anim.info[inTexId];
 
     uint frames = info.frames;

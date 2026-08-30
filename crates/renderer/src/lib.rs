@@ -4,12 +4,12 @@ pub use bridge::ffi::{
 	AnimLevelInfo, ObjectInstance, TextureDescriptor, UiInstance, UniformBufferObject, Vertex,
 	WindowHandles, WindowSize,
 };
-use bridge::ffi::{VulkanRenderer, createRenderer, getMaxSky, getMaxTextures};
+use bridge::ffi::{VulkanRenderer, createRenderer, getAnimInfoSize, getMaxSky};
 use cxx::UniquePtr;
 use std::{pin::Pin, sync::OnceLock};
 
 pub static MAX_SKY: OnceLock<usize> = OnceLock::new();
-pub static MAX_TEXTURES: OnceLock<usize> = OnceLock::new();
+pub static ANIM_INFO_SIZE: OnceLock<usize> = OnceLock::new();
 
 pub struct SafeRenderer {
 	renderer: UniquePtr<VulkanRenderer>,
@@ -24,7 +24,7 @@ impl Default for SafeRenderer {
 impl SafeRenderer {
 	pub fn new() -> Self {
 		let _ = MAX_SKY.set(getMaxSky());
-		let _ = MAX_TEXTURES.set(getMaxTextures());
+		let _ = ANIM_INFO_SIZE.set(getAnimInfoSize());
 		Self {
 			renderer: createRenderer(),
 		}

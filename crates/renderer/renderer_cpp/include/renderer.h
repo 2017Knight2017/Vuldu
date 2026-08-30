@@ -14,6 +14,7 @@ const bool enableValidationLayers = false;
 
 inline const uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 inline const uint32_t MAX_TEXTURES = 8192;
+inline const uint32_t ANIM_INFO_SIZE = MAX_TEXTURES >> 1;
 inline const uint32_t MAX_SKY = 16;  
 inline const uint32_t MAX_PAL = 14;
 inline const uint32_t MAX_OBJECTS = 50000;
@@ -234,7 +235,6 @@ private:
         const void* data_ptr, 
         size_t width,
         size_t height,
-        size_t colorSize,
         VkFormat format,
         VkImage& dstImage, 
         VkDeviceMemory& dstImageMemory,
@@ -288,4 +288,4 @@ private:
 
 std::unique_ptr<VulkanRenderer> createRenderer();
 size_t getMaxSky();
-size_t getMaxTextures();
+size_t getAnimInfoSize();

@@ -312,14 +312,29 @@ void VulkanRenderer::createDataTexture(
     const void* data_ptr, 
     size_t width,
     size_t height,
-    size_t colorSize,
     VkFormat format,
     VkImage& dstImage, 
     VkDeviceMemory& dstImageMemory,
     VkImageView& dstImageView,
     uint32_t dstBinding
 ) {
-    VkDeviceSize imageSize = width * height * colorSize;
+    size_t channelsInColor;
+
+    switch (format) 
+    {
+    case VK_FORMAT_R8G8B8A8_UNORM:
+        channelsInColor = 4;
+        break;
+    
+    case VK_FORMAT_R8_UINT:
+        channelsInColor = 1;
+        break;
+
+    default:
+        channelsInColor = 1;
+    }
+
+    VkDeviceSize imageSize = width * height * channelsInColor;
 
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
@@ -405,7 +420,6 @@ void VulkanRenderer::uploadPalettes(const uint8_t* palettes_ptr, size_t palette_
         palettes_ptr, 
         256,
         colorsCount / 256,
-        sizeof(float),
         VK_FORMAT_R8G8B8A8_UNORM, 
         this->paletteImage, this->paletteImageMemory, this->paletteImageView, 
         1
@@ -419,7 +433,6 @@ void VulkanRenderer::uploadColormap(const uint8_t* colormap_ptr, size_t colormap
         colormap_ptr, 
         256,
         colormap_bytes_count / 256,
-        sizeof(uint8_t),
         VK_FORMAT_R8_UINT, 
         this->colormapImage, this->colormapImageMemory, this->colormapImageView, 
         2
@@ -427,9 +440,9 @@ void VulkanRenderer::uploadColormap(const uint8_t* colormap_ptr, size_t colormap
 }
 
 void VulkanRenderer::uploadAnimLevelInfo(const AnimLevelInfo* info_ptr, size_t info_count) {
-    if (info_count == 0 || info_ptr == nullptr) return;
+    if (info_count != ANIM_INFO_SIZE || info_ptr == nullptr) return;
 
-    VkDeviceSize bufferSize = (MAX_TEXTURES >> 2) * sizeof(AnimLevelInfo);
+    VkDeviceSize bufferSize = ANIM_INFO_SIZE * sizeof(AnimLevelInfo);
 
     createBufferBinding(info_ptr, bufferSize, this->animLevelBuffer, 
         this->animLevelBufferMemory, 3);

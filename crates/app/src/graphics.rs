@@ -3,7 +3,7 @@ use glam::{Mat4, Vec3};
 use hecs::{Entity, World};
 use micropool::iter::*;
 use renderer::{
-	AnimLevelInfo, MAX_SKY, MAX_TEXTURES, ObjectInstance, SafeRenderer, TextureDescriptor,
+	ANIM_INFO_SIZE, AnimLevelInfo, MAX_SKY, ObjectInstance, SafeRenderer, TextureDescriptor,
 	UiInstance, UniformBufferObject, Vertex,
 };
 use rustc_hash::FxHashMap;
@@ -62,6 +62,7 @@ impl GraphicsContext {
 		map_num: u8,
 	) -> Result<(), String> {
 		let max_sky = *MAX_SKY.get().unwrap();
+		let anim_info_size = *ANIM_INFO_SIZE.get().unwrap();
 
 		let ((wall_names, wall_pics), (sky_names, sky_pics), sky_widths) = wad_manager
 			.bake_walls(max_sky)
@@ -175,7 +176,7 @@ impl GraphicsContext {
 		]);
 
 		let mut anim_level_info = Vec::new();
-		anim_level_info.resize_with(*MAX_TEXTURES.get().unwrap(), || AnimLevelInfo {
+		anim_level_info.resize_with(anim_info_size, || AnimLevelInfo {
 			texture: 0,
 			frames: 0,
 			_padding: [0, 0],
@@ -187,9 +188,12 @@ impl GraphicsContext {
 
 				if let Some(frames) = anim_map.remove(&name) {
 					let gpu_idx = current_gpu_id as usize;
-					for i in 0..frames as usize {
-						anim_level_info[gpu_idx + i].texture = current_gpu_id;
-						anim_level_info[gpu_idx + i].frames = frames;
+					let frames_len = frames as usize;
+					if gpu_idx + frames_len - 1 < anim_info_size {
+						for i in 0..frames_len {
+							anim_level_info[gpu_idx + i].texture = current_gpu_id;
+							anim_level_info[gpu_idx + i].frames = frames;
+						}
 					}
 				}
 
