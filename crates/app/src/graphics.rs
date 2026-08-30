@@ -388,7 +388,11 @@ impl GraphicsContext {
 			}
 
 			let sector = &sectors[current_sector.0.0];
-			let light_level = sector.light.clamp(0, 255) as u32;
+			let light_level = if anim.full_bright {
+				255
+			} else {
+				sector.light.clamp(0, 255) as u32
+			};
 
 			ObjectInstance {
 				pos: [lerped_x, lerped_y, lerped_z],

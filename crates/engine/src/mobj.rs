@@ -74,6 +74,7 @@ pub fn spawn_mobj(
 		.get(&spawn_state)
 		.expect("Spawn state not found in database!");
 	let cached_rotations = spawn_state_data.cached_rotations;
+	let full_bright = spawn_state_data.frame & (1 << 15) != 0;
 
 	let m_len = mobj_info.flags.len();
 	let mut top_offset_shift: i16 = 0;
@@ -156,6 +157,7 @@ pub fn spawn_mobj(
 			.add(SpriteAnimation {
 				cached_rotations,
 				top_offset_shift,
+				full_bright,
 			})
 			.add(MonsterRotation {
 				move_dir: Some(move_dir),

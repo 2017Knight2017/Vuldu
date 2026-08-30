@@ -26,7 +26,7 @@ pub struct MapTexture {
 	patches: Vec<MapPatch>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct DoomPicture {
 	pub raw_pixels: Vec<u8>,
 	pub width: u32,
@@ -176,7 +176,7 @@ impl WadManager {
 			.collect();
 
 		let patches = patch_names
-			.into_par_iter()
+			.into_iter()
 			.map(|name| {
 				let data = self.get_data(name);
 				match data {
@@ -208,86 +208,78 @@ impl WadManager {
 
 		let baked_results: Vec<([u8; 8], DoomPicture)> = all_map_textures
 			.into_par_iter()
-			.map_init(
-				|| Vec::with_capacity(256 * 256),
-				|thread_local_buffer, map_texture| {
-					let width = map_texture.width as usize;
-					let height = map_texture.height as usize;
+			.map(|map_texture| {
+				let width = map_texture.width as usize;
+				let height = map_texture.height as usize;
 
-					thread_local_buffer.resize(width * height, 0xFF);
+				let mut raw_pixels = vec![0xFF; width * height];
 
-					for wad_patch in &map_texture.patches {
-						let patch_idx = wad_patch.patch as usize;
-						if patch_idx >= patches.len() {
-							continue;
-						}
+				for wad_patch in &map_texture.patches {
+					let patch_idx = wad_patch.patch as usize;
+					if patch_idx >= patches.len() {
+						continue;
+					}
 
-						let patch_pic = &patches[patch_idx];
-						let p_width = patch_pic.width as usize;
-						let p_height = patch_pic.height as usize;
+					let patch_pic = &patches[patch_idx];
+					let p_width = patch_pic.width as usize;
+					let p_height = patch_pic.height as usize;
 
-						let origin_x = wad_patch.originx as isize;
-						let origin_y = wad_patch.originy as isize;
+					let origin_x = wad_patch.originx as isize;
+					let origin_y = wad_patch.originy as isize;
 
-						let start_x = if origin_x < 0 {
-							(-origin_x) as usize
-						} else {
-							0
-						};
-						let end_x = if p_width.strict_add_signed(origin_x) > width {
-							width.strict_sub_signed(origin_x)
-						} else {
-							p_width
-						};
+					let start_x = if origin_x < 0 {
+						(-origin_x) as usize
+					} else {
+						0
+					};
+					let end_x = if p_width.strict_add_signed(origin_x) > width {
+						width.strict_sub_signed(origin_x)
+					} else {
+						p_width
+					};
 
-						let start_y = if origin_y < 0 {
-							(-origin_y) as usize
-						} else {
-							0
-						};
-						let end_y = if p_height.strict_add_signed(origin_y) > height {
-							height.strict_sub_signed(origin_y)
-						} else {
-							p_height
-						};
+					let start_y = if origin_y < 0 {
+						(-origin_y) as usize
+					} else {
+						0
+					};
+					let end_y = if p_height.strict_add_signed(origin_y) > height {
+						height.strict_sub_signed(origin_y)
+					} else {
+						p_height
+					};
 
-						if start_x >= end_x || start_y >= end_y {
-							continue;
-						}
+					if start_x >= end_x || start_y >= end_y {
+						continue;
+					}
 
-						for px in start_x..end_x {
-							let dest_x = px.strict_add_signed(origin_x);
+					for px in start_x..end_x {
+						let dest_x = px.strict_add_signed(origin_x);
 
-							for py in start_y..end_y {
-								let color_idx = patch_pic.raw_pixels[py * p_width + px];
+						for py in start_y..end_y {
+							let color_idx = patch_pic.raw_pixels[py * p_width + px];
 
-								if color_idx != 0xFF {
-									let dest_y = py.strict_add_signed(origin_y);
-									let dest_idx = dest_y * width + dest_x;
+							if color_idx != 0xFF {
+								let dest_y = py.strict_add_signed(origin_y);
+								let dest_idx = dest_y * width + dest_x;
 
-									unsafe {
-										*thread_local_buffer.get_unchecked_mut(dest_idx) =
-											color_idx;
-									}
-								}
+								raw_pixels[dest_idx] = color_idx;
 							}
 						}
 					}
+				}
 
-					let final_wall_pixels = std::mem::take(thread_local_buffer);
-
-					(
-						map_texture.name,
-						DoomPicture {
-							raw_pixels: final_wall_pixels,
-							width: width as u32,
-							height: height as u32,
-							left_offset: 0,
-							top_offset: 0,
-						},
-					)
-				},
-			)
+				(
+					map_texture.name,
+					DoomPicture {
+						raw_pixels,
+						width: width as u32,
+						height: height as u32,
+						left_offset: 0,
+						top_offset: 0,
+					},
+				)
+			})
 			.collect();
 
 		println!("[bake_walls] baked_results are filled");
@@ -510,6 +502,15 @@ pub fn decode_column_picture(pic_data: &[u8], name: &[u8]) -> Result<DoomPicture
 	let left_offset = i16::from_le_bytes([pic_data[4], pic_data[5]]);
 	let top_offset = i16::from_le_bytes([pic_data[6], pic_data[7]]);
 
+	let total_columns_size = width * 4;
+	if pic_data.len() < 8 + total_columns_size {
+		eprintln!(
+			"[WARN] Picture data for '{}' is truncated: missing column pointers",
+			String::from_utf8_lossy(name)
+		);
+		return Ok(DoomPicture::default());
+	}
+
 	let total_pixels = width * height;
 	if total_pixels == 0 {
 		return Err("Zero width or height".to_string());
@@ -517,25 +518,10 @@ pub fn decode_column_picture(pic_data: &[u8], name: &[u8]) -> Result<DoomPicture
 
 	let mut raw_pixels = vec![0xFFu8; total_pixels];
 
-	let total_columns_size = width * 4;
-	if pic_data.len() < 8 + total_columns_size {
-		eprintln!(
-			"[WARN] Picture data for '{}' is truncated: missing column pointers",
-			String::from_utf8_lossy(name)
-		);
-		return Ok(DoomPicture {
-			raw_pixels: Vec::new(),
-			width: 0,
-			height: 0,
-			left_offset: 0,
-			top_offset: 0,
-		});
-	}
-
 	let column_pointers = &pic_data[8..8 + total_columns_size];
 
 	for (col_idx, chunk) in column_pointers.as_chunks::<4>().0.iter().enumerate() {
-		let col_offset = u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]) as usize;
+		let col_offset = u32::from_le_bytes(*chunk) as usize;
 
 		let mut pointer = col_offset;
 
@@ -564,9 +550,7 @@ pub fn decode_column_picture(pic_data: &[u8], name: &[u8]) -> Result<DoomPicture
 				let row_idx = top_delta as usize + i;
 				if row_idx < height {
 					let dest_index = row_idx * width + col_idx;
-					unsafe {
-						*raw_pixels.get_unchecked_mut(dest_index) = color_index;
-					}
+					*raw_pixels.get_mut(dest_index).unwrap() = color_index;
 				}
 			}
 

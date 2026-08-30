@@ -30,9 +30,11 @@ pub fn friction_system(world: &World) {
 }
 
 pub fn animation_system(world: &World) {
+	let db = DB.get().unwrap();
 	let mut query = world.query::<(&mut SpriteAnimation, &MobjAi)>();
 	for (anim, ai) in query.iter() {
-		let db = DB.get().unwrap();
-		anim.cached_rotations = db.states[&ai.current_state].cached_rotations;
+		let state_data = db.states[&ai.current_state];
+		anim.cached_rotations = state_data.cached_rotations;
+		anim.full_bright = state_data.frame & (1 << 15) != 0;
 	}
 }

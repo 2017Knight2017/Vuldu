@@ -57,6 +57,7 @@ pub struct ReactionTime(pub u32);
 pub struct SpriteAnimation {
 	pub cached_rotations: [CachedStateSprite; 9],
 	pub top_offset_shift: i16,
+	pub full_bright: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
