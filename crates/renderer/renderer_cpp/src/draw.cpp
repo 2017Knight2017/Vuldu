@@ -98,6 +98,10 @@ void VulkanRenderer::setPaletteIndex(uint32_t idx) {
 	this->currentPaletteIndex = idx % MAX_PAL;
 }
 
+uint32_t VulkanRenderer::getPaletteIndex() {
+	return this->currentPaletteIndex;
+}
+
 void VulkanRenderer::setSkyIndex(uint32_t idx) {
 	this->currentSkyIndex = idx % MAX_SKY;
 }
@@ -110,13 +114,8 @@ void VulkanRenderer::setCameraYaw(float camera_yaw) {
     this->cameraYaw = camera_yaw;
 }
 
-void VulkanRenderer::setFlags(bool wireframe, bool byte_shadows) {
-    const uint32_t WIREFRAME_BIT    = 1 << 0;
-    const uint32_t BYTE_SHADOWS_BIT = 1 << 1;
-
-    this->flags = (this->flags & ~(WIREFRAME_BIT | BYTE_SHADOWS_BIT))
-        | (static_cast<uint32_t>(wireframe) << 0)
-        | (static_cast<uint32_t>(byte_shadows) << 1);
+void VulkanRenderer::setFlags(uint32_t flags_to_invert) {
+    this->flags ^= flags_to_invert;
 }
 
 size_t getMaxSky() {
@@ -203,7 +202,7 @@ void VulkanRenderer::drawLevel() {
     vkCmdBindVertexBuffers(currentCommandBuffer, 0, 1, vertexBuffers, offsets);
     vkCmdBindIndexBuffer(currentCommandBuffer, this->levelIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-    PushConstants constants{};
+    LevelPushConstants constants{};
     constants.resolution = {
         static_cast<float>(this->swapChainExtent.width),
         static_cast<float>(this->swapChainExtent.height)
@@ -220,7 +219,7 @@ void VulkanRenderer::drawLevel() {
         this->levelPipelineLayout,
         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
         0,
-        sizeof(PushConstants),
+        sizeof(LevelPushConstants),
         &constants 
     );
 
@@ -249,7 +248,7 @@ void VulkanRenderer::drawObjects() {
         
     vkCmdBindIndexBuffer(currentCommandBuffer, this->objectIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-    PushConstants constants{};
+    SpritePushConstants constants{};
     constants.paletteIndex = this->currentPaletteIndex;
     constants.flags = this->flags;
 
@@ -258,7 +257,7 @@ void VulkanRenderer::drawObjects() {
         this->spritePipelineLayout,
         VK_SHADER_STAGE_FRAGMENT_BIT,
         0,                    
-        sizeof(uint32_t) + sizeof(uint32_t),
+        sizeof(SpritePushConstants),
         &constants 
     );
 
@@ -287,16 +286,13 @@ void VulkanRenderer::drawUi() {
         
     vkCmdBindIndexBuffer(currentCommandBuffer, this->uiIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-    PushConstants constants{};
-    constants.paletteIndex = this->currentPaletteIndex;
-
     vkCmdPushConstants(
         currentCommandBuffer,
         this->uiPipelineLayout,
         VK_SHADER_STAGE_FRAGMENT_BIT,
         0,                    
         sizeof(uint32_t),
-        &constants 
+        &this->currentPaletteIndex
     );
 
     vkCmdDrawIndexed(currentCommandBuffer, this->uiIndexCount, this->activeUiCount, 0, 0, 0);

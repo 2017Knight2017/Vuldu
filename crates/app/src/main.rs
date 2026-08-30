@@ -79,6 +79,8 @@ impl App {
 				&mut self.graphics.ui_to_update,
 				&mut self.last_buttons_pressed,
 			);
+			self.graphics
+				.system(&mut self.game.graphics_buffer, self.game.global_timer);
 			self.time_accumulator -= TICK_TIME;
 			self.game.global_timer = self.game.global_timer.wrapping_add(1);
 		}
@@ -271,6 +273,21 @@ impl ApplicationHandler for App {
 					}
 					PhysicalKey::Code(KeyCode::Digit7) => {
 						self.current_input.choose_bfg = is_pressed
+					}
+					PhysicalKey::Code(KeyCode::Digit8) => {
+						if is_pressed {
+							self.game.graphics_buffer.push(GraphicsCommand::Palette(8));
+						}
+					}
+					PhysicalKey::Code(KeyCode::Digit9) => {
+						if is_pressed {
+							self.game.graphics_buffer.push(GraphicsCommand::Palette(12));
+						}
+					}
+					PhysicalKey::Code(KeyCode::Digit0) => {
+						if is_pressed {
+							self.game.graphics_buffer.push(GraphicsCommand::FullBright);
+						}
 					}
 					_ => {}
 				}

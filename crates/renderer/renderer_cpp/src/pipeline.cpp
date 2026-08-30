@@ -406,7 +406,7 @@ void VulkanRenderer::createSpritePipeline(
 	VkPushConstantRange pushConstantRange{};
 	pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; 
 	pushConstantRange.offset = 0;
-	pushConstantRange.size = sizeof(uint32_t) + sizeof(bool) * 4;
+	pushConstantRange.size = sizeof(SpritePushConstants);
 
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -485,7 +485,7 @@ void VulkanRenderer::createLevelPipeline(
 	VkPushConstantRange pushConstantRange{};
 	pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT; 
 	pushConstantRange.offset = 0;
-	pushConstantRange.size = sizeof(PushConstants);
+	pushConstantRange.size = sizeof(LevelPushConstants);
 
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;

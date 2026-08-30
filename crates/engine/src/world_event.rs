@@ -27,6 +27,12 @@ pub enum WorldEvent {
 	CheatNOCLIP,
 }
 
+#[derive(PartialEq, Eq)]
+pub enum GraphicsCommand {
+	Palette(u32),
+	FullBright,
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn execute_events_system(
 	world_events: &mut Vec<WorldEvent>,
@@ -37,6 +43,7 @@ pub fn execute_events_system(
 	cmd: &mut CommandBuffer,
 	audio_buffer: &mut Vec<SfxEvent>,
 	blocklists: &mut [Vec<Entity>],
+	graphics_buffer: &mut Vec<GraphicsCommand>,
 	cfg: &GameConfig,
 	global_timer: u32,
 ) {
@@ -66,7 +73,7 @@ pub fn execute_events_system(
 					continue;
 				};
 
-				if special_item_effect(
+				match special_item_effect(
 					&item_type,
 					&mut inventory,
 					&mut stats,
@@ -75,18 +82,34 @@ pub fn execute_events_system(
 					audio_buffer,
 					cfg,
 					global_timer,
-				)
-				.is_some()
-				{
-					if item_type.type_ == MobjNum::Misc11 && hp.0 < 25 {
-						println!("Picked up a medikit that you REALLY need!")
-					} else {
+				) {
+					Ok(Some(_)) => {
+						if item_type.type_ == MobjNum::Misc11 && hp.0 < 25 {
+							println!("Picked up a medikit that you REALLY need!")
+						} else {
+							println!(
+								"{}",
+								PICKUP_MESSAGES[item_type.type_ as usize - MobjNum::Misc0 as usize]
+							);
+						}
+
+						if item_type.type_ == MobjNum::Misc16 {
+							graphics_buffer.push(GraphicsCommand::FullBright);
+						}
+
+						graphics_buffer.push(GraphicsCommand::Palette(12));
+						kill_mobj(special_item, world, level, cmd, blocklists);
+					}
+					Ok(None) => {
+						// if we're here, we've just picked up a weapon,
+						// so we don't check for medikit.
 						println!(
 							"{}",
 							PICKUP_MESSAGES[item_type.type_ as usize - MobjNum::Misc0 as usize]
 						);
+						graphics_buffer.push(GraphicsCommand::Palette(12));
 					}
-					kill_mobj(special_item, world, level, cmd, blocklists);
+					Err(_) => {}
 				}
 			}
 			WorldEvent::CheatIDKFA => {
@@ -135,7 +158,7 @@ fn special_item_effect(
 	audio_buffer: &mut Vec<SfxEvent>,
 	cfg: &GameConfig,
 	global_timer: u32,
-) -> Option<()> {
+) -> Result<Option<()>, ()> {
 	const CLIP_IDX: usize = AmmoType::Clip as usize;
 	const MISSILE_IDX: usize = AmmoType::Missile as usize;
 	const CELL_IDX: usize = AmmoType::Cell as usize;
@@ -157,9 +180,9 @@ fn special_item_effect(
 					pos: None,
 				});
 
-				Some(())
+				Ok(Some(()))
 			} else {
-				None
+				Err(())
 			}
 		}
 		MobjNum::Misc1 => {
@@ -173,9 +196,9 @@ fn special_item_effect(
 					pos: None,
 				});
 
-				Some(())
+				Ok(Some(()))
 			} else {
-				None
+				Err(())
 			}
 		}
 		MobjNum::Misc2 => {
@@ -189,7 +212,7 @@ fn special_item_effect(
 				pos: None,
 			});
 
-			Some(())
+			Ok(Some(()))
 		}
 		MobjNum::Misc3 => {
 			stats.armor_points = (stats.armor_points + 1).min(200);
@@ -201,7 +224,7 @@ fn special_item_effect(
 				pos: None,
 			});
 
-			Some(())
+			Ok(Some(()))
 		}
 		MobjNum::Misc4 => {
 			inventory.cards[Card::BlueCard as usize] = true;
@@ -212,7 +235,7 @@ fn special_item_effect(
 				pos: None,
 			});
 
-			Some(())
+			Ok(Some(()))
 		}
 		MobjNum::Misc5 => {
 			inventory.cards[Card::RedCard as usize] = true;
@@ -223,7 +246,7 @@ fn special_item_effect(
 				pos: None,
 			});
 
-			Some(())
+			Ok(Some(()))
 		}
 		MobjNum::Misc6 => {
 			inventory.cards[Card::YellowCard as usize] = true;
@@ -234,7 +257,7 @@ fn special_item_effect(
 				pos: None,
 			});
 
-			Some(())
+			Ok(Some(()))
 		}
 		MobjNum::Misc7 => {
 			inventory.cards[Card::YellowSkull as usize] = true;
@@ -245,7 +268,7 @@ fn special_item_effect(
 				pos: None,
 			});
 
-			Some(())
+			Ok(Some(()))
 		}
 		MobjNum::Misc8 => {
 			inventory.cards[Card::RedSkull as usize] = true;
@@ -256,7 +279,7 @@ fn special_item_effect(
 				pos: None,
 			});
 
-			Some(())
+			Ok(Some(()))
 		}
 		MobjNum::Misc9 => {
 			inventory.cards[Card::BlueSkull as usize] = true;
@@ -267,7 +290,7 @@ fn special_item_effect(
 				pos: None,
 			});
 
-			Some(())
+			Ok(Some(()))
 		}
 		MobjNum::Misc10 => {
 			if hp.0 < 100 {
@@ -279,9 +302,9 @@ fn special_item_effect(
 					pos: None,
 				});
 
-				Some(())
+				Ok(Some(()))
 			} else {
-				None
+				Err(())
 			}
 		}
 		MobjNum::Misc11 => {
@@ -294,9 +317,9 @@ fn special_item_effect(
 					pos: None,
 				});
 
-				Some(())
+				Ok(Some(()))
 			} else {
-				None
+				Err(())
 			}
 		}
 		MobjNum::Misc12 => {
@@ -309,7 +332,7 @@ fn special_item_effect(
 				pos: None,
 			});
 
-			Some(())
+			Ok(Some(()))
 		}
 		MobjNum::Misc13 => {
 			if hp.0 < 100 {
@@ -324,7 +347,7 @@ fn special_item_effect(
 			});
 			stats.berserk_timestamp = Some(global_timer);
 
-			Some(())
+			Ok(Some(()))
 		}
 		MobjNum::Misc14 => {
 			stats.rad_suit_timestamp = Some(global_timer);
@@ -333,7 +356,7 @@ fn special_item_effect(
 				sfx_id: to_u64(b"DSGETPOW"),
 				pos: None,
 			});
-			Some(())
+			Ok(Some(()))
 		}
 		MobjNum::Misc15 => {
 			if !stats.computer_area_map {
@@ -345,9 +368,9 @@ fn special_item_effect(
 					pos: None,
 				});
 
-				Some(())
+				Ok(Some(()))
 			} else {
-				None
+				Err(())
 			}
 		}
 		MobjNum::Misc16 => {
@@ -359,7 +382,7 @@ fn special_item_effect(
 				pos: None,
 			});
 
-			Some(())
+			Ok(Some(()))
 		}
 		MobjNum::Inv => {
 			stats.invuln_timestamp = Some(global_timer);
@@ -371,7 +394,7 @@ fn special_item_effect(
 				pos: None,
 			});
 
-			Some(())
+			Ok(Some(()))
 		}
 		MobjNum::Ins => {
 			// TODO: make the player's weapon partially invisible
@@ -383,7 +406,7 @@ fn special_item_effect(
 				pos: None,
 			});
 
-			Some(())
+			Ok(Some(()))
 		}
 		MobjNum::Mega => {
 			hp.0 = 200;
@@ -398,7 +421,7 @@ fn special_item_effect(
 				pos: None,
 			});
 
-			Some(())
+			Ok(Some(()))
 		}
 		MobjNum::Clip => {
 			let max_ammo = max_ammo[CLIP_IDX] << inventory.backpack as u32;
@@ -415,9 +438,9 @@ fn special_item_effect(
 					pos: None,
 				});
 
-				Some(())
+				Ok(Some(()))
 			} else {
-				None
+				Err(())
 			}
 		}
 		MobjNum::Misc17 => {
@@ -434,9 +457,9 @@ fn special_item_effect(
 					pos: None,
 				});
 
-				Some(())
+				Ok(Some(()))
 			} else {
-				None
+				Err(())
 			}
 		}
 		MobjNum::Misc18 => {
@@ -453,9 +476,9 @@ fn special_item_effect(
 					pos: None,
 				});
 
-				Some(())
+				Ok(Some(()))
 			} else {
-				None
+				Err(())
 			}
 		}
 		MobjNum::Misc19 => {
@@ -472,9 +495,9 @@ fn special_item_effect(
 					pos: None,
 				});
 
-				Some(())
+				Ok(Some(()))
 			} else {
-				None
+				Err(())
 			}
 		}
 		MobjNum::Misc20 => {
@@ -491,9 +514,9 @@ fn special_item_effect(
 					pos: None,
 				});
 
-				Some(())
+				Ok(Some(()))
 			} else {
-				None
+				Err(())
 			}
 		}
 		MobjNum::Misc21 => {
@@ -510,9 +533,9 @@ fn special_item_effect(
 					pos: None,
 				});
 
-				Some(())
+				Ok(Some(()))
 			} else {
-				None
+				Err(())
 			}
 		}
 		MobjNum::Misc22 => {
@@ -529,9 +552,9 @@ fn special_item_effect(
 					pos: None,
 				});
 
-				Some(())
+				Ok(Some(()))
 			} else {
-				None
+				Err(())
 			}
 		}
 		MobjNum::Misc23 => {
@@ -548,9 +571,9 @@ fn special_item_effect(
 					pos: None,
 				});
 
-				Some(())
+				Ok(Some(()))
 			} else {
-				None
+				Err(())
 			}
 		}
 		MobjNum::Misc24 => {
@@ -573,7 +596,7 @@ fn special_item_effect(
 				pos: None,
 			});
 
-			Some(())
+			Ok(Some(()))
 		}
 		MobjNum::Misc25 => {
 			let max_ammo = max_ammo[CELL_IDX] << inventory.backpack as u32;
@@ -611,9 +634,9 @@ fn special_item_effect(
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
-				if cfg.dmatch { None } else { Some(()) }
+				if cfg.dmatch { Ok(None) } else { Ok(Some(())) }
 			} else {
-				None
+				Err(())
 			}
 		}
 		MobjNum::Misc26 => {
@@ -633,9 +656,9 @@ fn special_item_effect(
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
-				if cfg.dmatch { None } else { Some(()) }
+				if cfg.dmatch { Ok(None) } else { Ok(Some(())) }
 			} else {
-				None
+				Err(())
 			}
 		}
 		MobjNum::Misc27 => {
@@ -674,9 +697,9 @@ fn special_item_effect(
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
-				if cfg.dmatch { None } else { Some(()) }
+				if cfg.dmatch { Ok(None) } else { Ok(Some(())) }
 			} else {
-				None
+				Err(())
 			}
 		}
 		MobjNum::Misc28 => {
@@ -715,9 +738,9 @@ fn special_item_effect(
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
-				if cfg.dmatch { None } else { Some(()) }
+				if cfg.dmatch { Ok(None) } else { Ok(Some(())) }
 			} else {
-				None
+				Err(())
 			}
 		}
 		MobjNum::Chaingun => {
@@ -757,9 +780,9 @@ fn special_item_effect(
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
-				if cfg.dmatch { None } else { Some(()) }
+				if cfg.dmatch { Ok(None) } else { Ok(Some(())) }
 			} else {
-				None
+				Err(())
 			}
 		}
 		MobjNum::Shotgun => {
@@ -799,9 +822,9 @@ fn special_item_effect(
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
-				if cfg.dmatch { None } else { Some(()) }
+				if cfg.dmatch { Ok(None) } else { Ok(Some(())) }
 			} else {
-				None
+				Err(())
 			}
 		}
 		MobjNum::Supershotgun => {
@@ -840,9 +863,9 @@ fn special_item_effect(
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
-				if cfg.dmatch { None } else { Some(()) }
+				if cfg.dmatch { Ok(None) } else { Ok(Some(())) }
 			} else {
-				None
+				Err(())
 			}
 		}
 		_ => unreachable!(),

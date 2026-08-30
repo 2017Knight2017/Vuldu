@@ -13,6 +13,7 @@ pub struct GameContext {
 	pub state: GameState,
 	pub config: GameConfig,
 	pub blocklists: Vec<Vec<Entity>>,
+	pub graphics_buffer: Vec<GraphicsCommand>,
 	sound_targets: Vec<Option<Entity>>,
 	world_events: Vec<WorldEvent>,
 	mobj_flag_buffer: Vec<MobjFlagCommand>,
@@ -31,6 +32,7 @@ impl GameContext {
 			blocklists: vec![Vec::new(); level.geom.blockmap.row_num * level.geom.blockmap.col_num],
 			traversal: Traversal::for_level(&level),
 			level,
+			graphics_buffer: Vec::new(),
 			world_events: Vec::new(),
 			mobj_flag_buffer: Vec::new(),
 			command_buffer: CommandBuffer::new(),
@@ -140,6 +142,7 @@ impl GameContext {
 			&mut self.command_buffer,
 			&mut audio.buffer,
 			&mut self.blocklists,
+			&mut self.graphics_buffer,
 			&self.config,
 			self.global_timer,
 		);

@@ -132,8 +132,9 @@ pub(crate) mod ffi {
 			info_count: usize,
 		);
 		fn setPaletteIndex(self: Pin<&mut VulkanRenderer>, idx: u32);
+		fn getPaletteIndex(self: Pin<&mut VulkanRenderer>) -> u32;
 		fn setSkyIndex(self: Pin<&mut VulkanRenderer>, idx: u32);
-		fn setFlags(self: Pin<&mut VulkanRenderer>, wireframe: bool, byte_shadows: bool);
+		fn setFlags(self: Pin<&mut VulkanRenderer>, flags_to_invert: u32);
 		fn setGlobalTimer(self: Pin<&mut VulkanRenderer>, global_timer: u32);
 		fn setCameraYaw(self: Pin<&mut VulkanRenderer>, camera_yaw: f32);
 		fn getMaxSky() -> usize;

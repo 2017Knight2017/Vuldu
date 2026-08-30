@@ -55,7 +55,12 @@ const std::vector<const char*> validationLayers = {
     "VK_LAYER_KHRONOS_validation"
 };
 
-struct PushConstants {
+struct SpritePushConstants {
+    uint32_t paletteIndex;
+    uint32_t flags;
+};
+
+struct LevelPushConstants {
     std::array<float, 2> resolution;
     uint32_t paletteIndex;
     uint32_t skyIndex;
@@ -89,10 +94,11 @@ public:
     );
     void uploadAnimLevelInfo(const AnimLevelInfo* info_ptr, size_t info_count);
     void setPaletteIndex(uint32_t idx);
+    uint32_t getPaletteIndex();
     void setSkyIndex(uint32_t idx);
     void setGlobalTimer(uint32_t global_timer);
     void setCameraYaw(float camera_yaw);
-    void setFlags(bool wireframe, bool byte_shadows);
+    void setFlags(uint32_t flags_to_invert);
     void startFrame(const UniformBufferObject* ubo_ptr);
     void endFrame();
     void drawLevel();

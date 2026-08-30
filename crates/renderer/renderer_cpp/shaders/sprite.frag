@@ -18,6 +18,7 @@ layout(location = 2) flat in uint fragLightLevel;
 layout(location = 0) out vec4 outColor;
 
 const uint BYTE_SHADOWS = 2;
+const uint FULL_BRIGHT = 4;
 
 void main() {
     float rawColor = textureLod(texSamplers[nonuniformEXT(fragTexId)], fragTexCoord, 0.0).r;
@@ -27,15 +28,17 @@ void main() {
         discard;
     }
 
-    if (bool(sc.flags & BYTE_SHADOWS)) {
-        vec4 modernColor = texelFetch(palTex, ivec2(colorIndex, sc.paletteIndex), 0);
+    uint finalLight = fragLightLevel;
+    if (bool(sc.flags & FULL_BRIGHT))
+        finalLight = 255;
 
-        outColor = vec4(modernColor.rgb * (float(fragLightLevel) / 255.0), 1.0);  
+    if (bool(sc.flags & BYTE_SHADOWS)) {
+        outColor = texelFetch(palTex, ivec2(colorIndex, sc.paletteIndex), 0) * (float(finalLight) / 255.0);  
 
         return;
     } 
 
-    uint colormapIdx = 31 - (fragLightLevel >> 3);
+    uint colormapIdx = 31 - (finalLight >> 3);
     uint shadedIndex = texelFetch(colormapTex, ivec2(colorIndex, colormapIdx), 0).r;
 
     outColor = texelFetch(palTex, ivec2(shadedIndex, sc.paletteIndex), 0);

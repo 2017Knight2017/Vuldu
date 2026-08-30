@@ -64,6 +64,10 @@ impl SafeRenderer {
 		self.pin_mut().setPaletteIndex(idx);
 	}
 
+	pub fn get_palette_index(&mut self) -> u32 {
+		self.pin_mut().getPaletteIndex()
+	}
+
 	pub fn set_sky_index(&mut self, idx: u32) {
 		self.pin_mut().setSkyIndex(idx);
 	}
@@ -76,8 +80,8 @@ impl SafeRenderer {
 		self.pin_mut().setCameraYaw(camera_yaw);
 	}
 
-	pub fn set_flags(&mut self, wireframe: bool, byte_shadows: bool) {
-		self.pin_mut().setFlags(wireframe, byte_shadows);
+	pub fn set_flags(&mut self, flags_to_invert: u32) {
+		self.pin_mut().setFlags(flags_to_invert);
 	}
 
 	pub fn update_level_geometry(&mut self, vertices: &[Vertex], indices: &[u32]) {

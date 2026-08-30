@@ -31,6 +31,7 @@ const float TAU = 6.2831853071;
 
 const uint WIREMAP = 1;
 const uint BYTE_SHADOWS = 2;
+const uint FULL_BRIGHT = 4;
 
 const uint UNTEXED_WALL = 65535;
 const uint SKY_WALL = 65534;
@@ -49,6 +50,10 @@ void main() {
 
         return;
     } 
+
+    uint finalLight = fragLightLevel;
+    if (bool(lc.flags & FULL_BRIGHT))
+        finalLight = 255;
 
     vec2 screenUV = gl_FragCoord.xy / lc.resolution; 
     uint targetTexId;
@@ -69,7 +74,7 @@ void main() {
 
         targetUV = vec2(skyU, skyV);
         targetTexId = lc.skyIndex;
-        
+
     } else {
         float scrolledX = fract(fragTexCoord.x + lc.globalTimer * fragScrollDir);
         targetUV = vec2(scrolledX, fragTexCoord.y);
@@ -83,12 +88,12 @@ void main() {
     }
     
     if (bool(lc.flags & BYTE_SHADOWS)) {
-        outColor = texelFetch(palTex, ivec2(colorIndex, lc.paletteIndex), 0) * (float(fragLightLevel) / 255.0);  
+        outColor = texelFetch(palTex, ivec2(colorIndex, lc.paletteIndex), 0) * (float(finalLight) / 255.0);  
 
         return;
     }
 
-    uint colormapIdx = 31 - (fragLightLevel >> 3);
+    uint colormapIdx = 31 - (finalLight >> 3);
     uint finalColormapIdx = (fragTexId == 65534 || fragTexId == 65533) ? 0 : colormapIdx;
     uint shadedIndex = texelFetch(colormapTex, ivec2(colorIndex, finalColormapIdx), 0).r;
 
