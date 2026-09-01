@@ -23,7 +23,7 @@
 #include "renderer.h"
 #include "renderer/src/bridge.rs.h"
 
-bool VulkanRenderer::checkValidationLayerSupport() {
+bool checkValidationLayerSupport() {
     uint32_t layerCount;
     vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
 

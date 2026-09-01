@@ -12,18 +12,17 @@ VulkanRenderer::~VulkanRenderer() {
     cleanup();
 }
 
-void VulkanRenderer::initVulkan(const WindowHandles& handles, size_t window_raw_ptr) {
-    this->window_raw_ptr = window_raw_ptr;
+void VulkanRenderer::initVulkan(const WindowHandles& handles, uint32_t width, uint32_t height) {
     createInstance(handles);
     setupDebugMessenger();
     createSurface(handles);
     pickPhysicalDevice();
     createLogicalDevice();
-    createSwapChain();
+    createSwapChain(width, height);
     createImageViews();
     createDescriptorSetLayout();
     createPipelines();
-    createUniformBuffers();
+    createMVPBuffer();
     createObjectInstanceBuffers();
     createUiInstanceBuffers();
     createDescriptorPool();
@@ -35,12 +34,12 @@ void VulkanRenderer::initVulkan(const WindowHandles& handles, size_t window_raw_
     createSyncObjects();
 }
 
-void VulkanRenderer::recreateSwapChain() {
+void VulkanRenderer::recreateSwapChain(uint32_t width, uint32_t height) {
     vkDeviceWaitIdle(this->device);
 
     cleanupSwapChain();
 
-    createSwapChain();
+    createSwapChain(width, height);
     createImageViews();
     createDepthResources();
 

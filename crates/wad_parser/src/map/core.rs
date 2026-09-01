@@ -1,5 +1,7 @@
-use crate::{AABB, WadManager, wad_types::*};
+use crate::{AABB, ActiveEffect, WadManager, wad_types::*};
+use fixedbitset::FixedBitSet;
 use rayon::prelude::*;
+use rustc_hash::FxHashMap;
 use std::mem::size_of;
 use std::ptr::read_unaligned;
 
@@ -13,6 +15,8 @@ pub struct LineId(pub usize);
 pub struct SideId(pub usize);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SubsectorId(pub usize);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct EffectId(pub usize);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct TextureId(pub u32);
 
@@ -93,6 +97,8 @@ pub struct Geometry {
 	pub reject_table: RejectTable,
 	pub blockmap: Blockmap,
 	pub sector_lines: Vec<Vec<LineId>>,
+	pub tag_sectors: FxHashMap<u16, Vec<SectorId>>,
+	pub movable_sectors: FixedBitSet,
 	pub subsector_sector: Vec<SectorId>,
 }
 
@@ -107,6 +113,7 @@ pub struct SectorState {
 	pub(crate) ceilingpic: [u8; 8],
 	pub special: u16,
 	pub tag: u16,
+	pub active_mover: Option<EffectId>,
 }
 
 #[derive(Debug, Default)]
@@ -122,11 +129,17 @@ pub struct SideState {
 }
 
 #[derive(Debug, Default)]
+pub struct LineState {
+	pub used: bool,
+	pub mapped: bool,
+}
+
+#[derive(Debug, Default)]
 pub struct LevelState {
 	pub sectors: Vec<SectorState>,
 	pub sides: Vec<SideState>,
-	//lines: Vec<LineState>,
-	//effects: ActiveEffects,
+	pub lines: Vec<LineState>,
+	pub effects: Vec<ActiveEffect>,
 }
 
 #[derive(Debug, Default)]
@@ -163,6 +176,79 @@ impl Level {
 			})
 			.collect();
 
+		let sidedefs_bytes = wad_manager.get_map_data(b"SIDEDEFS", &map_name)?;
+		let sides_num = sidedefs_bytes.len() / size_of::<MapSidedef>();
+		level.geom.sides.resize_with(sides_num, Side::default);
+		level.state.sides.resize_with(sides_num, SideState::default);
+
+		sidedefs_bytes
+			.as_chunks::<{ size_of::<MapSidedef>() }>()
+			.0
+			.iter()
+			.enumerate()
+			.for_each(|(idx, chunk)| {
+				let s = unsafe { read_unaligned(chunk.as_ptr() as *const MapSidedef) };
+
+				level.geom.sides[idx] = Side {
+					sector: SectorId(s.sector as usize),
+				};
+				level.state.sides[idx] = SideState {
+					col_offset: s.textureoffset,
+					row_offset: s.rowoffset,
+					top_tex: None,
+					bottom_tex: None,
+					mid_tex: None,
+					toptexture: s.toptexture,
+					midtexture: s.midtexture,
+					bottomtexture: s.bottomtexture,
+				};
+			});
+
+		let sectors_bytes = wad_manager.get_map_data(b"SECTORS\0", &map_name)?;
+		level.state.sectors = sectors_bytes
+			.as_chunks::<{ size_of::<MapSector>() }>()
+			.0
+			.iter()
+			.enumerate()
+			.map(|(idx, chunk)| {
+				let s = unsafe { read_unaligned(chunk.as_ptr() as *const MapSector) };
+
+				if s.tag != 0 {
+					match level.geom.tag_sectors.get_mut(&s.tag) {
+						Some(sectors) => sectors.push(SectorId(idx)),
+						None => {
+							let _ = level.geom.tag_sectors.insert(s.tag, vec![SectorId(idx)]);
+						}
+					}
+				}
+
+				SectorState {
+					floor_h: s.floorheight as f32,
+					ceil_h: s.ceilingheight as f32,
+					light: s.lightlevel,
+					floor_tex: TextureId(0),
+					ceil_tex: TextureId(0),
+					floorpic: s.floorpic,
+					ceilingpic: s.ceilingpic,
+					special: s.special,
+					tag: s.tag,
+					active_mover: None,
+				}
+			})
+			.collect::<Vec<SectorState>>();
+
+		level.geom.movable_sectors.grow(level.state.sectors.len());
+
+		level.geom.movable_sectors.extend(
+			level
+				.state
+				.sectors
+				.iter()
+				.enumerate()
+				.filter(|(_, sector)| sector.tag != 0)
+				.map(|(idx, _)| idx),
+		);
+
 		let linedefs_bytes = wad_manager.get_map_data(b"LINEDEFS", &map_name)?;
 		level.geom.lines = linedefs_bytes
 			.as_chunks::<{ size_of::<MapLinedef>() }>()
@@ -170,8 +256,23 @@ impl Level {
 			.iter()
 			.map(|chunk| {
 				let l = unsafe { read_unaligned(chunk.as_ptr() as *const MapLinedef) };
+
+				if l.special != 0 {
+					match l.special {
+						1 | 26 | 27 | 28 | 31 | 32 | 33 | 34 | 117 | 118
+							if l.sidenum[1] != u16::MAX =>
+						{
+							let sector_id = level.geom.sides[l.sidenum[1] as usize].sector;
+							level.geom.movable_sectors.insert(sector_id.0);
+						}
+
+						_ => {}
+					}
+				}
+
 				let (v1_x, v1_y) = level.geom.vertices[l.v1 as usize];
 				let (v2_x, v2_y) = level.geom.vertices[l.v2 as usize];
+
 				Line {
 					v1: VertexId(l.v1 as usize),
 					v2: VertexId(l.v2 as usize),
@@ -202,33 +303,10 @@ impl Level {
 			})
 			.collect();
 
-		let sidedefs_bytes = wad_manager.get_map_data(b"SIDEDEFS", &map_name)?;
-		let sides_num = sidedefs_bytes.len() / size_of::<MapSidedef>();
-		level.geom.sides.resize_with(sides_num, Side::default);
-		level.state.sides.resize_with(sides_num, SideState::default);
-
-		sidedefs_bytes
-			.as_chunks::<{ size_of::<MapSidedef>() }>()
-			.0
-			.iter()
-			.enumerate()
-			.for_each(|(idx, chunk)| {
-				let s = unsafe { read_unaligned(chunk.as_ptr() as *const MapSidedef) };
-
-				level.geom.sides[idx] = Side {
-					sector: SectorId(s.sector as usize),
-				};
-				level.state.sides[idx] = SideState {
-					col_offset: s.textureoffset,
-					row_offset: s.rowoffset,
-					top_tex: None,
-					bottom_tex: None,
-					mid_tex: None,
-					toptexture: s.toptexture,
-					midtexture: s.midtexture,
-					bottomtexture: s.bottomtexture,
-				};
-			});
+		level
+			.state
+			.lines
+			.resize_with(level.geom.lines.len(), LineState::default);
 
 		let segs_bytes = wad_manager.get_map_data(b"SEGS\0\0\0\0", &map_name)?;
 		level.geom.segs = segs_bytes
@@ -264,27 +342,6 @@ impl Level {
 				}
 			})
 			.collect();
-
-		let sectors_bytes = wad_manager.get_map_data(b"SECTORS\0", &map_name)?;
-		level.state.sectors = sectors_bytes
-			.as_chunks::<{ size_of::<MapSector>() }>()
-			.0
-			.iter()
-			.map(|chunk| {
-				let s = unsafe { read_unaligned(chunk.as_ptr() as *const MapSector) };
-				SectorState {
-					floor_h: s.floorheight as f32,
-					ceil_h: s.ceilingheight as f32,
-					light: s.lightlevel,
-					floor_tex: TextureId(0),
-					ceil_tex: TextureId(0),
-					floorpic: s.floorpic,
-					ceilingpic: s.ceilingpic,
-					special: s.special,
-					tag: s.tag,
-				}
-			})
-			.collect::<Vec<SectorState>>();
 
 		let raw_reject_table = wad_manager.get_map_data(b"REJECT\0\0", &map_name)?;
 		level.geom.reject_table =

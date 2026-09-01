@@ -24,30 +24,25 @@ VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& avai
     return VK_PRESENT_MODE_FIFO_KHR;
 }
 
-VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities, size_t window_raw_ptr) {
+VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities, uint32_t width, uint32_t height) {
     if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
         return capabilities.currentExtent;
     }
 
-    WindowSize size = get_winit_window_size(window_raw_ptr);
-
     VkExtent2D actualExtent = {
-        size.width,
-        size.height
+        std::clamp(width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
+        std::clamp(height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height)
     };
-
-    actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
-    actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
 
     return actualExtent;
 }
 
-void VulkanRenderer::createSwapChain() {
-    SwapChainSupportDetails swapChainSupport = querySwapChainSupport(this->physicalDevice);
+void VulkanRenderer::createSwapChain(uint32_t width, uint32_t height) {
+    SwapChainSupportDetails swapChainSupport = querySwapChainSupport(this->physicalDevice, this->surface);
 
     VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
     VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
-    VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities, this->window_raw_ptr);
+    VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities, width, height);
 
     uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
     if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
@@ -64,7 +59,7 @@ void VulkanRenderer::createSwapChain() {
     createInfo.imageArrayLayers = 1;
     createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-    QueueFamilyIndices indices = findQueueFamilies(this->physicalDevice);
+    QueueFamilyIndices indices = findQueueFamilies(this->physicalDevice, this->surface);
     uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 
     if (indices.graphicsFamily != indices.presentFamily) {

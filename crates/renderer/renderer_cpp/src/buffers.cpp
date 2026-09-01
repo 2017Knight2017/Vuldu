@@ -77,42 +77,32 @@ void VulkanRenderer::endSingleTimeCommands(VkCommandBuffer commandBuffer) {
 }
 
 void VulkanRenderer::uploadTextureArray(
-    const TextureDescriptor* descriptors_ptr, 
-    size_t descriptor_count, 
-    const uint8_t* all_pixels_ptr, 
-    size_t all_pixels_count, 
-    const float* sky_widths_ptr, 
-    size_t sky_widths_count
+    rust::Slice<const TextureDescriptor> descriptors, 
+    rust::Slice<const uint8_t> pixels, 
+    rust::Slice<const float> sky_widths
 ) {
-    if (descriptor_count == 0 || descriptors_ptr == nullptr)
-        throw std::runtime_error("No textures to load!");
-
-    if (descriptor_count > MAX_TEXTURES) 
-        throw std::runtime_error("Too many textures to load! (>8192)");
+    if (descriptors.empty()) throw std::runtime_error("No textures to load!");
+    if (descriptors.size() > MAX_TEXTURES) throw std::runtime_error("Too many textures to load! (>8192)");
+    if (pixels.empty()) throw std::runtime_error("Pixels vector is empty!");
     
-    if (all_pixels_count == 0 || all_pixels_ptr == nullptr)
-        throw std::runtime_error("Pixels vector is empty!");
-    
-    this->skyWidths.resize(sky_widths_count);
-    memcpy(this->skyWidths.data(), sky_widths_ptr, sky_widths_count * sizeof(float));
-
-    std::vector<TextureDescriptor> descriptors(descriptors_ptr, descriptors_ptr + descriptor_count);
+    this->skyWidths.resize(sky_widths.size());
+    memcpy(this->skyWidths.data(), sky_widths.data(), sky_widths.size() * sizeof(float));
 
     VkBuffer pixelStagingBuffer;
     VkDeviceMemory pixelStagingBufferMemory;
-    createBuffer(all_pixels_count, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
+    createBuffer(pixels.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
                  pixelStagingBuffer, pixelStagingBufferMemory);
 
     void* pixelsData;
-    vkMapMemory(this->device, pixelStagingBufferMemory, 0, all_pixels_count, 0, &pixelsData);
-        memcpy(pixelsData, all_pixels_ptr, all_pixels_count);
+    vkMapMemory(this->device, pixelStagingBufferMemory, 0, pixels.size(), 0, &pixelsData);
+        memcpy(pixelsData, pixels.data(), pixels.size());
     vkUnmapMemory(this->device, pixelStagingBufferMemory);
 
-    this->textureImages.resize(descriptor_count);
-    this->textureImageViews.resize(descriptor_count);
-    this->textureImageMemories.resize(descriptor_count);
-    for (size_t i = 0; i < descriptor_count; i++) {
+    this->textureImages.resize(descriptors.size());
+    this->textureImageViews.resize(descriptors.size());
+    this->textureImageMemories.resize(descriptors.size());
+    for (size_t i = 0; i < descriptors.size(); i++) {
         createImage(
             descriptors[i].width, 
             descriptors[i].height, 
@@ -132,7 +122,7 @@ void VulkanRenderer::uploadTextureArray(
         this->textureImages
     );
 
-    for (size_t i = 0; i < descriptor_count; i++) {
+    for (size_t i = 0; i < descriptors.size(); i++) {
         const auto& desc = descriptors[i];
         VkBufferImageCopy region{};
         region.bufferOffset = desc.pixel_offset;
@@ -153,7 +143,7 @@ void VulkanRenderer::uploadTextureArray(
        
     endSingleTimeCommands(commandBuffer);
 
-    for (size_t i = 0; i < descriptor_count; i++) {
+    for (size_t i = 0; i < descriptors.size(); i++) {
         createImageView(
             this->device, 
             this->textureImages[i], 
@@ -166,8 +156,8 @@ void VulkanRenderer::uploadTextureArray(
     vkDestroyBuffer(this->device, pixelStagingBuffer, nullptr);
     vkFreeMemory(this->device, pixelStagingBufferMemory, nullptr);
 
-    std::vector<VkDescriptorImageInfo> imageInfos(descriptor_count);
-    for (size_t i = 0; i < descriptor_count; i++) {
+    std::vector<VkDescriptorImageInfo> imageInfos(descriptors.size());
+    for (size_t i = 0; i < descriptors.size(); i++) {
         imageInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         imageInfos[i].imageView = this->textureImageViews[i];
         imageInfos[i].sampler = this->textureSampler;
@@ -186,7 +176,7 @@ void VulkanRenderer::uploadTextureArray(
         vkUpdateDescriptorSets(this->device, 1, &descriptorWrite, 0, nullptr);
     }
 
-    std::cout << "Bound " << descriptor_count << " textures to Bindless Set" << std::endl;
+    std::cout << "Bound " << descriptors.size() << " textures to Bindless Set" << std::endl;
 }
 
 void VulkanRenderer::createImage(uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory) {
@@ -275,11 +265,9 @@ void VulkanRenderer::createBufferBinding(
     memcpy(data, data_ptr, bufferSize);
     vkUnmapMemory(this->device, stagingBufferMemory);
 
-    VkBufferUsageFlags usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-
     createBuffer(
         bufferSize, 
-        usage, 
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
         dstBuffer, 
         dstBufferMemory
@@ -411,13 +399,13 @@ void VulkanRenderer::createDataTexture(
     }
 }
 
-void VulkanRenderer::uploadPalettes(const uint8_t* palettes_ptr, size_t palette_channels_count) {
-    if (palette_channels_count == 0 || palettes_ptr == nullptr) return;
+void VulkanRenderer::uploadPalettes(rust::Slice<const uint8_t> palettes) {
+    if (palettes.empty()) return;
 
-    size_t colorsCount = palette_channels_count >> 2;
+    size_t colorsCount = palettes.size() >> 2;
 
     createDataTexture(
-        palettes_ptr, 
+        palettes.data(), 
         256,
         colorsCount / 256,
         VK_FORMAT_R8G8B8A8_UNORM, 
@@ -426,24 +414,24 @@ void VulkanRenderer::uploadPalettes(const uint8_t* palettes_ptr, size_t palette_
     );
 }
 
-void VulkanRenderer::uploadColormap(const uint8_t* colormap_ptr, size_t colormap_bytes_count) {
-    if (colormap_bytes_count == 0 || colormap_ptr == nullptr) return;
+void VulkanRenderer::uploadColormap(rust::Slice<const uint8_t> colormap) {
+    if (colormap.empty()) return;
 
     createDataTexture(
-        colormap_ptr, 
+        colormap.data(), 
         256,
-        colormap_bytes_count / 256,
+        colormap.size() / 256,
         VK_FORMAT_R8_UINT, 
         this->colormapImage, this->colormapImageMemory, this->colormapImageView, 
         2
     );
 }
 
-void VulkanRenderer::uploadAnimLevelInfo(const AnimLevelInfo* info_ptr, size_t info_count) {
-    if (info_count != ANIM_INFO_SIZE || info_ptr == nullptr) return;
+void VulkanRenderer::uploadAnimLevelInfo(rust::Slice<const AnimLevelInfo> info) {
+    if (info.size() != ANIM_INFO_SIZE) return;
 
-    VkDeviceSize bufferSize = ANIM_INFO_SIZE * sizeof(AnimLevelInfo);
+    VkDeviceSize bufferSize = info.size() * sizeof(AnimLevelInfo);
 
-    createBufferBinding(info_ptr, bufferSize, this->animLevelBuffer, 
+    createBufferBinding(info.data(), bufferSize, this->animLevelBuffer, 
         this->animLevelBufferMemory, 3);
 }

@@ -1,3 +1,5 @@
+use std::mem::offset_of;
+
 use bitflags::bitflags;
 use engine::{STBarUi, UpdatableUiType, pack_sprite_u64};
 use glam::Mat4;
@@ -33,7 +35,7 @@ impl GraphicsFlags {
 }
 
 pub struct GraphicsContext {
-	pub renderer: Option<SafeRenderer>,
+	pub renderer: SafeRenderer,
 	pub data: FxHashMap<u64, (TextureId, u32, u32, bool)>,
 	pub ui_to_update: Vec<UpdatableUiType>,
 	pub ui_db: [Option<(TextureId, u32, u32)>; NUM_UI],
@@ -46,7 +48,7 @@ pub struct GraphicsContext {
 impl GraphicsContext {
 	pub fn new(flags: GraphicsFlags) -> Self {
 		Self {
-			renderer: None,
+			renderer: SafeRenderer::new(),
 			data: FxHashMap::default(),
 			ui_db: [None; NUM_UI],
 			cached_stbar_ui: STBarUi::default(),
@@ -59,7 +61,6 @@ impl GraphicsContext {
 
 	pub fn load_and_upload_textures(
 		&mut self,
-		renderer: &mut SafeRenderer,
 		wad_manager: &WadManager,
 		map_num: u8,
 	) -> Result<(), String> {
@@ -214,13 +215,7 @@ impl GraphicsContext {
 			}
 		}
 
-		let shown_ui_indices = ui_shown
-			.iter()
-			.enumerate()
-			.filter(|&(_, &shown)| shown)
-			.map(|(idx, _)| idx);
-
-		for (pic, ui_insert_idx) in ui_pics.into_iter().zip(shown_ui_indices) {
+		for (pic, ui_insert_idx) in ui_pics.into_iter().zip(ui_shown.ones()) {
 			descriptors.push(TextureDescriptor {
 				width: pic.width,
 				height: pic.height,
@@ -234,24 +229,26 @@ impl GraphicsContext {
 			current_gpu_id += 1;
 		}
 
-		renderer.upload_texture_array(&descriptors, &all_pixels, &sky_widths_no_name);
-		renderer.upload_anim_level_info(&anim_level_info);
+		self.renderer
+			.pin()
+			.uploadTextureArray(&descriptors, &all_pixels, &sky_widths_no_name);
+		self.renderer.pin().uploadAnimLevelInfo(&anim_level_info);
 
 		let map_name = construct_map_name(wad_manager.is_doom1, map_num);
 		let palettes = wad_manager
 			.get_palettes(&map_name)
 			.map_err(|e| format!("PLAYPAL upload failed: {e}"))?;
-		renderer.upload_palettes(&palettes);
+		self.renderer.pin().uploadPalettes(&palettes);
 
 		let colormap = wad_manager
 			.get_colormap(&map_name)
 			.map_err(|e| format!("COLORMAP upload failed: {e}"))?;
-		renderer.upload_colormap(colormap);
+		self.renderer.pin().uploadColormap(colormap);
 
 		Ok(())
 	}
 
-	pub fn setup_level_geometry(&mut self, renderer: &mut SafeRenderer, level: &mut Level) {
+	pub fn setup_level_geometry(&mut self, level: &mut Level) {
 		println!("Building map geometry...");
 		let (wall_vertices, wall_indices) = level.get_walls_vertices(&self.data);
 		println!("Walls geometry has been built");
@@ -274,10 +271,16 @@ impl GraphicsContext {
 			obj_gpu_vertices.into_iter().map(vertex_to_vertex).collect();
 		let ui_vertices: Vec<Vertex> = ui_gpu_vertices.into_iter().map(vertex_to_vertex).collect();
 
-		renderer.set_flags(self.flags.bits());
-		renderer.update_level_geometry(&level_vertices, &level_indices);
-		renderer.update_object_geometry(&obj_vertices, &obj_indices);
-		renderer.update_ui_geometry(&ui_vertices, &ui_indices);
+		self.renderer.pin().setFlags(self.flags.bits());
+		self.renderer
+			.pin()
+			.updateLevelGeometry(&level_vertices, &level_indices);
+		self.renderer
+			.pin()
+			.updateObjectGeometry(&obj_vertices, &obj_indices);
+		self.renderer
+			.pin()
+			.updateUiGeometry(&ui_vertices, &ui_indices);
 	}
 }
 
@@ -308,6 +311,30 @@ fn register_sprite(
 }
 
 fn vertex_to_vertex(vertex: GpuVertex) -> Vertex {
+	assert_eq!(size_of::<GpuVertex>(), size_of::<Vertex>());
+
+	assert_eq!(offset_of!(GpuVertex, pos), offset_of!(Vertex, pos));
+	assert_eq!(
+		offset_of!(GpuVertex, texture_pos),
+		offset_of!(Vertex, texture_pos)
+	);
+	assert_eq!(
+		offset_of!(GpuVertex, light_level),
+		offset_of!(Vertex, light_level)
+	);
+	assert_eq!(
+		offset_of!(GpuVertex, texture_id),
+		offset_of!(Vertex, texture_id)
+	);
+	assert_eq!(
+		offset_of!(GpuVertex, floor_tex_id),
+		offset_of!(Vertex, floor_tex_id)
+	);
+	assert_eq!(
+		offset_of!(GpuVertex, scroll_dir),
+		offset_of!(Vertex, scroll_dir)
+	);
+
 	Vertex {
 		pos: vertex.pos,
 		texture_pos: vertex.texture_pos,

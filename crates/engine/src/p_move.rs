@@ -379,7 +379,7 @@ fn pit_check_line(
 			ctx.dropoff_y = open.floor_low;
 		}
 
-		if line.special != 0 {
+		if line.special != 0 && !level.state.lines[line_id.0].used {
 			ctx.spec_hit.push(line_id);
 		}
 	} else {

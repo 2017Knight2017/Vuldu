@@ -21,7 +21,7 @@ pub(crate) mod ffi {
 		pub scroll_dir: f32,
 	}
 
-	pub struct UniformBufferObject {
+	pub struct MVP {
 		pub model: [f32; 16],
 		pub view: [f32; 16],
 		pub proj: [f32; 16],
@@ -53,10 +53,6 @@ pub(crate) mod ffi {
 		pub _padding: [u32; 2],
 	}
 
-	extern "Rust" {
-		unsafe fn get_winit_window_size(window_raw_ptr: usize) -> WindowSize;
-	}
-
 	unsafe extern "C++" {
 		include!("renderer.h");
 		include!("utils.h");
@@ -67,70 +63,38 @@ pub(crate) mod ffi {
 		fn initVulkan(
 			self: Pin<&mut VulkanRenderer>,
 			handles: &WindowHandles,
-			window_raw_ptr: usize,
+			width: u32,
+			height: u32,
 		);
 		fn cleanup(self: Pin<&mut VulkanRenderer>);
-		fn recreateSwapChain(self: Pin<&mut VulkanRenderer>);
-		unsafe fn startFrame(self: Pin<&mut VulkanRenderer>, ubo_ptr: *const UniformBufferObject);
+		fn recreateSwapChain(self: Pin<&mut VulkanRenderer>, width: u32, height: u32);
+		fn startFrame(self: Pin<&mut VulkanRenderer>, ubo_ptr: &MVP);
 		fn endFrame(self: Pin<&mut VulkanRenderer>);
 		fn drawLevel(self: Pin<&mut VulkanRenderer>);
 		fn drawObjects(self: Pin<&mut VulkanRenderer>);
 		fn drawUi(self: Pin<&mut VulkanRenderer>);
-		unsafe fn updateLevelGeometry(
+		fn updateLevelGeometry(
 			self: Pin<&mut VulkanRenderer>,
-			vertices_ptr: *const Vertex,
-			vertex_count: usize,
-			indices_ptr: *const u32,
-			index_count: usize,
+			vertices: &[Vertex],
+			indices: &[u32],
 		);
-		unsafe fn updateObjectGeometry(
+		fn updateObjectGeometry(
 			self: Pin<&mut VulkanRenderer>,
-			vertices_ptr: *const Vertex,
-			vertex_count: usize,
-			indices_ptr: *const u32,
-			index_count: usize,
+			vertices: &[Vertex],
+			indices: &[u32],
 		);
-		unsafe fn updateUiGeometry(
+		fn updateUiGeometry(self: Pin<&mut VulkanRenderer>, vertices: &[Vertex], indices: &[u32]);
+		fn updateObjectInstances(self: Pin<&mut VulkanRenderer>, instances: &[ObjectInstance]);
+		fn updateUiInstances(self: Pin<&mut VulkanRenderer>, instances: &[UiInstance]);
+		fn uploadPalettes(self: Pin<&mut VulkanRenderer>, palettes: &[u8]);
+		fn uploadColormap(self: Pin<&mut VulkanRenderer>, colormap: &[u8]);
+		fn uploadTextureArray(
 			self: Pin<&mut VulkanRenderer>,
-			vertices_ptr: *const Vertex,
-			vertex_count: usize,
-			indices_ptr: *const u32,
-			index_count: usize,
+			descriptors: &[TextureDescriptor],
+			pixels: &[u8],
+			sky_widths: &[f32],
 		);
-		unsafe fn updateObjectInstances(
-			self: Pin<&mut VulkanRenderer>,
-			instances_ptr: *const ObjectInstance,
-			instances_count: usize,
-		);
-		unsafe fn updateUiInstances(
-			self: Pin<&mut VulkanRenderer>,
-			instances_ptr: *const UiInstance,
-			instances_count: usize,
-		);
-		unsafe fn uploadPalettes(
-			self: Pin<&mut VulkanRenderer>,
-			palettes_ptr: *const u8,
-			palette_channels_count: usize,
-		);
-		unsafe fn uploadColormap(
-			self: Pin<&mut VulkanRenderer>,
-			colormap_ptr: *const u8,
-			colormap_bytes_count: usize,
-		);
-		unsafe fn uploadTextureArray(
-			self: Pin<&mut VulkanRenderer>,
-			descriptors: *const TextureDescriptor,
-			descriptor_count: usize,
-			all_pixels: *const u8,
-			all_pixels_count: usize,
-			sky_widths: *const f32,
-			sky_widths_count: usize,
-		);
-		unsafe fn uploadAnimLevelInfo(
-			self: Pin<&mut VulkanRenderer>,
-			info: *const AnimLevelInfo,
-			info_count: usize,
-		);
+		fn uploadAnimLevelInfo(self: Pin<&mut VulkanRenderer>, info: &[AnimLevelInfo]);
 		fn setPaletteIndex(self: Pin<&mut VulkanRenderer>, idx: u32);
 		fn getPaletteIndex(self: Pin<&mut VulkanRenderer>) -> u32;
 		fn setSkyIndex(self: Pin<&mut VulkanRenderer>, idx: u32);
@@ -139,15 +103,5 @@ pub(crate) mod ffi {
 		fn setCameraYaw(self: Pin<&mut VulkanRenderer>, camera_yaw: f32);
 		fn getMaxSky() -> usize;
 		fn getAnimInfoSize() -> usize;
-	}
-}
-
-unsafe fn get_winit_window_size(window_raw_ptr: usize) -> ffi::WindowSize {
-	let window_ref = unsafe { &*(window_raw_ptr as *const winit::window::Window) };
-
-	let size = window_ref.inner_size();
-	ffi::WindowSize {
-		width: size.width,
-		height: size.height,
 	}
 }

@@ -1,10 +1,10 @@
 #version 450
 
-layout(binding = 0) uniform UniformBufferObject {
+layout(binding = 0) uniform MVP {
     mat4 model;
     mat4 view;
     mat4 proj;
-} ubo;
+} mvp;
 
 struct animLevelInfo {
     uint texId;
@@ -93,11 +93,11 @@ void main() {
     fragTexId = getAnimId();
     fragFloorTexId = inFloorTexId;
 
-    vec4 viewPos = ubo.view * ubo.model * vec4(inPosition, 1.0);
+    vec4 viewPos = mvp.view * mvp.model * vec4(inPosition, 1.0);
 
     fragViewZ = viewPos.z;
 
-    gl_Position = ubo.proj * viewPos;
+    gl_Position = mvp.proj * viewPos;
 
     //if (inTexId == SKY_CEIL) {
     //    gl_Position.z = gl_Position.w;

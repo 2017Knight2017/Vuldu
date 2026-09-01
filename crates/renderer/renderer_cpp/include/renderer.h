@@ -5,6 +5,7 @@
 #include <vector>
 #include <array>
 #include <optional>
+#include "rust/cxx.h"
 
 #ifdef DEBUG_MODE
 const bool enableValidationLayers = true;
@@ -14,16 +15,16 @@ const bool enableValidationLayers = false;
 
 inline const uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 inline const uint32_t MAX_TEXTURES = 8192;
-inline const uint32_t ANIM_INFO_SIZE = MAX_TEXTURES >> 1;
+inline const uint32_t ANIM_INFO_SIZE = 4096;
 inline const uint32_t MAX_SKY = 16;  
 inline const uint32_t MAX_PAL = 14;
 inline const uint32_t MAX_OBJECTS = 50000;
-inline const uint32_t MAX_UI = 256;
+inline const uint32_t MAX_UI = 512;
 inline const float PIXELS_IN_PANORAMA = 1024.0;
 
 struct WindowHandles;
 struct Vertex;
-struct UniformBufferObject;
+struct MVP;
 struct TextureDescriptor;
 struct ObjectInstance;
 struct UiInstance;
@@ -74,39 +75,35 @@ class VulkanRenderer {
 public:
     VulkanRenderer();
     ~VulkanRenderer();
-    void initVulkan(const WindowHandles& handles, size_t window_raw_ptr);
+    void initVulkan(const WindowHandles& handles, uint32_t width, uint32_t height);
     void cleanup();
-    void recreateSwapChain();
-    void updateLevelGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint32_t* indices_ptr, size_t index_count);
-    void updateObjectGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint32_t* indices_ptr, size_t index_count);
-    void updateUiGeometry(const Vertex* vertices_ptr, size_t vertex_count, const uint32_t* indices_ptr, size_t index_count);
-    void updateObjectInstances(const ObjectInstance* instances_ptr, size_t instances_count);
-    void updateUiInstances(const UiInstance* instances_ptr, size_t instances_count);
-    void uploadPalettes(const uint8_t* palettes_ptr, size_t colormap_bytes_count);
-    void uploadColormap(const uint8_t* colormap_ptr, size_t colormap_bytes_count);
+    void recreateSwapChain(uint32_t width, uint32_t height);
+    void updateLevelGeometry(rust::Slice<const Vertex> vertices, rust::Slice<const uint32_t> indices);
+    void updateObjectGeometry(rust::Slice<const Vertex> vertices, rust::Slice<const uint32_t> indices);
+    void updateUiGeometry(rust::Slice<const Vertex> vertices, rust::Slice<const uint32_t> indices);
+    void updateObjectInstances(rust::Slice<const ObjectInstance> instances);
+    void updateUiInstances(rust::Slice<const UiInstance> instances);
+    void uploadPalettes(rust::Slice<const uint8_t> palettes);
+    void uploadColormap(rust::Slice<const uint8_t> colormap);
     void uploadTextureArray(
-        const TextureDescriptor* descriptors_ptr, 
-        size_t descriptor_count, 
-        const uint8_t* all_pixels_ptr, 
-        size_t all_pixels_count, 
-        const float* sky_widths_ptr, 
-        size_t sky_widths_count
+        rust::Slice<const TextureDescriptor> descriptors, 
+        rust::Slice<const uint8_t> pixels, 
+        rust::Slice<const float> sky_widths
     );
-    void uploadAnimLevelInfo(const AnimLevelInfo* info_ptr, size_t info_count);
+    void uploadAnimLevelInfo(rust::Slice<const AnimLevelInfo> info);
     void setPaletteIndex(uint32_t idx);
     uint32_t getPaletteIndex();
     void setSkyIndex(uint32_t idx);
     void setGlobalTimer(uint32_t global_timer);
     void setCameraYaw(float camera_yaw);
     void setFlags(uint32_t flags_to_invert);
-    void startFrame(const UniformBufferObject* ubo_ptr);
+    void startFrame(const MVP& ubo_ptr);
     void endFrame();
     void drawLevel();
     void drawObjects();
     void drawUi();
     
 private:
-    size_t window_raw_ptr = 0;
     VkInstance instance = VK_NULL_HANDLE;
     VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
     VkSurfaceKHR surface = VK_NULL_HANDLE;
@@ -208,12 +205,12 @@ private:
     void createSurface(const WindowHandles& handles);
     void pickPhysicalDevice();
     void createLogicalDevice();
-    void createSwapChain();
+    void createSwapChain(uint32_t width, uint32_t height);
     void createImageViews();
     void createDescriptorSetLayout();
     void createPipelines();
     void createDepthResources();
-    void createUniformBuffers();
+    void createMVPBuffer();
     void createObjectInstanceBuffers();
     void createUiInstanceBuffers();
     void createDescriptorPool();
@@ -223,7 +220,7 @@ private:
     void createCommandBuffers();
     void createSyncObjects();
 
-    void updateUniformBuffer(const UniformBufferObject* ubo_ptr);
+    void updateMVPBuffer(const MVP& mvp);
 
     void cleanupSwapChain();
 
@@ -236,6 +233,17 @@ private:
         VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, 
         VkDeviceMemory& imageMemory);
     void beginRendering(VkCommandBuffer currentCommandBuffer);
+
+    void updateGeometry(
+    	rust::Slice<const Vertex> vertices, 
+    	rust::Slice<const uint32_t> indices,
+    	VkBuffer& vertexBuffer,
+    	VkDeviceMemory& vertexBufferMemory,
+    	uint32_t& vertexCount,
+    	VkBuffer& indexBuffer,
+    	VkDeviceMemory& indexBufferMemory,
+    	uint32_t& indexCount
+    );
 
     void createDataTexture(
         const void* data_ptr, 
@@ -282,15 +290,15 @@ private:
     	VkPipelineRenderingCreateInfo* renderingInfo
     );
 
-    bool isDeviceSuitable(VkPhysicalDevice device);
-    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
-    SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
-    bool checkDeviceExtensionSupport(VkPhysicalDevice device);
-    bool checkValidationLayerSupport();
-
     void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
     void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
 };
+
+bool isDeviceSuitable(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface);
+QueueFamilyIndices findQueueFamilies(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface);
+SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface);
+bool checkDeviceExtensionSupport(VkPhysicalDevice physicalDevice);
+bool checkValidationLayerSupport();
 
 std::unique_ptr<VulkanRenderer> createRenderer();
 size_t getMaxSky();

@@ -111,7 +111,6 @@ impl ApplicationHandler for App {
 		self.window = Some(window);
 
 		self.audio.data = self.wad_manager.bake_sfx();
-		let mut renderer = SafeRenderer::new();
 
 		let window_ref = self.window.as_ref().unwrap();
 		let display_handle = window_ref.display_handle().unwrap().as_raw();
@@ -162,32 +161,34 @@ impl ApplicationHandler for App {
 			}
 		};
 
-		let window_raw_ptr = window_ref as *const Window as usize;
-		renderer.init(&handles, window_raw_ptr);
+		let window_size = window_ref.inner_size();
+
+		self.graphics
+			.renderer
+			.pin()
+			.initVulkan(&handles, window_size.width, window_size.height);
 
 		let sky_idx = if self.wad_manager.is_doom1 {
 			(self.game.level.map_num as u32 - 1) / 9
 		} else {
 			get_sky_texture_index(self.game.level.map_num)
 		};
-		renderer.set_sky_index(sky_idx);
+		self.graphics.renderer.pin().setSkyIndex(sky_idx);
 
-		if let Err(err) = self.graphics.load_and_upload_textures(
-			&mut renderer,
-			&self.wad_manager,
-			self.game.level.map_num,
-		) {
+		if let Err(err) = self
+			.graphics
+			.load_and_upload_textures(&self.wad_manager, self.game.level.map_num)
+		{
 			handle_fatal_error(
 				&mut self.is_shutting_down,
 				event_loop,
-				&mut Some(renderer),
+				&mut self.graphics.renderer,
 				&err,
 			);
 			return;
 		}
 
-		self.graphics
-			.setup_level_geometry(&mut renderer, &mut self.game.level);
+		self.graphics.setup_level_geometry(&mut self.game.level);
 
 		let _ = engine::populate_database(&self.graphics.data).map_err(|e| eprintln!("{}", e));
 		engine::spawn_all_things(
@@ -199,8 +200,6 @@ impl ApplicationHandler for App {
 			&self.game.config,
 		);
 		println!("Mobj spawning is done!");
-
-		self.graphics.renderer = Some(renderer);
 	}
 
 	fn device_event(
@@ -222,8 +221,12 @@ impl ApplicationHandler for App {
 	fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
 		match event {
 			WindowEvent::Resized(_) => {
-				if let Some(renderer) = &mut self.graphics.renderer {
-					renderer.recreate_swapchain();
+				if let Some(window) = &self.window {
+					let size = window.inner_size();
+					self.graphics
+						.renderer
+						.pin()
+						.recreateSwapChain(size.width, size.height);
 				}
 			}
 
@@ -274,20 +277,14 @@ impl ApplicationHandler for App {
 					PhysicalKey::Code(KeyCode::Digit7) => {
 						self.current_input.choose_bfg = is_pressed
 					}
-					PhysicalKey::Code(KeyCode::Digit8) => {
-						if is_pressed {
-							self.game.graphics_buffer.push(GraphicsCommand::Palette(8));
-						}
+					PhysicalKey::Code(KeyCode::Digit8) if is_pressed => {
+						self.game.graphics_buffer.push(GraphicsCommand::Palette(8));
 					}
-					PhysicalKey::Code(KeyCode::Digit9) => {
-						if is_pressed {
-							self.game.graphics_buffer.push(GraphicsCommand::Palette(12));
-						}
+					PhysicalKey::Code(KeyCode::Digit9) if is_pressed => {
+						self.game.graphics_buffer.push(GraphicsCommand::Palette(12));
 					}
-					PhysicalKey::Code(KeyCode::Digit0) => {
-						if is_pressed {
-							self.game.graphics_buffer.push(GraphicsCommand::FullBright);
-						}
+					PhysicalKey::Code(KeyCode::Digit0) if is_pressed => {
+						self.game.graphics_buffer.push(GraphicsCommand::FullBright);
 					}
 					_ => {}
 				}
@@ -306,9 +303,7 @@ impl ApplicationHandler for App {
 			WindowEvent::CloseRequested => {
 				println!("The close button was pressed; stopping");
 				self.is_shutting_down = true;
-				if let Some(renderer) = &mut self.graphics.renderer {
-					renderer.shutdown();
-				}
+				self.graphics.renderer.pin().cleanup();
 				event_loop.exit();
 			}
 
@@ -399,14 +394,12 @@ fn get_sky_texture_index(map: u8) -> u32 {
 fn handle_fatal_error(
 	is_shutting_down: &mut bool,
 	event_loop: &ActiveEventLoop,
-	renderer: &mut Option<SafeRenderer>,
+	renderer: &mut SafeRenderer,
 	msg: &str,
 ) {
 	eprintln!("[FATAL] {}", msg);
 	*is_shutting_down = true;
-	if let Some(renderer) = renderer {
-		renderer.shutdown();
-	}
+	renderer.pin().cleanup();
 
 	event_loop.exit();
 }

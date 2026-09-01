@@ -1,10 +1,10 @@
 #version 450
 
-layout(binding = 0) uniform UniformBufferObject {
+layout(binding = 0) uniform MVP {
     mat4 model;
     mat4 view;
     mat4 proj;
-} ubo;
+} mvp;
 
 layout(location = 0) in vec3 inVertexPos;
 layout(location = 1) in vec2 inTexCoord;
@@ -30,10 +30,10 @@ void main() {
     float vertexX = inVertexPos.x * abs(inInstanceSize.x);
     float vertexY = inVertexPos.y * inInstanceSize.y;
 
-    vec4 cameraSpacePos = ubo.view * vec4(inInstancePos, 1.0);
+    vec4 cameraSpacePos = mvp.view * vec4(inInstancePos, 1.0);
 
     cameraSpacePos.x += vertexX - inInstanceOffset.x;
     cameraSpacePos.y += vertexY + (inInstanceOffset.y - inInstanceSize.y);
 
-    gl_Position = ubo.proj * cameraSpacePos;
+    gl_Position = mvp.proj * cameraSpacePos;
 }

@@ -73,8 +73,8 @@ void VulkanRenderer::createDescriptorSetLayout() {
     }
 }
 
-void VulkanRenderer::createUniformBuffers() {
-    VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+void VulkanRenderer::createMVPBuffer() {
+    VkDeviceSize bufferSize = sizeof(MVP);
 
     this->uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
     this->uniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
@@ -186,7 +186,7 @@ void VulkanRenderer::createDescriptorSets() {
         VkDescriptorBufferInfo bufferInfo{};
         bufferInfo.buffer = this->uniformBuffers[i];
         bufferInfo.offset = 0;
-        bufferInfo.range = sizeof(UniformBufferObject);
+        bufferInfo.range = sizeof(MVP);
 
         VkWriteDescriptorSet descriptorWrite{};
         descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

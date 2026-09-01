@@ -1,3 +1,5 @@
+use fixedbitset::FixedBitSet;
+
 use crate::{DoomPicture, WadManager, decode_column_picture};
 
 pub const NUM_UI: usize = 362;
@@ -737,8 +739,8 @@ pub enum Ui {
 }
 
 impl WadManager {
-	pub fn bake_ui(&self) -> ([bool; NUM_UI], Vec<DoomPicture>) {
-		let mut ui_shown = [false; NUM_UI];
+	pub fn bake_ui(&self) -> (FixedBitSet, Vec<DoomPicture>) {
+		let mut ui_shown = FixedBitSet::with_capacity(NUM_UI);
 		let mut ui_textures = Vec::with_capacity(NUM_UI);
 
 		for (ui_idx, &ui_name) in UI_LUMPNAMES.iter().enumerate() {
@@ -749,7 +751,7 @@ impl WadManager {
 				continue;
 			};
 
-			ui_shown[ui_idx] = true;
+			ui_shown.insert(ui_idx);
 			ui_textures.push(pic);
 		}
 

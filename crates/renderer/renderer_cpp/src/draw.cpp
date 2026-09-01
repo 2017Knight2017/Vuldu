@@ -4,7 +4,7 @@
 #include "renderer/src/bridge.rs.h"
 
 void VulkanRenderer::createCommandPool() {
-	QueueFamilyIndices queueFamilyIndices = findQueueFamilies(this->physicalDevice);
+	QueueFamilyIndices queueFamilyIndices = findQueueFamilies(this->physicalDevice, this->surface);
 
 	VkCommandPoolCreateInfo poolInfo{};
 	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -65,33 +65,30 @@ void VulkanRenderer::createSyncObjects() {
 	}
 }
 
-void VulkanRenderer::updateUniformBuffer(const UniformBufferObject* ubo_ptr) {
-	if (ubo_ptr == nullptr) return;
-	memcpy(this->uniformBuffersMapped[this->currentFrame], ubo_ptr, sizeof(UniformBufferObject));
+void VulkanRenderer::updateMVPBuffer(const MVP& mvp) {
+	memcpy(this->uniformBuffersMapped[this->currentFrame], &mvp, sizeof(MVP));
 	
-	auto* ubo = reinterpret_cast<UniformBufferObject*>(this->uniformBuffersMapped[this->currentFrame]);
-    ubo->proj[5] *= -1.0f;
-    ubo->proj[0] *= -1.0f;
+	auto* mvp_ptr = reinterpret_cast<MVP*>(this->uniformBuffersMapped[this->currentFrame]);
+    mvp_ptr->proj[5] *= -1.0f;
+    mvp_ptr->proj[0] *= -1.0f;
 }
 
-void VulkanRenderer::updateObjectInstances(const ObjectInstance* instances_ptr, size_t instances_count) {
-    if (instances_count == 0 || instances_ptr == nullptr) return;
-    if (instances_count > MAX_OBJECTS) return;
+void VulkanRenderer::updateObjectInstances(rust::Slice<const ObjectInstance> instances) {
+    if (instances.empty() || instances.size() > MAX_OBJECTS) return;
 
-    this->activeObjectsCount = static_cast<uint32_t>(instances_count);
+    this->activeObjectsCount = static_cast<uint32_t>(instances.size());
 
-	VkDeviceSize instanceBufferSize = sizeof(ObjectInstance) * instances_count;
-    memcpy(this->objectInstanceBuffersMapped[this->currentFrame], instances_ptr, instanceBufferSize);   
+	VkDeviceSize instanceBufferSize = sizeof(ObjectInstance) * instances.size();
+    memcpy(this->objectInstanceBuffersMapped[this->currentFrame], instances.data(), instanceBufferSize);   
 }
 
-void VulkanRenderer::updateUiInstances(const UiInstance* instances_ptr, size_t instances_count) {
-    if (instances_count == 0 || instances_ptr == nullptr) return;
-    if (instances_count > MAX_UI) return;
+void VulkanRenderer::updateUiInstances(rust::Slice<const UiInstance> instances) {
+    if (instances.empty() || instances.size() > MAX_UI) return;
 
-    this->activeUiCount = static_cast<uint32_t>(instances_count);
+    this->activeUiCount = static_cast<uint32_t>(instances.size());
 
-	VkDeviceSize instanceBufferSize = sizeof(UiInstance) * instances_count;
-    memcpy(this->uiInstanceBuffersMapped[this->currentFrame], instances_ptr, instanceBufferSize);   
+	VkDeviceSize instanceBufferSize = sizeof(UiInstance) * instances.size();
+    memcpy(this->uiInstanceBuffersMapped[this->currentFrame], instances.data(), instanceBufferSize);   
 }
 
 void VulkanRenderer::setPaletteIndex(uint32_t idx) {
@@ -126,19 +123,16 @@ size_t getAnimInfoSize() {
     return ANIM_INFO_SIZE;
 }
 
-void VulkanRenderer::startFrame(const UniformBufferObject* ubo_ptr) {
+void VulkanRenderer::startFrame(const MVP& mvp) {
 	VkCommandBuffer currentCommandBuffer = this->commandBuffers[this->currentFrame];
 	vkWaitForFences(this->device, 1, &this->inFlightFences[this->currentFrame], VK_TRUE, UINT64_MAX);
 
 	VkResult acquireNextImageResult = vkAcquireNextImageKHR(this->device, this->swapChain, UINT64_MAX, this->imageAvailableSemaphores[this->currentFrame], VK_NULL_HANDLE, &this->currentImageIndex);
-	if (acquireNextImageResult == VK_ERROR_OUT_OF_DATE_KHR) {
-        recreateSwapChain();
-        return;
-    } else if (acquireNextImageResult != VK_SUCCESS) {
+    if (acquireNextImageResult != VK_SUCCESS && acquireNextImageResult != VK_ERROR_OUT_OF_DATE_KHR) {
         throw std::runtime_error("failed to acquire swap chain image!");
     }
 
-	updateUniformBuffer(ubo_ptr);
+	updateMVPBuffer(mvp);
 
 	vkResetFences(this->device, 1, &this->inFlightFences[this->currentFrame]);
 	vkResetCommandBuffer(currentCommandBuffer, 0);
@@ -339,9 +333,10 @@ void VulkanRenderer::endFrame() {
 
 	VkResult presentResult = vkQueuePresentKHR(this->presentQueue, &presentInfo);
 
-	if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR) {
-	    recreateSwapChain();
-	} else if (presentResult != VK_SUCCESS) {
+	if (presentResult != VK_SUCCESS &&
+        presentResult != VK_ERROR_OUT_OF_DATE_KHR &&
+        presentResult != VK_SUBOPTIMAL_KHR
+    ) {
 	    throw std::runtime_error("failed to present swap chain image!");
 	}
     

@@ -4,7 +4,7 @@ use engine::*;
 use glam::{Mat4, Vec3};
 use hecs::{Entity, World};
 use micropool::iter::*;
-use renderer::{MAX_SKY, ObjectInstance, UiInstance, UniformBufferObject};
+use renderer::{MAX_SKY, MVP, ObjectInstance, UiInstance};
 use wad_parser::{Level, SectorState, Ui};
 use winit::window::Window;
 
@@ -40,25 +40,25 @@ impl GraphicsContext {
 
 		update_camera_from_player(&mut self.view_matrix, world, player_entity, alpha);
 
-		let ubo = UniformBufferObject {
+		let mvp = MVP {
 			model: Mat4::IDENTITY.to_cols_array(),
 			view: self.view_matrix.to_cols_array(),
 			proj: proj.to_cols_array(),
 		};
 
-		if let Some(renderer) = &mut self.renderer {
-			renderer.update_ui_instances(&ui_instances);
-			renderer.update_object_instances(&obj_instances);
+		self.renderer.pin().updateUiInstances(&ui_instances);
+		self.renderer.pin().updateObjectInstances(&obj_instances);
 
-			renderer.set_camera_yaw(calculate_camera_yaw(&ubo.view));
-			renderer.set_global_timer(global_timer);
+		self.renderer
+			.pin()
+			.setCameraYaw(calculate_camera_yaw(&mvp.view));
+		self.renderer.pin().setGlobalTimer(global_timer);
 
-			renderer.start_frame(&ubo);
-			renderer.draw_level();
-			renderer.draw_objects();
-			renderer.draw_ui();
-			renderer.end_frame();
-		}
+		self.renderer.pin().startFrame(&mvp);
+		self.renderer.pin().drawLevel();
+		self.renderer.pin().drawObjects();
+		self.renderer.pin().drawUi();
+		self.renderer.pin().endFrame();
 	}
 
 	fn collect_object_instances(
@@ -252,41 +252,41 @@ impl GraphicsContext {
 			texture_id: tex_id.0,
 		}
 	}
-	pub fn system(&mut self, graphics_buffer: &mut Vec<GraphicsCommand>, _global_timer: u32) {
-		let Some(renderer) = &mut self.renderer else {
-			return;
-		};
 
+	pub fn system(&mut self, graphics_buffer: &mut Vec<GraphicsCommand>, _global_timer: u32) {
 		for command in graphics_buffer.drain(..) {
 			match command {
 				GraphicsCommand::Palette(idx) => {
-					renderer.set_palette_index(idx);
+					self.renderer.pin().setPaletteIndex(idx);
 					return;
 				}
 				GraphicsCommand::FullBright => {
-					renderer.set_flags(GraphicsFlags::FULL_BRIGHT.bits());
+					self.renderer
+						.pin()
+						.setFlags(GraphicsFlags::FULL_BRIGHT.bits());
 				}
 			}
 		}
 
-		let current_palette = renderer.get_palette_index();
+		let current_palette = self.renderer.pin().getPaletteIndex();
 
+		let renderer = self.renderer.pin();
 		match current_palette {
 			0 => {}
 			// red
-			1 => renderer.set_palette_index(0),
-			2 => renderer.set_palette_index(1),
-			3 => renderer.set_palette_index(2),
-			4 => renderer.set_palette_index(3),
-			5 => renderer.set_palette_index(4),
-			6 => renderer.set_palette_index(5),
-			7 => renderer.set_palette_index(6),
-			8 => renderer.set_palette_index(7),
+			1 => renderer.setPaletteIndex(0),
+			2 => renderer.setPaletteIndex(1),
+			3 => renderer.setPaletteIndex(2),
+			4 => renderer.setPaletteIndex(3),
+			5 => renderer.setPaletteIndex(4),
+			6 => renderer.setPaletteIndex(5),
+			7 => renderer.setPaletteIndex(6),
+			8 => renderer.setPaletteIndex(7),
 			// bonuses
-			9 => renderer.set_palette_index(0),
-			10 => renderer.set_palette_index(9),
-			11 => renderer.set_palette_index(10),
-			12 => renderer.set_palette_index(11),
+			9 => renderer.setPaletteIndex(0),
+			10 => renderer.setPaletteIndex(9),
+			11 => renderer.setPaletteIndex(10),
+			12 => renderer.setPaletteIndex(11),
 			// rad suit
 			13 => {}
 			_ => unreachable!(),
