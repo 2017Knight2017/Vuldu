@@ -167,7 +167,7 @@ void VulkanRenderer::uploadTextureArray(
         VkWriteDescriptorSet descriptorWrite{};
         descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrite.dstSet = this->descriptorSets[i];
-        descriptorWrite.dstBinding = 4;
+        descriptorWrite.dstBinding = 5;
         descriptorWrite.dstArrayElement = 0;
         descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         descriptorWrite.descriptorCount = static_cast<uint32_t>(descriptors.size());
@@ -267,7 +267,8 @@ void VulkanRenderer::createBufferBinding(
 
     createBuffer(
         bufferSize, 
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
         dstBuffer, 
         dstBufferMemory
@@ -434,4 +435,44 @@ void VulkanRenderer::uploadAnimLevelInfo(rust::Slice<const AnimLevelInfo> info) 
 
     createBufferBinding(info.data(), bufferSize, this->animLevelBuffer, 
         this->animLevelBufferMemory, 3);
+}
+
+void VulkanRenderer::initSectorHeights(rust::Slice<const float> heights) {
+    if (heights.empty()) return;
+
+    VkDeviceSize bufferSize = heights.size() * sizeof(float);
+
+    createBuffer(
+        bufferSize,
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        this->sectorHeightsBuffer,
+        this->sectorHeightsBufferMemory
+    );
+
+    vkMapMemory(device, sectorHeightsBufferMemory, 0, bufferSize, 0, &this->sectorHeightsBufferMapped);
+    memcpy(this->sectorHeightsBufferMapped, heights.data(), bufferSize);
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = this->sectorHeightsBuffer;
+        bufferInfo.offset = 0;
+        bufferInfo.range = bufferSize;
+
+        VkWriteDescriptorSet descriptorWrite{};
+        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite.dstSet = this->descriptorSets[i];
+        descriptorWrite.dstBinding = 4;
+        descriptorWrite.descriptorCount = 1;
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptorWrite.pBufferInfo = &bufferInfo;
+
+        vkUpdateDescriptorSets(this->device, 1, &descriptorWrite, 0, nullptr);
+    }
+}
+
+void VulkanRenderer::updateSectorHeights(rust::Slice<const float> heights) {
+    VkDeviceSize bufferSize = heights.size() * sizeof(float);
+
+    memcpy(this->sectorHeightsBufferMapped, heights.data(), bufferSize);
 }

@@ -11,14 +11,23 @@ pub(crate) mod ffi {
 		pub height: u32,
 	}
 
-	// Vertex MUST equal to wad_parser::GpuVertex
-	pub struct Vertex {
+	// SpriteVertex MUST equal to wad_parser::GpuSpriteVertex
+	pub struct SpriteVertex {
+		pub pos: [f32; 3],
+		pub texture_pos: [f32; 2],
+	}
+
+	// LevelVertex MUST equal to wad_parser::GpuLevelVertex
+	pub struct LevelVertex {
 		pub pos: [f32; 3],
 		pub texture_pos: [f32; 2],
 		pub light_level: u32,
 		pub texture_id: u32,
 		pub floor_tex_id: u32,
 		pub scroll_dir: f32,
+		pub plane_a: u32,
+		pub plane_b: u32,
+		pub inv_tex_h: f32,
 	}
 
 	pub struct MVP {
@@ -68,22 +77,26 @@ pub(crate) mod ffi {
 		);
 		fn cleanup(self: Pin<&mut VulkanRenderer>);
 		fn recreateSwapChain(self: Pin<&mut VulkanRenderer>, width: u32, height: u32);
-		fn startFrame(self: Pin<&mut VulkanRenderer>, ubo_ptr: &MVP);
+		fn startFrame(self: Pin<&mut VulkanRenderer>, mvp: &MVP);
 		fn endFrame(self: Pin<&mut VulkanRenderer>);
 		fn drawLevel(self: Pin<&mut VulkanRenderer>);
 		fn drawObjects(self: Pin<&mut VulkanRenderer>);
 		fn drawUi(self: Pin<&mut VulkanRenderer>);
 		fn updateLevelGeometry(
 			self: Pin<&mut VulkanRenderer>,
-			vertices: &[Vertex],
+			vertices: &[LevelVertex],
 			indices: &[u32],
 		);
 		fn updateObjectGeometry(
 			self: Pin<&mut VulkanRenderer>,
-			vertices: &[Vertex],
+			vertices: &[SpriteVertex],
 			indices: &[u32],
 		);
-		fn updateUiGeometry(self: Pin<&mut VulkanRenderer>, vertices: &[Vertex], indices: &[u32]);
+		fn updateUiGeometry(
+			self: Pin<&mut VulkanRenderer>,
+			vertices: &[SpriteVertex],
+			indices: &[u32],
+		);
 		fn updateObjectInstances(self: Pin<&mut VulkanRenderer>, instances: &[ObjectInstance]);
 		fn updateUiInstances(self: Pin<&mut VulkanRenderer>, instances: &[UiInstance]);
 		fn uploadPalettes(self: Pin<&mut VulkanRenderer>, palettes: &[u8]);
@@ -94,6 +107,8 @@ pub(crate) mod ffi {
 			pixels: &[u8],
 			sky_widths: &[f32],
 		);
+		fn initSectorHeights(self: Pin<&mut VulkanRenderer>, heights: &[f32]);
+		fn updateSectorHeights(self: Pin<&mut VulkanRenderer>, heights: &[f32]);
 		fn uploadAnimLevelInfo(self: Pin<&mut VulkanRenderer>, info: &[AnimLevelInfo]);
 		fn setPaletteIndex(self: Pin<&mut VulkanRenderer>, idx: u32);
 		fn getPaletteIndex(self: Pin<&mut VulkanRenderer>) -> u32;

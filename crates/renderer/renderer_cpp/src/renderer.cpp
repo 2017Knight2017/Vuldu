@@ -79,46 +79,22 @@ void VulkanRenderer::cleanup() {
         vkDestroyImage(this->device, this->textureImages[i], nullptr);
         vkFreeMemory(this->device, this->textureImageMemories[i], nullptr);
     }
-    this->textureImageViews.clear();
-    this->textureImages.clear();
-    this->textureImageMemories.clear();
-
-    for (size_t i = 0; i < this->skyWidths.size(); i++) {
-        this->skyWidths[i] = 0.0;
-    }
-    this->skyWidths.clear();
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        if (this->uniformBuffersMapped[i] != nullptr) {
-            vkUnmapMemory(this->device, this->uniformBuffersMemory[i]);
-        }
-        if (this->objectInstanceBuffersMapped[i] != nullptr) {
-            vkUnmapMemory(this->device, this->objectInstanceBuffersMemory[i]);
-        }
-        if (this->uiInstanceBuffersMapped[i] != nullptr) {
-            vkUnmapMemory(this->device, this->uiInstanceBuffersMemory[i]);
-        }
-        vkDestroyBuffer(this->device, this->uniformBuffers[i], nullptr);
-        vkFreeMemory(this->device, this->uniformBuffersMemory[i], nullptr);
+        vkDestroyBuffer(this->device, this->MVPBuffers[i], nullptr);
+        vkFreeMemory(this->device, this->MVPBuffersMemory[i], nullptr);
         vkDestroyBuffer(this->device, this->objectInstanceBuffers[i], nullptr);
         vkFreeMemory(this->device, this->objectInstanceBuffersMemory[i], nullptr);
         vkDestroyBuffer(this->device, this->uiInstanceBuffers[i], nullptr);
         vkFreeMemory(this->device, this->uiInstanceBuffersMemory[i], nullptr);
     }
-    this->uniformBuffers.clear();
-    this->uniformBuffersMemory.clear();
-    this->uniformBuffersMapped.clear();
-    this->objectInstanceBuffers.clear();
-    this->objectInstanceBuffersMemory.clear();
-    this->objectInstanceBuffersMapped.clear();
-    this->uiInstanceBuffers.clear();
-    this->uiInstanceBuffersMemory.clear();
-    this->uiInstanceBuffersMapped.clear();
 
     destroyResource(this->device, this->descriptorPool, vkDestroyDescriptorPool);
     destroyResource(this->device, this->descriptorSetLayout, vkDestroyDescriptorSetLayout);
     destroyResource(this->device, this->animLevelBuffer, vkDestroyBuffer);
     destroyResource(this->device, this->animLevelBufferMemory, vkFreeMemory);
+    destroyResource(this->device, this->sectorHeightsBuffer, vkDestroyBuffer);
+    destroyResource(this->device, this->sectorHeightsBufferMemory, vkFreeMemory);
     destroyResource(this->device, this->paletteImageView, vkDestroyImageView);
     destroyResource(this->device, this->paletteImage, vkDestroyImage);
     destroyResource(this->device, this->paletteImageMemory, vkFreeMemory);
@@ -147,14 +123,11 @@ void VulkanRenderer::cleanup() {
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroyFence(this->device, this->inFlightFences[i], nullptr);
     }
-    this->inFlightFences.clear();
     
     for (size_t i = 0; i < this->renderFinishedSemaphores.size(); i++) {
         vkDestroySemaphore(this->device, this->renderFinishedSemaphores[i], nullptr);
         vkDestroySemaphore(this->device, this->imageAvailableSemaphores[i], nullptr);
     }
-    this->renderFinishedSemaphores.clear();
-    this->imageAvailableSemaphores.clear();
 
     destroyResource(this->device, this->commandPool, vkDestroyCommandPool);
 

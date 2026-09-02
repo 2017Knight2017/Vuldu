@@ -286,6 +286,30 @@ impl ApplicationHandler for App {
 					PhysicalKey::Code(KeyCode::Digit0) if is_pressed => {
 						self.game.graphics_buffer.push(GraphicsCommand::FullBright);
 					}
+					PhysicalKey::Code(KeyCode::KeyL) => {
+						self.game
+							.level
+							.state
+							.sectors
+							.iter_mut()
+							.enumerate()
+							.filter(|(idx, _)| self.game.level.geom.movable_sectors.contains(*idx))
+							.for_each(|(_, sec)| {
+								sec.ceil_h += 1.0;
+							});
+					}
+					PhysicalKey::Code(KeyCode::KeyK) => {
+						self.game
+							.level
+							.state
+							.sectors
+							.iter_mut()
+							.enumerate()
+							.filter(|(idx, _)| self.game.level.geom.movable_sectors.contains(*idx))
+							.for_each(|(_, sec)| {
+								sec.ceil_h -= 1.0;
+							});
+					}
 					_ => {}
 				}
 			}

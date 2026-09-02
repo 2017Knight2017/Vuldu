@@ -53,31 +53,34 @@ VkFormat VulkanRenderer::findDepthFormat() {
 }
 
 std::vector<VkVertexInputBindingDescription> getLevelBindings() {
-    return { { 0, sizeof(Vertex), VK_VERTEX_INPUT_RATE_VERTEX } };
+    return { { 0, sizeof(LevelVertex), VK_VERTEX_INPUT_RATE_VERTEX } };
 }
 
 std::vector<VkVertexInputAttributeDescription> getLevelAttributes() {
     return {
-        { 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, pos) },
-        { 1, 0, VK_FORMAT_R32G32_SFLOAT,    offsetof(Vertex, texture_pos) },
-        { 2, 0, VK_FORMAT_R32_UINT,         offsetof(Vertex, light_level) },
-        { 3, 0, VK_FORMAT_R32_UINT,         offsetof(Vertex, texture_id) },
-		{ 4, 0, VK_FORMAT_R32_UINT,         offsetof(Vertex, floor_tex_id) },
-		{ 5, 0, VK_FORMAT_R32_SFLOAT,       offsetof(Vertex, scroll_dir) }
+        { 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(LevelVertex, pos) },
+        { 1, 0, VK_FORMAT_R32G32_SFLOAT,    offsetof(LevelVertex, texture_pos) },
+        { 2, 0, VK_FORMAT_R32_UINT,         offsetof(LevelVertex, light_level) },
+        { 3, 0, VK_FORMAT_R32_UINT,         offsetof(LevelVertex, texture_id) },
+		{ 4, 0, VK_FORMAT_R32_UINT,         offsetof(LevelVertex, floor_tex_id) },
+		{ 5, 0, VK_FORMAT_R32_SFLOAT,       offsetof(LevelVertex, scroll_dir) },
+		{ 6, 0, VK_FORMAT_R32_UINT,         offsetof(LevelVertex, plane_a) },
+		{ 7, 0, VK_FORMAT_R32_UINT,         offsetof(LevelVertex, plane_b) },
+		{ 8, 0, VK_FORMAT_R32_SFLOAT,       offsetof(LevelVertex, inv_tex_h) },
     };
 }
 
 std::vector<VkVertexInputBindingDescription> getSpriteBindings() {
     return {
-        { 0, sizeof(Vertex), VK_VERTEX_INPUT_RATE_VERTEX },
+        { 0, sizeof(SpriteVertex), VK_VERTEX_INPUT_RATE_VERTEX },
         { 1, sizeof(ObjectInstance), VK_VERTEX_INPUT_RATE_INSTANCE }
     };
 }
 
 std::vector<VkVertexInputAttributeDescription> getSpriteAttributes() {
     return {
-        { 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, pos) },
-        { 1, 0, VK_FORMAT_R32G32_SFLOAT,    offsetof(Vertex, texture_pos) },
+        { 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(SpriteVertex, pos) },
+        { 1, 0, VK_FORMAT_R32G32_SFLOAT,    offsetof(SpriteVertex, texture_pos) },
         { 2, 1, VK_FORMAT_R32G32B32_SFLOAT, offsetof(ObjectInstance, pos) },
         { 3, 1, VK_FORMAT_R32G32_SFLOAT,    offsetof(ObjectInstance, sprite_offset) },
 		{ 4, 1, VK_FORMAT_R32G32_SFLOAT,    offsetof(ObjectInstance, sprite_size) },
@@ -88,15 +91,15 @@ std::vector<VkVertexInputAttributeDescription> getSpriteAttributes() {
 
 std::vector<VkVertexInputBindingDescription> getUiBindings() {
     return {
-        { 0, sizeof(Vertex), VK_VERTEX_INPUT_RATE_VERTEX },
+        { 0, sizeof(SpriteVertex), VK_VERTEX_INPUT_RATE_VERTEX },
         { 1, sizeof(UiInstance), VK_VERTEX_INPUT_RATE_INSTANCE }
     };
 }
 
 std::vector<VkVertexInputAttributeDescription> getUiAttributes() {
     return {
-        { 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, pos) },
-        { 1, 0, VK_FORMAT_R32G32_SFLOAT,    offsetof(Vertex, texture_pos) },
+        { 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(SpriteVertex, pos) },
+        { 1, 0, VK_FORMAT_R32G32_SFLOAT,    offsetof(SpriteVertex, texture_pos) },
 		{ 2, 1, VK_FORMAT_R32G32_SFLOAT,    offsetof(UiInstance, pos) },
 		{ 3, 1, VK_FORMAT_R32G32_SFLOAT,    offsetof(UiInstance, sprite_size) },
         { 4, 1, VK_FORMAT_R32_UINT,         offsetof(UiInstance, texture_id) }
@@ -124,51 +127,76 @@ void VulkanRenderer::createDepthResources() {
 	);
 }
 
-void VulkanRenderer::updateLevelGeometry(rust::Slice<const Vertex> vertices, rust::Slice<const uint32_t> indices) {
-	updateGeometry(vertices, indices, this->levelVertexBuffer, 
-		this->levelVertexBufferMemory, this->levelVertexCount, 
+void VulkanRenderer::updateLevelGeometry(rust::Slice<const LevelVertex> vertices, rust::Slice<const uint32_t> indices) {
+	if (vertices.empty() || indices.empty()) return;
+
+	this->levelVertexCount = static_cast<uint32_t>(vertices.size());
+	this->levelIndexCount = static_cast<uint32_t>(indices.size());
+
+	VkDeviceSize vertexBufferSize = sizeof(LevelVertex) * vertices.size();
+    VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.size();
+
+	updateGeometry(reinterpret_cast<const void*>(vertices.data()), 
+		indices, this->levelVertexBuffer, 
+		this->levelVertexBufferMemory, vertexBufferSize, 
 		this->levelIndexBuffer, this->levelIndexBufferMemory,
-		 this->levelIndexCount);
+		indexBufferSize);
 }
 
-void VulkanRenderer::updateObjectGeometry(rust::Slice<const Vertex> vertices, rust::Slice<const uint32_t> indices) {
-    updateGeometry(vertices, indices, this->objectVertexBuffer, 
-		this->objectVertexBufferMemory, this->objectVertexCount, 
-		this->objectIndexBuffer, this->objectIndexBufferMemory, 
-		this->objectIndexCount);
-}
-
-void VulkanRenderer::updateUiGeometry(rust::Slice<const Vertex> vertices, rust::Slice<const uint32_t> indices) {
-    updateGeometry(vertices, indices, this->uiVertexBuffer, 
-		this->uiVertexBufferMemory, this->uiVertexCount, 
-		this->uiIndexBuffer, this->uiIndexBufferMemory, 
-		this->uiIndexCount);
-}
-
-void VulkanRenderer::updateGeometry(
-	rust::Slice<const Vertex> vertices, 
-	rust::Slice<const uint32_t> indices,
-	VkBuffer& vertexBuffer,
-	VkDeviceMemory& vertexBufferMemory,
-	uint32_t& vertexCount,
-	VkBuffer& indexBuffer,
-	VkDeviceMemory& indexBufferMemory,
-	uint32_t& indexCount
+void VulkanRenderer::updateObjectGeometry(
+	rust::Slice<const SpriteVertex> vertices, 
+	rust::Slice<const uint32_t> indices
 ) {
 	if (vertices.empty() || indices.empty()) return;
 
-    vkDeviceWaitIdle(device);
+	this->objectVertexCount = static_cast<uint32_t>(vertices.size());
+	this->objectIndexCount = static_cast<uint32_t>(indices.size());
 
-    destroyResource(device, vertexBuffer, vkDestroyBuffer);
-    destroyResource(device, vertexBufferMemory, vkFreeMemory);
-    destroyResource(device, indexBuffer, vkDestroyBuffer);
-    destroyResource(device, indexBufferMemory, vkFreeMemory);
-
-    vertexCount = static_cast<uint32_t>(vertices.size());
-    indexCount = static_cast<uint32_t>(indices.size());
-
-    VkDeviceSize vertexBufferSize = sizeof(Vertex) * vertices.size();
+	VkDeviceSize vertexBufferSize = sizeof(SpriteVertex) * vertices.size();
     VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.size();
+
+    updateGeometry(reinterpret_cast<const void*>(vertices.data()), 
+		indices, this->objectVertexBuffer, 
+		this->objectVertexBufferMemory, vertexBufferSize, 
+		this->objectIndexBuffer, this->objectIndexBufferMemory, 
+		indexBufferSize);
+}
+
+void VulkanRenderer::updateUiGeometry(
+	rust::Slice<const SpriteVertex> vertices, 
+	rust::Slice<const uint32_t> indices
+) {
+	if (vertices.empty() || indices.empty()) return;
+
+	this->uiVertexCount = static_cast<uint32_t>(vertices.size());
+	this->uiIndexCount = static_cast<uint32_t>(indices.size());
+
+	VkDeviceSize vertexBufferSize = sizeof(SpriteVertex) * vertices.size();
+    VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.size();
+
+    updateGeometry(reinterpret_cast<const void*>(vertices.data()), 
+		indices, this->uiVertexBuffer, 
+		this->uiVertexBufferMemory, vertexBufferSize, 
+		this->uiIndexBuffer, this->uiIndexBufferMemory, 
+		indexBufferSize);
+}
+
+void VulkanRenderer::updateGeometry(
+	const void* vertices, 
+	rust::Slice<const uint32_t> indices,
+	VkBuffer& vertexBuffer,
+	VkDeviceMemory& vertexBufferMemory,
+	VkDeviceSize vertexBufferSize,
+	VkBuffer& indexBuffer,
+	VkDeviceMemory& indexBufferMemory,
+	VkDeviceSize indexBufferSize
+) {
+    vkDeviceWaitIdle(this->device);
+
+    destroyResource(this->device, vertexBuffer, vkDestroyBuffer);
+    destroyResource(this->device, vertexBufferMemory, vkFreeMemory);
+    destroyResource(this->device, indexBuffer, vkDestroyBuffer);
+    destroyResource(this->device, indexBufferMemory, vkFreeMemory);
 
     VkBuffer vertexStagingBuffer;
     VkDeviceMemory vertexStagingBufferMemory;
@@ -177,9 +205,9 @@ void VulkanRenderer::updateGeometry(
 		vertexStagingBuffer, vertexStagingBufferMemory);
 
     void* vertexData;
-    vkMapMemory(device, vertexStagingBufferMemory, 0, vertexBufferSize, 0, &vertexData);
-    memcpy(vertexData, vertices.data(), static_cast<size_t>(vertexBufferSize));
-    vkUnmapMemory(device, vertexStagingBufferMemory);
+    vkMapMemory(this->device, vertexStagingBufferMemory, 0, vertexBufferSize, 0, &vertexData);
+    memcpy(vertexData, vertices, static_cast<size_t>(vertexBufferSize));
+    vkUnmapMemory(this->device, vertexStagingBufferMemory);
 
     createBuffer(vertexBufferSize, 
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 
@@ -187,18 +215,20 @@ void VulkanRenderer::updateGeometry(
 		vertexBuffer, vertexBufferMemory);
     copyBuffer(vertexStagingBuffer, vertexBuffer, vertexBufferSize);
 
-    vkDestroyBuffer(device, vertexStagingBuffer, nullptr);
-    vkFreeMemory(device, vertexStagingBufferMemory, nullptr);
+    vkDestroyBuffer(this->device, vertexStagingBuffer, nullptr);
+    vkFreeMemory(this->device, vertexStagingBufferMemory, nullptr);
 
     
     VkBuffer indexStagingBuffer;
     VkDeviceMemory indexStagingBufferMemory;
-    createBuffer(indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, indexStagingBuffer, indexStagingBufferMemory);
+    createBuffer(indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
+		indexStagingBuffer, indexStagingBufferMemory);
 	
     void* indexData;
-   	vkMapMemory(device, indexStagingBufferMemory, 0, indexBufferSize, 0, &indexData);
+   	vkMapMemory(this->device, indexStagingBufferMemory, 0, indexBufferSize, 0, &indexData);
     memcpy(indexData, indices.data(), static_cast<size_t>(indexBufferSize));
-    vkUnmapMemory(device, indexStagingBufferMemory);
+    vkUnmapMemory(this->device, indexStagingBufferMemory);
 
     createBuffer(indexBufferSize, 
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, 
@@ -206,8 +236,8 @@ void VulkanRenderer::updateGeometry(
 		indexBuffer, indexBufferMemory);
     copyBuffer(indexStagingBuffer, indexBuffer, indexBufferSize);
 
-    vkDestroyBuffer(device, indexStagingBuffer, nullptr);
-    vkFreeMemory(device, indexStagingBufferMemory, nullptr);
+    vkDestroyBuffer(this->device, indexStagingBuffer, nullptr);
+    vkFreeMemory(this->device, indexStagingBufferMemory, nullptr);
 }
 
 void VulkanRenderer::createPipelines() {
@@ -355,7 +385,7 @@ void VulkanRenderer::createSpritePipeline(
 
 	VkResult pipelineLayoutResult = vkCreatePipelineLayout(this->device, &pipelineLayoutInfo, nullptr, &this->spritePipelineLayout);
 	if (pipelineLayoutResult != VK_SUCCESS) {
-	    throw std::runtime_error("failed to create pipeline layout!");
+	    throw std::runtime_error("failed to create objects' layout!");
 	}
 
 	VkGraphicsPipelineCreateInfo pipelineInfo{};
@@ -376,7 +406,7 @@ void VulkanRenderer::createSpritePipeline(
 
 	VkResult PipelineResult = vkCreateGraphicsPipelines(this->device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &this->spritePipeline);
 	if (PipelineResult != VK_SUCCESS) {
-    	throw std::runtime_error("failed to create graphics pipeline!");
+    	throw std::runtime_error("failed to create objects' pipeline!");
 	}
 	
 	vkDestroyShaderModule(this->device, fragShaderModule, nullptr);
@@ -434,7 +464,7 @@ void VulkanRenderer::createLevelPipeline(
 
 	VkResult pipelineLayoutResult = vkCreatePipelineLayout(this->device, &pipelineLayoutInfo, nullptr, &this->levelPipelineLayout);
 	if (pipelineLayoutResult != VK_SUCCESS) {
-	    throw std::runtime_error("failed to create pipeline layout!");
+	    throw std::runtime_error("failed to create level's layout!");
 	}
 
 	VkGraphicsPipelineCreateInfo pipelineInfo{};
@@ -455,7 +485,7 @@ void VulkanRenderer::createLevelPipeline(
 
 	VkResult PipelineResult = vkCreateGraphicsPipelines(this->device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &this->levelPipeline);
 	if (PipelineResult != VK_SUCCESS) {
-    	throw std::runtime_error("failed to create graphics pipeline!");
+    	throw std::runtime_error("failed to create level's pipeline!");
 	}
 	
 	vkDestroyShaderModule(this->device, fragShaderModule, nullptr);
@@ -520,7 +550,7 @@ void VulkanRenderer::createUiPipeline(
 
 	VkResult pipelineLayoutResult = vkCreatePipelineLayout(this->device, &pipelineLayoutInfo, nullptr, &this->uiPipelineLayout);
 	if (pipelineLayoutResult != VK_SUCCESS) {
-	    throw std::runtime_error("failed to create pipeline layout!");
+	    throw std::runtime_error("failed to create ui's layout!");
 	}
 
 	VkGraphicsPipelineCreateInfo pipelineInfo{};
@@ -541,7 +571,7 @@ void VulkanRenderer::createUiPipeline(
 
 	VkResult PipelineResult = vkCreateGraphicsPipelines(this->device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &this->uiPipeline);
 	if (PipelineResult != VK_SUCCESS) {
-    	throw std::runtime_error("failed to create graphics pipeline!");
+    	throw std::runtime_error("failed to create ui's pipeline!");
 	}
 	
 	vkDestroyShaderModule(this->device, fragShaderModule, nullptr);

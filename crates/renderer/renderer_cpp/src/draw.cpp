@@ -66,9 +66,9 @@ void VulkanRenderer::createSyncObjects() {
 }
 
 void VulkanRenderer::updateMVPBuffer(const MVP& mvp) {
-	memcpy(this->uniformBuffersMapped[this->currentFrame], &mvp, sizeof(MVP));
+	memcpy(this->MVPBuffersMapped[this->currentFrame], &mvp, sizeof(MVP));
 	
-	auto* mvp_ptr = reinterpret_cast<MVP*>(this->uniformBuffersMapped[this->currentFrame]);
+	auto* mvp_ptr = reinterpret_cast<MVP*>(this->MVPBuffersMapped[this->currentFrame]);
     mvp_ptr->proj[5] *= -1.0f;
     mvp_ptr->proj[0] *= -1.0f;
 }

@@ -3,10 +3,14 @@ use std::mem::offset_of;
 use bitflags::bitflags;
 use engine::{STBarUi, UpdatableUiType, pack_sprite_u64};
 use glam::Mat4;
-use renderer::{ANIM_INFO_SIZE, AnimLevelInfo, MAX_SKY, SafeRenderer, TextureDescriptor, Vertex};
+use renderer::{
+	ANIM_INFO_SIZE, AnimLevelInfo, LevelVertex, MAX_SKY, SafeRenderer, SpriteVertex,
+	TextureDescriptor,
+};
 use rustc_hash::FxHashMap;
 use wad_parser::{
-	DoomPicture, GpuVertex, Level, NUM_UI, TextureId, WadManager, construct_map_name, to_u64,
+	DoomPicture, GpuLevelVertex, GpuSpriteVertex, Level, NUM_UI, TextureId, WadManager,
+	construct_map_name, to_u64,
 };
 
 bitflags! {
@@ -38,9 +42,10 @@ pub struct GraphicsContext {
 	pub renderer: SafeRenderer,
 	pub data: FxHashMap<u64, (TextureId, u32, u32, bool)>,
 	pub ui_to_update: Vec<UpdatableUiType>,
-	pub ui_db: [Option<(TextureId, u32, u32)>; NUM_UI],
+	pub ui_db: Vec<Option<(TextureId, u32, u32)>>,
 	pub cached_stbar_ui: STBarUi,
 	pub offsets: Vec<(i16, i16)>,
+	pub sector_heights: Vec<f32>,
 	pub view_matrix: Mat4,
 	pub flags: GraphicsFlags,
 }
@@ -50,12 +55,13 @@ impl GraphicsContext {
 		Self {
 			renderer: SafeRenderer::new(),
 			data: FxHashMap::default(),
-			ui_db: [None; NUM_UI],
+			ui_db: vec![None; NUM_UI],
 			cached_stbar_ui: STBarUi::default(),
 			ui_to_update: Vec::new(),
 			offsets: Vec::new(),
 			view_matrix: Mat4::default(),
 			flags,
+			sector_heights: Vec::new(),
 		}
 	}
 
@@ -257,19 +263,27 @@ impl GraphicsContext {
 		let (obj_gpu_vertices, obj_indices) = level.get_objects_vertices();
 		let (ui_gpu_vertices, ui_indices) = level.get_ui_vertices();
 
-		let mut level_vertices: Vec<Vertex> =
-			wall_vertices.into_iter().map(vertex_to_vertex).collect();
+		self.sector_heights = level
+			.state
+			.sectors
+			.iter()
+			.flat_map(|sec| [sec.floor_h, sec.ceil_h])
+			.collect();
+
+		let mut level_vertices: Vec<LevelVertex> =
+			wall_vertices.into_iter().map(to_level_vertex).collect();
 		let mut level_indices = wall_indices;
 
 		let vertex_offset = level_vertices.len() as u32;
-		level_vertices.extend(flat_vertices.into_iter().map(vertex_to_vertex));
+		level_vertices.extend(flat_vertices.into_iter().map(to_level_vertex));
 		for idx in flat_indices {
 			level_indices.push(vertex_offset + idx);
 		}
 
-		let obj_vertices: Vec<Vertex> =
-			obj_gpu_vertices.into_iter().map(vertex_to_vertex).collect();
-		let ui_vertices: Vec<Vertex> = ui_gpu_vertices.into_iter().map(vertex_to_vertex).collect();
+		let obj_vertices: Vec<SpriteVertex> =
+			obj_gpu_vertices.into_iter().map(to_sprite_vertex).collect();
+		let ui_vertices: Vec<SpriteVertex> =
+			ui_gpu_vertices.into_iter().map(to_sprite_vertex).collect();
 
 		self.renderer.pin().setFlags(self.flags.bits());
 		self.renderer
@@ -281,6 +295,7 @@ impl GraphicsContext {
 		self.renderer
 			.pin()
 			.updateUiGeometry(&ui_vertices, &ui_indices);
+		self.renderer.pin().initSectorHeights(&self.sector_heights);
 	}
 }
 
@@ -310,37 +325,61 @@ fn register_sprite(
 	}
 }
 
-fn vertex_to_vertex(vertex: GpuVertex) -> Vertex {
-	assert_eq!(size_of::<GpuVertex>(), size_of::<Vertex>());
+fn to_level_vertex(vertex: GpuLevelVertex) -> LevelVertex {
+	assert_eq!(size_of::<GpuLevelVertex>(), size_of::<LevelVertex>());
 
-	assert_eq!(offset_of!(GpuVertex, pos), offset_of!(Vertex, pos));
 	assert_eq!(
-		offset_of!(GpuVertex, texture_pos),
-		offset_of!(Vertex, texture_pos)
+		offset_of!(GpuLevelVertex, pos),
+		offset_of!(LevelVertex, pos)
 	);
 	assert_eq!(
-		offset_of!(GpuVertex, light_level),
-		offset_of!(Vertex, light_level)
+		offset_of!(GpuLevelVertex, texture_pos),
+		offset_of!(LevelVertex, texture_pos)
 	);
 	assert_eq!(
-		offset_of!(GpuVertex, texture_id),
-		offset_of!(Vertex, texture_id)
+		offset_of!(GpuLevelVertex, light_level),
+		offset_of!(LevelVertex, light_level)
 	);
 	assert_eq!(
-		offset_of!(GpuVertex, floor_tex_id),
-		offset_of!(Vertex, floor_tex_id)
+		offset_of!(GpuLevelVertex, texture_id),
+		offset_of!(LevelVertex, texture_id)
 	);
 	assert_eq!(
-		offset_of!(GpuVertex, scroll_dir),
-		offset_of!(Vertex, scroll_dir)
+		offset_of!(GpuLevelVertex, floor_tex_id),
+		offset_of!(LevelVertex, floor_tex_id)
+	);
+	assert_eq!(
+		offset_of!(GpuLevelVertex, scroll_dir),
+		offset_of!(LevelVertex, scroll_dir)
 	);
 
-	Vertex {
+	LevelVertex {
 		pos: vertex.pos,
 		texture_pos: vertex.texture_pos,
 		light_level: vertex.light_level,
 		texture_id: vertex.texture_id,
 		floor_tex_id: vertex.floor_tex_id,
 		scroll_dir: vertex.scroll_dir,
+		plane_a: vertex.plane_a,
+		plane_b: vertex.plane_b,
+		inv_tex_h: vertex.inv_tex_h,
+	}
+}
+
+fn to_sprite_vertex(vertex: GpuSpriteVertex) -> SpriteVertex {
+	assert_eq!(size_of::<GpuSpriteVertex>(), size_of::<SpriteVertex>());
+
+	assert_eq!(
+		offset_of!(GpuSpriteVertex, pos),
+		offset_of!(SpriteVertex, pos)
+	);
+	assert_eq!(
+		offset_of!(GpuSpriteVertex, texture_pos),
+		offset_of!(SpriteVertex, texture_pos)
+	);
+
+	SpriteVertex {
+		pos: vertex.pos,
+		texture_pos: vertex.texture_pos,
 	}
 }

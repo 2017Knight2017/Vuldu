@@ -9,15 +9,75 @@ const SKY_CEIL_ID: TextureId = TextureId(65533);
 
 pub type TextureData = (TextureId, u32, u32, bool);
 
-// GpuVertex MUST equal to renderer::Vertex
+// GpuLevelVertex MUST equal to renderer::LevelVertex
 #[repr(C)]
-pub struct GpuVertex {
+pub struct GpuLevelVertex {
 	pub pos: [f32; 3],
 	pub texture_pos: [f32; 2],
 	pub light_level: u32,
 	pub texture_id: u32,
 	pub floor_tex_id: u32,
 	pub scroll_dir: f32,
+	pub plane_a: u32,
+	pub plane_b: u32,
+	pub inv_tex_h: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PlaneType {
+	Floor,
+	Ceil,
+	Static,
+}
+
+#[derive(PartialEq, Eq)]
+enum Op {
+	CopyA,
+	Min,
+	Max,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Plane {
+	sector: SectorId,
+	type_: PlaneType,
+}
+
+struct QuadEdge {
+	a: Plane,
+	b: Plane,
+	op: Op,
+}
+
+impl QuadEdge {
+	fn plain(p: Plane) -> Self {
+		QuadEdge {
+			a: p,
+			b: p,
+			op: Op::CopyA,
+		}
+	}
+	fn min(x: Plane, y: Plane) -> Self {
+		QuadEdge {
+			a: x,
+			b: y,
+			op: Op::Min,
+		}
+	}
+	fn max(x: Plane, y: Plane) -> Self {
+		QuadEdge {
+			a: x,
+			b: y,
+			op: Op::Max,
+		}
+	}
+}
+
+// GpuSpriteVertex MUST equal to renderer::SpriteVertex
+#[repr(C)]
+pub struct GpuSpriteVertex {
+	pub pos: [f32; 3],
+	pub texture_pos: [f32; 2],
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -88,7 +148,7 @@ impl AABB {
 }
 
 #[derive(Clone, Copy, Debug)]
-struct Edge {
+struct PolyEdge {
 	v1: (i32, i32),
 	v2: (i32, i32),
 	used: bool,
@@ -98,7 +158,7 @@ impl Level {
 	pub fn get_walls_vertices(
 		&mut self,
 		texture_ids: &FxHashMap<u64, TextureData>,
-	) -> (Vec<GpuVertex>, Vec<u32>) {
+	) -> (Vec<GpuLevelVertex>, Vec<u32>) {
 		let mut gpu_vertices = Vec::new();
 		let mut gpu_indices = Vec::new();
 
@@ -139,9 +199,14 @@ impl Level {
 				continue;
 			};
 			let front_side = &mut sides_state[front_side_idx.0];
-			let front_sector = &sectors[sides_geom[front_side_idx.0].sector.0];
+			let front_sector_id = sides_geom[front_side_idx.0].sector;
+			let front_sector = &sectors[front_sector_id.0];
 
-			let back_sector = back_side_idx_opt.map(|idx| &sectors[sides_geom[idx.0].sector.0]);
+			let back_sector_id = back_side_idx_opt.map(|idx| sides_geom[idx.0].sector);
+
+			let moves = |sec: SectorId| self.geom.movable_sectors.contains(sec.0);
+
+			let dynamic_side = moves(front_sector_id) || back_sector_id.is_some_and(moves);
 
 			let dx = v2.0 - v1.0;
 			let dy = v2.1 - v1.1;
@@ -151,16 +216,49 @@ impl Level {
 
 			let mut add_wall_quad = |y_low: f32,
 			                         y_high: f32,
+			                         low: QuadEdge,
+			                         high: QuadEdge,
+			                         anchor: Option<Plane>,
 			                         tex_name: &[u8],
 			                         v_offset: f32,
 			                         fake_flat_name: &[u8],
-			                         other_sector_ceilingpic: &[u8],
-			                         texture_width: u32|
+			                         other_sector_ceilingpic: &[u8]|
 			 -> Option<TextureId> {
 				let wall_height = y_high - y_low;
-				if wall_height <= 0.0 {
+
+				if wall_height <= 0.0 && !dynamic_side {
 					return None;
 				}
+
+				let dynamic = moves(low.a.sector)
+					|| moves(low.b.sector)
+					|| moves(high.a.sector)
+					|| moves(high.b.sector)
+					|| anchor.is_some_and(|an| moves(an.sector));
+
+				let pack = |edge: QuadEdge| -> (u32, u32) {
+					let a_type = if moves(edge.a.sector) {
+						edge.a.type_
+					} else {
+						PlaneType::Static
+					};
+
+					let (anchor_bit, b) = match anchor {
+						Some(an) if dynamic && edge.op == Op::CopyA && an != edge.a => (1u32, an),
+						_ => (0u32, edge.b),
+					};
+
+					let plane_a_bits = edge.a.sector.0 as u32
+						| ((a_type as u32) << 27)
+						| ((edge.op as u32) << 29)
+						| (anchor_bit << 31);
+					let plane_b_bits = b.sector.0 as u32 | (b.type_ as u32) << 27;
+
+					(plane_a_bits, plane_b_bits)
+				};
+
+				let (plane_a_low, plane_b_low) = pack(low);
+				let (plane_a_high, plane_b_high) = pack(high);
 
 				let is_fake_wall = tex_name.is_empty() || tex_name[0] == 0x2d;
 
@@ -173,6 +271,12 @@ impl Level {
 				let (tex_id, tex_width, tex_height, _) = *texture_ids
 					.get(&to_u64(final_tex_name))
 					.unwrap_or(&(TextureId(0), 64, 64, false));
+
+				let inv_tex_h = if dynamic {
+					1.0 / tex_height as f32
+				} else {
+					0.0
+				};
 
 				let (final_tex_id, floor_tex_id) = if final_tex_name.starts_with(b"F_SKY1")
 					|| (other_sector_ceilingpic.starts_with(b"F_SKY1")
@@ -200,48 +304,65 @@ impl Level {
 					u_start = (seg.offset as f32 + tex_offset) / tex_width as f32;
 					u_end = u_start + (wall_length / tex_width as f32);
 
-					let f_tex_height = tex_height as f32;
-					v_start = (v_offset + row_offset) / f_tex_height;
-					v_end = v_start + (wall_height / f_tex_height);
+					let f_height = tex_height as f32;
+					if dynamic {
+						v_start = row_offset / f_height;
+						v_end = v_start;
+					} else {
+						v_start = (v_offset + row_offset) / f_height;
+						v_end = v_start + (wall_height / f_height);
+					}
 				}
 
 				let start_idx = gpu_vertices.len() as u32;
 				let light_level = front_sector.light.clamp(0, 255) as u32;
 
-				gpu_vertices.push(GpuVertex {
+				gpu_vertices.push(GpuLevelVertex {
 					pos: [v1.0, y_low, v1.1],
 					texture_pos: [u_start, v_end],
 					light_level,
 					texture_id: final_tex_id.0,
 					floor_tex_id: floor_tex_id.0,
-					scroll_dir: scroll_dir / texture_width as f32,
+					scroll_dir: scroll_dir / tex_width as f32,
+					plane_a: plane_a_low,
+					plane_b: plane_b_low,
+					inv_tex_h,
 				});
 
-				gpu_vertices.push(GpuVertex {
+				gpu_vertices.push(GpuLevelVertex {
 					pos: [v2.0, y_low, v2.1],
 					texture_pos: [u_end, v_end],
 					light_level,
 					texture_id: final_tex_id.0,
 					floor_tex_id: floor_tex_id.0,
-					scroll_dir: scroll_dir / texture_width as f32,
+					scroll_dir: scroll_dir / tex_width as f32,
+					plane_a: plane_a_low,
+					plane_b: plane_b_low,
+					inv_tex_h,
 				});
 
-				gpu_vertices.push(GpuVertex {
+				gpu_vertices.push(GpuLevelVertex {
 					pos: [v1.0, y_high, v1.1],
 					texture_pos: [u_start, v_start],
 					light_level,
 					texture_id: final_tex_id.0,
 					floor_tex_id: floor_tex_id.0,
-					scroll_dir: scroll_dir / texture_width as f32,
+					scroll_dir: scroll_dir / tex_width as f32,
+					plane_a: plane_a_high,
+					plane_b: plane_b_high,
+					inv_tex_h,
 				});
 
-				gpu_vertices.push(GpuVertex {
+				gpu_vertices.push(GpuLevelVertex {
 					pos: [v2.0, y_high, v2.1],
 					texture_pos: [u_end, v_start],
 					light_level,
 					texture_id: final_tex_id.0,
 					floor_tex_id: floor_tex_id.0,
-					scroll_dir: scroll_dir / texture_width as f32,
+					scroll_dir: scroll_dir / tex_width as f32,
+					plane_a: plane_a_high,
+					plane_b: plane_b_high,
+					inv_tex_h,
 				});
 
 				gpu_indices.push(start_idx);
@@ -258,92 +379,118 @@ impl Level {
 			let dont_peg_top = line.flags.contains(LineFlags::DONT_PEG_TOP);
 			let dont_peg_bottom = line.flags.contains(LineFlags::DONT_PEG_BOTTOM);
 
-			match back_sector {
-				None => {
-					let (_, tex_w, tex_h, _) = texture_ids
-						.get(&to_u64(&front_side.midtexture))
-						.unwrap_or(&(TextureId(0), 64, 64, false));
+			let f_floor = Plane {
+				sector: front_sector_id,
+				type_: PlaneType::Floor,
+			};
+			let f_ceil = Plane {
+				sector: front_sector_id,
+				type_: PlaneType::Ceil,
+			};
 
-					let v_offset = if dont_peg_bottom {
+			match back_sector_id {
+				None => {
+					let tex_h = match texture_ids.get(&to_u64(&front_side.midtexture)) {
+						Some(tex) => tex.2 as f32,
+						None => 64.0,
+					};
+
+					let (v_offset, anchor) = if dont_peg_bottom {
 						let offset = front_sector.ceil_h - front_sector.floor_h;
-						*tex_h as f32 - offset
+						(tex_h - offset, Some(f_floor))
 					} else {
-						0.0
+						(0.0, Some(f_ceil))
 					};
 
 					front_side.mid_tex = add_wall_quad(
 						front_sector.floor_h,
 						front_sector.ceil_h,
+						QuadEdge::plain(f_floor),
+						QuadEdge::plain(f_ceil),
+						anchor,
 						&front_side.midtexture,
 						v_offset,
 						&front_sector.floorpic,
 						&[],
-						*tex_w,
 					);
 				}
-				Some(b_sector) => {
-					if front_sector.ceil_h > b_sector.ceil_h {
-						let (_, tex_w, tex_h, _) = texture_ids
-							.get(&to_u64(&front_side.toptexture))
-							.unwrap_or(&(TextureId(0), 64, 64, false));
+				Some(b_sector_id) => {
+					let b_floor = Plane {
+						sector: b_sector_id,
+						type_: PlaneType::Floor,
+					};
+					let b_ceil = Plane {
+						sector: b_sector_id,
+						type_: PlaneType::Ceil,
+					};
 
-						let v_offset = if dont_peg_top {
-							0.0
+					let b_sector = &self.state.sectors[b_sector_id.0];
+
+					if front_sector.ceil_h > b_sector.ceil_h {
+						let tex_h = match texture_ids.get(&to_u64(&front_side.toptexture)) {
+							Some(tex) => tex.2 as f32,
+							None => 64.0,
+						};
+
+						let (v_offset, anchor) = if dont_peg_top {
+							(0.0, Some(f_ceil))
 						} else {
 							let offset = b_sector.ceil_h - front_sector.ceil_h;
-							offset - *tex_h as f32
+							(offset - tex_h, Some(b_ceil))
 						};
 
 						front_side.top_tex = add_wall_quad(
 							b_sector.ceil_h,
 							front_sector.ceil_h,
+							QuadEdge::plain(b_ceil),
+							QuadEdge::plain(f_ceil),
+							anchor,
 							&front_side.toptexture,
 							v_offset,
 							&front_sector.ceilingpic,
 							&b_sector.ceilingpic,
-							*tex_w,
 						);
 					}
 
 					if front_sector.floor_h < b_sector.floor_h {
-						let (_, tex_w, tex_h, _) = texture_ids
-							.get(&to_u64(&front_side.bottomtexture))
-							.unwrap_or(&(TextureId(0), 64, 64, false));
+						let tex_h = match texture_ids.get(&to_u64(&front_side.bottomtexture)) {
+							Some(tex) => tex.2 as f32,
+							None => 64.0,
+						};
 
-						let v_offset = if dont_peg_bottom {
+						let (v_offset, anchor) = if dont_peg_bottom {
 							let offset = front_sector.ceil_h - b_sector.floor_h;
-							offset - *tex_h as f32
+							(offset - tex_h, Some(f_ceil))
 						} else {
-							0.0
+							(0.0, Some(b_floor))
 						};
 
 						front_side.bottom_tex = add_wall_quad(
 							front_sector.floor_h,
 							b_sector.floor_h,
+							QuadEdge::plain(f_floor),
+							QuadEdge::plain(b_floor),
+							anchor,
 							&front_side.bottomtexture,
 							v_offset,
 							&b_sector.floorpic,
 							&front_sector.ceilingpic,
-							*tex_w,
 						);
 					}
 
 					if front_side.midtexture[0] != 0x2d {
-						let tex_w = match texture_ids.get(&to_u64(&front_side.midtexture)) {
-							Some(tex) => tex.1,
-							None => 64,
-						};
-
 						let mid_low = front_sector.floor_h.max(b_sector.floor_h);
 						let mid_high = front_sector.ceil_h.min(b_sector.ceil_h);
 						front_side.mid_tex = add_wall_quad(
 							mid_low,
 							mid_high,
+							QuadEdge::max(f_floor, b_floor),
+							QuadEdge::min(f_ceil, b_ceil),
+							None,
 							&front_side.midtexture,
 							0.0,
 							&front_sector.floorpic,
 							&b_sector.ceilingpic,
-							tex_w,
 						);
 					}
 				}
@@ -356,8 +503,8 @@ impl Level {
 	pub fn get_flats_vertices(
 		&mut self,
 		texture_ids: &FxHashMap<u64, TextureData>,
-	) -> (Vec<GpuVertex>, Vec<u32>) {
-		let mut gpu_vertices: Vec<GpuVertex> = Vec::new();
+	) -> (Vec<GpuLevelVertex>, Vec<u32>) {
+		let mut gpu_vertices: Vec<GpuLevelVertex> = Vec::new();
 		let mut gpu_indices: Vec<u32> = Vec::new();
 
 		self.geom.sector_lines = vec![Vec::new(); self.state.sectors.len()];
@@ -383,7 +530,7 @@ impl Level {
 
 		for (sector_id, sector) in sectors.iter_mut().enumerate() {
 			let current_sector_lines = &self.geom.sector_lines[sector_id];
-			let mut edges: Vec<Edge> = Vec::with_capacity(current_sector_lines.len() * 2);
+			let mut edges: Vec<PolyEdge> = Vec::with_capacity(current_sector_lines.len() * 2);
 
 			for line_id in current_sector_lines {
 				let line = &lines[line_id.0];
@@ -400,7 +547,7 @@ impl Level {
 				let v2 = (vertices[line.v2.0].0 as i32, vertices[line.v2.0].1 as i32);
 
 				if sector_front == Some(sector_id) {
-					edges.push(Edge {
+					edges.push(PolyEdge {
 						v1,
 						v2,
 						used: false,
@@ -408,7 +555,7 @@ impl Level {
 				}
 
 				if sector_back == Some(sector_id) {
-					edges.push(Edge {
+					edges.push(PolyEdge {
 						v1: v2,
 						v2: v1,
 						used: false,
@@ -631,14 +778,19 @@ impl Level {
 				let light_level = sector.light.clamp(0, 255) as u32;
 
 				let floor_start_idx = gpu_vertices.len() as u32;
+				let plane_low = (sector_id as u32) | ((PlaneType::Floor as u32) << 27);
+
 				for pt in &flat_points {
-					gpu_vertices.push(GpuVertex {
+					gpu_vertices.push(GpuLevelVertex {
 						pos: [pt[0], sector.floor_h, pt[1]],
 						texture_pos: [pt[0] / 64.0, pt[1] / 64.0],
 						light_level,
 						texture_id: sector.floor_tex.0,
 						floor_tex_id: 0,
 						scroll_dir: 0.0,
+						plane_a: plane_low,
+						plane_b: plane_low,
+						inv_tex_h: 0.0,
 					});
 				}
 				for chunk in sector_indices.as_chunks::<3>().0 {
@@ -648,14 +800,19 @@ impl Level {
 				}
 
 				let ceil_start_idx = gpu_vertices.len() as u32;
+				let plane_high = (sector_id as u32) | ((PlaneType::Ceil as u32) << 27);
+
 				for pt in &flat_points {
-					gpu_vertices.push(GpuVertex {
+					gpu_vertices.push(GpuLevelVertex {
 						pos: [pt[0], sector.ceil_h, pt[1]],
 						texture_pos: [pt[0] / 64.0, pt[1] / 64.0],
 						light_level,
 						texture_id: sector.ceil_tex.0,
 						floor_tex_id: 0,
 						scroll_dir: 0.0,
+						plane_a: plane_high,
+						plane_b: plane_high,
+						inv_tex_h: 0.0,
 					});
 				}
 				for chunk in sector_indices.as_chunks::<3>().0 {
@@ -699,7 +856,7 @@ impl Level {
 		}
 	}
 
-	pub fn get_objects_vertices(&self) -> (Vec<GpuVertex>, Vec<u32>) {
+	pub fn get_objects_vertices(&self) -> (Vec<GpuSpriteVertex>, Vec<u32>) {
 		let corners = [
 			([0.0, 0.0, 0.0], [1.0, 1.0]),
 			([1.0, 0.0, 0.0], [0.0, 1.0]),
@@ -707,18 +864,9 @@ impl Level {
 			([0.0, 1.0, 0.0], [1.0, 0.0]),
 		];
 
-		let vertices: Vec<GpuVertex> = corners
+		let vertices: Vec<GpuSpriteVertex> = corners
 			.iter()
-			.map(|&(pos, texture_pos)| GpuVertex {
-				pos,
-				texture_pos,
-
-				// stub values; they are used from ObjectInstance instead
-				light_level: 0,
-				texture_id: 0,
-				floor_tex_id: 0,
-				scroll_dir: 0.0,
-			})
+			.map(|&(pos, texture_pos)| GpuSpriteVertex { pos, texture_pos })
 			.collect();
 
 		let indices = vec![0, 3, 2, 0, 2, 1];
@@ -726,7 +874,7 @@ impl Level {
 		(vertices, indices)
 	}
 
-	pub fn get_ui_vertices(&self) -> (Vec<GpuVertex>, Vec<u32>) {
+	pub fn get_ui_vertices(&self) -> (Vec<GpuSpriteVertex>, Vec<u32>) {
 		let corners = [
 			([0.0, 0.0, 0.0], [0.0, 0.0]),
 			([1.0, 0.0, 0.0], [1.0, 0.0]),
@@ -734,18 +882,9 @@ impl Level {
 			([0.0, 1.0, 0.0], [0.0, 1.0]),
 		];
 
-		let vertices: Vec<GpuVertex> = corners
+		let vertices: Vec<GpuSpriteVertex> = corners
 			.iter()
-			.map(|&(pos, texture_pos)| GpuVertex {
-				pos,
-				texture_pos,
-
-				// stub values; they are used from UiInstance instead
-				light_level: 0,
-				texture_id: 0,
-				floor_tex_id: 0,
-				scroll_dir: 0.0,
-			})
+			.map(|&(pos, texture_pos)| GpuSpriteVertex { pos, texture_pos })
 			.collect();
 
 		let indices = vec![0, 3, 2, 0, 2, 1];
@@ -806,7 +945,7 @@ fn clean_polygon(poly: &[[f32; 2]]) -> Vec<[f32; 2]> {
 fn find_next_edge_by_angle(
 	prev_point: (i32, i32),
 	current_tip: (i32, i32),
-	edges: &[Edge],
+	edges: &[PolyEdge],
 	adjacency: &FxHashMap<(i32, i32), Vec<usize>>,
 ) -> Option<usize> {
 	let candidate_indices = adjacency.get(&current_tip)?;

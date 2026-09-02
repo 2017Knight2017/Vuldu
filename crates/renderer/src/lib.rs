@@ -1,8 +1,8 @@
 mod bridge;
 
 pub use bridge::ffi::{
-	AnimLevelInfo, MVP, ObjectInstance, TextureDescriptor, UiInstance, Vertex, WindowHandles,
-	WindowSize,
+	AnimLevelInfo, LevelVertex, MVP, ObjectInstance, SpriteVertex, TextureDescriptor, UiInstance,
+	WindowHandles, WindowSize,
 };
 use bridge::ffi::{VulkanRenderer, createRenderer, getAnimInfoSize, getMaxSky};
 use cxx::UniquePtr;

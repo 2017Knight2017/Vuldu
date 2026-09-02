@@ -17,6 +17,10 @@ layout(binding = 3) uniform AnimLevelBuffer {
     animLevelInfo info[ANIM_INFO_SIZE];
 } anim;
 
+layout(binding = 4) readonly buffer SectorHeightsBuffer {
+    float heights[]; 
+} sec;
+
 layout(push_constant) uniform LevelConstants {
     vec2 resolution;
     uint paletteIndex;
@@ -33,6 +37,9 @@ layout(location = 2) in uint inLightLevel;
 layout(location = 3) in uint inTexId;
 layout(location = 4) in uint inFloorTexId;
 layout(location = 5) in float inScrollDir;
+layout(location = 6) in uint inPlaneA;
+layout(location = 7) in uint inPlaneB;
+layout(location = 8) in float inInvTexH;
 
 layout(location = 0) flat out uint fragLightLevel;      
 layout(location = 1) out vec2 fragTexCoord;
@@ -86,15 +93,42 @@ const vec3 BARY[3] = vec3[3](
 
 const uint SKY_CEIL = 65533;
 
+const uint PLANE_STATIC = 2;
+const uint OP_COPY_A = 0;
+const uint OP_MIN = 1;
+
 void main() {
     fragLightLevel = inLightLevel;
     fragScrollDir = inScrollDir;
-    fragTexCoord = inTexCoord;
     fragTexId = getAnimId();
     fragFloorTexId = inFloorTexId;
 
-    vec4 viewPos = mvp.view * mvp.model * vec4(inPosition, 1.0);
+    uint sectorA = inPlaneA & 0xFFFFFF;
+    uint pTypeA = (inPlaneA >> 27) & 3;
+    uint op = (inPlaneA >> 29) & 3;
+    bool an = bool(inPlaneA >> 31);
 
+    uint sectorB = inPlaneB & 0xFFFFFF;
+    uint pTypeB = (inPlaneB >> 24) & 3;
+
+    vec3 pos = inPosition;
+    float v = inTexCoord.y;
+
+    if (pTypeA != PLANE_STATIC) pos.y = sec.heights[sectorA*2 + pTypeA];
+
+    if (op != OP_COPY_A) {
+    	float yb = sec.heights[sectorB*2 + pTypeB];
+    	pos.y = (op == OP_MIN) ? min(pos.y, yb) : max(pos.y, yb);
+    }
+
+    if (an) {
+    	float anchor = sec.heights[sectorB*2 + pTypeB];
+    	v += (anchor - pos.y) * inInvTexH;
+    }
+
+    fragTexCoord = vec2(inTexCoord.x, v);
+
+    vec4 viewPos = mvp.view * mvp.model * vec4(pos, 1.0);
     fragViewZ = viewPos.z;
 
     gl_Position = mvp.proj * viewPos;

@@ -4,7 +4,7 @@
 layout(binding = 1) uniform sampler2D palTex;
 layout(binding = 2) uniform usampler2D colormapTex;
 
-layout(binding = 4) uniform sampler2D texSamplers[];
+layout(binding = 5) uniform sampler2D texSamplers[];
 
 layout(push_constant) uniform LevelConstants {
     vec2 resolution;

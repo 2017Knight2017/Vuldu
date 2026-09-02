@@ -3,12 +3,12 @@
 #include "renderer/src/bridge.rs.h"
 
 void VulkanRenderer::createDescriptorSetLayout() {
-    VkDescriptorSetLayoutBinding uboLayoutBinding{};
-    uboLayoutBinding.binding = 0;
-    uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    uboLayoutBinding.descriptorCount = 1;
-    uboLayoutBinding.pImmutableSamplers = nullptr;
-    uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    VkDescriptorSetLayoutBinding mvpLayoutBinding{};
+    mvpLayoutBinding.binding = 0;
+    mvpLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    mvpLayoutBinding.descriptorCount = 1;
+    mvpLayoutBinding.pImmutableSamplers = nullptr;
+    mvpLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
     VkDescriptorSetLayoutBinding paletteLayoutBinding{};
     paletteLayoutBinding.binding = 1;
@@ -31,23 +31,32 @@ void VulkanRenderer::createDescriptorSetLayout() {
     animLevelLayoutBinding.pImmutableSamplers = nullptr;
     animLevelLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     
+    VkDescriptorSetLayoutBinding sectorHeightsLayoutBinding{};
+    sectorHeightsLayoutBinding.binding = 4;
+    sectorHeightsLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    sectorHeightsLayoutBinding.descriptorCount = 1;
+    sectorHeightsLayoutBinding.pImmutableSamplers = nullptr;
+    sectorHeightsLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
     VkDescriptorSetLayoutBinding textureSamplerLayoutBinding{};
-    textureSamplerLayoutBinding.binding = 4;
+    textureSamplerLayoutBinding.binding = 5;
     textureSamplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     textureSamplerLayoutBinding.descriptorCount = MAX_TEXTURES;
     textureSamplerLayoutBinding.pImmutableSamplers = nullptr;
     textureSamplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
     
 
-    std::array<VkDescriptorSetLayoutBinding, 5> bindings = {
-        uboLayoutBinding,
+    std::array<VkDescriptorSetLayoutBinding, 6> bindings = {
+        mvpLayoutBinding,
         paletteLayoutBinding, 
         colormapLayoutBinding,
         animLevelLayoutBinding,
+        sectorHeightsLayoutBinding,
         textureSamplerLayoutBinding,
     };
 
-    std::array<VkDescriptorBindingFlags, 5> bindingFlags = {
+    std::array<VkDescriptorBindingFlags, 6> bindingFlags = {
+        0,
         0,
         0,
         0,
@@ -76,20 +85,20 @@ void VulkanRenderer::createDescriptorSetLayout() {
 void VulkanRenderer::createMVPBuffer() {
     VkDeviceSize bufferSize = sizeof(MVP);
 
-    this->uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-    this->uniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
-    this->uniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
+    this->MVPBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+    this->MVPBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
+    this->MVPBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         createBuffer(
             bufferSize, 
             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
-            this->uniformBuffers[i], 
-            this->uniformBuffersMemory[i]
+            this->MVPBuffers[i], 
+            this->MVPBuffersMemory[i]
         );
 
-        vkMapMemory(this->device, this->uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
+        vkMapMemory(this->device, this->MVPBuffersMemory[i], 0, bufferSize, 0, &MVPBuffersMapped[i]);
     }
 }
 
@@ -134,7 +143,7 @@ void VulkanRenderer::createUiInstanceBuffers() {
 }
 
 void VulkanRenderer::createDescriptorPool() {
-	std::array<VkDescriptorPoolSize, 5> poolSizes{};
+	std::array<VkDescriptorPoolSize, 6> poolSizes{};
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	poolSizes[0].descriptorCount = MAX_FRAMES_IN_FLIGHT;
     poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -143,8 +152,10 @@ void VulkanRenderer::createDescriptorPool() {
 	poolSizes[2].descriptorCount = MAX_FRAMES_IN_FLIGHT;
     poolSizes[3].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	poolSizes[3].descriptorCount = MAX_FRAMES_IN_FLIGHT;
-    poolSizes[4].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	poolSizes[4].descriptorCount = MAX_FRAMES_IN_FLIGHT * MAX_TEXTURES;
+    poolSizes[4].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	poolSizes[4].descriptorCount = MAX_FRAMES_IN_FLIGHT;
+    poolSizes[5].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	poolSizes[5].descriptorCount = MAX_FRAMES_IN_FLIGHT * MAX_TEXTURES;
 	
 	VkDescriptorPoolCreateInfo poolInfo{};
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -184,7 +195,7 @@ void VulkanRenderer::createDescriptorSets() {
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         VkDescriptorBufferInfo bufferInfo{};
-        bufferInfo.buffer = this->uniformBuffers[i];
+        bufferInfo.buffer = this->MVPBuffers[i];
         bufferInfo.offset = 0;
         bufferInfo.range = sizeof(MVP);
 

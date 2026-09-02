@@ -23,7 +23,8 @@ inline const uint32_t MAX_UI = 512;
 inline const float PIXELS_IN_PANORAMA = 1024.0;
 
 struct WindowHandles;
-struct Vertex;
+struct LevelVertex;
+struct SpriteVertex;
 struct MVP;
 struct TextureDescriptor;
 struct ObjectInstance;
@@ -78,9 +79,9 @@ public:
     void initVulkan(const WindowHandles& handles, uint32_t width, uint32_t height);
     void cleanup();
     void recreateSwapChain(uint32_t width, uint32_t height);
-    void updateLevelGeometry(rust::Slice<const Vertex> vertices, rust::Slice<const uint32_t> indices);
-    void updateObjectGeometry(rust::Slice<const Vertex> vertices, rust::Slice<const uint32_t> indices);
-    void updateUiGeometry(rust::Slice<const Vertex> vertices, rust::Slice<const uint32_t> indices);
+    void updateLevelGeometry(rust::Slice<const LevelVertex> vertices, rust::Slice<const uint32_t> indices);
+    void updateObjectGeometry(rust::Slice<const SpriteVertex> vertices, rust::Slice<const uint32_t> indices);
+    void updateUiGeometry(rust::Slice<const SpriteVertex> vertices, rust::Slice<const uint32_t> indices);
     void updateObjectInstances(rust::Slice<const ObjectInstance> instances);
     void updateUiInstances(rust::Slice<const UiInstance> instances);
     void uploadPalettes(rust::Slice<const uint8_t> palettes);
@@ -91,13 +92,15 @@ public:
         rust::Slice<const float> sky_widths
     );
     void uploadAnimLevelInfo(rust::Slice<const AnimLevelInfo> info);
+    void initSectorHeights(rust::Slice<const float> heights);
+    void updateSectorHeights(rust::Slice<const float> heights);
     void setPaletteIndex(uint32_t idx);
     uint32_t getPaletteIndex();
     void setSkyIndex(uint32_t idx);
     void setGlobalTimer(uint32_t global_timer);
     void setCameraYaw(float camera_yaw);
     void setFlags(uint32_t flags_to_invert);
-    void startFrame(const MVP& ubo_ptr);
+    void startFrame(const MVP& mvp);
     void endFrame();
     void drawLevel();
     void drawObjects();
@@ -132,9 +135,9 @@ private:
 
     VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
     std::vector<VkDescriptorSet> descriptorSets;
-    std::vector<VkBuffer> uniformBuffers;
-    std::vector<VkDeviceMemory> uniformBuffersMemory;
-    std::vector<void*> uniformBuffersMapped;
+    std::vector<VkBuffer> MVPBuffers;
+    std::vector<VkDeviceMemory> MVPBuffersMemory;
+    std::vector<void*> MVPBuffersMapped;
 
     std::vector<VkBuffer> objectInstanceBuffers;
     std::vector<VkDeviceMemory> objectInstanceBuffersMemory;
@@ -192,6 +195,10 @@ private:
     VkBuffer animLevelBuffer = VK_NULL_HANDLE;
     VkDeviceMemory animLevelBufferMemory = VK_NULL_HANDLE;
 
+    VkBuffer sectorHeightsBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory sectorHeightsBufferMemory = VK_NULL_HANDLE;
+    void* sectorHeightsBufferMapped = VK_NULL_HANDLE;
+
     float globalTimer = 0.0;
     uint32_t currentPaletteIndex = 0;
     uint32_t currentSkyIndex = 0;
@@ -235,14 +242,14 @@ private:
     void beginRendering(VkCommandBuffer currentCommandBuffer);
 
     void updateGeometry(
-    	rust::Slice<const Vertex> vertices, 
-    	rust::Slice<const uint32_t> indices,
-    	VkBuffer& vertexBuffer,
-    	VkDeviceMemory& vertexBufferMemory,
-    	uint32_t& vertexCount,
-    	VkBuffer& indexBuffer,
-    	VkDeviceMemory& indexBufferMemory,
-    	uint32_t& indexCount
+    	const void* vertices, 
+	    rust::Slice<const uint32_t> indices,
+	    VkBuffer& vertexBuffer,
+	    VkDeviceMemory& vertexBufferMemory,
+	    VkDeviceSize vertexBufferSize,
+	    VkBuffer& indexBuffer,
+	    VkDeviceMemory& indexBufferMemory,
+	    VkDeviceSize indexBufferSize
     );
 
     void createDataTexture(

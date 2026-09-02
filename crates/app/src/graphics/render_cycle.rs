@@ -26,14 +26,30 @@ impl GraphicsContext {
 		global_timer: u32,
 		alpha: f32,
 	) {
-		let obj_instances =
-			self.collect_object_instances(world, player_entity, &level.state.sectors, alpha);
-		let ui_instances = self.collect_ui_instances(world, player_entity, game_state);
-
 		let size = window.inner_size();
 		if size.width == 0 || size.height == 0 {
 			return;
 		}
+
+		let ui_instances = self.collect_ui_instances(world, player_entity, game_state);
+		self.renderer.pin().updateUiInstances(&ui_instances);
+
+		let obj_instances =
+			self.collect_object_instances(world, player_entity, &level.state.sectors, alpha);
+		self.renderer.pin().updateObjectInstances(&obj_instances);
+
+		level
+			.state
+			.sectors
+			.iter()
+			.enumerate()
+			.for_each(|(idx, sec)| {
+				self.sector_heights[idx * 2] = sec.floor_h;
+				self.sector_heights[idx * 2 + 1] = sec.ceil_h;
+			});
+		self.renderer
+			.pin()
+			.updateSectorHeights(&self.sector_heights);
 
 		let aspect_ratio = size.width as f32 / size.height as f32;
 		let proj = Mat4::perspective_rh(FOV_ANGLE.to_radians(), aspect_ratio, 1.0, 10000.0);
@@ -45,16 +61,12 @@ impl GraphicsContext {
 			view: self.view_matrix.to_cols_array(),
 			proj: proj.to_cols_array(),
 		};
-
-		self.renderer.pin().updateUiInstances(&ui_instances);
-		self.renderer.pin().updateObjectInstances(&obj_instances);
-
 		self.renderer
 			.pin()
 			.setCameraYaw(calculate_camera_yaw(&mvp.view));
-		self.renderer.pin().setGlobalTimer(global_timer);
 
 		self.renderer.pin().startFrame(&mvp);
+		self.renderer.pin().setGlobalTimer(global_timer);
 		self.renderer.pin().drawLevel();
 		self.renderer.pin().drawObjects();
 		self.renderer.pin().drawUi();
