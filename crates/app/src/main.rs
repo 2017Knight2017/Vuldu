@@ -294,9 +294,7 @@ impl ApplicationHandler for App {
 							.iter_mut()
 							.enumerate()
 							.filter(|(idx, _)| self.game.level.geom.movable_sectors.contains(*idx))
-							.for_each(|(_, sec)| {
-								sec.ceil_h += 1.0;
-							});
+							.for_each(|(_, sec)| sec.floor_h += 1.0);
 					}
 					PhysicalKey::Code(KeyCode::KeyK) => {
 						self.game
@@ -306,9 +304,27 @@ impl ApplicationHandler for App {
 							.iter_mut()
 							.enumerate()
 							.filter(|(idx, _)| self.game.level.geom.movable_sectors.contains(*idx))
-							.for_each(|(_, sec)| {
-								sec.ceil_h -= 1.0;
-							});
+							.for_each(|(_, sec)| sec.floor_h -= 1.0);
+					}
+					PhysicalKey::Code(KeyCode::KeyI) => {
+						self.game
+							.level
+							.state
+							.sectors
+							.iter_mut()
+							.enumerate()
+							.filter(|(idx, _)| self.game.level.geom.movable_sectors.contains(*idx))
+							.for_each(|(_, sec)| sec.ceil_h += 1.0);
+					}
+					PhysicalKey::Code(KeyCode::KeyO) => {
+						self.game
+							.level
+							.state
+							.sectors
+							.iter_mut()
+							.enumerate()
+							.filter(|(idx, _)| self.game.level.geom.movable_sectors.contains(*idx))
+							.for_each(|(_, sec)| sec.ceil_h -= 1.0);
 					}
 					_ => {}
 				}

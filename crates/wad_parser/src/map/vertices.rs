@@ -1,4 +1,4 @@
-use crate::{Level, LineFlags, LineId, SectorId, SubsectorId, TextureId, to_u64};
+use crate::{Level, LineFlags, LineId, SectorId, TextureId, to_u64};
 use earcut::Earcut;
 use rustc_hash::{FxBuildHasher, FxHashMap};
 
@@ -831,28 +831,26 @@ impl Level {
 			return SectorId(0);
 		}
 
-		let root_node_idx = self.geom.nodes.len() - 1;
-		let subsector_id = self.find_subsector_by_pos(root_node_idx, x, z);
+		let mut node_idx = self.geom.nodes.len() - 1;
 
-		self.geom.subsector_sector[subsector_id.0]
-	}
+		loop {
+			if (node_idx & NF_SUBSECTOR) != 0 {
+				let subsector_id = node_idx & !NF_SUBSECTOR;
+				return self.geom.subsector_sector[subsector_id];
+			}
 
-	fn find_subsector_by_pos(&self, node_idx: usize, x: f32, z: f32) -> SubsectorId {
-		if (node_idx & NF_SUBSECTOR) != 0 {
-			return SubsectorId(node_idx & !NF_SUBSECTOR);
-		}
+			let node = &self.geom.nodes[node_idx];
 
-		let node = &self.geom.nodes[node_idx];
+			let dx = x - node.x as f32;
+			let dz = z - node.y as f32;
 
-		let dx = x - node.x as f32;
-		let dz = z - node.y as f32;
+			let is_left = (dx * node.dy as f32) - (dz * node.dx as f32) <= 0.0;
 
-		let is_left = (dx * node.dy as f32) - (dz * node.dx as f32) <= 0.0;
-
-		if is_left {
-			self.find_subsector_by_pos(node.children[1] as usize, x, z)
-		} else {
-			self.find_subsector_by_pos(node.children[0] as usize, x, z)
+			node_idx = if is_left {
+				node.children[1] as usize
+			} else {
+				node.children[0] as usize
+			};
 		}
 	}
 
