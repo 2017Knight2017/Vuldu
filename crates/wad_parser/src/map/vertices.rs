@@ -426,7 +426,9 @@ impl Level {
 
 					let b_sector = &self.state.sectors[b_sector_id.0];
 
-					if front_sector.ceil_h > b_sector.ceil_h {
+					if front_sector.ceil_h > b_sector.ceil_h
+						|| (dynamic_side && front_side.toptexture[0] != 0x2d)
+					{
 						let tex_h = match texture_ids.get(&to_u64(&front_side.toptexture)) {
 							Some(tex) => tex.2 as f32,
 							None => 64.0,
@@ -452,7 +454,9 @@ impl Level {
 						);
 					}
 
-					if front_sector.floor_h < b_sector.floor_h {
+					if front_sector.floor_h < b_sector.floor_h
+						|| (dynamic_side && front_side.bottomtexture[0] != 0x2d)
+					{
 						let tex_h = match texture_ids.get(&to_u64(&front_side.bottomtexture)) {
 							Some(tex) => tex.2 as f32,
 							None => 64.0,

@@ -93,9 +93,14 @@ const vec3 BARY[3] = vec3[3](
 
 const uint SKY_CEIL = 65533;
 
-const uint PLANE_STATIC = 2;
+const uint TYPE_STATIC = 2;
 const uint OP_COPY_A = 0;
 const uint OP_MIN = 1;
+
+const uint SECTOR_MASK = 0x7FFFFFF;
+const uint TYPE_SHIFT = 27;
+const uint OP_SHIFT = 29;
+const uint ANCHOR_SHIFT = 31;
 
 void main() {
     fragLightLevel = inLightLevel;
@@ -103,18 +108,18 @@ void main() {
     fragTexId = getAnimId();
     fragFloorTexId = inFloorTexId;
 
-    uint sectorA = inPlaneA & 0xFFFFFF;
-    uint pTypeA = (inPlaneA >> 27) & 3;
-    uint op = (inPlaneA >> 29) & 3;
-    bool an = bool(inPlaneA >> 31);
+    uint sectorA = inPlaneA & SECTOR_MASK;
+    uint pTypeA = (inPlaneA >> TYPE_SHIFT) & 3;
+    uint op = (inPlaneA >> OP_SHIFT) & 3;
+    bool an = bool(inPlaneA >> ANCHOR_SHIFT);
 
-    uint sectorB = inPlaneB & 0xFFFFFF;
-    uint pTypeB = (inPlaneB >> 24) & 3;
+    uint sectorB = inPlaneB & SECTOR_MASK;
+    uint pTypeB = (inPlaneB >> TYPE_SHIFT) & 3;
 
     vec3 pos = inPosition;
     float v = inTexCoord.y;
 
-    if (pTypeA != PLANE_STATIC) pos.y = sec.heights[sectorA*2 + pTypeA];
+    if (pTypeA != TYPE_STATIC) pos.y = sec.heights[sectorA*2 + pTypeA];
 
     if (op != OP_COPY_A) {
     	float yb = sec.heights[sectorB*2 + pTypeB];
