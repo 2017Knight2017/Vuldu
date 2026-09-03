@@ -17,8 +17,8 @@ pub struct GameContext {
 	sound_targets: Vec<Option<Entity>>,
 	world_events: Vec<WorldEvent>,
 	mobj_flag_buffer: Vec<MobjFlagCommand>,
-	action_buffer: Vec<(Entity, ActionFunc)>,
-	command_buffer: CommandBuffer,
+	actions: Vec<(Entity, ActionFunc)>,
+	cmd: CommandBuffer,
 	traversal: Traversal,
 	pub player_entity: Entity,
 	pub global_timer: u32,
@@ -35,8 +35,8 @@ impl GameContext {
 			graphics_buffer: Vec::new(),
 			world_events: Vec::new(),
 			mobj_flag_buffer: Vec::new(),
-			command_buffer: CommandBuffer::new(),
-			action_buffer: Vec::new(),
+			cmd: CommandBuffer::new(),
+			actions: Vec::new(),
 			player_entity: Entity::DANGLING,
 			state: GameState::Level,
 			global_timer: 0,
@@ -58,7 +58,7 @@ impl GameContext {
 			&self.world,
 			self.player_entity,
 			ui_to_update,
-			&mut self.command_buffer,
+			&mut self.cmd,
 			&mut audio.buffer,
 			current_input,
 		);
@@ -70,48 +70,27 @@ impl GameContext {
 			&self.level,
 			&mut self.sound_targets,
 			&mut self.traversal,
-			&mut self.command_buffer,
+			&mut self.cmd,
 		);
 
 		self.flush_command_buffer();
 
-		check_sound_system(
-			&self.world,
-			&mut self.level,
-			random,
-			&mut self.command_buffer,
-			&mut self.sound_targets,
-			&mut self.traversal,
-			&mut audio.buffer,
-			&mut self.action_buffer,
-		);
+		ai_system(&self.world, &mut self.actions);
 
-		check_sight_system(
-			&self.world,
-			&self.level,
-			&mut self.traversal,
+		action_system(ActionContext {
+			world: &self.world,
+			actions: &mut self.actions,
 			random,
-			&mut self.command_buffer,
-			&mut audio.buffer,
-			&mut self.action_buffer,
-		);
-
-		self.flush_command_buffer();
-
-		ai_system(&self.world, &mut self.action_buffer);
-		action_system(
-			&self.world,
-			&mut self.action_buffer,
-			random,
-			&self.level,
-			self.config.skill,
-			self.config.fast_monsters,
-			&mut audio.buffer,
-			&self.blocklists,
-			&mut self.world_events,
-			&mut self.mobj_flag_buffer,
-			&mut self.traversal,
-		);
+			level: &mut self.level,
+			cfg: self.config,
+			audio: &mut audio.buffer,
+			blocklists: &self.blocklists,
+			world_events: &mut self.world_events,
+			mobj_flags: &mut self.mobj_flag_buffer,
+			traversal: &mut self.traversal,
+			cmd: &mut self.cmd,
+			sound_targets: &mut self.sound_targets,
+		});
 
 		friction_system(&self.world);
 
@@ -139,7 +118,7 @@ impl GameContext {
 			&self.level,
 			self.player_entity,
 			ui_to_update,
-			&mut self.command_buffer,
+			&mut self.cmd,
 			&mut audio.buffer,
 			&mut self.blocklists,
 			&mut self.graphics_buffer,
@@ -155,7 +134,7 @@ impl GameContext {
 	}
 
 	fn flush_command_buffer(&mut self) {
-		self.command_buffer.run_on(&mut self.world);
-		self.command_buffer.clear();
+		self.cmd.run_on(&mut self.world);
+		self.cmd.clear();
 	}
 }

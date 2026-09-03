@@ -71,7 +71,6 @@ pub struct MobjAi {
 define_markers! {
 	PlayerMarker;
 	Active;
-	Idle;
 	PlayerShoot;
 }
 

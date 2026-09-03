@@ -1,5 +1,10 @@
-use crate::{CurrentSector, Pass, Position, Traversal};
-use wad_parser::{Level, LineFlags, LineId, NF_SUBSECTOR, SubsectorId};
+use crate::{
+	ActionContext, ActionFunc, Active, CurrentSector, DB, Database, MobjAi, MobjFlags, MobjNum,
+	MobjType, MonsterRotation, PLAYERHEIGHT, Pass, PlayerMarker, Position, Random, SfxEvent,
+	SpriteAnimation, Target, Traversal, in_fov, set_mobj_state,
+};
+use hecs::{CommandBuffer, Entity, World};
+use wad_parser::{Level, LineFlags, LineId, NF_SUBSECTOR, SubsectorId, to_u64};
 
 #[derive(Debug, Clone, Copy)]
 pub struct DivLine {
@@ -250,4 +255,150 @@ pub fn p_check_sight(
 
 	let head_node = level.geom.nodes.len() - 1;
 	context.cross_bsp_node(head_node, level)
+}
+
+pub(crate) struct LookContext<'a> {
+	pub(crate) world: &'a World,
+	pub(crate) ent: Entity,
+	pub(crate) db: &'a Database,
+	pub(crate) level: &'a mut Level,
+	pub(crate) cmd: &'a mut CommandBuffer,
+	pub(crate) random: &'a mut Random,
+	pub(crate) audio: &'a mut Vec<SfxEvent>,
+	pub(crate) actions: &'a mut Vec<(Entity, ActionFunc)>,
+	pub(crate) traversal: &'a mut Traversal,
+	pub(crate) anim: &'a mut SpriteAnimation,
+	pub(crate) ai: &'a mut MobjAi,
+	pub(crate) pos: &'a Position,
+	pub(crate) cur_sector: &'a CurrentSector,
+	pub(crate) rot: &'a MonsterRotation,
+	pub(crate) mobj: &'a MobjType,
+}
+
+pub fn look(ctx: &mut ActionContext, ent: Entity) {
+	let mut query = ctx.world.query_one::<(
+		&mut SpriteAnimation,
+		&mut MobjAi,
+		&Position,
+		&CurrentSector,
+		&MonsterRotation,
+		&MobjType,
+	)>(ent);
+
+	let mut move_ctx = match query.get() {
+		Ok((anim, ai, pos, cur_sector, rot, mobj)) => LookContext {
+			world: ctx.world,
+			ent,
+			db: DB.get().unwrap(),
+			level: ctx.level,
+			cmd: ctx.cmd,
+			random: ctx.random,
+			audio: ctx.audio,
+			actions: ctx.actions,
+			traversal: ctx.traversal,
+			anim,
+			ai,
+			pos,
+			cur_sector,
+			rot,
+			mobj,
+		},
+		Err(_) => return,
+	};
+
+	check_sound(&mut move_ctx, ctx.sound_targets);
+
+	check_sight(&mut move_ctx);
+}
+
+fn check_sound(ctx: &mut LookContext, sound_targets: &mut [Option<Entity>]) {
+	if let Some(sound_target_ent) = sound_targets[ctx.cur_sector.0.0] {
+		if ctx.mobj.flags.contains(MobjFlags::AMBUSH) {
+			let mut sound_target_query = ctx
+				.world
+				.query_one::<(&Position, &CurrentSector, &MobjType)>(sound_target_ent);
+			let Ok((target_pos, target_sector, target)) = sound_target_query.get() else {
+				return;
+			};
+
+			if !p_check_sight(
+				ctx.pos,
+				ctx.cur_sector,
+				ctx.db.mobjinfo[&ctx.mobj.type_].height,
+				target_pos,
+				target_sector,
+				ctx.db.mobjinfo[&target.type_].height,
+				ctx.level,
+				ctx.traversal,
+			) {
+				return;
+			}
+		}
+
+		wake_up_monster(ctx, sound_target_ent);
+	}
+}
+
+fn check_sight(ctx: &mut LookContext) {
+	let mut players_query = ctx
+		.world
+		.query::<(Entity, &Position, &CurrentSector, &MobjType)>()
+		.with::<&PlayerMarker>();
+
+	for (player_ent, player_pos, player_sec, player) in players_query.iter() {
+		if !player.flags.contains(MobjFlags::SHOOTABLE) {
+			continue;
+		}
+
+		if !in_fov(ctx.pos, ctx.rot, player_pos) {
+			continue;
+		}
+
+		if p_check_sight(
+			ctx.pos,
+			ctx.cur_sector,
+			ctx.db.mobjinfo[&ctx.mobj.type_].height,
+			player_pos,
+			player_sec,
+			PLAYERHEIGHT,
+			ctx.level,
+			ctx.traversal,
+		) {
+			wake_up_monster(ctx, player_ent);
+		}
+	}
+}
+
+fn wake_up_monster(ctx: &mut LookContext, target: Entity) {
+	let mobj_info = ctx.db.mobjinfo.get(&ctx.mobj.type_).unwrap();
+
+	if let (Some(see_state_num), Some(mut see_sound)) = (mobj_info.see_state, mobj_info.see_sound) {
+		set_mobj_state(
+			ctx.ent,
+			ctx.ai,
+			ctx.anim,
+			see_state_num,
+			ctx.actions,
+			(ctx.random.p() & 0b111) as i32,
+		);
+
+		if see_sound.starts_with(b"DSPOSIT") {
+			see_sound[7] = ctx.random.p() % 3 + b'1';
+		} else if see_sound.starts_with(b"DSBGSIT") {
+			see_sound[7] = ctx.random.p() % 2 + b'1';
+		}
+
+		let pos = if ctx.mobj.type_ == MobjNum::Spider || ctx.mobj.type_ == MobjNum::Cyborg {
+			None
+		} else {
+			Some((ctx.pos.x, ctx.pos.y, ctx.pos.z))
+		};
+
+		ctx.audio.push(SfxEvent {
+			sfx_id: to_u64(&see_sound),
+			pos,
+		})
+	}
+
+	ctx.cmd.insert(ctx.ent, (Target(target), Active));
 }

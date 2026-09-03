@@ -1361,6 +1361,7 @@ impl TryFrom<u32> for Direction {
 	}
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct GameConfig {
 	pub skill: SkillLevel,
 	pub fast_monsters: bool,

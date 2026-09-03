@@ -1,11 +1,11 @@
-use hecs::{Entity, World};
+use hecs::Entity;
 use strum::IntoEnumIterator;
 use wad_parser::Level;
 
 use crate::{
-	CurrentSector, DB, DIAGS, Direction, InstantMoveIntent, MELEERANGE, MobjFlagCommand, MobjFlags,
-	MobjInfo, MobjNum, MobjType, MonsterRotation, OPPOSITE, Position, Random, Traversal,
-	WorldEvent, fast_atan2, p_check_sight, p_move,
+	CurrentSector, DB, DIAGS, Direction, MELEERANGE, MobjFlagCommand, MobjFlags, MobjNum, MobjType,
+	MonsterRotation, MoveContext, OPPOSITE, Position, Random, Traversal, fast_atan2, p_check_sight,
+	p_move,
 };
 
 pub fn aprox_xz_distance(src: (f32, f32), dst: (f32, f32)) -> f32 {
@@ -69,7 +69,7 @@ pub fn p_check_missile_range(
 	ent: Entity,
 	pos: &Position,
 	cur_sector: &CurrentSector,
-	mobj_type: &MobjType,
+	mobj: &MobjType,
 	target_pos: &Position,
 	target_cur_sector: &CurrentSector,
 	target_height: f32,
@@ -77,13 +77,13 @@ pub fn p_check_missile_range(
 	traversal: &mut Traversal,
 	random: &mut Random,
 	is_melee_state_none: bool,
-	mobj_flag_buffer: &mut Vec<MobjFlagCommand>,
+	mobj_flags: &mut Vec<MobjFlagCommand>,
 ) -> bool {
 	let db = DB.get().unwrap();
 	if !p_check_sight(
 		pos,
 		cur_sector,
-		db.mobjinfo[&mobj_type.type_].height,
+		db.mobjinfo[&mobj.type_].height,
 		target_pos,
 		target_cur_sector,
 		target_height,
@@ -93,8 +93,8 @@ pub fn p_check_missile_range(
 		return false;
 	}
 
-	if mobj_type.flags.contains(MobjFlags::JUST_HIT) {
-		mobj_flag_buffer.push(MobjFlagCommand::Remove {
+	if mobj.flags.contains(MobjFlags::JUST_HIT) {
+		mobj_flags.push(MobjFlagCommand::Remove {
 			ent,
 			flag: MobjFlags::JUST_HIT,
 		});
@@ -107,7 +107,7 @@ pub fn p_check_missile_range(
 		dist -= 128.0;
 	}
 
-	match mobj_type.type_ {
+	match mobj.type_ {
 		MobjNum::Vile => {
 			if dist > 14.0 * 64.0 {
 				return false;
@@ -133,34 +133,24 @@ pub fn p_check_missile_range(
 		dist = 200.0;
 	}
 
-	if mobj_type.type_ == MobjNum::Cyborg && dist > 160.0 {
+	if mobj.type_ == MobjNum::Cyborg && dist > 160.0 {
 		dist = 160.0;
 	}
 
 	(random.p() as f32) >= dist
 }
 
-#[allow(clippy::too_many_arguments)]
-pub fn p_new_chase_dir(
-	ent: Entity,
-	pos: &Position,
+pub(crate) fn p_new_chase_dir(
+	ctx: &mut MoveContext,
 	rot: &mut MonsterRotation,
-	mobj_type: &MobjType,
-	mobj_info: &MobjInfo,
-	imi: &mut InstantMoveIntent,
 	target_pos: &Position,
-	map: &Level,
-	world: &World,
-	random: &mut Random,
-	blocklists: &[Vec<Entity>],
-	world_events: &mut Vec<WorldEvent>,
-	mobj_flag_buffer: &mut Vec<MobjFlagCommand>,
+	mobj_flags: &mut Vec<MobjFlagCommand>,
 ) {
 	let old_dir = rot.move_dir;
 	let turnaround = old_dir.map(|dir| OPPOSITE[dir as usize]);
 
-	let dx = target_pos.x - pos.x;
-	let dz = target_pos.z - pos.z;
+	let dx = target_pos.x - ctx.pos.x;
+	let dz = target_pos.z - ctx.pos.z;
 
 	let mut dir: [Option<Direction>; 3] = [None; 3];
 
@@ -181,25 +171,12 @@ pub fn p_new_chase_dir(
 	}
 
 	// because of borrow checker
-	let random1 = random.p();
-	let random2 = random.p();
+	let random1 = ctx.random.p();
+	let random2 = ctx.random.p();
 
 	let mut try_walk = |dir: Option<Direction>| -> bool {
 		rot.move_dir = dir;
-		p_move(
-			ent,
-			pos,
-			rot,
-			mobj_type,
-			mobj_info,
-			imi,
-			map,
-			world,
-			random,
-			blocklists,
-			world_events,
-			mobj_flag_buffer,
-		)
+		p_move(ctx, rot, mobj_flags)
 	};
 
 	if dir[1].is_some() && dir[2].is_some() {

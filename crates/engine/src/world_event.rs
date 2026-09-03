@@ -41,7 +41,7 @@ pub fn execute_events_system(
 	player_ent: Entity,
 	ui_to_update: &mut Vec<UpdatableUiType>,
 	cmd: &mut CommandBuffer,
-	audio_buffer: &mut Vec<SfxEvent>,
+	audio: &mut Vec<SfxEvent>,
 	blocklists: &mut [Vec<Entity>],
 	graphics_buffer: &mut Vec<GraphicsCommand>,
 	cfg: &GameConfig,
@@ -79,7 +79,7 @@ pub fn execute_events_system(
 					&mut stats,
 					&mut hp,
 					ui_to_update,
-					audio_buffer,
+					audio,
 					cfg,
 					global_timer,
 				) {
@@ -155,7 +155,7 @@ fn special_item_effect(
 	stats: &mut PlayerStats,
 	hp: &mut Health,
 	ui_to_update: &mut Vec<UpdatableUiType>,
-	audio_buffer: &mut Vec<SfxEvent>,
+	audio: &mut Vec<SfxEvent>,
 	cfg: &GameConfig,
 	global_timer: u32,
 ) -> Result<Option<()>, ()> {
@@ -175,7 +175,7 @@ fn special_item_effect(
 				stats.is_super_armor = false;
 
 				ui_to_update.push(UpdatableUiType::Armor);
-				audio_buffer.push(SfxEvent {
+				audio.push(SfxEvent {
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
@@ -191,7 +191,7 @@ fn special_item_effect(
 				stats.is_super_armor = true;
 
 				ui_to_update.push(UpdatableUiType::Armor);
-				audio_buffer.push(SfxEvent {
+				audio.push(SfxEvent {
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
@@ -207,7 +207,7 @@ fn special_item_effect(
 
 			ui_to_update.push(UpdatableUiType::Hp);
 			ui_to_update.push(UpdatableUiType::Face);
-			audio_buffer.push(SfxEvent {
+			audio.push(SfxEvent {
 				sfx_id: to_u64(b"DSITEMUP"),
 				pos: None,
 			});
@@ -219,7 +219,7 @@ fn special_item_effect(
 			stats.item_count += 1;
 
 			ui_to_update.push(UpdatableUiType::Armor);
-			audio_buffer.push(SfxEvent {
+			audio.push(SfxEvent {
 				sfx_id: to_u64(b"DSITEMUP"),
 				pos: None,
 			});
@@ -230,7 +230,7 @@ fn special_item_effect(
 			inventory.cards[Card::BlueCard as usize] = true;
 
 			ui_to_update.push(UpdatableUiType::Keys);
-			audio_buffer.push(SfxEvent {
+			audio.push(SfxEvent {
 				sfx_id: to_u64(b"DSITEMUP"),
 				pos: None,
 			});
@@ -241,7 +241,7 @@ fn special_item_effect(
 			inventory.cards[Card::RedCard as usize] = true;
 
 			ui_to_update.push(UpdatableUiType::Keys);
-			audio_buffer.push(SfxEvent {
+			audio.push(SfxEvent {
 				sfx_id: to_u64(b"DSITEMUP"),
 				pos: None,
 			});
@@ -252,7 +252,7 @@ fn special_item_effect(
 			inventory.cards[Card::YellowCard as usize] = true;
 
 			ui_to_update.push(UpdatableUiType::Keys);
-			audio_buffer.push(SfxEvent {
+			audio.push(SfxEvent {
 				sfx_id: to_u64(b"DSITEMUP"),
 				pos: None,
 			});
@@ -263,7 +263,7 @@ fn special_item_effect(
 			inventory.cards[Card::YellowSkull as usize] = true;
 
 			ui_to_update.push(UpdatableUiType::Keys);
-			audio_buffer.push(SfxEvent {
+			audio.push(SfxEvent {
 				sfx_id: to_u64(b"DSITEMUP"),
 				pos: None,
 			});
@@ -274,7 +274,7 @@ fn special_item_effect(
 			inventory.cards[Card::RedSkull as usize] = true;
 
 			ui_to_update.push(UpdatableUiType::Keys);
-			audio_buffer.push(SfxEvent {
+			audio.push(SfxEvent {
 				sfx_id: to_u64(b"DSITEMUP"),
 				pos: None,
 			});
@@ -285,7 +285,7 @@ fn special_item_effect(
 			inventory.cards[Card::BlueSkull as usize] = true;
 
 			ui_to_update.push(UpdatableUiType::Keys);
-			audio_buffer.push(SfxEvent {
+			audio.push(SfxEvent {
 				sfx_id: to_u64(b"DSITEMUP"),
 				pos: None,
 			});
@@ -297,7 +297,7 @@ fn special_item_effect(
 				hp.0 = (hp.0 + 10).min(100);
 
 				ui_to_update.push(UpdatableUiType::Hp);
-				audio_buffer.push(SfxEvent {
+				audio.push(SfxEvent {
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
@@ -312,7 +312,7 @@ fn special_item_effect(
 				hp.0 = (hp.0 + 25).min(100);
 
 				ui_to_update.push(UpdatableUiType::Hp);
-				audio_buffer.push(SfxEvent {
+				audio.push(SfxEvent {
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
@@ -327,7 +327,7 @@ fn special_item_effect(
 			stats.item_count += 1;
 
 			ui_to_update.push(UpdatableUiType::Hp);
-			audio_buffer.push(SfxEvent {
+			audio.push(SfxEvent {
 				sfx_id: to_u64(b"DSGETPOW"),
 				pos: None,
 			});
@@ -341,7 +341,7 @@ fn special_item_effect(
 			stats.item_count += 1;
 
 			ui_to_update.push(UpdatableUiType::Hp);
-			audio_buffer.push(SfxEvent {
+			audio.push(SfxEvent {
 				sfx_id: to_u64(b"DSGETPOW"),
 				pos: None,
 			});
@@ -352,7 +352,7 @@ fn special_item_effect(
 		MobjNum::Misc14 => {
 			stats.rad_suit_timestamp = Some(global_timer);
 
-			audio_buffer.push(SfxEvent {
+			audio.push(SfxEvent {
 				sfx_id: to_u64(b"DSGETPOW"),
 				pos: None,
 			});
@@ -363,7 +363,7 @@ fn special_item_effect(
 				stats.computer_area_map = true;
 				stats.item_count += 1;
 
-				audio_buffer.push(SfxEvent {
+				audio.push(SfxEvent {
 					sfx_id: to_u64(b"DSGETPOW"),
 					pos: None,
 				});
@@ -377,7 +377,7 @@ fn special_item_effect(
 			stats.goggles_timestamp = Some(global_timer);
 			stats.item_count += 1;
 
-			audio_buffer.push(SfxEvent {
+			audio.push(SfxEvent {
 				sfx_id: to_u64(b"DSGETPOW"),
 				pos: None,
 			});
@@ -389,7 +389,7 @@ fn special_item_effect(
 			stats.item_count += 1;
 
 			ui_to_update.push(UpdatableUiType::Face);
-			audio_buffer.push(SfxEvent {
+			audio.push(SfxEvent {
 				sfx_id: to_u64(b"DSGETPOW"),
 				pos: None,
 			});
@@ -401,7 +401,7 @@ fn special_item_effect(
 			stats.invis_timestamp = Some(global_timer);
 			stats.item_count += 1;
 
-			audio_buffer.push(SfxEvent {
+			audio.push(SfxEvent {
 				sfx_id: to_u64(b"DSGETPOW"),
 				pos: None,
 			});
@@ -416,7 +416,7 @@ fn special_item_effect(
 
 			ui_to_update.push(UpdatableUiType::Hp);
 			ui_to_update.push(UpdatableUiType::Armor);
-			audio_buffer.push(SfxEvent {
+			audio.push(SfxEvent {
 				sfx_id: to_u64(b"DSGETPOW"),
 				pos: None,
 			});
@@ -433,7 +433,7 @@ fn special_item_effect(
 
 				ui_to_update.push(UpdatableUiType::Ammo);
 				ui_to_update.push(UpdatableUiType::TotalAmmo);
-				audio_buffer.push(SfxEvent {
+				audio.push(SfxEvent {
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
@@ -452,7 +452,7 @@ fn special_item_effect(
 
 				ui_to_update.push(UpdatableUiType::Ammo);
 				ui_to_update.push(UpdatableUiType::TotalAmmo);
-				audio_buffer.push(SfxEvent {
+				audio.push(SfxEvent {
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
@@ -471,7 +471,7 @@ fn special_item_effect(
 
 				ui_to_update.push(UpdatableUiType::Ammo);
 				ui_to_update.push(UpdatableUiType::TotalAmmo);
-				audio_buffer.push(SfxEvent {
+				audio.push(SfxEvent {
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
@@ -490,7 +490,7 @@ fn special_item_effect(
 
 				ui_to_update.push(UpdatableUiType::Ammo);
 				ui_to_update.push(UpdatableUiType::TotalAmmo);
-				audio_buffer.push(SfxEvent {
+				audio.push(SfxEvent {
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
@@ -509,7 +509,7 @@ fn special_item_effect(
 
 				ui_to_update.push(UpdatableUiType::Ammo);
 				ui_to_update.push(UpdatableUiType::TotalAmmo);
-				audio_buffer.push(SfxEvent {
+				audio.push(SfxEvent {
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
@@ -528,7 +528,7 @@ fn special_item_effect(
 
 				ui_to_update.push(UpdatableUiType::Ammo);
 				ui_to_update.push(UpdatableUiType::TotalAmmo);
-				audio_buffer.push(SfxEvent {
+				audio.push(SfxEvent {
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
@@ -547,7 +547,7 @@ fn special_item_effect(
 
 				ui_to_update.push(UpdatableUiType::Ammo);
 				ui_to_update.push(UpdatableUiType::TotalAmmo);
-				audio_buffer.push(SfxEvent {
+				audio.push(SfxEvent {
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
@@ -566,7 +566,7 @@ fn special_item_effect(
 
 				ui_to_update.push(UpdatableUiType::Ammo);
 				ui_to_update.push(UpdatableUiType::TotalAmmo);
-				audio_buffer.push(SfxEvent {
+				audio.push(SfxEvent {
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
@@ -591,7 +591,7 @@ fn special_item_effect(
 
 			ui_to_update.push(UpdatableUiType::Ammo);
 			ui_to_update.push(UpdatableUiType::TotalAmmo);
-			audio_buffer.push(SfxEvent {
+			audio.push(SfxEvent {
 				sfx_id: to_u64(b"DSGETPOW"),
 				pos: None,
 			});
@@ -630,7 +630,7 @@ fn special_item_effect(
 			}
 
 			if success {
-				audio_buffer.push(SfxEvent {
+				audio.push(SfxEvent {
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
@@ -652,7 +652,7 @@ fn special_item_effect(
 			}
 
 			if success {
-				audio_buffer.push(SfxEvent {
+				audio.push(SfxEvent {
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
@@ -693,7 +693,7 @@ fn special_item_effect(
 			}
 
 			if success {
-				audio_buffer.push(SfxEvent {
+				audio.push(SfxEvent {
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
@@ -734,7 +734,7 @@ fn special_item_effect(
 			}
 
 			if success {
-				audio_buffer.push(SfxEvent {
+				audio.push(SfxEvent {
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
@@ -776,7 +776,7 @@ fn special_item_effect(
 			}
 
 			if success {
-				audio_buffer.push(SfxEvent {
+				audio.push(SfxEvent {
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
@@ -818,7 +818,7 @@ fn special_item_effect(
 			}
 
 			if success {
-				audio_buffer.push(SfxEvent {
+				audio.push(SfxEvent {
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});
@@ -859,7 +859,7 @@ fn special_item_effect(
 			}
 
 			if success {
-				audio_buffer.push(SfxEvent {
+				audio.push(SfxEvent {
 					sfx_id: to_u64(b"DSITEMUP"),
 					pos: None,
 				});

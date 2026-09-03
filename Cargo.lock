@@ -1032,7 +1032,7 @@ dependencies = [
  "foldhash",
  "hashbrown 0.16.1",
  "hecs-macros",
- "spin",
+ "spin 0.10.0",
 ]
 
 [[package]]
@@ -1352,13 +1352,13 @@ dependencies = [
 
 [[package]]
 name = "micropool"
-version = "0.3.0"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7147c9daf6baa56f21062d528bdb4657d27188d57fce0b2860818b57366f6005"
+checksum = "b6413ed603242bab0aa0214e67eab78fc03a205c3192a30d30998178e247eb26"
 dependencies = [
  "paralight",
  "smallvec",
- "spin",
+ "spin 0.12.3",
  "takecell",
  "wait_on_address",
 ]
@@ -1835,9 +1835,9 @@ dependencies = [
 
 [[package]]
 name = "paralight"
-version = "0.0.11"
+version = "0.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72a07c643c50263c33d083fb6c5f53b47b6a33214bd98106c6ed96b94bd735cd"
+checksum = "2d31db7eb0348923b24ea84b430968e356999d36c66a16e0e974747c4259ff09"
 dependencies = [
  "crossbeam-utils",
  "scopeguard",
@@ -2443,9 +2443,9 @@ checksum = "0c790de23124f9ab44544d7ac05d60440adc586479ce501c1d6d7da3cd8c9cf5"
 
 [[package]]
 name = "smallvec"
-version = "1.15.1"
+version = "1.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67b1b7a3b5fe4f1376887184045fcf45c69e92af734b7aaddc05fb777b6fbd03"
+checksum = "b9be42f50aa861c555654aa3a37f52f4b1074bacf4e48fe0ef7fa584e80f1f0f"
 
 [[package]]
 name = "smithay-client-toolkit"
@@ -2486,6 +2486,12 @@ name = "spin"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d5fe4ccb98d9c292d56fec89a5e07da7fc4cf0dc11e156b41793132775d3e591"
+
+[[package]]
+name = "spin"
+version = "0.12.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0134f9043ed38b087ac4f7d4af44c79e2c9e5094421fe3164f435ce585953b10"
 
 [[package]]
 name = "stable_deref_trait"
@@ -2686,9 +2692,9 @@ dependencies = [
 
 [[package]]
 name = "takecell"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "20f34339676cdcab560c9a82300c4c2581f68b9369aedf0fae86f2ff9565ff3e"
+checksum = "07dd1d452d2c3dc94a4e1c5c3c9a3cc88c2ef5926674b75881e454c4dc3a14c4"
 
 [[package]]
 name = "termcolor"
@@ -2908,9 +2914,9 @@ dependencies = [
 
 [[package]]
 name = "wait_on_address"
-version = "0.1.4"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f46f0d222fdc7fac38a2ad9f0fabdc5af18d0c9d12c5fc52438509cf88674cf"
+checksum = "ddd08b1edf3ebcd2aacd07d97e00dedd1f9bafad31ae4021b7e15ef452fac957"
 dependencies = [
  "js-sys",
  "libc",

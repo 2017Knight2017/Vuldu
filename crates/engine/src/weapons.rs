@@ -55,7 +55,7 @@ pub fn handle_weapons_input(
 	player_entity: Entity,
 	ui_to_update: &mut Vec<UpdatableUiType>,
 	command_buffer: &mut CommandBuffer,
-	audio_buffer: &mut Vec<SfxEvent>,
+	audio: &mut Vec<SfxEvent>,
 	input: &PlayerInput,
 ) {
 	let mut inventory = world.get::<&mut PlayerInventory>(player_entity).unwrap();
@@ -128,7 +128,7 @@ pub fn handle_weapons_input(
 			WeaponType::NoChange => unreachable!(),
 		};
 
-		audio_buffer.push(SfxEvent { sfx_id, pos: None });
+		audio.push(SfxEvent { sfx_id, pos: None });
 	}
 }
 
