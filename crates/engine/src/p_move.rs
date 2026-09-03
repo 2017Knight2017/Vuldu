@@ -95,9 +95,11 @@ pub(crate) fn p_try_move(ctx: &mut MoveContext) -> (bool, bool) {
 	let goal_sector_id = ctx.level.get_sector_by_pos(ctx.goal_pos.0, ctx.goal_pos.2);
 	let goal_sector = &ctx.level.state.sectors[goal_sector_id.0];
 
+	ctx.inner.ceilingline_idx = None;
 	ctx.inner.ceiling_y = goal_sector.ceil_h;
 	ctx.inner.floor_y = goal_sector.floor_h;
 	ctx.inner.dropoff_y = goal_sector.floor_h;
+	ctx.inner.spec_hit.clear();
 
 	if !p_check_pos(ctx) {
 		return (false, false);
@@ -135,7 +137,6 @@ pub(crate) fn p_try_move(ctx: &mut MoveContext) -> (bool, bool) {
 	(true, true)
 }
 
-#[allow(clippy::too_many_arguments)]
 fn p_check_pos(ctx: &mut MoveContext) -> bool {
 	if ctx.mobj.flags.contains(MobjFlags::NO_CLIP) {
 		return true;
@@ -192,7 +193,6 @@ fn p_check_pos(ctx: &mut MoveContext) -> bool {
 	true
 }
 
-#[allow(clippy::too_many_arguments)]
 fn pit_check_thing(
 	ctx: &mut MoveContext,
 	db: &Database,
@@ -213,7 +213,8 @@ fn pit_check_thing(
 
 	let blockdist = mobj_info.radius + other_info.radius;
 
-	if (ctx.pos.z - other_pos.x).abs() >= blockdist || (ctx.pos.z - other_pos.z).abs() >= blockdist
+	if (ctx.goal_pos.0 - other_pos.x).abs() >= blockdist
+		|| (ctx.goal_pos.2 - other_pos.z).abs() >= blockdist
 	{
 		return true;
 	}
@@ -238,10 +239,10 @@ fn pit_check_thing(
 	}
 
 	if ctx.mobj.flags.contains(MobjFlags::MISSILE) {
-		if ctx.pos.y > other_pos.y + other_info.height {
+		if ctx.goal_pos.1 > other_pos.y + other_info.height {
 			return true;
 		}
-		if ctx.pos.y + mobj_info.height < other_pos.y {
+		if ctx.goal_pos.1 + mobj_info.height < other_pos.y {
 			return true;
 		}
 
