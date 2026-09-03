@@ -6,10 +6,10 @@ pub use bridge::ffi::{
 };
 use bridge::ffi::{VulkanRenderer, createRenderer, getAnimInfoSize, getMaxSky};
 use cxx::UniquePtr;
-use std::{pin::Pin, sync::OnceLock};
+use std::{pin::Pin, sync::LazyLock};
 
-pub static MAX_SKY: OnceLock<usize> = OnceLock::new();
-pub static ANIM_INFO_SIZE: OnceLock<usize> = OnceLock::new();
+pub static MAX_SKY: LazyLock<usize> = LazyLock::new(getMaxSky);
+pub static ANIM_INFO_SIZE: LazyLock<usize> = LazyLock::new(getAnimInfoSize);
 
 pub struct SafeRenderer(UniquePtr<VulkanRenderer>);
 
@@ -21,8 +21,6 @@ impl Default for SafeRenderer {
 
 impl SafeRenderer {
 	pub fn new() -> Self {
-		let _ = MAX_SKY.set(getMaxSky());
-		let _ = ANIM_INFO_SIZE.set(getAnimInfoSize());
 		Self(createRenderer())
 	}
 

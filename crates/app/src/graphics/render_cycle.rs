@@ -126,7 +126,7 @@ impl GraphicsContext {
 			// first 16 indices are reserved for sky textures,
 			// so we have to subtract MAX_SKY from the actual index
 			let (left_offset, top_offset) =
-				sprite_offsets[tex_id.0 as usize - MAX_SKY.get().unwrap()];
+				sprite_offsets[tex_id.0 as usize - *MAX_SKY];
 
 			let mut final_width = tex_width as f32;
 			let mut final_left_offset = left_offset as f32;

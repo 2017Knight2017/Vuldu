@@ -1,4 +1,4 @@
-use std::mem::offset_of;
+use std::{mem::offset_of, ops::Deref};
 
 use bitflags::bitflags;
 use engine::{STBarUi, UpdatableUiType, pack_sprite_u64};
@@ -70,11 +70,8 @@ impl GraphicsContext {
 		wad_manager: &WadManager,
 		map_num: u8,
 	) -> Result<(), String> {
-		let max_sky = *MAX_SKY.get().unwrap();
-		let anim_info_size = *ANIM_INFO_SIZE.get().unwrap();
-
 		let ((wall_names, wall_pics), (sky_names, sky_pics), sky_widths) = wad_manager
-			.bake_walls(max_sky)
+			.bake_walls(*MAX_SKY)
 			.map_err(|e| format!("Wall baking failed: {e}"))?;
 		println!("[load_and_upload_textures] walls are baked");
 
@@ -92,7 +89,7 @@ impl GraphicsContext {
 		println!("[load_and_upload_textures] ui is baked");
 
 		let total_textures =
-			wall_pics.len() + flat_pics.len() + obj_pics.len() + ui_pics.len() + max_sky;
+			wall_pics.len() + flat_pics.len() + obj_pics.len() + ui_pics.len() + *MAX_SKY;
 		let total_pixels = 1 + sky_pics
 			.iter()
 			.chain(&obj_pics)
@@ -113,7 +110,7 @@ impl GraphicsContext {
 			.map(|((n, p), w)| (n, p, w))
 			.collect();
 		sky_data.sort_by_key(|trio| trio.0);
-		current_gpu_id += max_sky as u32;
+		current_gpu_id += *MAX_SKY as u32;
 
 		let mut sky_widths_no_name = Vec::with_capacity(sky_data.len());
 		for (_, pic, width) in sky_data {
@@ -126,7 +123,7 @@ impl GraphicsContext {
 			sky_widths_no_name.push(width);
 		}
 
-		let padding_needed = max_sky.saturating_sub(descriptors.len());
+		let padding_needed = MAX_SKY.deref().saturating_sub(descriptors.len());
 		for _ in 0..padding_needed {
 			descriptors.push(TextureDescriptor {
 				width: 1,
@@ -185,7 +182,7 @@ impl GraphicsContext {
 		]);
 
 		let mut anim_level_info = Vec::new();
-		anim_level_info.resize_with(anim_info_size, || AnimLevelInfo {
+		anim_level_info.resize_with(*ANIM_INFO_SIZE, || AnimLevelInfo {
 			texture: 0,
 			frames: 0,
 			_padding: [0, 0],
@@ -198,7 +195,7 @@ impl GraphicsContext {
 				if let Some(frames) = anim_map.remove(&name) {
 					let gpu_idx = current_gpu_id as usize;
 					let frames_len = frames as usize;
-					if gpu_idx + frames_len - 1 < anim_info_size {
+					if gpu_idx + frames_len - 1 < *ANIM_INFO_SIZE {
 						for i in 0..frames_len {
 							anim_level_info[gpu_idx + i].texture = current_gpu_id;
 							anim_level_info[gpu_idx + i].frames = frames;
