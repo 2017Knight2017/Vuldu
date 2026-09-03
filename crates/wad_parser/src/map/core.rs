@@ -68,7 +68,7 @@ bitflags::bitflags! {
 	}
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Line {
 	pub v1: VertexId,
 	pub v2: VertexId,

@@ -136,10 +136,8 @@ impl AudioContext {
 	}
 
 	pub fn system(&mut self, world: &World, player_ent: Entity) {
-		let Ok(p_pos) = world.get::<&Position>(player_ent) else {
-			return;
-		};
-		let Ok(p_rot) = world.get::<&PlayerRotation>(player_ent) else {
+		let mut query = world.query_one::<(&Position, &PlayerRotation)>(player_ent);
+		let Ok((pos, rot)) = query.get().map(|(p, r)| (*p, *r)) else {
 			return;
 		};
 
@@ -163,14 +161,14 @@ impl AudioContext {
 						continue;
 					}
 
-					let approx_dist = aprox_xyz_distance((p_pos.x, p_pos.y, p_pos.z), emitter_pos);
+					let approx_dist = aprox_xyz_distance((pos.x, pos.y, pos.z), emitter_pos);
 					if approx_dist > MAX_AUDIBLE_DIST {
 						continue;
 					}
 
-					let mut dx_m = (p_pos.x - emitter_pos.0) * METERS_PER_UNIT;
-					let mut dy_m = (p_pos.y - emitter_pos.1) * METERS_PER_UNIT;
-					let mut dz_m = (p_pos.z - emitter_pos.2) * METERS_PER_UNIT;
+					let mut dx_m = (pos.x - emitter_pos.0) * METERS_PER_UNIT;
+					let mut dy_m = (pos.y - emitter_pos.1) * METERS_PER_UNIT;
+					let mut dz_m = (pos.z - emitter_pos.2) * METERS_PER_UNIT;
 
 					if dx_m.abs() < METERS_DIST_CAP {
 						dx_m = METERS_DIST_CAP * dx_m.signum();
@@ -188,7 +186,7 @@ impl AudioContext {
 						sound.samples.clone(),
 					);
 
-					let p_angle = (p_rot.angle as f64 / u32::MAX as f64) as f32 * TAU;
+					let p_angle = (rot.angle as f64 / u32::MAX as f64) as f32 * TAU;
 					let perp_x = p_angle.sin() * EAR_HALF_WIDTH;
 					let perp_z = -p_angle.cos() * EAR_HALF_WIDTH;
 

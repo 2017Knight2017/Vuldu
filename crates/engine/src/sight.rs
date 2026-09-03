@@ -1,5 +1,5 @@
 use crate::{
-	ActionContext, ActionFunc, Active, CurrentSector, DB, Database, MobjAi, MobjFlags, MobjNum,
+	ActionContext, ActionFunc, Active, CurrentSector, Database, MobjAi, MobjFlags, MobjNum,
 	MobjType, MonsterRotation, PLAYERHEIGHT, Pass, PlayerMarker, Position, Random, SfxEvent,
 	SpriteAnimation, Target, Traversal, in_fov, set_mobj_state,
 };
@@ -7,14 +7,14 @@ use hecs::{CommandBuffer, Entity, World};
 use wad_parser::{Level, LineFlags, LineId, NF_SUBSECTOR, SubsectorId, to_u64};
 
 #[derive(Debug, Clone, Copy)]
-pub struct DivLine {
+struct DivLine {
 	pub x: f32,
 	pub z: f32,
 	pub dx: f32,
 	pub dz: f32,
 }
 
-pub fn p_divline_side(x: f32, y: f32, node: &DivLine) -> i32 {
+fn p_divline_side(x: f32, y: f32, node: &DivLine) -> i32 {
 	if node.dx == 0.0 {
 		if x == node.x {
 			return 2;
@@ -50,7 +50,7 @@ pub fn p_divline_side(x: f32, y: f32, node: &DivLine) -> i32 {
 	}
 }
 
-pub fn p_intercept_vector2(v2: &DivLine, v1: &DivLine) -> f32 {
+fn p_intercept_vector2(v2: &DivLine, v1: &DivLine) -> f32 {
 	let den = v1.dz * v2.dx - v1.dx * v2.dz;
 
 	if den == 0.0 {
@@ -61,17 +61,17 @@ pub fn p_intercept_vector2(v2: &DivLine, v1: &DivLine) -> f32 {
 	num / den
 }
 
-pub struct SightContext<'a> {
-	pub strace: DivLine,
-	pub t2x: f32,
-	pub t2z: f32,
-	pub sight_ystart: f32,
-	pub top_slope: f32,
-	pub bottom_slope: f32,
-	pub pass: Pass<'a>,
+struct SightContextInner<'a> {
+	strace: DivLine,
+	t2x: f32,
+	t2z: f32,
+	sight_ystart: f32,
+	top_slope: f32,
+	bottom_slope: f32,
+	pass: Pass<'a>,
 }
 
-impl<'a> SightContext<'a> {
+impl<'a> SightContextInner<'a> {
 	pub fn new(
 		t1_pos: (f32, f32, f32),
 		t1_height: f32,
@@ -220,41 +220,41 @@ impl<'a> SightContext<'a> {
 	}
 }
 
-#[allow(clippy::too_many_arguments)]
-pub fn p_check_sight(
-	pos: &Position,
-	cur_sector: &CurrentSector,
-	height: f32,
-	target_pos: &Position,
-	target_cur_sector: &CurrentSector,
-	target_height: f32,
-	level: &Level,
-	traversal: &mut Traversal,
-) -> bool {
-	if level.geom.reject_table.is_rejected(
-		cur_sector.0,
-		target_cur_sector.0,
-		level.state.sectors.len(),
+pub(crate) struct SightContext<'a> {
+	pub(crate) pos: Position,
+	pub(crate) cur_sector: CurrentSector,
+	pub(crate) height: f32,
+	pub(crate) target_pos: Position,
+	pub(crate) target_sector: CurrentSector,
+	pub(crate) target_height: f32,
+	pub(crate) level: &'a Level,
+}
+
+pub(crate) fn p_check_sight(ctx: &SightContext, traversal: &mut Traversal) -> bool {
+	if ctx.level.geom.reject_table.is_rejected(
+		ctx.cur_sector.0,
+		ctx.target_sector.0,
+		ctx.level.state.sectors.len(),
 	) {
 		return false;
 	}
 
 	let pass = traversal.begin();
 
-	let mut context = SightContext::new(
-		(pos.x, pos.y, pos.z),
-		height,
-		(target_pos.x, target_pos.y, target_pos.z),
-		target_height,
+	let mut inner_ctx = SightContextInner::new(
+		(ctx.pos.x, ctx.pos.y, ctx.pos.z),
+		ctx.height,
+		(ctx.target_pos.x, ctx.target_pos.y, ctx.target_pos.z),
+		ctx.target_height,
 		pass,
 	);
 
-	if level.geom.nodes.is_empty() {
+	if ctx.level.geom.nodes.is_empty() {
 		return true;
 	}
 
-	let head_node = level.geom.nodes.len() - 1;
-	context.cross_bsp_node(head_node, level)
+	let head_node = ctx.level.geom.nodes.len() - 1;
+	inner_ctx.cross_bsp_node(head_node, ctx.level)
 }
 
 pub(crate) struct LookContext<'a> {
@@ -269,13 +269,13 @@ pub(crate) struct LookContext<'a> {
 	pub(crate) traversal: &'a mut Traversal,
 	pub(crate) anim: &'a mut SpriteAnimation,
 	pub(crate) ai: &'a mut MobjAi,
-	pub(crate) pos: &'a Position,
-	pub(crate) cur_sector: &'a CurrentSector,
-	pub(crate) rot: &'a MonsterRotation,
-	pub(crate) mobj: &'a MobjType,
+	pub(crate) pos: Position,
+	pub(crate) cur_sector: CurrentSector,
+	pub(crate) rot: MonsterRotation,
+	pub(crate) mobj: MobjType,
 }
 
-pub fn look(ctx: &mut ActionContext, ent: Entity) {
+pub(crate) fn look(ctx: &mut ActionContext, ent: Entity) {
 	let mut query = ctx.world.query_one::<(
 		&mut SpriteAnimation,
 		&mut MobjAi,
@@ -289,7 +289,7 @@ pub fn look(ctx: &mut ActionContext, ent: Entity) {
 		Ok((anim, ai, pos, cur_sector, rot, mobj)) => LookContext {
 			world: ctx.world,
 			ent,
-			db: DB.get().unwrap(),
+			db: ctx.db,
 			level: ctx.level,
 			cmd: ctx.cmd,
 			random: ctx.random,
@@ -298,10 +298,10 @@ pub fn look(ctx: &mut ActionContext, ent: Entity) {
 			traversal: ctx.traversal,
 			anim,
 			ai,
-			pos,
-			cur_sector,
-			rot,
-			mobj,
+			pos: *pos,
+			cur_sector: *cur_sector,
+			rot: *rot,
+			mobj: *mobj,
 		},
 		Err(_) => return,
 	};
@@ -317,18 +317,22 @@ fn check_sound(ctx: &mut LookContext, sound_targets: &mut [Option<Entity>]) {
 			let mut sound_target_query = ctx
 				.world
 				.query_one::<(&Position, &CurrentSector, &MobjType)>(sound_target_ent);
-			let Ok((target_pos, target_sector, target)) = sound_target_query.get() else {
+			let Ok((target_pos, target_sector, target)) =
+				sound_target_query.get().map(|(p, s, t)| (*p, *s, *t))
+			else {
 				return;
 			};
 
 			if !p_check_sight(
-				ctx.pos,
-				ctx.cur_sector,
-				ctx.db.mobjinfo[&ctx.mobj.type_].height,
-				target_pos,
-				target_sector,
-				ctx.db.mobjinfo[&target.type_].height,
-				ctx.level,
+				&SightContext {
+					pos: ctx.pos,
+					cur_sector: ctx.cur_sector,
+					height: ctx.db.mobjinfo[&ctx.mobj.type_].height,
+					target_pos,
+					target_sector,
+					target_height: ctx.db.mobjinfo[&target.type_].height,
+					level: ctx.level,
+				},
 				ctx.traversal,
 			) {
 				return;
@@ -345,7 +349,9 @@ fn check_sight(ctx: &mut LookContext) {
 		.query::<(Entity, &Position, &CurrentSector, &MobjType)>()
 		.with::<&PlayerMarker>();
 
-	for (player_ent, player_pos, player_sec, player) in players_query.iter() {
+	for (player_ent, player_pos, player_sector, player) in
+		players_query.iter().map(|(_e, p, s, t)| (_e, *p, *s, *t))
+	{
 		if !player.flags.contains(MobjFlags::SHOOTABLE) {
 			continue;
 		}
@@ -355,13 +361,15 @@ fn check_sight(ctx: &mut LookContext) {
 		}
 
 		if p_check_sight(
-			ctx.pos,
-			ctx.cur_sector,
-			ctx.db.mobjinfo[&ctx.mobj.type_].height,
-			player_pos,
-			player_sec,
-			PLAYERHEIGHT,
-			ctx.level,
+			&SightContext {
+				pos: ctx.pos,
+				cur_sector: ctx.cur_sector,
+				height: ctx.db.mobjinfo[&ctx.mobj.type_].height,
+				target_pos: player_pos,
+				target_sector: player_sector,
+				target_height: PLAYERHEIGHT,
+				level: ctx.level,
+			},
 			ctx.traversal,
 		) {
 			wake_up_monster(ctx, player_ent);
@@ -379,6 +387,7 @@ fn wake_up_monster(ctx: &mut LookContext, target: Entity) {
 			ctx.anim,
 			see_state_num,
 			ctx.actions,
+			ctx.db,
 			(ctx.random.p() & 0b111) as i32,
 		);
 

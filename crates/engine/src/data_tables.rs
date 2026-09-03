@@ -10,7 +10,8 @@ use toml;
 use wad_parser::TextureId;
 
 #[derive(Debug, Deserialize)]
-pub struct MobjInfo {
+#[allow(dead_code)]
+pub(crate) struct MobjInfo {
 	pub doomed_num: u32,
 	pub spawn_state: Option<StateNum>,
 	pub spawn_health: i32,
@@ -70,7 +71,7 @@ struct MobjConfig {
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]
-pub struct StateRaw {
+struct StateRaw {
 	#[serde(deserialize_with = "parse_sprite_num")]
 	pub sprite: [u8; 4],
 	pub frame: u32,
@@ -98,7 +99,8 @@ where
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct State {
+pub(crate) struct State {
+	#[allow(dead_code)]
 	pub sprite: [u8; 4],
 	pub frame: u32,
 	pub tics: i32,
@@ -122,7 +124,7 @@ struct StateConfig {
 
 #[derive(Debug, Clone, Copy, Deserialize)]
 #[allow(dead_code)]
-pub struct WeaponInfo {
+pub(crate) struct WeaponInfo {
 	ammo: AmmoType,
 	up_state: StateNum,
 	down_state: StateNum,
@@ -137,13 +139,13 @@ struct WeaponConfig {
 }
 
 #[derive(Debug, Default)]
-pub struct Database {
+pub(crate) struct Database {
 	pub mobjinfo: FxHashMap<MobjNum, MobjInfo>,
 	pub states: FxHashMap<StateNum, State>,
 	pub weapon_info: FxHashMap<WeaponType, WeaponInfo>,
 }
 
-pub static DB: OnceLock<Database> = OnceLock::new();
+pub(crate) static DB: OnceLock<Database> = OnceLock::new();
 
 pub fn populate_database(
 	texture_data: &FxHashMap<u64, (TextureId, u32, u32, bool)>,

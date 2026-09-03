@@ -80,7 +80,9 @@ impl GraphicsContext {
 		sectors: &[SectorState],
 		alpha: f32,
 	) -> Vec<ObjectInstance> {
-		let pos = world.get::<&Position>(player_entity).unwrap();
+		let Ok(pos) = world.get::<&Position>(player_entity).map(|p| *p) else {
+			return Vec::new();
+		};
 
 		let lerped_x = pos.prev_x * (1.0 - alpha) + pos.x * alpha;
 		let lerped_y = pos.prev_y * (1.0 - alpha) + pos.y * alpha;
@@ -90,10 +92,10 @@ impl GraphicsContext {
 		let sprite_offsets = &self.offsets;
 
 		let process_entity = |(pos, rot, current_sector, anim): (
-			&Position,
-			&MonsterRotation,
-			&CurrentSector,
-			&SpriteAnimation,
+			Position,
+			MonsterRotation,
+			CurrentSector,
+			SpriteAnimation,
 		)| {
 			let lerped_x = pos.prev_x * (1.0 - alpha) + pos.x * alpha;
 			let lerped_y = pos.prev_y * (1.0 - alpha) + pos.y * alpha;
@@ -160,7 +162,7 @@ impl GraphicsContext {
 			&CurrentSector,
 			&SpriteAnimation,
 		)>();
-		let iter = entities_query.iter();
+		let iter = entities_query.iter().map(|(p, m, c, s)| (*p, *m, *c, *s));
 
 		let (lower_bound, _) = iter.size_hint();
 		const PARALLEL_THRESHOLD: usize = 2000;
@@ -196,13 +198,15 @@ impl GraphicsContext {
 	) -> Vec<UiInstance> {
 		match game_state {
 			GameState::Level | GameState::Demoscreen => {
-				if self.cached_stbar_ui.arms.is_empty() {
-					get_stbar(world, player_entity, &mut self.cached_stbar_ui);
-				} else {
-					let inventory = world.get::<&PlayerInventory>(player_entity).unwrap();
-					let stats = world.get::<&PlayerStats>(player_entity).unwrap();
-					let hp = world.get::<&Health>(player_entity).unwrap();
+				let mut query =
+					world.query_one::<(&PlayerInventory, &PlayerStats, &Health)>(player_entity);
+				let Ok((inv, stats, hp)) = query.get().map(|(i, s, h)| (*i, *s, *h)) else {
+					return Vec::new();
+				};
 
+				if self.cached_stbar_ui.arms.is_empty() {
+					get_stbar(&mut self.cached_stbar_ui, inv, stats, hp);
+				} else {
 					let mut checked = [false; 7];
 
 					for ui_type in self.ui_to_update.drain(..) {
@@ -212,24 +216,22 @@ impl GraphicsContext {
 
 						match ui_type {
 							UpdatableUiType::Ammo => {
-								update_ammo_ui(&inventory, &mut self.cached_stbar_ui.ammo)
+								update_ammo_ui(inv, &mut self.cached_stbar_ui.ammo)
 							}
-							UpdatableUiType::Hp => update_hp_ui(&hp, &mut self.cached_stbar_ui.hp),
-							UpdatableUiType::Arms => update_arms_ui(
-								&inventory.weapon_owned,
-								&mut self.cached_stbar_ui.arms,
-							),
+							UpdatableUiType::Hp => update_hp_ui(hp, &mut self.cached_stbar_ui.hp),
+							UpdatableUiType::Arms => {
+								update_arms_ui(inv.weapon_owned, &mut self.cached_stbar_ui.arms)
+							}
 							UpdatableUiType::Face => update_face_ui(&mut self.cached_stbar_ui.face),
 							UpdatableUiType::Armor => {
 								update_armor_ui(stats.armor_points, &mut self.cached_stbar_ui.armor)
 							}
 							UpdatableUiType::Keys => {
-								update_keys_ui(&inventory.cards, &mut self.cached_stbar_ui.keys)
+								update_keys_ui(inv.cards, &mut self.cached_stbar_ui.keys)
 							}
-							UpdatableUiType::TotalAmmo => update_total_ammo_ui(
-								&inventory,
-								&mut self.cached_stbar_ui.total_ammo,
-							),
+							UpdatableUiType::TotalAmmo => {
+								update_total_ammo_ui(inv, &mut self.cached_stbar_ui.total_ammo)
+							}
 						}
 
 						checked[ui_type as usize] = true;

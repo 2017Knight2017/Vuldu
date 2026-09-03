@@ -41,7 +41,7 @@ pub fn fast_atan2(dx: f32, dy: f32) -> u32 {
 	angle
 }
 
-pub static TANTABLE: LazyLock<Vec<u32>> = LazyLock::new(|| {
+static TANTABLE: LazyLock<Vec<u32>> = LazyLock::new(|| {
 	vec![
 		0, 333772, 667544, 1001315, 1335086, 1668857, 2002626, 2336395, 2670163, 3003929, 3337694,
 		3671457, 4005219, 4338979, 4672736, 5006492, 5340245, 5673995, 6007743, 6341488, 6675229,

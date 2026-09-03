@@ -77,20 +77,20 @@ impl GameContext {
 
 		ai_system(&self.world, &mut self.actions);
 
-		action_system(ActionContext {
-			world: &self.world,
-			actions: &mut self.actions,
+		action_system(
+			&self.world,
+			&mut self.actions,
 			random,
-			level: &mut self.level,
-			cfg: self.config,
-			audio: &mut audio.buffer,
-			blocklists: &self.blocklists,
-			world_events: &mut self.world_events,
-			mobj_flags: &mut self.mobj_flag_buffer,
-			traversal: &mut self.traversal,
-			cmd: &mut self.cmd,
-			sound_targets: &mut self.sound_targets,
-		});
+			&mut self.level,
+			self.config,
+			&mut audio.buffer,
+			&self.blocklists,
+			&mut self.world_events,
+			&mut self.mobj_flag_buffer,
+			&mut self.traversal,
+			&mut self.cmd,
+			&mut self.sound_targets,
+		);
 
 		friction_system(&self.world);
 
@@ -122,7 +122,7 @@ impl GameContext {
 			&mut audio.buffer,
 			&mut self.blocklists,
 			&mut self.graphics_buffer,
-			&self.config,
+			self.config,
 			self.global_timer,
 		);
 		apply_mobj_flags_system(&mut self.mobj_flag_buffer, &self.world);

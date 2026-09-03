@@ -30,7 +30,7 @@ impl WeaponType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, EnumIter)]
-pub enum AmmoType {
+pub(crate) enum AmmoType {
 	Clip,
 	Shell,
 	Missile,
@@ -58,57 +58,55 @@ pub fn handle_weapons_input(
 	audio: &mut Vec<SfxEvent>,
 	input: &PlayerInput,
 ) {
-	let mut inventory = world.get::<&mut PlayerInventory>(player_entity).unwrap();
-	let previous_ready_weapon = inventory.ready_weapon;
+	let mut inv = world.get::<&mut PlayerInventory>(player_entity).unwrap();
+	let previous_ready_weapon = inv.ready_weapon;
 
 	if input.switch_fist_chainsaw {
-		if inventory.ready_weapon == WeaponType::Chainsaw
-			|| !is_available(WeaponType::Chainsaw, &inventory)
-		{
-			inventory.ready_weapon = WeaponType::Fist;
+		if inv.ready_weapon == WeaponType::Chainsaw || !is_available(WeaponType::Chainsaw, *inv) {
+			inv.ready_weapon = WeaponType::Fist;
 		} else {
-			inventory.ready_weapon = WeaponType::Chainsaw;
+			inv.ready_weapon = WeaponType::Chainsaw;
 		}
-	} else if input.switch_fist_chainsaw && inventory.ready_weapon == WeaponType::Chainsaw {
-		inventory.ready_weapon = WeaponType::Fist;
-	} else if input.choose_pistol && is_available(WeaponType::Pistol, &inventory) {
-		inventory.ready_weapon = WeaponType::Pistol;
-	} else if input.choose_shotgun && is_available(WeaponType::SuperShotgun, &inventory) {
-		inventory.ready_weapon = if inventory.ready_weapon == WeaponType::SuperShotgun {
+	} else if input.switch_fist_chainsaw && inv.ready_weapon == WeaponType::Chainsaw {
+		inv.ready_weapon = WeaponType::Fist;
+	} else if input.choose_pistol && is_available(WeaponType::Pistol, *inv) {
+		inv.ready_weapon = WeaponType::Pistol;
+	} else if input.choose_shotgun && is_available(WeaponType::SuperShotgun, *inv) {
+		inv.ready_weapon = if inv.ready_weapon == WeaponType::SuperShotgun {
 			WeaponType::Shotgun
 		} else {
 			WeaponType::SuperShotgun
 		};
-	} else if input.choose_shotgun && is_available(WeaponType::Shotgun, &inventory) {
-		inventory.ready_weapon = WeaponType::Shotgun;
-	} else if input.choose_chaingun && is_available(WeaponType::Chaingun, &inventory) {
-		inventory.ready_weapon = WeaponType::Chaingun;
-	} else if input.choose_rlauncher && is_available(WeaponType::Missile, &inventory) {
-		inventory.ready_weapon = WeaponType::Missile;
-	} else if input.choose_plasma && is_available(WeaponType::Plasma, &inventory) {
-		inventory.ready_weapon = WeaponType::Plasma;
-	} else if input.choose_bfg && is_available(WeaponType::BFG, &inventory) {
-		inventory.ready_weapon = WeaponType::BFG;
+	} else if input.choose_shotgun && is_available(WeaponType::Shotgun, *inv) {
+		inv.ready_weapon = WeaponType::Shotgun;
+	} else if input.choose_chaingun && is_available(WeaponType::Chaingun, *inv) {
+		inv.ready_weapon = WeaponType::Chaingun;
+	} else if input.choose_rlauncher && is_available(WeaponType::Missile, *inv) {
+		inv.ready_weapon = WeaponType::Missile;
+	} else if input.choose_plasma && is_available(WeaponType::Plasma, *inv) {
+		inv.ready_weapon = WeaponType::Plasma;
+	} else if input.choose_bfg && is_available(WeaponType::BFG, *inv) {
+		inv.ready_weapon = WeaponType::BFG;
 	}
 
-	if previous_ready_weapon != inventory.ready_weapon {
+	if previous_ready_weapon != inv.ready_weapon {
 		ui_to_update.push(UpdatableUiType::Ammo);
 	}
 
-	if input.shoot && inventory.pending_weapon == WeaponType::NoChange {
-		let ammo_per_shot = inventory.ready_weapon.ammo_spent_per_shot();
-		let ammo_type = AmmoType::from(inventory.ready_weapon);
+	if input.shoot && inv.pending_weapon == WeaponType::NoChange {
+		let ammo_per_shot = inv.ready_weapon.ammo_spent_per_shot();
+		let ammo_type = AmmoType::from(inv.ready_weapon);
 
 		if ammo_type != AmmoType::NoAmmo {
-			let ammo_remained = inventory.ammo[ammo_type as usize];
+			let ammo_remained = inv.ammo[ammo_type as usize];
 
 			if ammo_per_shot > ammo_remained {
-				inventory.ready_weapon = choose_best(&inventory);
+				inv.ready_weapon = choose_best(*inv);
 				ui_to_update.push(UpdatableUiType::Ammo);
 				return;
 			}
 
-			inventory.ammo[ammo_type as usize] -= ammo_per_shot;
+			inv.ammo[ammo_type as usize] -= ammo_per_shot;
 
 			ui_to_update.push(UpdatableUiType::Ammo);
 			ui_to_update.push(UpdatableUiType::TotalAmmo);
@@ -116,7 +114,7 @@ pub fn handle_weapons_input(
 
 		command_buffer.insert_one(player_entity, PlayerShoot);
 
-		let sfx_id = match inventory.ready_weapon {
+		let sfx_id = match inv.ready_weapon {
 			WeaponType::Fist => to_u64(b"DSPUNCH"),
 			WeaponType::SuperShotgun => to_u64(b"DSDSHTGN"),
 			WeaponType::Shotgun => to_u64(b"DSSHOTGN"),
@@ -132,34 +130,34 @@ pub fn handle_weapons_input(
 	}
 }
 
-fn choose_best(inventory: &PlayerInventory) -> WeaponType {
-	if is_available(WeaponType::Plasma, inventory) {
+fn choose_best(inv: PlayerInventory) -> WeaponType {
+	if is_available(WeaponType::Plasma, inv) {
 		WeaponType::Plasma
-	} else if is_available(WeaponType::SuperShotgun, inventory) {
+	} else if is_available(WeaponType::SuperShotgun, inv) {
 		WeaponType::SuperShotgun
-	} else if is_available(WeaponType::Chaingun, inventory) {
+	} else if is_available(WeaponType::Chaingun, inv) {
 		WeaponType::Chaingun
-	} else if is_available(WeaponType::Shotgun, inventory) {
+	} else if is_available(WeaponType::Shotgun, inv) {
 		WeaponType::Shotgun
-	} else if is_available(WeaponType::Pistol, inventory) {
+	} else if is_available(WeaponType::Pistol, inv) {
 		WeaponType::Pistol
-	} else if is_available(WeaponType::Chainsaw, inventory) {
+	} else if is_available(WeaponType::Chainsaw, inv) {
 		WeaponType::Chainsaw
-	} else if is_available(WeaponType::Missile, inventory) {
+	} else if is_available(WeaponType::Missile, inv) {
 		WeaponType::Missile
-	} else if is_available(WeaponType::BFG, inventory) {
+	} else if is_available(WeaponType::BFG, inv) {
 		WeaponType::BFG
 	} else {
 		WeaponType::Fist
 	}
 }
 
-fn is_available(weapon: WeaponType, inventory: &PlayerInventory) -> bool {
+fn is_available(weapon: WeaponType, inv: PlayerInventory) -> bool {
 	let ammo_type = AmmoType::from(weapon);
 	if ammo_type == AmmoType::NoAmmo {
-		inventory.weapon_owned[weapon as usize]
+		inv.weapon_owned[weapon as usize]
 	} else {
-		inventory.weapon_owned[weapon as usize]
-			&& inventory.ammo[AmmoType::from(weapon) as usize] >= weapon.ammo_spent_per_shot()
+		inv.weapon_owned[weapon as usize]
+			&& inv.ammo[AmmoType::from(weapon) as usize] >= weapon.ammo_spent_per_shot()
 	}
 }

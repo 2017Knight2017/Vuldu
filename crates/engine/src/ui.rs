@@ -1,4 +1,3 @@
-use hecs::{Entity, World};
 use wad_parser::{SCREEN_HEIGHT, Ui};
 
 use crate::{
@@ -48,25 +47,21 @@ impl Default for STBarUi {
 	}
 }
 
-pub fn get_stbar(world: &World, player_entity: Entity, stbar_ui: &mut STBarUi) {
-	let inventory = world.get::<&PlayerInventory>(player_entity).unwrap();
-	let stats = world.get::<&PlayerStats>(player_entity).unwrap();
-	let hp = world.get::<&Health>(player_entity).unwrap();
+pub fn get_stbar(stbar_ui: &mut STBarUi, inv: PlayerInventory, stats: PlayerStats, hp: Health) {
+	update_ammo_ui(inv, &mut stbar_ui.ammo);
 
-	update_ammo_ui(&inventory, &mut stbar_ui.ammo);
+	update_hp_ui(hp, &mut stbar_ui.hp);
 
-	update_hp_ui(&hp, &mut stbar_ui.hp);
-
-	update_arms_ui(&inventory.weapon_owned, &mut stbar_ui.arms);
+	update_arms_ui(inv.weapon_owned, &mut stbar_ui.arms);
 
 	update_armor_ui(stats.armor_points, &mut stbar_ui.armor);
 
-	update_keys_ui(&inventory.cards, &mut stbar_ui.keys);
+	update_keys_ui(inv.cards, &mut stbar_ui.keys);
 
-	update_total_ammo_ui(&inventory, &mut stbar_ui.total_ammo);
+	update_total_ammo_ui(inv, &mut stbar_ui.total_ammo);
 }
 
-pub fn update_total_ammo_ui(inventory: &PlayerInventory, ui_to_render: &mut Vec<(Ui, f32, f32)>) {
+pub fn update_total_ammo_ui(inv: PlayerInventory, ui_to_render: &mut Vec<(Ui, f32, f32)>) {
 	let total_ammo_x_offset = 289.0;
 	let total_ammo_y_offset = 5.0;
 	let distance_y_total_ammo = 6.0;
@@ -74,59 +69,59 @@ pub fn update_total_ammo_ui(inventory: &PlayerInventory, ui_to_render: &mut Vec<
 	ui_to_render.clear();
 
 	yellow(
-		inventory.ammo[AmmoType::Clip as usize],
+		inv.ammo[AmmoType::Clip as usize],
 		ui_to_render,
 		total_ammo_x_offset,
 		total_ammo_y_offset,
 	);
 	yellow(
-		if inventory.backpack { 400 } else { 200 },
+		if inv.backpack { 400 } else { 200 },
 		ui_to_render,
 		total_ammo_x_offset + 25.0,
 		total_ammo_y_offset,
 	);
 
 	yellow(
-		inventory.ammo[AmmoType::Shell as usize],
+		inv.ammo[AmmoType::Shell as usize],
 		ui_to_render,
 		total_ammo_x_offset,
 		total_ammo_y_offset + distance_y_total_ammo,
 	);
 	yellow(
-		if inventory.backpack { 100 } else { 50 },
+		if inv.backpack { 100 } else { 50 },
 		ui_to_render,
 		total_ammo_x_offset + 25.0,
 		total_ammo_y_offset + distance_y_total_ammo,
 	);
 
 	yellow(
-		inventory.ammo[AmmoType::Missile as usize],
+		inv.ammo[AmmoType::Missile as usize],
 		ui_to_render,
 		total_ammo_x_offset,
 		total_ammo_y_offset + distance_y_total_ammo * 2.0,
 	);
 	yellow(
-		if inventory.backpack { 100 } else { 50 },
+		if inv.backpack { 100 } else { 50 },
 		ui_to_render,
 		total_ammo_x_offset + 25.0,
 		total_ammo_y_offset + distance_y_total_ammo * 2.0,
 	);
 
 	yellow(
-		inventory.ammo[AmmoType::Cell as usize],
+		inv.ammo[AmmoType::Cell as usize],
 		ui_to_render,
 		total_ammo_x_offset,
 		total_ammo_y_offset + distance_y_total_ammo * 3.0,
 	);
 	yellow(
-		if inventory.backpack { 600 } else { 300 },
+		if inv.backpack { 600 } else { 300 },
 		ui_to_render,
 		total_ammo_x_offset + 25.0,
 		total_ammo_y_offset + distance_y_total_ammo * 3.0,
 	);
 }
 
-pub fn update_keys_ui(cards: &[bool; NUMCARDS], ui_to_render: &mut Vec<(Ui, f32, f32)>) {
+pub fn update_keys_ui(cards: [bool; NUMCARDS], ui_to_render: &mut Vec<(Ui, f32, f32)>) {
 	let keys_x_offset = 239.0;
 
 	ui_to_render.clear();
@@ -164,7 +159,7 @@ pub fn update_face_ui(ui_to_render: &mut [(Ui, f32, f32); 1]) {
 	ui_to_render[0] = (Ui::STFST00, 149.0, STBAR_Y_OFFSET + 2.0);
 }
 
-pub fn update_arms_ui(weapon_owned: &[bool; NUMWEAPONS], ui_to_render: &mut Vec<(Ui, f32, f32)>) {
+pub fn update_arms_ui(weapon_owned: [bool; NUMWEAPONS], ui_to_render: &mut Vec<(Ui, f32, f32)>) {
 	let arms_x_offset = 111.0;
 	let arms_y_offset = 4.0;
 	let distance_x_arms = 12.0;
@@ -232,7 +227,7 @@ pub fn update_arms_ui(weapon_owned: &[bool; NUMWEAPONS], ui_to_render: &mut Vec<
 	));
 }
 
-pub fn update_hp_ui(player_health: &Health, ui_to_render: &mut Vec<(Ui, f32, f32)>) {
+pub fn update_hp_ui(player_health: Health, ui_to_render: &mut Vec<(Ui, f32, f32)>) {
 	let health_x_offset = 90.0;
 
 	ui_to_render.clear();
@@ -250,8 +245,8 @@ pub fn update_hp_ui(player_health: &Health, ui_to_render: &mut Vec<(Ui, f32, f32
 	}
 }
 
-pub fn update_ammo_ui(inventory: &PlayerInventory, ui_to_render: &mut Vec<(Ui, f32, f32)>) {
-	let weapon = inventory.ready_weapon;
+pub fn update_ammo_ui(inv: PlayerInventory, ui_to_render: &mut Vec<(Ui, f32, f32)>) {
+	let weapon = inv.ready_weapon;
 	let ammo_type = AmmoType::from(weapon);
 
 	ui_to_render.clear();
@@ -260,7 +255,7 @@ pub fn update_ammo_ui(inventory: &PlayerInventory, ui_to_render: &mut Vec<(Ui, f
 		let ammo_x_offset = 44.0;
 
 		big_red(
-			inventory.ammo[ammo_type as usize] as i32,
+			inv.ammo[ammo_type as usize] as i32,
 			ui_to_render,
 			ammo_x_offset,
 		);

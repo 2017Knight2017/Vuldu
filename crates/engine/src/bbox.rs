@@ -1,6 +1,6 @@
 use wad_parser::{AABB, Level, Line, SlopeType};
 
-pub fn p_point_on_line_side(x: f32, y: f32, line: &Line, level: &Level) -> i32 {
+pub(crate) fn p_point_on_line_side(x: f32, y: f32, line: &Line, level: &Level) -> i32 {
 	let v1 = level.geom.vertices[line.v1.0];
 
 	if line.delta.0 == 0.0 {
@@ -26,7 +26,7 @@ pub fn p_point_on_line_side(x: f32, y: f32, line: &Line, level: &Level) -> i32 {
 	if right < left { 0 } else { 1 }
 }
 
-pub fn p_box_on_line_side(bbox: &AABB, line: &Line, level: &Level) -> i32 {
+pub(crate) fn p_box_on_line_side(bbox: &AABB, line: &Line, level: &Level) -> i32 {
 	let v1 = level.geom.vertices[line.v1.0];
 
 	let p1: i32;

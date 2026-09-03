@@ -21,7 +21,7 @@ pub mod world_event;
 
 pub use action::*;
 pub use angles::*;
-pub use bbox::*;
+pub(crate) use bbox::*;
 pub use components::*;
 pub use constants::*;
 pub use data_tables::*;
@@ -31,7 +31,7 @@ pub use p_move::*;
 pub use player::*;
 pub use random::*;
 pub use sfx::*;
-pub use sight::*;
+pub(crate) use sight::*;
 pub use sound::*;
 pub use special_lines::*;
 pub use systems::*;

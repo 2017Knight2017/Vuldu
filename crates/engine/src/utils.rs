@@ -1,10 +1,9 @@
 use hecs::Entity;
 use strum::IntoEnumIterator;
-use wad_parser::Level;
 
 use crate::{
-	CurrentSector, DB, DIAGS, Direction, MELEERANGE, MobjFlagCommand, MobjFlags, MobjNum, MobjType,
-	MonsterRotation, MoveContext, OPPOSITE, Position, Random, Traversal, fast_atan2, p_check_sight,
+	DIAGS, Direction, MELEERANGE, MobjFlagCommand, MobjFlags, MobjNum, MobjType, MonsterRotation,
+	MoveContext, OPPOSITE, Position, Random, SightContext, Traversal, fast_atan2, p_check_sight,
 	p_move,
 };
 
@@ -19,7 +18,7 @@ pub fn aprox_xyz_distance(src: (f32, f32, f32), dst: (f32, f32, f32)) -> f32 {
 	aprox_xz_distance((src.0, src.2), (dst.0, dst.2)) + (src.1 - dst.1).abs() * 0.5
 }
 
-pub fn in_fov(pos: &Position, rot: &MonsterRotation, player_pos: &Position) -> bool {
+pub fn in_fov(pos: Position, rot: MonsterRotation, player_pos: Position) -> bool {
 	if rot.move_dir.is_none() {
 		return false;
 	}
@@ -34,62 +33,30 @@ pub fn in_fov(pos: &Position, rot: &MonsterRotation, player_pos: &Position) -> b
 		|| angle_to_player == ((move_dir + 1) & 0b111)
 }
 
-#[allow(clippy::too_many_arguments)]
-pub fn p_check_melee_range(
-	pos: &Position,
-	cur_sector: &CurrentSector,
-	height: f32,
-	target_pos: &Position,
-	target_cur_sector: &CurrentSector,
-	target_height: f32,
-	target_radius: f32,
-	level: &Level,
+pub(crate) fn p_check_melee_range(
+	ctx: &SightContext,
 	traversal: &mut Traversal,
+	target_radius: f32,
 ) -> bool {
-	if !p_check_sight(
-		pos,
-		cur_sector,
-		height,
-		target_pos,
-		target_cur_sector,
-		target_height,
-		level,
-		traversal,
-	) {
+	if !p_check_sight(ctx, traversal) {
 		return false;
 	}
 
-	let dist = aprox_xz_distance((target_pos.x, target_pos.z), (pos.x, pos.z));
+	let dist = aprox_xz_distance((ctx.target_pos.x, ctx.target_pos.z), (ctx.pos.x, ctx.pos.z));
 
 	dist < MELEERANGE - 20.0 + target_radius
 }
 
-#[allow(clippy::too_many_arguments)]
-pub fn p_check_missile_range(
+pub(crate) fn p_check_missile_range(
+	ctx: &SightContext,
 	ent: Entity,
-	pos: &Position,
-	cur_sector: &CurrentSector,
-	mobj: &MobjType,
-	target_pos: &Position,
-	target_cur_sector: &CurrentSector,
-	target_height: f32,
-	level: &Level,
+	mobj: MobjType,
 	traversal: &mut Traversal,
 	random: &mut Random,
-	is_melee_state_none: bool,
 	mobj_flags: &mut Vec<MobjFlagCommand>,
+	is_melee_state_none: bool,
 ) -> bool {
-	let db = DB.get().unwrap();
-	if !p_check_sight(
-		pos,
-		cur_sector,
-		db.mobjinfo[&mobj.type_].height,
-		target_pos,
-		target_cur_sector,
-		target_height,
-		level,
-		traversal,
-	) {
+	if !p_check_sight(ctx, traversal) {
 		return false;
 	}
 
@@ -101,7 +68,8 @@ pub fn p_check_missile_range(
 		return true;
 	}
 
-	let mut dist = aprox_xz_distance((target_pos.x, target_pos.z), (pos.x, pos.z)) - 64.0;
+	let mut dist =
+		aprox_xz_distance((ctx.target_pos.x, ctx.target_pos.z), (ctx.pos.x, ctx.pos.z)) - 64.0;
 
 	if is_melee_state_none {
 		dist -= 128.0;
@@ -143,7 +111,7 @@ pub fn p_check_missile_range(
 pub(crate) fn p_new_chase_dir(
 	ctx: &mut MoveContext,
 	rot: &mut MonsterRotation,
-	target_pos: &Position,
+	target_pos: Position,
 	mobj_flags: &mut Vec<MobjFlagCommand>,
 ) {
 	let old_dir = rot.move_dir;

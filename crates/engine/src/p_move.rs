@@ -9,9 +9,9 @@ use wad_parser::{AABB, Level, LineFlags, LineId, SectorId};
 
 pub(crate) struct MoveContext<'a> {
 	pub(crate) ent: Entity,
-	pub(crate) pos: &'a Position,
+	pub(crate) pos: Position,
 	pub(crate) goal_pos: (f32, f32, f32),
-	pub(crate) mobj: &'a MobjType,
+	pub(crate) mobj: MobjType,
 	pub(crate) mobj_info: &'a MobjInfo,
 	pub(crate) imi: &'a mut InstantMoveIntent,
 	pub(crate) level: &'a Level,
@@ -19,6 +19,7 @@ pub(crate) struct MoveContext<'a> {
 	pub(crate) random: &'a mut Random,
 	pub(crate) blocklists: &'a [Vec<Entity>],
 	pub(crate) world_events: &'a mut Vec<WorldEvent>,
+	pub(crate) db: &'a Database,
 	pub(crate) inner: MoveContextInner,
 }
 
@@ -31,7 +32,6 @@ pub(crate) struct MoveContextInner {
 	spec_hit: Vec<LineId>,
 }
 
-#[allow(clippy::too_many_arguments)]
 pub(crate) fn p_move(
 	ctx: &mut MoveContext,
 	rot: &MonsterRotation,
@@ -68,7 +68,7 @@ pub(crate) fn p_move(
 		let mut good = false;
 
 		for line_id in ctx.inner.spec_hit.drain(..) {
-			if p_use_special_line(ctx.mobj, &ctx.level.geom.lines[line_id.0]) {
+			if p_use_special_line(ctx.mobj, ctx.level.geom.lines[line_id.0]) {
 				good = true;
 			}
 		}
@@ -88,7 +88,6 @@ pub(crate) fn p_move(
 	true
 }
 
-#[allow(clippy::too_many_arguments)]
 pub(crate) fn p_try_move(ctx: &mut MoveContext) -> (bool, bool) {
 	// (try_ok, float_ok)
 
@@ -160,8 +159,6 @@ fn p_check_pos(ctx: &mut MoveContext) -> bool {
 		.blockmap
 		.world_to_grid(bbox.max_x + MAXRADIUS, bbox.max_z + MAXRADIUS);
 
-	let db = DB.get().unwrap();
-
 	for r in min_row..=max_row {
 		for c in min_col..=max_col {
 			let idx = r * ctx.level.geom.blockmap.col_num + c;
@@ -176,7 +173,7 @@ fn p_check_pos(ctx: &mut MoveContext) -> bool {
 					.query_one::<(&MobjType, &Position, Option<&Target>)>(other_entity);
 
 				if let Ok((other_type, other_pos, raw_target)) = query.get()
-					&& !pit_check_thing(ctx, db, raw_target, other_entity, other_type, other_pos)
+					&& !pit_check_thing(ctx, raw_target, other_entity, other_type, other_pos)
 				{
 					return false;
 				}
@@ -195,7 +192,6 @@ fn p_check_pos(ctx: &mut MoveContext) -> bool {
 
 fn pit_check_thing(
 	ctx: &mut MoveContext,
-	db: &Database,
 	raw_target: Option<&Target>,
 	other_ent: Entity,
 	other_type: &MobjType,
@@ -208,10 +204,9 @@ fn pit_check_thing(
 		return true;
 	}
 
-	let mobj_info = &db.mobjinfo[&ctx.mobj.type_];
-	let other_info = &db.mobjinfo[&other_type.type_];
+	let other_info = &ctx.db.mobjinfo[&other_type.type_];
 
-	let blockdist = mobj_info.radius + other_info.radius;
+	let blockdist = ctx.mobj_info.radius + other_info.radius;
 
 	if (ctx.goal_pos.0 - other_pos.x).abs() >= blockdist
 		|| (ctx.goal_pos.2 - other_pos.z).abs() >= blockdist
@@ -224,7 +219,7 @@ fn pit_check_thing(
 	}
 
 	if ctx.mobj.flags.contains(MobjFlags::SKULL_FLY) {
-		let damage = ((ctx.random.p() & 0b111) as u32 + 1) * mobj_info.damage;
+		let damage = ((ctx.random.p() & 0b111) as u32 + 1) * ctx.mobj_info.damage;
 
 		ctx.world_events.push(WorldEvent::DamageMobj {
 			target: other_ent,
@@ -242,7 +237,7 @@ fn pit_check_thing(
 		if ctx.goal_pos.1 > other_pos.y + other_info.height {
 			return true;
 		}
-		if ctx.goal_pos.1 + mobj_info.height < other_pos.y {
+		if ctx.goal_pos.1 + ctx.mobj_info.height < other_pos.y {
 			return true;
 		}
 
@@ -267,7 +262,7 @@ fn pit_check_thing(
 			return !other_type.flags.contains(MobjFlags::SOLID);
 		}
 
-		let damage = ((ctx.random.p() % 0b111) as u32 + 1) * mobj_info.damage;
+		let damage = ((ctx.random.p() % 0b111) as u32 + 1) * ctx.mobj_info.damage;
 		ctx.world_events.push(WorldEvent::DamageMobj {
 			target: other_ent,
 			inflictor: ctx.ent,
@@ -281,7 +276,7 @@ fn pit_check_thing(
 		let solid = other_type.flags.contains(MobjFlags::SOLID);
 		if ctx.mobj.flags.contains(MobjFlags::PICKUP) {
 			ctx.world_events.push(WorldEvent::TouchSpecialThing {
-				special_item: other_ent,
+				item_ent: other_ent,
 				picker: ctx.ent,
 			});
 		}
@@ -377,9 +372,9 @@ pub fn try_move_system(
 	for (ent, imi, velocity, pos, mobj) in query.iter() {
 		let mut ctx = MoveContext {
 			ent,
-			pos,
+			pos: *pos,
 			goal_pos: (pos.x + imi.dx, pos.y + imi.dy, pos.z + imi.dz),
-			mobj,
+			mobj: *mobj,
 			mobj_info: &db.mobjinfo[&mobj.type_],
 			imi,
 			level,
@@ -387,6 +382,7 @@ pub fn try_move_system(
 			random,
 			blocklists,
 			world_events,
+			db,
 			inner: MoveContextInner::default(),
 		};
 		let can_move = p_try_move(&mut ctx).0;

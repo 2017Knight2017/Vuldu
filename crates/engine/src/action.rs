@@ -1,8 +1,8 @@
 use crate::{
-	CurrentSector, DB, GameConfig, Health, InstantMoveIntent, MobjAi, MobjFlagCommand, MobjFlags,
-	MobjType, MonsterRotation, MoveContext, MoveContextInner, Position, Random, SfxEvent,
-	SkillLevel, SpriteAnimation, StateNum, Target, Traversal, WorldEvent, look,
-	p_check_melee_range, p_check_missile_range, p_move, p_new_chase_dir,
+	CurrentSector, DB, Database, GameConfig, Health, InstantMoveIntent, MobjAi, MobjFlagCommand,
+	MobjFlags, MobjType, MonsterRotation, MoveContext, MoveContextInner, Position, Random,
+	SfxEvent, SightContext, SkillLevel, SpriteAnimation, StateNum, Target, Traversal, WorldEvent,
+	look, p_check_melee_range, p_check_missile_range, p_move, p_new_chase_dir,
 };
 use hecs::{CommandBuffer, Entity, World};
 use serde::Deserialize;
@@ -88,6 +88,8 @@ pub enum ActionFunc {
 
 /// Must be called before animation_system
 pub fn ai_system(world: &World, actions: &mut Vec<(Entity, ActionFunc)>) {
+	let db = DB.get().unwrap();
+
 	let mut query = world.query::<(Entity, &mut MobjAi, &mut SpriteAnimation)>();
 	for (ent, ai, anim) in query.iter() {
 		if ai.tics_left <= 0 {
@@ -96,27 +98,24 @@ pub fn ai_system(world: &World, actions: &mut Vec<(Entity, ActionFunc)>) {
 
 		ai.tics_left -= 1;
 		if ai.tics_left == 0 {
-			let db = DB.get().unwrap();
-
 			let current_state = db.states[&ai.current_state];
 
 			if let Some(next_state_num) = current_state.next_state {
-				set_mobj_state(ent, ai, anim, next_state_num, actions, 0);
+				set_mobj_state(ent, ai, anim, next_state_num, actions, db, 0);
 			}
 		}
 	}
 }
 
-pub fn set_mobj_state(
+pub(crate) fn set_mobj_state(
 	ent: Entity,
 	ai: &mut MobjAi,
 	anim: &mut SpriteAnimation,
 	state_num: StateNum,
 	actions: &mut Vec<(Entity, ActionFunc)>,
+	db: &Database,
 	tics_to_add: i32,
 ) {
-	let db = DB.get().unwrap();
-
 	ai.current_state = state_num;
 
 	let state = db.states[&state_num];
@@ -128,7 +127,7 @@ pub fn set_mobj_state(
 	}
 }
 
-pub struct ActionContext<'a> {
+pub(crate) struct ActionContext<'a> {
 	pub world: &'a World,
 	pub actions: &'a mut Vec<(Entity, ActionFunc)>,
 	pub random: &'a mut Random,
@@ -141,9 +140,40 @@ pub struct ActionContext<'a> {
 	pub traversal: &'a mut Traversal,
 	pub cmd: &'a mut CommandBuffer,
 	pub sound_targets: &'a mut [Option<Entity>],
+	pub db: &'a Database,
 }
 
-pub fn action_system(mut ctx: ActionContext) {
+#[allow(clippy::too_many_arguments)]
+pub fn action_system(
+	world: &World,
+	actions: &mut Vec<(Entity, ActionFunc)>,
+	random: &mut Random,
+	level: &mut Level,
+	cfg: GameConfig,
+	audio: &mut Vec<SfxEvent>,
+	blocklists: &[Vec<Entity>],
+	world_events: &mut Vec<WorldEvent>,
+	mobj_flags: &mut Vec<MobjFlagCommand>,
+	traversal: &mut Traversal,
+	cmd: &mut CommandBuffer,
+	sound_targets: &mut [Option<Entity>],
+) {
+	let db = DB.get().unwrap();
+	let mut ctx = ActionContext {
+		world,
+		actions,
+		random,
+		level,
+		cfg,
+		audio,
+		blocklists,
+		world_events,
+		mobj_flags,
+		traversal,
+		cmd,
+		sound_targets,
+		db,
+	};
 	std::mem::take(ctx.actions)
 		.into_iter()
 		.for_each(|(ent, action)| choose_action(&mut ctx, ent, action));
@@ -157,9 +187,7 @@ fn choose_action(ctx: &mut ActionContext, ent: Entity, action: ActionFunc) {
 	}
 }
 
-pub fn chase(ctx: &mut ActionContext, ent: Entity) {
-	let db = DB.get().unwrap();
-
+pub(crate) fn chase(ctx: &mut ActionContext, ent: Entity) {
 	let mut query = ctx.world.query_one::<(
 		&mut MonsterRotation,
 		&mut MobjAi,
@@ -170,11 +198,14 @@ pub fn chase(ctx: &mut ActionContext, ent: Entity) {
 		&CurrentSector,
 		&Target,
 	)>(ent);
-	let Ok((rot, ai, imi, anim, mobj, pos, cur_sector, target)) = query.get() else {
+	let Ok((rot, ai, imi, anim, mobj, pos, cur_sector, target)) = query
+		.get()
+		.map(|(_r, _ai, _i, _an, m, p, s, t)| (_r, _ai, _i, _an, *m, *p, *s, *t))
+	else {
 		return;
 	};
 
-	let mobj_info = &db.mobjinfo[&mobj.type_];
+	let mobj_info = &ctx.db.mobjinfo[&mobj.type_];
 
 	if ai.reaction_time > 0 {
 		ai.reaction_time -= 1;
@@ -184,16 +215,18 @@ pub fn chase(ctx: &mut ActionContext, ent: Entity) {
 	let mut target_query = ctx
 		.world
 		.query_one::<(&Health, &Position, &CurrentSector, &MobjType)>(target.0);
-	let Ok((target_hp, target_pos, target_cur_sector, target_type)) = target_query.get() else {
+	let Ok((target_hp, target_pos, target_cur_sector, target)) =
+		target_query.get().map(|(h, p, s, t)| (*h, *p, *s, *t))
+	else {
 		if let Some(spawn_state) = mobj_info.spawn_state {
-			set_mobj_state(ent, ai, anim, spawn_state, ctx.actions, 0);
+			set_mobj_state(ent, ai, anim, spawn_state, ctx.actions, ctx.db, 0);
 		}
 		return;
 	};
 
 	if target_hp.0 <= 0 {
 		if let Some(spawn_state) = mobj_info.spawn_state {
-			set_mobj_state(ent, ai, anim, spawn_state, ctx.actions, 0);
+			set_mobj_state(ent, ai, anim, spawn_state, ctx.actions, ctx.db, 0);
 		}
 		return;
 	}
@@ -218,6 +251,7 @@ pub fn chase(ctx: &mut ActionContext, ent: Entity) {
 		random: ctx.random,
 		blocklists: ctx.blocklists,
 		world_events: ctx.world_events,
+		db: ctx.db,
 		inner: MoveContextInner::default(),
 	};
 
@@ -232,19 +266,20 @@ pub fn chase(ctx: &mut ActionContext, ent: Entity) {
 		return;
 	}
 
-	let target_info = &db.mobjinfo[&target_type.type_];
+	let target_info = &ctx.db.mobjinfo[&target.type_];
+	let sight_ctx = SightContext {
+		pos,
+		cur_sector,
+		height: mobj_info.height,
+		target_pos,
+		target_sector: target_cur_sector,
+		target_height: target_info.height,
+		level: ctx.level,
+	};
+
 	if let Some(melee_state) = mobj_info.melee_state
-		&& p_check_melee_range(
-			pos,
-			cur_sector,
-			mobj_info.height,
-			target_pos,
-			target_cur_sector,
-			target_info.height,
-			target_info.radius,
-			ctx.level,
-			ctx.traversal,
-		) {
+		&& p_check_melee_range(&sight_ctx, ctx.traversal, target_info.radius)
+	{
 		if let Some(attack_sound) = &mobj_info.attack_sound {
 			ctx.audio.push(SfxEvent {
 				sfx_id: to_u64(attack_sound),
@@ -252,7 +287,7 @@ pub fn chase(ctx: &mut ActionContext, ent: Entity) {
 			});
 		}
 
-		set_mobj_state(ent, ai, anim, melee_state, ctx.actions, 0);
+		set_mobj_state(ent, ai, anim, melee_state, ctx.actions, ctx.db, 0);
 		return;
 	}
 
@@ -265,20 +300,15 @@ pub fn chase(ctx: &mut ActionContext, ent: Entity) {
 
 		if check_missile
 			&& p_check_missile_range(
+				&sight_ctx,
 				ent,
-				pos,
-				cur_sector,
 				mobj,
-				target_pos,
-				target_cur_sector,
-				target_info.height,
-				ctx.level,
 				ctx.traversal,
 				move_ctx.random,
-				mobj_info.melee_state.is_none(),
 				ctx.mobj_flags,
+				mobj_info.melee_state.is_none(),
 			) {
-			set_mobj_state(ent, ai, anim, missile_state, ctx.actions, 0);
+			set_mobj_state(ent, ai, anim, missile_state, ctx.actions, ctx.db, 0);
 			return;
 		}
 	}
