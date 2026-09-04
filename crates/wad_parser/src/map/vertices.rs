@@ -11,7 +11,7 @@ const PEG_SHIFT: u32 = 30;
 const TYPE_SHIFT: u32 = 27;
 const OP_SHIFT: u32 = 29;
 const ANCHOR_SHIFT: u32 = 31;
-
+const SW_BASE: u32 = 0xF000;
 
 pub type TextureData = (TextureId, u32, u32, bool);
 
@@ -229,7 +229,7 @@ impl Level {
 			                         v_offset: f32,
 			                         fake_flat_name: &[u8],
 			                         other_sector_ceilingpic: &[u8],
-									 is_mid_unpegged: bool|
+			                         is_mid_unpegged: bool|
 			 -> Option<TextureId> {
 				let wall_height = y_high - y_low;
 
@@ -264,11 +264,12 @@ impl Level {
 
 					let mid_bits = if is_mid {
 						(1 << MID_SHIFT) | if is_mid_unpegged { 1 << PEG_SHIFT } else { 0 }
-					} else { 
-						0 
+					} else {
+						0
 					};
 
-					let plane_b_bits = b.sector.0 as u32 | (b.type_ as u32) << TYPE_SHIFT | mid_bits;
+					let plane_b_bits =
+						b.sector.0 as u32 | (b.type_ as u32) << TYPE_SHIFT | mid_bits;
 
 					(plane_a_bits, plane_b_bits)
 				};
@@ -288,11 +289,9 @@ impl Level {
 					.get(&to_u64(final_tex_name))
 					.unwrap_or(&(TextureId(0), 64, 64, false));
 
-				let inv_tex_h = if dynamic || anchor.is_none() {
-					1.0 / tex_height as f32
-				} else {
-					0.0
-				};
+				let is_switch = front_side
+					.switch_slot
+					.is_some_and(|id| self.state.switch_ids.contains(&id));
 
 				let (final_tex_id, floor_tex_id) = if final_tex_name.starts_with(b"F_SKY1")
 					|| (other_sector_ceilingpic.starts_with(b"F_SKY1")
@@ -301,12 +300,16 @@ impl Level {
 					(SKY_WALL_ID, TextureId(0))
 				} else if is_fake_wall {
 					(UNTEXED_WALL_ID, tex_id)
+				} else if is_switch {
+					(
+						TextureId(SW_BASE | front_side.switch_slot.unwrap()),
+						TextureId(0),
+					)
 				} else {
 					(tex_id, TextureId(0))
 				};
 
 				let (u_start, u_end, v_start, v_end);
-
 				if is_fake_wall {
 					let f_width = tex_width as f32;
 					let f_height = tex_height as f32;
@@ -332,6 +335,12 @@ impl Level {
 
 				let start_idx = gpu_vertices.len() as u32;
 				let light_level = front_sector.light.clamp(0, 255) as u32;
+
+				let inv_tex_h = if dynamic || anchor.is_none() {
+					1.0 / tex_height as f32
+				} else {
+					0.0
+				};
 
 				gpu_vertices.push(GpuLevelVertex {
 					pos: [v1.0, y_low, v1.1],
@@ -497,7 +506,7 @@ impl Level {
 							v_offset,
 							&b_sector.floorpic,
 							&front_sector.ceilingpic,
-							false
+							false,
 						);
 					}
 
@@ -522,6 +531,30 @@ impl Level {
 		}
 
 		(gpu_vertices, gpu_indices)
+	}
+
+	pub fn assign_switch_slots(&mut self, texture_ids: &FxHashMap<u64, TextureData>) {
+		let mut successes = 0u32;
+		self.state.switch_ids = self
+			.state
+			.sides
+			.iter_mut()
+			.filter_map(|side| {
+				let name = [side.toptexture, side.midtexture, side.bottomtexture]
+					.into_iter()
+					.find(|n| {
+						texture_ids
+							.get(&to_u64(n))
+							.is_some_and(|&(id, ..)| self.geom.switch_pairs.contains_key(&id))
+					})?;
+
+				let (base_id, ..) = texture_ids[&to_u64(&name)];
+
+				side.switch_slot = Some(successes);
+				successes += 1;
+				Some(base_id.0)
+			})
+			.collect();
 	}
 
 	pub fn get_flats_vertices(

@@ -74,11 +74,12 @@ impl App {
 		while self.time_accumulator >= TICK_TIME {
 			self.game.tick(
 				&mut self.audio,
-				&mut self.current_input,
+				self.current_input,
 				&mut self.random,
 				&mut self.graphics.ui_to_update,
 				&mut self.last_buttons_pressed,
 			);
+			self.current_input.mouse_delta_x = 0.0;
 			self.graphics
 				.system(&mut self.game.graphics_buffer, self.game.global_timer);
 			self.time_accumulator -= TICK_TIME;
@@ -278,14 +279,15 @@ impl ApplicationHandler for App {
 						self.current_input.choose_bfg = is_pressed
 					}
 					PhysicalKey::Code(KeyCode::Digit8) if is_pressed => {
-						self.game.graphics_buffer.push(GraphicsCommand::Palette(8));
+						self.game.graphics_buffer.push(GraphicsCommand::Palette(8))
 					}
 					PhysicalKey::Code(KeyCode::Digit9) if is_pressed => {
-						self.game.graphics_buffer.push(GraphicsCommand::Palette(12));
+						self.game.graphics_buffer.push(GraphicsCommand::Palette(12))
 					}
 					PhysicalKey::Code(KeyCode::Digit0) if is_pressed => {
-						self.game.graphics_buffer.push(GraphicsCommand::FullBright);
+						self.game.graphics_buffer.push(GraphicsCommand::FullBright)
 					}
+					PhysicalKey::Code(KeyCode::KeyE) => self.current_input.use_ = is_pressed,
 					PhysicalKey::Code(KeyCode::KeyL) => {
 						self.game
 							.level

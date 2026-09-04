@@ -9,8 +9,8 @@ use renderer::{
 };
 use rustc_hash::FxHashMap;
 use wad_parser::{
-	DoomPicture, GpuLevelVertex, GpuSpriteVertex, Level, NUM_UI, TextureId, WadManager,
-	construct_map_name, to_u64,
+	DoomPicture, GpuLevelVertex, GpuSpriteVertex, Level, NUM_UI, SWITCH_LIST, TextureId,
+	WadManager, construct_map_name, to_u64,
 };
 
 bitflags! {
@@ -218,6 +218,17 @@ impl GraphicsContext {
 			}
 		}
 
+		let mut switch_pairs = FxHashMap::default();
+		for (off, on) in SWITCH_LIST {
+			let (Some(&(off_id, ..)), Some(&(on_id, ..))) =
+				(self.data.get(&to_u64(off)), self.data.get(&to_u64(on)))
+			else {
+				continue;
+			};
+			switch_pairs.insert(off_id, on_id);
+			switch_pairs.insert(on_id, off_id);
+		}
+
 		for (pic, ui_insert_idx) in ui_pics.into_iter().zip(ui_shown.ones()) {
 			descriptors.push(TextureDescriptor {
 				width: pic.width,
@@ -252,6 +263,8 @@ impl GraphicsContext {
 	}
 
 	pub fn setup_level_geometry(&mut self, level: &mut Level) {
+		level.assign_switch_slots(&self.data);
+
 		println!("Building map geometry...");
 		let (wall_vertices, wall_indices) = level.get_walls_vertices(&self.data);
 		println!("Walls geometry has been built");
@@ -293,6 +306,7 @@ impl GraphicsContext {
 			.pin()
 			.updateUiGeometry(&ui_vertices, &ui_indices);
 		self.renderer.pin().initSectorHeights(&self.sector_heights);
+		self.renderer.pin().initSwitches(&level.state.switch_ids);
 	}
 }
 
@@ -323,29 +337,29 @@ fn register_sprite(
 }
 
 fn to_level_vertex(vertex: GpuLevelVertex) -> LevelVertex {
-	assert_eq!(size_of::<GpuLevelVertex>(), size_of::<LevelVertex>());
+	debug_assert_eq!(size_of::<GpuLevelVertex>(), size_of::<LevelVertex>());
 
-	assert_eq!(
+	debug_assert_eq!(
 		offset_of!(GpuLevelVertex, pos),
 		offset_of!(LevelVertex, pos)
 	);
-	assert_eq!(
+	debug_assert_eq!(
 		offset_of!(GpuLevelVertex, texture_pos),
 		offset_of!(LevelVertex, texture_pos)
 	);
-	assert_eq!(
+	debug_assert_eq!(
 		offset_of!(GpuLevelVertex, light_level),
 		offset_of!(LevelVertex, light_level)
 	);
-	assert_eq!(
+	debug_assert_eq!(
 		offset_of!(GpuLevelVertex, texture_id),
 		offset_of!(LevelVertex, texture_id)
 	);
-	assert_eq!(
+	debug_assert_eq!(
 		offset_of!(GpuLevelVertex, floor_tex_id),
 		offset_of!(LevelVertex, floor_tex_id)
 	);
-	assert_eq!(
+	debug_assert_eq!(
 		offset_of!(GpuLevelVertex, scroll_dir),
 		offset_of!(LevelVertex, scroll_dir)
 	);
@@ -364,13 +378,13 @@ fn to_level_vertex(vertex: GpuLevelVertex) -> LevelVertex {
 }
 
 fn to_sprite_vertex(vertex: GpuSpriteVertex) -> SpriteVertex {
-	assert_eq!(size_of::<GpuSpriteVertex>(), size_of::<SpriteVertex>());
+	debug_assert_eq!(size_of::<GpuSpriteVertex>(), size_of::<SpriteVertex>());
 
-	assert_eq!(
+	debug_assert_eq!(
 		offset_of!(GpuSpriteVertex, pos),
 		offset_of!(SpriteVertex, pos)
 	);
-	assert_eq!(
+	debug_assert_eq!(
 		offset_of!(GpuSpriteVertex, texture_pos),
 		offset_of!(SpriteVertex, texture_pos)
 	);

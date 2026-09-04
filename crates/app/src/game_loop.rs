@@ -47,7 +47,7 @@ impl GameContext {
 	pub fn tick(
 		&mut self,
 		audio: &mut AudioContext,
-		current_input: &mut PlayerInput,
+		current_input: PlayerInput,
 		random: &mut Random,
 		ui_to_update: &mut Vec<UpdatableUiType>,
 		last_buttons: &mut VecDeque<Option<PhysicalKey>>,
@@ -129,8 +129,6 @@ impl GameContext {
 
 		audio.system(&self.world, self.player_entity);
 		animation_system(&self.world);
-
-		current_input.mouse_delta_x = 0.0;
 	}
 
 	fn flush_command_buffer(&mut self) {

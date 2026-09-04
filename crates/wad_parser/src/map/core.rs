@@ -100,6 +100,7 @@ pub struct Geometry {
 	pub tag_sectors: FxHashMap<u16, Vec<SectorId>>,
 	pub movable_sectors: FixedBitSet,
 	pub subsector_sector: Vec<SectorId>,
+	pub switch_pairs: FxHashMap<TextureId, TextureId>,
 }
 
 #[derive(Debug, Default)]
@@ -126,6 +127,7 @@ pub struct SideState {
 	pub(crate) toptexture: [u8; 8],
 	pub(crate) bottomtexture: [u8; 8],
 	pub(crate) midtexture: [u8; 8],
+	pub switch_slot: Option<u32>,
 }
 
 #[derive(Debug, Default)]
@@ -140,6 +142,7 @@ pub struct LevelState {
 	pub sides: Vec<SideState>,
 	pub lines: Vec<LineState>,
 	pub effects: Vec<ActiveEffect>,
+	pub switch_ids: Vec<u32>,
 }
 
 #[derive(Debug, Default)]
@@ -160,7 +163,7 @@ impl Level {
 	pub fn load(wad_manager: &WadManager, map_num: u8) -> Result<Self, String> {
 		let mut level = Level {
 			map_num,
-			..Default::default()
+			..Level::default()
 		};
 
 		let map_name = construct_map_name(wad_manager.is_doom1, map_num);
@@ -201,6 +204,7 @@ impl Level {
 					toptexture: s.toptexture,
 					midtexture: s.midtexture,
 					bottomtexture: s.bottomtexture,
+					switch_slot: None,
 				};
 			});
 

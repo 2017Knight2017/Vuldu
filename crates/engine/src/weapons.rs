@@ -56,7 +56,7 @@ pub fn handle_weapons_input(
 	ui_to_update: &mut Vec<UpdatableUiType>,
 	command_buffer: &mut CommandBuffer,
 	audio: &mut Vec<SfxEvent>,
-	input: &PlayerInput,
+	input: PlayerInput,
 ) {
 	let mut inv = world.get::<&mut PlayerInventory>(player_entity).unwrap();
 	let previous_ready_weapon = inv.ready_weapon;

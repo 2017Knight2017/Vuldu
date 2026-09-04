@@ -69,12 +69,21 @@ pub struct PlayerInput {
 	pub choose_rlauncher: bool,
 	pub choose_plasma: bool,
 	pub choose_bfg: bool,
+	pub use_: bool,
 	pub mouse_delta_x: f32,
 }
 
-pub fn handle_position_input(world: &World, player_ent: Entity, input: &PlayerInput) {
-	let rotation = world.get::<&PlayerRotation>(player_ent).unwrap();
-	let mut velocity = world.get::<&mut Velocity>(player_ent).unwrap();
+/* 
+Note: The absence of the app client is considered impossible,
+so we can unwrap all relevant components. However, it isn't
+applicable when we treat player as an object in the World.
+In this case we iterate through them with the PlayerMarker
+component.
+*/
+
+pub fn handle_position_input(world: &World, player_ent: Entity, input: PlayerInput) {
+	let rot = world.get::<&PlayerRotation>(player_ent).unwrap();
+	let mut vel = world.get::<&mut Velocity>(player_ent).unwrap();
 
 	let mut move_forward = 0.0;
 	let mut move_sideways = 0.0;
@@ -99,7 +108,7 @@ pub fn handle_position_input(world: &World, player_ent: Entity, input: &PlayerIn
 		move_vertically -= 1.0;
 	}
 
-	let current_angle_rad = (rotation.angle as f64 / u32::MAX as f64) * TAU;
+	let current_angle_rad = (rot.angle as f64 / u32::MAX as f64) * TAU;
 
 	let sin = f64::sin(current_angle_rad);
 	let cos = f64::cos(current_angle_rad);
@@ -109,13 +118,13 @@ pub fn handle_position_input(world: &World, player_ent: Entity, input: &PlayerIn
 	let thrust_x = (cos * move_sideways + sin * move_forward) * speed;
 	let thrust_z = (-sin * move_sideways + cos * move_forward) * speed;
 
-	velocity.x += thrust_x as f32 * 0.2;
-	velocity.z += thrust_z as f32 * 0.2;
-	velocity.y += move_vertically * 4.0;
+	vel.x += thrust_x as f32 * 0.2;
+	vel.z += thrust_z as f32 * 0.2;
+	vel.y += move_vertically * 4.0;
 }
 
-pub fn handle_rotation_input(world: &World, player_ent: Entity, input: &PlayerInput) {
-	let mut rotation = world.get::<&mut PlayerRotation>(player_ent).unwrap();
+pub fn handle_rotation_input(world: &World, player_ent: Entity, input: PlayerInput) {
+	let mut rot = world.get::<&mut PlayerRotation>(player_ent).unwrap();
 
 	let sensitivity = 0.008;
 	let angle_delta_rad = input.mouse_delta_x * sensitivity;
@@ -123,8 +132,8 @@ pub fn handle_rotation_input(world: &World, player_ent: Entity, input: &PlayerIn
 
 	let angle_delta = (factor * u32::MAX as f64) as i32;
 
-	rotation.prev_angle = rotation.angle;
-	rotation.angle = rotation.angle.wrapping_add_signed(angle_delta);
+	rot.prev_angle = rot.angle;
+	rot.angle = rot.angle.wrapping_add_signed(angle_delta);
 }
 
 pub fn apply_player_movement_system(world: &World, map: &Level) {

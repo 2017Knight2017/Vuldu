@@ -51,6 +51,8 @@ impl GraphicsContext {
 			.pin()
 			.updateSectorHeights(&self.sector_heights);
 
+		self.renderer.pin().updateSwitches(&level.state.switch_ids);
+
 		let aspect_ratio = size.width as f32 / size.height as f32;
 		let proj = Mat4::perspective_rh(FOV_ANGLE.to_radians(), aspect_ratio, 1.0, 10000.0);
 

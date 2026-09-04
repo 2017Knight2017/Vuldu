@@ -21,6 +21,10 @@ layout(binding = 4) readonly buffer SectorHeightsBuffer {
     float heights[]; 
 } sec;
 
+layout(binding = 5) readonly buffer SwitchesBuffer {
+    uint ids[];
+} sw;
+
 layout(push_constant) uniform LevelConstants {
     vec2 resolution;
     uint paletteIndex;
@@ -51,18 +55,24 @@ layout(location = 6) out vec3 fragBarycentric;
 layout(location = 7) out vec3 fragTriangleColor;
 layout(location = 8) out flat uint fragIsMid;
 
+const uint SW_BASE = 0xF000;
+const uint SW_MAX = 0xFFFF - 3;
 const uint ANIM_SPEED = 3;
 
 uint getAnimId() {
-    if (inTexId >= ANIM_INFO_SIZE) return inTexId;
-    animLevelInfo info = anim.info[inTexId];
+    uint texId = inTexId >= SW_BASE && inTexId <= SW_MAX 
+        ? sw.ids[inTexId - SW_BASE] 
+        : inTexId;
+
+    if (texId >= ANIM_INFO_SIZE) return texId;
+    animLevelInfo info = anim.info[texId];
 
     uint frames = info.frames;
-    if (frames == 0) return inTexId;
+    if (frames == 0) return texId;
 
     uint animStartId = info.texId;
 
-    uint srcFrame = inTexId - animStartId;
+    uint srcFrame = texId - animStartId;
     uint dividedTimer = uint(lc.globalTimer + 0.5) >> ANIM_SPEED;
 
     uint animFrameNum = frames == 2 || frames == 4 
