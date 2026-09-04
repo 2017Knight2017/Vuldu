@@ -285,7 +285,7 @@ pub(crate) fn look(ctx: &mut ActionContext, ent: Entity) {
 		&MobjType,
 	)>(ent);
 
-	let mut move_ctx = match query.get() {
+	let mut look_ctx = match query.get() {
 		Ok((anim, ai, pos, cur_sector, rot, mobj)) => LookContext {
 			world: ctx.world,
 			ent,
@@ -306,41 +306,46 @@ pub(crate) fn look(ctx: &mut ActionContext, ent: Entity) {
 		Err(_) => return,
 	};
 
-	check_sound(&mut move_ctx, ctx.sound_targets);
+	check_sound(&mut look_ctx, ctx.sound_targets);
 
-	check_sight(&mut move_ctx);
+	check_sight(&mut look_ctx);
 }
 
 fn check_sound(ctx: &mut LookContext, sound_targets: &mut [Option<Entity>]) {
-	if let Some(sound_target_ent) = sound_targets[ctx.cur_sector.0.0] {
-		if ctx.mobj.flags.contains(MobjFlags::AMBUSH) {
-			let mut sound_target_query = ctx
-				.world
-				.query_one::<(&Position, &CurrentSector, &MobjType)>(sound_target_ent);
-			let Ok((target_pos, target_sector, target)) =
-				sound_target_query.get().map(|(p, s, t)| (*p, *s, *t))
-			else {
-				return;
-			};
+	let Some(sound_target_ent) = sound_targets[ctx.cur_sector.0.0] else {
+		return;
+	};
 
-			if !p_check_sight(
-				&SightContext {
-					pos: ctx.pos,
-					cur_sector: ctx.cur_sector,
-					height: ctx.db.mobjinfo[&ctx.mobj.type_].height,
-					target_pos,
-					target_sector,
-					target_height: ctx.db.mobjinfo[&target.type_].height,
-					level: ctx.level,
-				},
-				ctx.traversal,
-			) {
-				return;
-			}
-		}
+	let Ok((target_pos, target_sector, target)) = ctx
+		.world
+		.query_one::<(&Position, &CurrentSector, &MobjType)>(sound_target_ent)
+		.get()
+		.map(|(p, s, t)| (*p, *s, *t))
+	else {
+		return;
+	};
 
-		wake_up_monster(ctx, sound_target_ent);
+	if !target.flags.contains(MobjFlags::SHOOTABLE) {
+		return;
 	}
+
+	if !ctx.mobj.flags.contains(MobjFlags::AMBUSH)
+		&& !p_check_sight(
+			&SightContext {
+				pos: ctx.pos,
+				cur_sector: ctx.cur_sector,
+				height: ctx.db.mobjinfo[&ctx.mobj.type_].height,
+				target_pos,
+				target_sector,
+				target_height: ctx.db.mobjinfo[&target.type_].height,
+				level: ctx.level,
+			},
+			ctx.traversal,
+		) {
+		return;
+	}
+
+	wake_up_monster(ctx, sound_target_ent);
 }
 
 fn check_sight(ctx: &mut LookContext) {

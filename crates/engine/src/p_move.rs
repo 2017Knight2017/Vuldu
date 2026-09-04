@@ -168,13 +168,16 @@ fn p_check_pos(ctx: &mut MoveContext) -> bool {
 					continue;
 				}
 
-				let mut query = ctx
+				let Ok((other_type, other_pos, raw_target)) = ctx
 					.world
-					.query_one::<(&MobjType, &Position, Option<&Target>)>(other_entity);
+					.query_one::<(&MobjType, &Position, Option<&Target>)>(other_entity)
+					.get()
+					.map(|(ty, p, ta)| (*ty, *p, ta.copied()))
+				else {
+					continue;
+				};
 
-				if let Ok((other_type, other_pos, raw_target)) = query.get()
-					&& !pit_check_thing(ctx, raw_target, other_entity, other_type, other_pos)
-				{
+				if !pit_check_thing(ctx, raw_target, other_entity, other_type, other_pos) {
 					return false;
 				}
 			}
@@ -192,10 +195,10 @@ fn p_check_pos(ctx: &mut MoveContext) -> bool {
 
 fn pit_check_thing(
 	ctx: &mut MoveContext,
-	raw_target: Option<&Target>,
+	raw_target: Option<Target>,
 	other_ent: Entity,
-	other_type: &MobjType,
-	other_pos: &Position,
+	other_type: MobjType,
+	other_pos: Position,
 ) -> bool {
 	if !other_type
 		.flags

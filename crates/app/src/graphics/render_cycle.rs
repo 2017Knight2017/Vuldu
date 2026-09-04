@@ -198,9 +198,11 @@ impl GraphicsContext {
 	) -> Vec<UiInstance> {
 		match game_state {
 			GameState::Level | GameState::Demoscreen => {
-				let mut query =
-					world.query_one::<(&PlayerInventory, &PlayerStats, &Health)>(player_entity);
-				let Ok((inv, stats, hp)) = query.get().map(|(i, s, h)| (*i, *s, *h)) else {
+				let Ok((inv, stats, hp)) = world
+					.query_one::<(&PlayerInventory, &PlayerStats, &Health)>(player_entity)
+					.get()
+					.map(|(i, s, h)| (*i, *s, *h))
+				else {
 					return Vec::new();
 				};
 

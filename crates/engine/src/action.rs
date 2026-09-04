@@ -212,11 +212,11 @@ pub(crate) fn chase(ctx: &mut ActionContext, ent: Entity) {
 		return;
 	}
 
-	let mut target_query = ctx
+	let Ok((target_hp, target_pos, target_cur_sector, target)) = ctx
 		.world
-		.query_one::<(&Health, &Position, &CurrentSector, &MobjType)>(target.0);
-	let Ok((target_hp, target_pos, target_cur_sector, target)) =
-		target_query.get().map(|(h, p, s, t)| (*h, *p, *s, *t))
+		.query_one::<(&Health, &Position, &CurrentSector, &MobjType)>(target.0)
+		.get()
+		.map(|(h, p, s, t)| (*h, *p, *s, *t))
 	else {
 		if let Some(spawn_state) = mobj_info.spawn_state {
 			set_mobj_state(ent, ai, anim, spawn_state, ctx.actions, ctx.db, 0);
