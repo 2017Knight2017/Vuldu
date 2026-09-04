@@ -38,24 +38,33 @@ void VulkanRenderer::createDescriptorSetLayout() {
     sectorHeightsLayoutBinding.pImmutableSamplers = nullptr;
     sectorHeightsLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
+    VkDescriptorSetLayoutBinding switchesLayoutBinding{};
+    switchesLayoutBinding.binding = 5;
+    switchesLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    switchesLayoutBinding.descriptorCount = 1;
+    switchesLayoutBinding.pImmutableSamplers = nullptr;
+    switchesLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
     VkDescriptorSetLayoutBinding textureSamplerLayoutBinding{};
-    textureSamplerLayoutBinding.binding = 5;
+    textureSamplerLayoutBinding.binding = 6;
     textureSamplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     textureSamplerLayoutBinding.descriptorCount = MAX_TEXTURES;
     textureSamplerLayoutBinding.pImmutableSamplers = nullptr;
     textureSamplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
     
 
-    std::array<VkDescriptorSetLayoutBinding, 6> bindings = {
+    std::array<VkDescriptorSetLayoutBinding, 7> bindings = {
         mvpLayoutBinding,
         paletteLayoutBinding, 
         colormapLayoutBinding,
         animLevelLayoutBinding,
         sectorHeightsLayoutBinding,
+        switchesLayoutBinding,
         textureSamplerLayoutBinding,
     };
 
-    std::array<VkDescriptorBindingFlags, 6> bindingFlags = {
+    std::array<VkDescriptorBindingFlags, 7> bindingFlags = {
+        0,
         0,
         0,
         0,
@@ -143,7 +152,7 @@ void VulkanRenderer::createUiInstanceBuffers() {
 }
 
 void VulkanRenderer::createDescriptorPool() {
-	std::array<VkDescriptorPoolSize, 6> poolSizes{};
+	std::array<VkDescriptorPoolSize, 7> poolSizes{};
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	poolSizes[0].descriptorCount = MAX_FRAMES_IN_FLIGHT;
     poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -154,8 +163,10 @@ void VulkanRenderer::createDescriptorPool() {
 	poolSizes[3].descriptorCount = MAX_FRAMES_IN_FLIGHT;
     poolSizes[4].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 	poolSizes[4].descriptorCount = MAX_FRAMES_IN_FLIGHT;
-    poolSizes[5].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	poolSizes[5].descriptorCount = MAX_FRAMES_IN_FLIGHT * MAX_TEXTURES;
+    poolSizes[5].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	poolSizes[5].descriptorCount = MAX_FRAMES_IN_FLIGHT;
+    poolSizes[6].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	poolSizes[6].descriptorCount = MAX_FRAMES_IN_FLIGHT * MAX_TEXTURES;
 	
 	VkDescriptorPoolCreateInfo poolInfo{};
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;

@@ -49,6 +49,7 @@ layout(location = 4) out float fragViewZ;
 layout(location = 5) out float fragScrollDir;
 layout(location = 6) out vec3 fragBarycentric;
 layout(location = 7) out vec3 fragTriangleColor;
+layout(location = 8) out flat uint fragIsMid;
 
 const uint ANIM_SPEED = 3;
 
@@ -93,6 +94,8 @@ const vec3 BARY[3] = vec3[3](
 
 const uint SKY_CEIL = 65533;
 
+const uint TYPE_FLOOR = 0;
+const uint TYPE_CEIL = 1;
 const uint TYPE_STATIC = 2;
 const uint OP_COPY_A = 0;
 const uint OP_MIN = 1;
@@ -101,6 +104,8 @@ const uint SECTOR_MASK = 0x7FFFFFF;
 const uint TYPE_SHIFT = 27;
 const uint OP_SHIFT = 29;
 const uint ANCHOR_SHIFT = 31;
+const uint MID_SHIFT = 29;
+const uint PEG_SHIFT = 30;
 
 void main() {
     fragLightLevel = inLightLevel;
@@ -126,7 +131,18 @@ void main() {
     	pos.y = (op == OP_MIN) ? min(pos.y, yb) : max(pos.y, yb);
     }
 
-    if (an) {
+    fragIsMid = inPlaneB >> MID_SHIFT;
+    if (fragIsMid != 0) {
+        float openLow  = max(sec.heights[sectorA*2 + TYPE_FLOOR],
+                             sec.heights[sectorB*2 + TYPE_FLOOR]);
+        float openHigh = min(sec.heights[sectorA*2 + TYPE_CEIL],
+                             sec.heights[sectorB*2 + TYPE_CEIL]);
+
+        float texH = 1.0 / inInvTexH;
+        float anchor = bool(fragIsMid >> 1) ? openLow + texH : openHigh;
+        
+        v += (anchor - pos.y) * inInvTexH;
+    } else if (an) {
     	float anchor = sec.heights[sectorB*2 + pTypeB];
     	v += (anchor - pos.y) * inInvTexH;
     }

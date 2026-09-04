@@ -4,7 +4,7 @@
 layout(binding = 1) uniform sampler2D palTex;
 layout(binding = 2) uniform usampler2D colormapTex;
 
-layout(binding = 5) uniform sampler2D texSamplers[];
+layout(binding = 6) uniform sampler2D texSamplers[];
 
 layout(push_constant) uniform LevelConstants {
     vec2 resolution;
@@ -24,6 +24,7 @@ layout(location = 4) in float fragViewZ;
 layout(location = 5) in float fragScrollDir;
 layout(location = 6) in vec3 fragBarycentric;
 layout(location = 7) in vec3 fragTriangleColor;
+layout(location = 8) flat in uint fragIsMid;
 
 layout(location = 0) out vec4 outColor;
 
@@ -38,6 +39,8 @@ const uint SKY_WALL = 65534;
 const uint SKY_CEIL = 65533;
 
 void main() {
+    if (fragIsMid != 0 && (fragTexCoord.y < 0.0 || fragTexCoord.y >= 1.0)) discard;
+     
     if (bool(lc.flags & WIREMAP)) {
         vec3 d = fwidth(fragBarycentric);
         vec3 thickness = d * 1.5;

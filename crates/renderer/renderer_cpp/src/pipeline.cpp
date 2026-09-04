@@ -12,12 +12,12 @@ static const uint32_t levelFragShader[] =
 #include "level_frag.h"
 ;
 
-static const uint32_t spriteVertShader[] = 
-#include "sprite_vert.h"
+static const uint32_t objectVertShader[] = 
+#include "object_vert.h"
 ;
 
-static const uint32_t spriteFragShader[] = 
-#include "sprite_frag.h"
+static const uint32_t objectFragShader[] = 
+#include "object_frag.h"
 ;
 
 static const uint32_t uiVertShader[] = 
@@ -70,14 +70,14 @@ std::vector<VkVertexInputAttributeDescription> getLevelAttributes() {
     };
 }
 
-std::vector<VkVertexInputBindingDescription> getSpriteBindings() {
+std::vector<VkVertexInputBindingDescription> getObjectBindings() {
     return {
         { 0, sizeof(SpriteVertex), VK_VERTEX_INPUT_RATE_VERTEX },
         { 1, sizeof(ObjectInstance), VK_VERTEX_INPUT_RATE_INSTANCE }
     };
 }
 
-std::vector<VkVertexInputAttributeDescription> getSpriteAttributes() {
+std::vector<VkVertexInputAttributeDescription> getObjectAttributes() {
     return {
         { 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(SpriteVertex, pos) },
         { 1, 0, VK_FORMAT_R32G32_SFLOAT,    offsetof(SpriteVertex, texture_pos) },
@@ -303,7 +303,7 @@ void VulkanRenderer::createPipelines() {
 	renderingInfo.depthAttachmentFormat = findDepthFormat();
 	renderingInfo.stencilAttachmentFormat = VK_FORMAT_UNDEFINED;	
 
-	createSpritePipeline(
+	createObjectPipeline(
 		&inputAssembly,
 		&viewportState,
 		&rasterizer,
@@ -334,7 +334,7 @@ void VulkanRenderer::createPipelines() {
 	);
 }
 
-void VulkanRenderer::createSpritePipeline(
+void VulkanRenderer::createObjectPipeline(
 	VkPipelineInputAssemblyStateCreateInfo* inputAssembly,
 	VkPipelineViewportStateCreateInfo* viewportState,
 	VkPipelineRasterizationStateCreateInfo* rasterizer,
@@ -344,8 +344,8 @@ void VulkanRenderer::createSpritePipeline(
 	VkPipelineDynamicStateCreateInfo* dynamicState,
 	VkPipelineRenderingCreateInfo* renderingInfo
 ) {
-	VkShaderModule vertShaderModule = createShaderModule(this->device, spriteVertShader);
-    VkShaderModule fragShaderModule = createShaderModule(this->device, spriteFragShader);
+	VkShaderModule vertShaderModule = createShaderModule(this->device, objectVertShader);
+    VkShaderModule fragShaderModule = createShaderModule(this->device, objectFragShader);
 
 	VkPipelineShaderStageCreateInfo vertShaderInfo{};
 	vertShaderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -361,8 +361,8 @@ void VulkanRenderer::createSpritePipeline(
 
 	VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderInfo, fragShaderInfo};
 
-	auto bindingDescriptions = getSpriteBindings();
-	auto attributeDescriptions = getSpriteAttributes();
+	auto bindingDescriptions = getObjectBindings();
+	auto attributeDescriptions = getObjectAttributes();
 
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -374,7 +374,7 @@ void VulkanRenderer::createSpritePipeline(
 	VkPushConstantRange pushConstantRange{};
 	pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; 
 	pushConstantRange.offset = 0;
-	pushConstantRange.size = sizeof(SpritePushConstants);
+	pushConstantRange.size = sizeof(ObjectPushConstants);
 
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;

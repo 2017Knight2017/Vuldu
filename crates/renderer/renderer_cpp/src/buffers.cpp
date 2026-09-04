@@ -167,7 +167,7 @@ void VulkanRenderer::uploadTextureArray(
         VkWriteDescriptorSet descriptorWrite{};
         descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrite.dstSet = this->descriptorSets[i];
-        descriptorWrite.dstBinding = 5;
+        descriptorWrite.dstBinding = 6;
         descriptorWrite.dstArrayElement = 0;
         descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         descriptorWrite.descriptorCount = static_cast<uint32_t>(descriptors.size());
@@ -239,61 +239,6 @@ void VulkanRenderer::createTextureSamplers() {
 	VkResult textureSamplerResult = vkCreateSampler(this->device, &textureSamplerInfo, nullptr, &this->textureSampler);
 	if (textureSamplerResult != VK_SUCCESS) {
         throw std::runtime_error("failed to create texture sampler!");
-    }
-}
-
-void VulkanRenderer::createBufferBinding(
-	const void* data_ptr, 
-	VkDeviceSize bufferSize, 
-	VkBuffer& dstBuffer, 
-	VkDeviceMemory& dstBufferMemory,
-    uint32_t dstBinding
-) {
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMemory;
-    
-    createBuffer(
-        bufferSize, 
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
-        stagingBuffer, 
-        stagingBufferMemory
-    );
-
-    void* data;
-    vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
-    memcpy(data, data_ptr, bufferSize);
-    vkUnmapMemory(this->device, stagingBufferMemory);
-
-    createBuffer(
-        bufferSize, 
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
-        dstBuffer, 
-        dstBufferMemory
-    );
-
-    copyBuffer(stagingBuffer, dstBuffer, bufferSize);
-
-    vkDestroyBuffer(this->device, stagingBuffer, nullptr);
-    vkFreeMemory(this->device, stagingBufferMemory, nullptr);
-
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        VkDescriptorBufferInfo bufferInfo{};
-        bufferInfo.buffer = dstBuffer;
-        bufferInfo.offset = 0;
-        bufferInfo.range = bufferSize;
-
-        VkWriteDescriptorSet descriptorWrite{};
-        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrite.dstSet = this->descriptorSets[i];
-        descriptorWrite.dstBinding = dstBinding;
-        descriptorWrite.descriptorCount = 1;
-        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        descriptorWrite.pBufferInfo = &bufferInfo;
-
-        vkUpdateDescriptorSets(this->device, 1, &descriptorWrite, 0, nullptr);
     }
 }
 
@@ -433,8 +378,52 @@ void VulkanRenderer::uploadAnimLevelInfo(rust::Slice<const AnimLevelInfo> info) 
 
     VkDeviceSize bufferSize = info.size() * sizeof(AnimLevelInfo);
 
-    createBufferBinding(info.data(), bufferSize, this->animLevelBuffer, 
-        this->animLevelBufferMemory, 3);
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    
+    createBuffer(
+        bufferSize, 
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
+        stagingBuffer, 
+        stagingBufferMemory
+    );
+
+    void* data;
+    vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, info.data(), bufferSize);
+    vkUnmapMemory(this->device, stagingBufferMemory);
+
+    createBuffer(
+        bufferSize, 
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
+        this->animLevelBuffer, 
+        this->animLevelBufferMemory
+    );
+
+    copyBuffer(stagingBuffer, this->animLevelBuffer, bufferSize);
+
+    vkDestroyBuffer(this->device, stagingBuffer, nullptr);
+    vkFreeMemory(this->device, stagingBufferMemory, nullptr);
+
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = this->animLevelBuffer;
+        bufferInfo.offset = 0;
+        bufferInfo.range = bufferSize;
+
+        VkWriteDescriptorSet descriptorWrite{};
+        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite.dstSet = this->descriptorSets[i];
+        descriptorWrite.dstBinding = 3;
+        descriptorWrite.descriptorCount = 1;
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrite.pBufferInfo = &bufferInfo;
+
+        vkUpdateDescriptorSets(this->device, 1, &descriptorWrite, 0, nullptr);
+    }
 }
 
 void VulkanRenderer::initSectorHeights(rust::Slice<const float> heights) {
@@ -450,7 +439,7 @@ void VulkanRenderer::initSectorHeights(rust::Slice<const float> heights) {
         this->sectorHeightsBufferMemory
     );
 
-    vkMapMemory(device, sectorHeightsBufferMemory, 0, bufferSize, 0, &this->sectorHeightsBufferMapped);
+    vkMapMemory(this->device, this->sectorHeightsBufferMemory, 0, bufferSize, 0, &this->sectorHeightsBufferMapped);
     memcpy(this->sectorHeightsBufferMapped, heights.data(), bufferSize);
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
@@ -475,4 +464,44 @@ void VulkanRenderer::updateSectorHeights(rust::Slice<const float> heights) {
     VkDeviceSize bufferSize = heights.size() * sizeof(float);
 
     memcpy(this->sectorHeightsBufferMapped, heights.data(), bufferSize);
+}
+
+void VulkanRenderer::initSwitches(rust::Slice<const uint32_t> switches) {
+    if (switches.empty()) return;
+
+    VkDeviceSize bufferSize = switches.size() * sizeof(uint32_t);
+
+    createBuffer(
+        bufferSize,
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        this->switchesBuffer,
+        this->switchesBufferMemory
+    );
+
+    vkMapMemory(this->device, this->switchesBufferMemory, 0, bufferSize, 0, &this->switchesBufferMapped);
+    memcpy(this->switchesBufferMapped, switches.data(), bufferSize);
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = this->switchesBuffer;
+        bufferInfo.offset = 0;
+        bufferInfo.range = bufferSize;
+
+        VkWriteDescriptorSet descriptorWrite{};
+        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite.dstSet = this->descriptorSets[i];
+        descriptorWrite.dstBinding = 5;
+        descriptorWrite.descriptorCount = 1;
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptorWrite.pBufferInfo = &bufferInfo;
+
+        vkUpdateDescriptorSets(this->device, 1, &descriptorWrite, 0, nullptr);
+    }
+}
+
+void VulkanRenderer::updateSwitches(rust::Slice<const uint32_t> switches) {
+    VkDeviceSize bufferSize = switches.size() * sizeof(uint32_t);
+
+    memcpy(this->switchesBufferMapped, switches.data(), bufferSize);
 }

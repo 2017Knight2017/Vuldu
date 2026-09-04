@@ -6,6 +6,12 @@ pub const NF_SUBSECTOR: usize = 0x8000;
 const UNTEXED_WALL_ID: TextureId = TextureId(65535);
 const SKY_WALL_ID: TextureId = TextureId(65534);
 const SKY_CEIL_ID: TextureId = TextureId(65533);
+const MID_SHIFT: u32 = 29;
+const PEG_SHIFT: u32 = 30;
+const TYPE_SHIFT: u32 = 27;
+const OP_SHIFT: u32 = 29;
+const ANCHOR_SHIFT: u32 = 31;
+
 
 pub type TextureData = (TextureId, u32, u32, bool);
 
@@ -222,7 +228,8 @@ impl Level {
 			                         tex_name: &[u8],
 			                         v_offset: f32,
 			                         fake_flat_name: &[u8],
-			                         other_sector_ceilingpic: &[u8]|
+			                         other_sector_ceilingpic: &[u8],
+									 is_mid_unpegged: bool|
 			 -> Option<TextureId> {
 				let wall_height = y_high - y_low;
 
@@ -235,6 +242,8 @@ impl Level {
 					|| moves(high.a.sector)
 					|| moves(high.b.sector)
 					|| anchor.is_some_and(|an| moves(an.sector));
+
+				let is_mid = anchor.is_none();
 
 				let pack = |edge: QuadEdge| -> (u32, u32) {
 					let a_type = if moves(edge.a.sector) {
@@ -249,10 +258,17 @@ impl Level {
 					};
 
 					let plane_a_bits = edge.a.sector.0 as u32
-						| ((a_type as u32) << 27)
-						| ((edge.op as u32) << 29)
-						| (anchor_bit << 31);
-					let plane_b_bits = b.sector.0 as u32 | (b.type_ as u32) << 27;
+						| ((a_type as u32) << TYPE_SHIFT)
+						| ((edge.op as u32) << OP_SHIFT)
+						| (anchor_bit << ANCHOR_SHIFT);
+
+					let mid_bits = if is_mid {
+						(1 << MID_SHIFT) | if is_mid_unpegged { 1 << PEG_SHIFT } else { 0 }
+					} else { 
+						0 
+					};
+
+					let plane_b_bits = b.sector.0 as u32 | (b.type_ as u32) << TYPE_SHIFT | mid_bits;
 
 					(plane_a_bits, plane_b_bits)
 				};
@@ -272,7 +288,7 @@ impl Level {
 					.get(&to_u64(final_tex_name))
 					.unwrap_or(&(TextureId(0), 64, 64, false));
 
-				let inv_tex_h = if dynamic {
+				let inv_tex_h = if dynamic || anchor.is_none() {
 					1.0 / tex_height as f32
 				} else {
 					0.0
@@ -305,7 +321,7 @@ impl Level {
 					u_end = u_start + (wall_length / tex_width as f32);
 
 					let f_height = tex_height as f32;
-					if dynamic {
+					if dynamic || is_mid {
 						v_start = row_offset / f_height;
 						v_end = v_start;
 					} else {
@@ -412,6 +428,7 @@ impl Level {
 						v_offset,
 						&front_sector.floorpic,
 						&[],
+						false,
 					);
 				}
 				Some(b_sector_id) => {
@@ -451,6 +468,7 @@ impl Level {
 							v_offset,
 							&front_sector.ceilingpic,
 							&b_sector.ceilingpic,
+							false,
 						);
 					}
 
@@ -479,6 +497,7 @@ impl Level {
 							v_offset,
 							&b_sector.floorpic,
 							&front_sector.ceilingpic,
+							false
 						);
 					}
 
@@ -495,6 +514,7 @@ impl Level {
 							0.0,
 							&front_sector.floorpic,
 							&b_sector.ceilingpic,
+							dont_peg_bottom,
 						);
 					}
 				}

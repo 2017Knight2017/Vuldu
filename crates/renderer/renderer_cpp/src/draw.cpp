@@ -242,7 +242,7 @@ void VulkanRenderer::drawObjects() {
         
     vkCmdBindIndexBuffer(currentCommandBuffer, this->objectIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-    SpritePushConstants constants{};
+    ObjectPushConstants constants{};
     constants.paletteIndex = this->currentPaletteIndex;
     constants.flags = this->flags;
 
@@ -251,7 +251,7 @@ void VulkanRenderer::drawObjects() {
         this->spritePipelineLayout,
         VK_SHADER_STAGE_FRAGMENT_BIT,
         0,                    
-        sizeof(SpritePushConstants),
+        sizeof(ObjectPushConstants),
         &constants 
     );
 

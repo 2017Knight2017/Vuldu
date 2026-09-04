@@ -109,6 +109,8 @@ pub(crate) mod ffi {
 		);
 		fn initSectorHeights(self: Pin<&mut VulkanRenderer>, heights: &[f32]);
 		fn updateSectorHeights(self: Pin<&mut VulkanRenderer>, heights: &[f32]);
+		fn initSwitches(self: Pin<&mut VulkanRenderer>, switches: &[u32]);
+		fn updateSwitches(self: Pin<&mut VulkanRenderer>, switches: &[u32]);
 		fn uploadAnimLevelInfo(self: Pin<&mut VulkanRenderer>, info: &[AnimLevelInfo]);
 		fn setPaletteIndex(self: Pin<&mut VulkanRenderer>, idx: u32);
 		fn getPaletteIndex(self: Pin<&mut VulkanRenderer>) -> u32;

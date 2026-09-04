@@ -57,7 +57,7 @@ const std::vector<const char*> validationLayers = {
     "VK_LAYER_KHRONOS_validation"
 };
 
-struct SpritePushConstants {
+struct ObjectPushConstants {
     uint32_t paletteIndex;
     uint32_t flags;
 };
@@ -94,6 +94,8 @@ public:
     void uploadAnimLevelInfo(rust::Slice<const AnimLevelInfo> info);
     void initSectorHeights(rust::Slice<const float> heights);
     void updateSectorHeights(rust::Slice<const float> heights);
+    void initSwitches(rust::Slice<const uint32_t> switches);
+    void updateSwitches(rust::Slice<const uint32_t> switches);
     void setPaletteIndex(uint32_t idx);
     uint32_t getPaletteIndex();
     void setSkyIndex(uint32_t idx);
@@ -198,6 +200,9 @@ private:
     VkBuffer sectorHeightsBuffer = VK_NULL_HANDLE;
     VkDeviceMemory sectorHeightsBufferMemory = VK_NULL_HANDLE;
     void* sectorHeightsBufferMapped = VK_NULL_HANDLE;
+    VkBuffer switchesBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory switchesBufferMemory = VK_NULL_HANDLE;
+    void* switchesBufferMapped = VK_NULL_HANDLE;
 
     float globalTimer = 0.0;
     uint32_t currentPaletteIndex = 0;
@@ -267,7 +272,7 @@ private:
     void endSingleTimeCommands(VkCommandBuffer commandBuffer);
     VkFormat findDepthFormat();
 
-    void createSpritePipeline(
+    void createObjectPipeline(
     	VkPipelineInputAssemblyStateCreateInfo* inputAssembly,
     	VkPipelineViewportStateCreateInfo* viewportState,
     	VkPipelineRasterizationStateCreateInfo* rasterizer,
