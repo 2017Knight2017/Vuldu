@@ -2,6 +2,7 @@ use std::collections::VecDeque;
 
 use engine::*;
 use hecs::{CommandBuffer, Entity, World};
+use rustc_hash::FxHashMap;
 use wad_parser::Level;
 use winit::keyboard::PhysicalKey;
 
@@ -12,7 +13,7 @@ pub struct GameContext {
 	pub level: Level,
 	pub state: GameState,
 	pub config: GameConfig,
-	pub blocklists: Vec<Vec<Entity>>,
+	pub blocklists: Vec<FxHashMap<Entity, Collider>>,
 	pub graphics_buffer: Vec<GraphicsCommand>,
 	sound_targets: Vec<Option<Entity>>,
 	world_events: Vec<WorldEvent>,
@@ -29,7 +30,7 @@ impl GameContext {
 		Self {
 			world: World::new(),
 			sound_targets: vec![None; level.state.sectors.len()],
-			blocklists: vec![Vec::new(); level.geom.blockmap.row_num * level.geom.blockmap.col_num],
+			blocklists: vec![FxHashMap::default(); level.geom.blockmap.row_num * level.geom.blockmap.col_num],
 			traversal: Traversal::for_level(&level),
 			level,
 			graphics_buffer: Vec::new(),
@@ -84,7 +85,7 @@ impl GameContext {
 			&mut self.level,
 			self.config,
 			&mut audio.buffer,
-			&self.blocklists,
+			&mut self.blocklists,
 			&mut self.world_events,
 			&mut self.mobj_flag_buffer,
 			&mut self.traversal,

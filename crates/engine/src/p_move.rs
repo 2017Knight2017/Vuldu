@@ -7,6 +7,13 @@ use hecs::{Entity, World};
 use rustc_hash::FxHashMap;
 use wad_parser::{AABB, Level, LineFlags, LineId, SectorId};
 
+#[derive(Debug, Clone, Copy)]
+pub struct Collider {
+	pub pos: Position,
+	pub mobj: MobjType,
+	pub target: Option<Target>
+}
+
 pub(crate) struct MoveContext<'a> {
 	pub(crate) ent: Entity,
 	pub(crate) pos: Position,
@@ -15,9 +22,8 @@ pub(crate) struct MoveContext<'a> {
 	pub(crate) mobj_info: &'a MobjInfo,
 	pub(crate) imi: &'a mut InstantMoveIntent,
 	pub(crate) level: &'a Level,
-	pub(crate) world: &'a World,
 	pub(crate) random: &'a mut Random,
-	pub(crate) blocklists: &'a [Vec<Entity>],
+	pub(crate) blocklists: &'a [FxHashMap<Entity, Collider>],
 	pub(crate) world_events: &'a mut Vec<WorldEvent>,
 	pub(crate) db: &'a Database,
 	pub(crate) inner: MoveContextInner,
@@ -163,21 +169,12 @@ fn p_check_pos(ctx: &mut MoveContext) -> bool {
 		for c in min_col..=max_col {
 			let idx = r * ctx.level.geom.blockmap.col_num + c;
 
-			for &other_entity in ctx.blocklists[idx].iter() {
-				if other_entity == ctx.ent {
-					continue;
-				}
-
-				let Ok((other_type, other_pos, raw_target)) = ctx
-					.world
-					.query_one::<(&MobjType, &Position, Option<&Target>)>(other_entity)
-					.get()
-					.map(|(ty, p, ta)| (*ty, *p, ta.copied()))
-				else {
+			for &other_ent in ctx.blocklists[idx].keys() {
+				if other_ent == ctx.ent {
 					continue;
 				};
 
-				if !pit_check_thing(ctx, raw_target, other_entity, other_type, other_pos) {
+				if !pit_check_thing(ctx, other_ent, ctx.blocklists[idx][&other_ent]) {
 					return false;
 				}
 			}
@@ -195,29 +192,24 @@ fn p_check_pos(ctx: &mut MoveContext) -> bool {
 
 fn pit_check_thing(
 	ctx: &mut MoveContext,
-	raw_target: Option<Target>,
 	other_ent: Entity,
-	other_type: MobjType,
-	other_pos: Position,
+	coll: Collider,
 ) -> bool {
-	if !other_type
+	if !coll
+		.mobj
 		.flags
 		.intersects(MobjFlags::SOLID | MobjFlags::SPECIAL | MobjFlags::SHOOTABLE)
 	{
 		return true;
 	}
 
-	let other_info = &ctx.db.mobjinfo[&other_type.type_];
+	let other_info = &ctx.db.mobjinfo[&coll.mobj.type_];
 
 	let blockdist = ctx.mobj_info.radius + other_info.radius;
 
-	if (ctx.goal_pos.0 - other_pos.x).abs() >= blockdist
-		|| (ctx.goal_pos.2 - other_pos.z).abs() >= blockdist
+	if (ctx.goal_pos.0 - coll.pos.x).abs() >= blockdist
+		|| (ctx.goal_pos.2 - coll.pos.z).abs() >= blockdist
 	{
-		return true;
-	}
-
-	if ctx.ent == other_ent {
 		return true;
 	}
 
@@ -237,32 +229,32 @@ fn pit_check_thing(
 	}
 
 	if ctx.mobj.flags.contains(MobjFlags::MISSILE) {
-		if ctx.goal_pos.1 > other_pos.y + other_info.height {
+		if ctx.goal_pos.1 > coll.pos.y + other_info.height {
 			return true;
 		}
-		if ctx.goal_pos.1 + ctx.mobj_info.height < other_pos.y {
+		if ctx.goal_pos.1 + ctx.mobj_info.height < coll.pos.y {
 			return true;
 		}
 
-		if let Some(target) = raw_target {
+		if let Some(target) = coll.target {
 			let is_same_species = target.0 == other_ent
-				|| ctx.mobj.type_ == other_type.type_
-				|| (ctx.mobj.type_ == MobjNum::Knight && other_type.type_ == MobjNum::Bruiser)
-				|| (ctx.mobj.type_ == MobjNum::Bruiser && other_type.type_ == MobjNum::Knight);
+				|| ctx.mobj.type_ == coll.mobj.type_
+				|| (ctx.mobj.type_ == MobjNum::Knight && coll.mobj.type_ == MobjNum::Bruiser)
+				|| (ctx.mobj.type_ == MobjNum::Bruiser && coll.mobj.type_ == MobjNum::Knight);
 
 			if is_same_species {
 				if other_ent == target.0 {
 					return true;
 				}
 
-				if other_type.type_ != MobjNum::Player {
+				if coll.mobj.type_ != MobjNum::Player {
 					return false;
 				}
 			}
 		}
 
-		if !other_type.flags.contains(MobjFlags::SHOOTABLE) {
-			return !other_type.flags.contains(MobjFlags::SOLID);
+		if !coll.mobj.flags.contains(MobjFlags::SHOOTABLE) {
+			return !coll.mobj.flags.contains(MobjFlags::SOLID);
 		}
 
 		let damage = ((ctx.random.p() % 0b111) as u32 + 1) * ctx.mobj_info.damage;
@@ -275,8 +267,8 @@ fn pit_check_thing(
 		return false;
 	}
 
-	if other_type.flags.contains(MobjFlags::SPECIAL) {
-		let solid = other_type.flags.contains(MobjFlags::SOLID);
+	if coll.mobj.flags.contains(MobjFlags::SPECIAL) {
+		let solid = coll.mobj.flags.contains(MobjFlags::SOLID);
 		if ctx.mobj.flags.contains(MobjFlags::PICKUP) {
 			ctx.world_events.push(WorldEvent::TouchSpecialThing {
 				item_ent: other_ent,
@@ -286,7 +278,7 @@ fn pit_check_thing(
 		return !solid;
 	}
 
-	!other_type.flags.contains(MobjFlags::SOLID)
+	!coll.mobj.flags.contains(MobjFlags::SOLID)
 }
 
 fn pit_check_line(ctx: &mut MoveContext, bbox: AABB, line_id: LineId) -> bool {
@@ -356,7 +348,7 @@ pub fn try_move_system(
 	world: &World,
 	level: &Level,
 	random: &mut Random,
-	blocklists: &[Vec<Entity>],
+	blocklists: &[FxHashMap<Entity, Collider>],
 	world_events: &mut Vec<WorldEvent>,
 ) -> PendingMoves {
 	let db = DB.get().unwrap();
@@ -381,7 +373,6 @@ pub fn try_move_system(
 			mobj_info: &db.mobjinfo[&mobj.type_],
 			imi,
 			level,
-			world,
 			random,
 			blocklists,
 			world_events,
@@ -439,7 +430,7 @@ pub fn apply_monster_movement_system(
 	world: &World,
 	mut pending_moves: PendingMoves,
 	level: &Level,
-	blocklists: &mut [Vec<Entity>],
+	blocklists: &mut [FxHashMap<Entity, Collider>],
 ) {
 	let mut query = world
 		.query::<(Entity, &mut Position, &mut CurrentSector)>()
@@ -474,8 +465,9 @@ pub fn apply_monster_movement_system(
 			let prev_idx = prev_row * level.geom.blockmap.col_num + prev_col;
 			let new_idx = new_row * level.geom.blockmap.col_num + new_col;
 
-			blocklists[prev_idx].retain(|&e| e != ent);
-			blocklists[new_idx].push(ent);
+			let mut coll = blocklists[prev_idx].remove(&ent).unwrap();
+			coll.pos = *pos;
+			blocklists[new_idx].insert(ent, coll);
 		}
 
 		if let Some(s) = new_sector {

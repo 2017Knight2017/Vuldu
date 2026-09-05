@@ -1,5 +1,6 @@
 use crate::*;
 use hecs::{CommandBuffer, Entity, EntityBuilder, World};
+use rustc_hash::FxHashMap;
 use wad_parser::{
 	map::Level,
 	wad_types::{MapThing, ThingFlags},
@@ -10,7 +11,7 @@ pub fn spawn_mobj(
 	world: &mut World,
 	random: &mut Random,
 	thing: &MapThing,
-	blocklists: &mut [Vec<Entity>],
+	blocklists: &mut [FxHashMap<Entity, Collider>],
 	cfg: &GameConfig,
 ) -> Option<Entity> {
 	let thing_type = (*MOBJTYPE_BY_DOOMEDNUM.get(&thing.type_)?)?;
@@ -107,21 +108,24 @@ pub fn spawn_mobj(
 
 	let mut entity_builder = EntityBuilder::new();
 
+	let pos = Position {
+		x,
+		y,
+		z,
+		prev_x: x,
+		prev_y: y,
+		prev_z: z,
+	};
+	let mobj = MobjType {
+		type_: thing_type,
+		flags: mobj_flags,
+	};
+
 	entity_builder
-		.add(Position {
-			x,
-			y,
-			z,
-			prev_x: x,
-			prev_y: y,
-			prev_z: z,
-		})
+		.add(pos)
 		.add(CurrentSector(sector_idx))
 		.add(Velocity::default())
-		.add(MobjType {
-			type_: thing_type,
-			flags: mobj_flags,
-		})
+		.add(mobj)
 		.add(Health(mobj_info.spawn_health));
 
 	if thing_type == MobjNum::Player {
@@ -170,10 +174,10 @@ pub fn spawn_mobj(
 			});
 	};
 
-	let entity = world.spawn(entity_builder.build());
-	blocklists[row * level.geom.blockmap.col_num + col].push(entity);
+	let ent = world.spawn(entity_builder.build());
+	blocklists[row * level.geom.blockmap.col_num + col].insert(ent, Collider { pos, mobj, target: None });
 
-	Some(entity)
+	Some(ent)
 }
 
 pub fn spawn_all_things(
@@ -181,7 +185,7 @@ pub fn spawn_all_things(
 	level: &Level,
 	random: &mut Random,
 	player_entity: &mut Entity,
-	blocklists: &mut [Vec<Entity>],
+	blocklists: &mut [FxHashMap<Entity, Collider>],
 	cfg: &GameConfig,
 ) {
 	let mut player_spawned = false;
@@ -205,14 +209,14 @@ pub fn kill_mobj(
 	world: &World,
 	level: &Level,
 	cmd: &mut CommandBuffer,
-	blocklists: &mut [Vec<Entity>],
+	blocklists: &mut [FxHashMap<Entity, Collider>],
 ) {
 	let Ok(pos) = world.get::<&Position>(ent) else {
 		return;
 	};
 
 	let (col, row) = level.geom.blockmap.world_to_grid(pos.x, pos.z);
-	blocklists[row * level.geom.blockmap.col_num + col].retain(|&e| e != ent);
+	blocklists[row * level.geom.blockmap.col_num + col].remove(&ent);
 
 	cmd.despawn(ent);
 }

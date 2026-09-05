@@ -1,10 +1,9 @@
 use hecs::{CommandBuffer, Entity, World};
+use rustc_hash::FxHashMap;
 use wad_parser::{Level, to_u64};
 
 use crate::{
-	AmmoType, Card, GameConfig, Health, MobjFlags, MobjNum, MobjType, NUMCARDS, NUMWEAPONS,
-	PICKUP_MESSAGES, PlayerInventory, PlayerStats, SfxEvent, SkillLevel, UpdatableUiType,
-	WeaponType, kill_mobj,
+	AmmoType, Card, Collider, GameConfig, Health, MobjFlags, MobjNum, MobjType, NUMCARDS, NUMWEAPONS, PICKUP_MESSAGES, PlayerInventory, PlayerStats, SfxEvent, SkillLevel, UpdatableUiType, WeaponType, kill_mobj,
 };
 
 #[derive(Debug)]
@@ -42,7 +41,7 @@ pub fn execute_events_system(
 	ui_to_update: &mut Vec<UpdatableUiType>,
 	cmd: &mut CommandBuffer,
 	audio: &mut Vec<SfxEvent>,
-	blocklists: &mut [Vec<Entity>],
+	blocklists: &mut [FxHashMap<Entity, Collider>],
 	graphics_buffer: &mut Vec<GraphicsCommand>,
 	cfg: GameConfig,
 	global_timer: u32,

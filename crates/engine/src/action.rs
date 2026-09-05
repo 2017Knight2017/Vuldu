@@ -1,10 +1,8 @@
 use crate::{
-	CurrentSector, DB, Database, GameConfig, Health, InstantMoveIntent, MobjAi, MobjFlagCommand,
-	MobjFlags, MobjType, MonsterRotation, MoveContext, MoveContextInner, Position, Random,
-	SfxEvent, SightContext, SkillLevel, SpriteAnimation, StateNum, Target, Traversal, WorldEvent,
-	look, p_check_melee_range, p_check_missile_range, p_move, p_new_chase_dir,
+	Collider, CurrentSector, DB, Database, GameConfig, Health, InstantMoveIntent, MobjAi, MobjFlagCommand, MobjFlags, MobjType, MonsterRotation, MoveContext, MoveContextInner, Position, Random, SfxEvent, SightContext, SkillLevel, SpriteAnimation, StateNum, Target, Traversal, WorldEvent, look, p_check_melee_range, p_check_missile_range, p_move, p_new_chase_dir,
 };
 use hecs::{CommandBuffer, Entity, World};
+use rustc_hash::FxHashMap;
 use serde::Deserialize;
 use wad_parser::{Level, to_u64};
 
@@ -134,7 +132,7 @@ pub(crate) struct ActionContext<'a> {
 	pub level: &'a mut Level,
 	pub cfg: GameConfig,
 	pub audio: &'a mut Vec<SfxEvent>,
-	pub blocklists: &'a [Vec<Entity>],
+	pub blocklists: &'a mut [FxHashMap<Entity, Collider>],
 	pub world_events: &'a mut Vec<WorldEvent>,
 	pub mobj_flags: &'a mut Vec<MobjFlagCommand>,
 	pub traversal: &'a mut Traversal,
@@ -151,7 +149,7 @@ pub fn action_system(
 	level: &mut Level,
 	cfg: GameConfig,
 	audio: &mut Vec<SfxEvent>,
-	blocklists: &[Vec<Entity>],
+	blocklists: &mut [FxHashMap<Entity, Collider>],
 	world_events: &mut Vec<WorldEvent>,
 	mobj_flags: &mut Vec<MobjFlagCommand>,
 	traversal: &mut Traversal,
@@ -247,7 +245,6 @@ pub(crate) fn chase(ctx: &mut ActionContext, ent: Entity) {
 		mobj_info,
 		imi,
 		level: ctx.level,
-		world: ctx.world,
 		random: ctx.random,
 		blocklists: ctx.blocklists,
 		world_events: ctx.world_events,
