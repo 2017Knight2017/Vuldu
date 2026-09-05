@@ -11,7 +11,7 @@ use wad_parser::{AABB, Level, LineFlags, LineId, SectorId};
 pub struct Collider {
 	pub pos: Position,
 	pub mobj: MobjType,
-	pub target: Option<Target>
+	pub target: Option<Target>,
 }
 
 pub(crate) struct MoveContext<'a> {
@@ -190,11 +190,7 @@ fn p_check_pos(ctx: &mut MoveContext) -> bool {
 	true
 }
 
-fn pit_check_thing(
-	ctx: &mut MoveContext,
-	other_ent: Entity,
-	coll: Collider,
-) -> bool {
+fn pit_check_thing(ctx: &mut MoveContext, other_ent: Entity, coll: Collider) -> bool {
 	if !coll
 		.mobj
 		.flags

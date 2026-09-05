@@ -175,7 +175,14 @@ pub fn spawn_mobj(
 	};
 
 	let ent = world.spawn(entity_builder.build());
-	blocklists[row * level.geom.blockmap.col_num + col].insert(ent, Collider { pos, mobj, target: None });
+	blocklists[row * level.geom.blockmap.col_num + col].insert(
+		ent,
+		Collider {
+			pos,
+			mobj,
+			target: None,
+		},
+	);
 
 	Some(ent)
 }

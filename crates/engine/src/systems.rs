@@ -1,13 +1,18 @@
-use crate::{DB, FRICTION, MobjAi, MobjFlags, MobjType, SpriteAnimation, Velocity};
+use crate::{
+	Active, Collider, DB, FRICTION, MobjAi, MobjFlags, MobjType, Position, SpriteAnimation, Target,
+	Velocity,
+};
 use hecs::{Entity, World};
+use rustc_hash::FxHashMap;
+use wad_parser::Level;
 
 pub enum MobjFlagCommand {
 	Remove { ent: Entity, flag: MobjFlags },
 	Add { ent: Entity, flag: MobjFlags },
 }
 
-pub fn apply_mobj_flags_system(mobj_flag_buffer: &mut Vec<MobjFlagCommand>, world: &World) {
-	for command in mobj_flag_buffer.drain(..) {
+pub fn apply_mobj_flags_system(mobj_flags: &mut Vec<MobjFlagCommand>, world: &World) {
+	for command in mobj_flags.drain(..) {
 		match command {
 			MobjFlagCommand::Remove { ent, flag } => {
 				world.get::<&mut MobjType>(ent).unwrap().flags.remove(flag);
@@ -17,6 +22,23 @@ pub fn apply_mobj_flags_system(mobj_flag_buffer: &mut Vec<MobjFlagCommand>, worl
 			}
 		}
 	}
+}
+
+pub fn update_blocklists_system(
+	world: &World,
+	level: &Level,
+	blocklists: &mut [FxHashMap<Entity, Collider>],
+) {
+	world
+		.query::<(Entity, &Position, &MobjType, Option<&Target>)>()
+		.with::<&Active>()
+		.iter()
+		.map(|(_e, p, m, t)| (_e, *p, *m, t.copied()))
+		.for_each(|(ent, pos, mobj, target)| {
+			let (col, row) = level.geom.blockmap.world_to_grid(pos.x, pos.z);
+			let idx = row * level.geom.blockmap.col_num + col;
+			*blocklists[idx].get_mut(&ent).unwrap() = Collider { pos, mobj, target };
+		});
 }
 
 /// Must be called after handle_position_input

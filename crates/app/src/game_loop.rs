@@ -17,7 +17,7 @@ pub struct GameContext {
 	pub graphics_buffer: Vec<GraphicsCommand>,
 	sound_targets: Vec<Option<Entity>>,
 	world_events: Vec<WorldEvent>,
-	mobj_flag_buffer: Vec<MobjFlagCommand>,
+	mobj_flags: Vec<MobjFlagCommand>,
 	actions: Vec<(Entity, ActionFunc)>,
 	cmd: CommandBuffer,
 	traversal: Traversal,
@@ -30,12 +30,15 @@ impl GameContext {
 		Self {
 			world: World::new(),
 			sound_targets: vec![None; level.state.sectors.len()],
-			blocklists: vec![FxHashMap::default(); level.geom.blockmap.row_num * level.geom.blockmap.col_num],
+			blocklists: vec![
+				FxHashMap::default();
+				level.geom.blockmap.row_num * level.geom.blockmap.col_num
+			],
 			traversal: Traversal::for_level(&level),
 			level,
 			graphics_buffer: Vec::new(),
 			world_events: Vec::new(),
-			mobj_flag_buffer: Vec::new(),
+			mobj_flags: Vec::new(),
 			cmd: CommandBuffer::new(),
 			actions: Vec::new(),
 			player_entity: Entity::DANGLING,
@@ -85,9 +88,9 @@ impl GameContext {
 			&mut self.level,
 			self.config,
 			&mut audio.buffer,
-			&mut self.blocklists,
+			&self.blocklists,
 			&mut self.world_events,
-			&mut self.mobj_flag_buffer,
+			&mut self.mobj_flags,
 			&mut self.traversal,
 			&mut self.cmd,
 			&mut self.sound_targets,
@@ -126,10 +129,11 @@ impl GameContext {
 			self.config,
 			self.global_timer,
 		);
-		apply_mobj_flags_system(&mut self.mobj_flag_buffer, &self.world);
+		apply_mobj_flags_system(&mut self.mobj_flags, &self.world);
 
 		audio.system(&self.world, self.player_entity);
 		animation_system(&self.world);
+		update_blocklists_system(&self.world, &self.level, &mut self.blocklists);
 	}
 
 	fn flush_command_buffer(&mut self) {

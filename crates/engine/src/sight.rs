@@ -1,8 +1,9 @@
 use crate::{
-	ActionContext, ActionFunc, Active, Collider, CurrentSector, Database, MobjAi, MobjFlags, MobjNum, MobjType, MonsterRotation, PLAYERHEIGHT, Pass, PlayerMarker, Position, Random, SfxEvent, SpriteAnimation, Target, Traversal, in_fov, set_mobj_state,
+	ActionContext, ActionFunc, Active, CurrentSector, Database, MobjAi, MobjFlags, MobjNum,
+	MobjType, MonsterRotation, PLAYERHEIGHT, Pass, PlayerMarker, Position, Random, SfxEvent,
+	SpriteAnimation, Target, Traversal, in_fov, set_mobj_state,
 };
 use hecs::{CommandBuffer, Entity, World};
-use rustc_hash::FxHashMap;
 use wad_parser::{Level, LineFlags, LineId, NF_SUBSECTOR, SubsectorId, to_u64};
 
 #[derive(Debug, Clone, Copy)]
@@ -268,7 +269,6 @@ pub(crate) struct LookContext<'a> {
 	pub(crate) traversal: &'a mut Traversal,
 	pub(crate) anim: &'a mut SpriteAnimation,
 	pub(crate) ai: &'a mut MobjAi,
-	pub(crate) blocklists: &'a mut [FxHashMap<Entity, Collider>],
 	pub(crate) pos: Position,
 	pub(crate) cur_sector: CurrentSector,
 	pub(crate) rot: MonsterRotation,
@@ -296,7 +296,6 @@ pub(crate) fn look(ctx: &mut ActionContext, ent: Entity) {
 			audio: ctx.audio,
 			actions: ctx.actions,
 			traversal: ctx.traversal,
-			blocklists: ctx.blocklists,
 			anim,
 			ai,
 			pos: *pos,
@@ -415,12 +414,5 @@ fn wake_up_monster(ctx: &mut LookContext, target: Entity) {
 		})
 	}
 
-	let (col, row) = ctx.level.geom.blockmap.world_to_grid(ctx.pos.x, ctx.pos.z);
-	let idx = row * ctx.level.geom.blockmap.col_num + col;
-	ctx
-		.blocklists[idx]
-		.get_mut(&ctx.ent)
-		.unwrap()
-		.target = Some(Target(target));
-	ctx.cmd.insert_one(ctx.ent, Active);
+	ctx.cmd.insert(ctx.ent, (Target(target), Active));
 }

@@ -73,7 +73,7 @@ pub struct PlayerInput {
 	pub mouse_delta_x: f32,
 }
 
-/* 
+/*
 Note: The absence of the app client is considered impossible,
 so we can unwrap all relevant components. However, it isn't
 applicable when we treat player as an object in the World.
