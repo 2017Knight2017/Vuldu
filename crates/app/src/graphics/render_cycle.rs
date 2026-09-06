@@ -82,26 +82,31 @@ impl GraphicsContext {
 		sectors: &[SectorState],
 		alpha: f32,
 	) -> Vec<ObjectInstance> {
-		let Ok(pos) = world.get::<&Position>(player_entity).map(|p| *p) else {
+		let Ok((pos, prev_pos)) = world
+			.query_one::<(&Position, &PrevPosition)>(player_entity)
+			.get()
+			.map(|(p, pp)| (*p, *pp))
+		else {
 			return Vec::new();
 		};
 
-		let lerped_x = pos.prev_x * (1.0 - alpha) + pos.x * alpha;
-		let lerped_y = pos.prev_y * (1.0 - alpha) + pos.y * alpha;
-		let lerped_z = pos.prev_z * (1.0 - alpha) + pos.z * alpha;
+		let lerped_x = prev_pos.x * (1.0 - alpha) + pos.x * alpha;
+		let lerped_y = prev_pos.y * (1.0 - alpha) + pos.y * alpha;
+		let lerped_z = prev_pos.z * (1.0 - alpha) + pos.z * alpha;
 		let player_pos = Vec3::new(lerped_x, lerped_y, lerped_z);
 
 		let sprite_offsets = &self.offsets;
 
-		let process_entity = |(pos, rot, current_sector, anim): (
+		let process_entity = |(pos, prev_pos, rot, current_sector, anim): (
 			Position,
+			PrevPosition,
 			MonsterRotation,
 			CurrentSector,
 			SpriteAnimation,
 		)| {
-			let lerped_x = pos.prev_x * (1.0 - alpha) + pos.x * alpha;
-			let lerped_y = pos.prev_y * (1.0 - alpha) + pos.y * alpha;
-			let lerped_z = pos.prev_z * (1.0 - alpha) + pos.z * alpha;
+			let lerped_x = prev_pos.x * (1.0 - alpha) + pos.x * alpha;
+			let lerped_y = prev_pos.y * (1.0 - alpha) + pos.y * alpha;
+			let lerped_z = prev_pos.z * (1.0 - alpha) + pos.z * alpha;
 
 			let monster_pos = Vec3::new(lerped_x, lerped_y, lerped_z);
 
@@ -122,21 +127,16 @@ impl GraphicsContext {
 
 			let cached = anim.cached_rotations[sprite_rotation as usize];
 
-			let tex_id = cached.tex_id;
-			let tex_width = cached.width;
-			let tex_height = cached.height;
-			let need_flip = cached.need_flip;
-
 			// first 16 indices are reserved for sky textures,
 			// so we have to subtract MAX_SKY from the actual index
-			let (left_offset, top_offset) = sprite_offsets[tex_id.0 as usize - *MAX_SKY];
+			let (left_offset, top_offset) = sprite_offsets[cached.tex_id.0 as usize - *MAX_SKY];
 
-			let mut final_width = tex_width as f32;
+			let mut final_width = cached.width as f32;
 			let mut final_left_offset = left_offset as f32;
 
-			if need_flip {
+			if cached.need_flip {
 				final_width = -final_width;
-				final_left_offset = tex_width as f32 - final_left_offset;
+				final_left_offset = cached.width as f32 - final_left_offset;
 			}
 
 			let sector = &sectors[current_sector.0.0];
@@ -152,19 +152,22 @@ impl GraphicsContext {
 					final_left_offset,
 					(top_offset + anim.top_offset_shift) as f32,
 				],
-				sprite_size: [final_width, tex_height as f32],
+				sprite_size: [final_width, cached.height as f32],
 				light_level,
-				texture_id: tex_id.0,
+				texture_id: cached.tex_id.0,
 			}
 		};
 
 		let mut entities_query = world.query::<(
 			&Position,
+			&PrevPosition,
 			&MonsterRotation,
 			&CurrentSector,
 			&SpriteAnimation,
 		)>();
-		let iter = entities_query.iter().map(|(p, m, c, s)| (*p, *m, *c, *s));
+		let iter = entities_query
+			.iter()
+			.map(|(p, pp, m, c, s)| (*p, *pp, *m, *c, *s));
 
 		let (lower_bound, _) = iter.size_hint();
 		const PARALLEL_THRESHOLD: usize = 2000;
@@ -317,10 +320,13 @@ fn update_camera_from_player(
 	player_entity: Entity,
 	alpha: f32,
 ) {
-	let rot = world.get::<&PlayerRotation>(player_entity).unwrap();
-	let pos = world.get::<&Position>(player_entity).unwrap();
+	let (pos, prev_pos, rot) = world
+		.query_one::<(&Position, &PrevPosition, &PlayerRotation)>(player_entity)
+		.get()
+		.map(|(p, pp, r)| (*p, *pp, *r))
+		.unwrap();
 
-	let prev_pos = glam::vec3(pos.prev_x, pos.prev_y + EYEHEIGHT, pos.prev_z);
+	let prev_pos = glam::vec3(prev_pos.x, prev_pos.y + EYEHEIGHT, prev_pos.z);
 	let current_pos = glam::vec3(pos.x, pos.y + EYEHEIGHT, pos.z);
 	let interpolated_pos = prev_pos + (current_pos - prev_pos) * alpha;
 

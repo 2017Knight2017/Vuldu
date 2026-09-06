@@ -1,12 +1,7 @@
-use crate::{
-	ActionFunc, AmmoType, MobjFlagNum, MobjNum, NUMMOBJTYPES, NUMSTATES, NUMWEAPONS, StateNum,
-	WeaponType,
-};
+use crate::{ActionFunc, AmmoType, MobjFlagNum, NUMMOBJTYPES, NUMSTATES, NUMWEAPONS, StateNum};
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Deserializer};
-use std::{error::Error, sync::OnceLock};
-use strum::IntoEnumIterator;
-use toml;
+use std::sync::OnceLock;
 use wad_parser::TextureId;
 
 #[derive(Debug, Deserialize)]
@@ -98,7 +93,7 @@ where
 	Ok(bytes)
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) struct State {
 	#[allow(dead_code)]
 	pub sprite: [u8; 4],
@@ -109,7 +104,7 @@ pub(crate) struct State {
 	pub cached_rotations: [CachedStateSprite; 9],
 }
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct CachedStateSprite {
 	pub tex_id: TextureId,
 	pub width: u32,
@@ -140,16 +135,17 @@ struct WeaponConfig {
 
 #[derive(Debug, Default)]
 pub(crate) struct Database {
-	pub mobjinfo: FxHashMap<MobjNum, MobjInfo>,
-	pub states: FxHashMap<StateNum, State>,
-	pub weapon_info: FxHashMap<WeaponType, WeaponInfo>,
+	pub mobjinfo: Vec<MobjInfo>,
+	pub states: Vec<State>,
+	#[allow(dead_code)]
+	pub weapon_info: Vec<WeaponInfo>,
 }
 
 pub(crate) static DB: OnceLock<Database> = OnceLock::new();
 
 pub fn populate_database(
 	texture_data: &FxHashMap<u64, (TextureId, u32, u32, bool)>,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<(), toml::de::Error> {
 	let states_content = include_str!("../data_tables/states.toml");
 	let state_config: StateConfig = toml::from_str(states_content)?;
 
@@ -159,75 +155,52 @@ pub fn populate_database(
 	let weapon_content = include_str!("../data_tables/weapons.toml");
 	let weapon_config: WeaponConfig = toml::from_str(weapon_content)?;
 
-	let states_toml_count = state_config.states.len();
-	if states_toml_count != NUMSTATES {
-		return Err(format!(
-			"[ERROR]: Length of StateNum ({}) is not equal to the amount of states in states.toml ({})!",
-			NUMSTATES, states_toml_count
-		)
-		.into());
-	}
+	debug_assert_eq!(state_config.states.len(), NUMSTATES);
+	debug_assert_eq!(mobj_config.objects.len(), NUMMOBJTYPES);
+	debug_assert_eq!(weapon_config.weapons.len(), NUMWEAPONS);
 
-	let mobjinfo_toml_count = mobj_config.objects.len();
-	if mobjinfo_toml_count != NUMMOBJTYPES {
-		return Err(format!(
-			"[ERROR]: Length of MobjNum ({}) is not equal to the amount of mobjnums in mobjinfo.toml ({})!",
-			NUMMOBJTYPES, mobjinfo_toml_count
-		)
-		.into());
-	};
+	let states: Vec<State> = state_config
+		.states
+		.into_iter()
+		.map(|state| {
+			let mut cached_rotations = [CachedStateSprite::default(); 9];
+			let tex_prefix = state.sprite;
+			let frame_letter = (b'A' + state.frame as u8) as char;
 
-	let weapon_toml_count = weapon_config.weapons.len();
-	if weapon_toml_count != NUMWEAPONS {
-		return Err(format!(
-			"[ERROR]: Length of WeaponType ({}) is not equal to the amount of weapons in weapons.toml ({})!",
-			NUMWEAPONS, weapon_toml_count
-		)
-		.into());
-	};
-
-	let mut db = Database::default();
-
-	for (state_num, state) in StateNum::iter().zip(state_config.states) {
-		let mut cached_rotations = [CachedStateSprite::default(); 9];
-		let tex_prefix = state.sprite;
-		let frame_letter = (b'A' + state.frame as u8) as char;
-
-		let mut key_0 = pack_sprite_u64(&tex_prefix, frame_letter, 0);
-		if !texture_data.contains_key(&key_0) {
-			key_0 = pack_sprite_u64(&tex_prefix, frame_letter, 1);
-		}
-
-		let &(tex_id, width, height, need_flip) =
-			texture_data
-				.get(&key_0)
-				.unwrap_or(&(TextureId(0), 64, 64, false));
-		cached_rotations[0] = CachedStateSprite {
-			tex_id,
-			width,
-			height,
-			need_flip,
-		};
-
-		for rot in 1..=8_usize {
-			let lookup_key = pack_sprite_u64(&tex_prefix, frame_letter, rot as u8);
-
-			if !texture_data.contains_key(&lookup_key) {
-				cached_rotations[rot] = cached_rotations[0];
-			} else {
-				let &(tex_id, width, height, need_flip) = texture_data
-					.get(&lookup_key)
-					.unwrap_or(&(TextureId(0), 64, 64, false));
-				cached_rotations[rot] = CachedStateSprite {
-					tex_id,
-					width,
-					height,
-					need_flip,
-				};
+			let mut key_0 = pack_sprite_u64(&tex_prefix, frame_letter, 0);
+			if !texture_data.contains_key(&key_0) {
+				key_0 = pack_sprite_u64(&tex_prefix, frame_letter, 1);
 			}
-		}
-		db.states.insert(
-			state_num,
+
+			let &(tex_id, width, height, need_flip) =
+				texture_data
+					.get(&key_0)
+					.unwrap_or(&(TextureId(0), 64, 64, false));
+			cached_rotations[0] = CachedStateSprite {
+				tex_id,
+				width,
+				height,
+				need_flip,
+			};
+
+			for rot in 1..=8_usize {
+				let lookup_key = pack_sprite_u64(&tex_prefix, frame_letter, rot as u8);
+
+				if !texture_data.contains_key(&lookup_key) {
+					cached_rotations[rot] = cached_rotations[0];
+				} else {
+					let &(tex_id, width, height, need_flip) = texture_data
+						.get(&lookup_key)
+						.unwrap_or(&(TextureId(0), 64, 64, false));
+					cached_rotations[rot] = CachedStateSprite {
+						tex_id,
+						width,
+						height,
+						need_flip,
+					};
+				}
+			}
+
 			State {
 				sprite: state.sprite,
 				frame: state.frame,
@@ -235,20 +208,15 @@ pub fn populate_database(
 				action: state.action,
 				next_state: state.next_state,
 				cached_rotations,
-			},
-		);
-	}
+			}
+		})
+		.collect();
 
-	for (mobj_type, mobj_info) in MobjNum::iter().zip(mobj_config.objects) {
-		db.mobjinfo.insert(mobj_type, mobj_info);
-	}
-
-	for (weapon_type, weapon_info) in WeaponType::iter().zip(weapon_config.weapons) {
-		db.weapon_info.insert(weapon_type, weapon_info);
-	}
-
-	DB.set(db)
-		.unwrap_or_else(|_| eprintln!("Database has already been initialized!"));
+	let _ = DB.set(Database {
+		states,
+		mobjinfo: mobj_config.objects,
+		weapon_info: weapon_config.weapons,
+	});
 
 	Ok(())
 }

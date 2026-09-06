@@ -1,7 +1,7 @@
 use crate::{
 	Active, CurrentSector, DB, Database, FLOATSPEED, InstantMoveIntent, MAXRADIUS, MobjFlagCommand,
-	MobjFlags, MobjInfo, MobjNum, MobjType, MonsterRotation, Position, Random, Target, Velocity,
-	WorldEvent, XSPEED, YSPEED, p_box_on_line_side, p_use_special_line,
+	MobjFlags, MobjInfo, MobjNum, MobjType, MonsterRotation, Position, PrevPosition, Random,
+	Target, Velocity, WorldEvent, XSPEED, YSPEED, p_box_on_line_side, p_use_special_line,
 };
 use hecs::{Entity, World};
 use rustc_hash::FxHashMap;
@@ -23,7 +23,7 @@ pub(crate) struct MoveContext<'a> {
 	pub(crate) imi: &'a mut InstantMoveIntent,
 	pub(crate) level: &'a Level,
 	pub(crate) random: &'a mut Random,
-	pub(crate) blocklists: &'a [FxHashMap<Entity, Collider>],
+	pub(crate) blocklists: &'a [Vec<(Entity, Collider)>],
 	pub(crate) world_events: &'a mut Vec<WorldEvent>,
 	pub(crate) db: &'a Database,
 	pub(crate) inner: MoveContextInner,
@@ -137,7 +137,7 @@ pub(crate) fn p_try_move(ctx: &mut MoveContext) -> (bool, bool) {
 
 	ctx.imi.dx = ctx.goal_pos.0 - ctx.pos.x;
 	ctx.imi.dz = ctx.goal_pos.2 - ctx.pos.z;
-	ctx.imi.new_sector = Some(ctx.level.get_sector_by_pos(ctx.goal_pos.0, ctx.goal_pos.2));
+	ctx.imi.new_sector = Some(goal_sector_id);
 
 	(true, true)
 }
@@ -169,12 +169,12 @@ fn p_check_pos(ctx: &mut MoveContext) -> bool {
 		for c in min_col..=max_col {
 			let idx = r * ctx.level.geom.blockmap.col_num + c;
 
-			for &other_ent in ctx.blocklists[idx].keys() {
+			for &(other_ent, coll) in ctx.blocklists[idx].iter() {
 				if other_ent == ctx.ent {
 					continue;
 				};
 
-				if !pit_check_thing(ctx, other_ent, ctx.blocklists[idx][&other_ent]) {
+				if !pit_check_thing(ctx, other_ent, coll) {
 					return false;
 				}
 			}
@@ -199,7 +199,7 @@ fn pit_check_thing(ctx: &mut MoveContext, other_ent: Entity, coll: Collider) -> 
 		return true;
 	}
 
-	let other_info = &ctx.db.mobjinfo[&coll.mobj.type_];
+	let other_info = &ctx.db.mobjinfo[coll.mobj.type_ as usize];
 
 	let blockdist = ctx.mobj_info.radius + other_info.radius;
 
@@ -344,7 +344,7 @@ pub fn try_move_system(
 	world: &World,
 	level: &Level,
 	random: &mut Random,
-	blocklists: &[FxHashMap<Entity, Collider>],
+	blocklists: &[Vec<(Entity, Collider)>],
 	world_events: &mut Vec<WorldEvent>,
 ) -> PendingMoves {
 	let db = DB.get().unwrap();
@@ -366,7 +366,7 @@ pub fn try_move_system(
 			pos: *pos,
 			goal_pos: (pos.x + imi.dx, pos.y + imi.dy, pos.z + imi.dz),
 			mobj: *mobj,
-			mobj_info: &db.mobjinfo[&mobj.type_],
+			mobj_info: &db.mobjinfo[mobj.type_ as usize],
 			imi,
 			level,
 			random,
@@ -426,19 +426,19 @@ pub fn apply_monster_movement_system(
 	world: &World,
 	mut pending_moves: PendingMoves,
 	level: &Level,
-	blocklists: &mut [FxHashMap<Entity, Collider>],
+	blocklists: &mut [Vec<(Entity, Collider)>],
 ) {
 	let mut query = world
-		.query::<(Entity, &mut Position, &mut CurrentSector)>()
+		.query::<(Entity, &mut Position, &mut PrevPosition, &mut CurrentSector)>()
 		.with::<&Active>();
-	for (ent, pos, current_sector) in query.iter() {
+	for (ent, pos, prev_pos, current_sector) in query.iter() {
 		let Some((
 			prev_x,
 			prev_y,
 			prev_z,
-			new_x,
-			new_y,
-			new_z,
+			x,
+			y,
+			z,
 			prev_col,
 			prev_row,
 			new_col,
@@ -449,21 +449,28 @@ pub fn apply_monster_movement_system(
 			continue;
 		};
 
-		pos.prev_x = prev_x;
-		pos.prev_y = prev_y;
-		pos.prev_z = prev_z;
-
-		pos.x = new_x;
-		pos.y = new_y;
-		pos.z = new_z;
+		*prev_pos = PrevPosition {
+			x: prev_x,
+			y: prev_y,
+			z: prev_z,
+		};
+		*pos = Position { x, y, z };
 
 		if prev_col != new_col || prev_row != new_row {
 			let prev_idx = prev_row * level.geom.blockmap.col_num + prev_col;
 			let new_idx = new_row * level.geom.blockmap.col_num + new_col;
 
-			let mut coll = blocklists[prev_idx].remove(&ent).unwrap();
-			coll.pos = *pos;
-			blocklists[new_idx].insert(ent, coll);
+			for i in 0..blocklists[prev_idx].len() {
+				let (e, mut coll) = blocklists[prev_idx][i];
+				if e != ent {
+					continue;
+				}
+
+				coll.pos = *pos;
+				blocklists[new_idx].push((ent, coll));
+				blocklists[prev_idx].swap_remove(i);
+				break;
+			}
 		}
 
 		if let Some(s) = new_sector {

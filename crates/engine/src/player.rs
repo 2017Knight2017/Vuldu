@@ -1,6 +1,6 @@
 use crate::{
 	CurrentSector, NUMAMMO, NUMCARDS, NUMWEAPONS, PlayerMarker, PlayerRotation, PlayerState,
-	Position, Velocity, WeaponType,
+	Position, PrevPosition, Velocity, WeaponType,
 };
 use hecs::{Entity, World};
 use std::f64::consts::TAU;
@@ -138,12 +138,17 @@ pub fn handle_rotation_input(world: &World, player_ent: Entity, input: PlayerInp
 
 pub fn apply_player_movement_system(world: &World, map: &Level) {
 	let mut query = world
-		.query::<(&mut Position, &Velocity, &mut CurrentSector)>()
+		.query::<(
+			&mut Position,
+			&mut PrevPosition,
+			&Velocity,
+			&mut CurrentSector,
+		)>()
 		.with::<&PlayerMarker>();
-	for (pos, velocity, current_sector) in query.iter() {
-		pos.prev_x = pos.x;
-		pos.prev_y = pos.y;
-		pos.prev_z = pos.z;
+	for (pos, prev_pos, velocity, current_sector) in query.iter() {
+		prev_pos.x = pos.x;
+		prev_pos.y = pos.y;
+		prev_pos.z = pos.z;
 		pos.x += velocity.x;
 		pos.y += velocity.y;
 		pos.z += velocity.z;

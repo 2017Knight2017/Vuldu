@@ -5,7 +5,6 @@ use crate::{
 	WorldEvent, look, p_check_melee_range, p_check_missile_range, p_move, p_new_chase_dir,
 };
 use hecs::{CommandBuffer, Entity, World};
-use rustc_hash::FxHashMap;
 use serde::Deserialize;
 use wad_parser::{Level, to_u64};
 
@@ -99,7 +98,7 @@ pub fn ai_system(world: &World, actions: &mut Vec<(Entity, ActionFunc)>) {
 
 		ai.tics_left -= 1;
 		if ai.tics_left == 0 {
-			let current_state = db.states[&ai.current_state];
+			let current_state = db.states[ai.current_state as usize];
 
 			if let Some(next_state_num) = current_state.next_state {
 				set_mobj_state(ent, ai, anim, next_state_num, actions, db, 0);
@@ -119,7 +118,7 @@ pub(crate) fn set_mobj_state(
 ) {
 	ai.current_state = state_num;
 
-	let state = db.states[&state_num];
+	let state = db.states[state_num as usize];
 	ai.tics_left = state.tics + tics_to_add;
 	anim.cached_rotations = state.cached_rotations;
 
@@ -135,7 +134,7 @@ pub(crate) struct ActionContext<'a> {
 	pub level: &'a mut Level,
 	pub cfg: GameConfig,
 	pub audio: &'a mut Vec<SfxEvent>,
-	pub blocklists: &'a [FxHashMap<Entity, Collider>],
+	pub blocklists: &'a [Vec<(Entity, Collider)>],
 	pub world_events: &'a mut Vec<WorldEvent>,
 	pub mobj_flags: &'a mut Vec<MobjFlagCommand>,
 	pub traversal: &'a mut Traversal,
@@ -152,7 +151,7 @@ pub fn action_system(
 	level: &mut Level,
 	cfg: GameConfig,
 	audio: &mut Vec<SfxEvent>,
-	blocklists: &[FxHashMap<Entity, Collider>],
+	blocklists: &[Vec<(Entity, Collider)>],
 	world_events: &mut Vec<WorldEvent>,
 	mobj_flags: &mut Vec<MobjFlagCommand>,
 	traversal: &mut Traversal,
@@ -206,7 +205,7 @@ pub(crate) fn chase(ctx: &mut ActionContext, ent: Entity) {
 		return;
 	};
 
-	let mobj_info = &ctx.db.mobjinfo[&mobj.type_];
+	let mobj_info = &ctx.db.mobjinfo[mobj.type_ as usize];
 
 	if ai.reaction_time > 0 {
 		ai.reaction_time -= 1;
@@ -266,7 +265,7 @@ pub(crate) fn chase(ctx: &mut ActionContext, ent: Entity) {
 		return;
 	}
 
-	let target_info = &ctx.db.mobjinfo[&target.type_];
+	let target_info = &ctx.db.mobjinfo[target.type_ as usize];
 	let sight_ctx = SightContext {
 		pos,
 		cur_sector,

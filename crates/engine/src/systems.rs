@@ -3,7 +3,6 @@ use crate::{
 	Velocity,
 };
 use hecs::{Entity, World};
-use rustc_hash::FxHashMap;
 use wad_parser::Level;
 
 pub enum MobjFlagCommand {
@@ -27,7 +26,7 @@ pub fn apply_mobj_flags_system(mobj_flags: &mut Vec<MobjFlagCommand>, world: &Wo
 pub fn update_blocklists_system(
 	world: &World,
 	level: &Level,
-	blocklists: &mut [FxHashMap<Entity, Collider>],
+	blocklists: &mut [Vec<(Entity, Collider)>],
 ) {
 	world
 		.query::<(Entity, &Position, &MobjType, Option<&Target>)>()
@@ -37,7 +36,14 @@ pub fn update_blocklists_system(
 		.for_each(|(ent, pos, mobj, target)| {
 			let (col, row) = level.geom.blockmap.world_to_grid(pos.x, pos.z);
 			let idx = row * level.geom.blockmap.col_num + col;
-			*blocklists[idx].get_mut(&ent).unwrap() = Collider { pos, mobj, target };
+
+			for i in 0..blocklists[idx].len() {
+				let (e, coll) = &mut blocklists[idx][i];
+				if *e == ent {
+					*coll = Collider { pos, mobj, target };
+					break;
+				}
+			}
 		});
 }
 
@@ -55,7 +61,7 @@ pub fn animation_system(world: &World) {
 	let db = DB.get().unwrap();
 	let mut query = world.query::<(&mut SpriteAnimation, &MobjAi)>();
 	for (anim, ai) in query.iter() {
-		let state_data = db.states[&ai.current_state];
+		let state_data = db.states[ai.current_state as usize];
 		anim.cached_rotations = state_data.cached_rotations;
 		anim.full_bright = state_data.frame & (1 << 15) != 0;
 	}

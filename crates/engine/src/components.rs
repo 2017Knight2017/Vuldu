@@ -16,11 +16,16 @@ pub struct Position {
 	pub x: f32,
 	pub y: f32,
 	pub z: f32,
-	pub prev_x: f32,
-	pub prev_y: f32,
-	pub prev_z: f32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PrevPosition {
+	pub x: f32,
+	pub y: f32,
+	pub z: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct InstantMoveIntent {
 	pub dx: f32,
 	pub dy: f32,

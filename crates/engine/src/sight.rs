@@ -61,6 +61,15 @@ fn p_intercept_vector2(v2: &DivLine, v1: &DivLine) -> f32 {
 	num / den
 }
 
+enum BspFrame {
+	Evaluate(usize),
+	AfterFirstChild {
+		bsp_divline: DivLine,
+		side: i32,
+		second_child: usize,
+	},
+}
+
 struct SightContextInner<'a> {
 	strace: DivLine,
 	t2x: f32,
@@ -187,36 +196,62 @@ impl<'a> SightContextInner<'a> {
 	}
 
 	pub fn cross_bsp_node(&mut self, bspnum: usize, level: &Level) -> bool {
-		if bspnum & NF_SUBSECTOR != 0 {
-			if bspnum == u16::MAX as usize {
-				return self.cross_subsector(SubsectorId(0), level);
-			} else {
-				return self.cross_subsector(SubsectorId(bspnum & !NF_SUBSECTOR), level);
+		// Резервируем память под типичную глубину BSP-дерева (обычно не больше 32)
+		let mut stack = Vec::with_capacity(32);
+		stack.push(BspFrame::Evaluate(bspnum));
+
+		while let Some(frame) = stack.pop() {
+			match frame {
+				BspFrame::Evaluate(current_bspnum) => {
+					if current_bspnum & NF_SUBSECTOR != 0 {
+						let subsector_id = if current_bspnum == u16::MAX as usize {
+							0
+						} else {
+							current_bspnum & !NF_SUBSECTOR
+						};
+						if !self.cross_subsector(SubsectorId(subsector_id), level) {
+							return false;
+						}
+					} else {
+						let bsp = &level.geom.nodes[current_bspnum];
+						let bsp_divline = DivLine {
+							x: bsp.x as f32,
+							z: bsp.y as f32,
+							dx: bsp.dx as f32,
+							dz: bsp.dy as f32,
+						};
+
+						let mut side = p_divline_side(self.strace.x, self.strace.z, &bsp_divline);
+						if side == 2 {
+							side = 0;
+						}
+
+						let first_child = bsp.children[side as usize] as usize;
+						let second_child = bsp.children[(side ^ 1) as usize] as usize;
+
+						stack.push(BspFrame::AfterFirstChild {
+							bsp_divline,
+							side,
+							second_child,
+						});
+						stack.push(BspFrame::Evaluate(first_child));
+					}
+				}
+				BspFrame::AfterFirstChild {
+					bsp_divline,
+					side,
+					second_child,
+				} => {
+					let side2 = p_divline_side(self.t2x, self.t2z, &bsp_divline);
+					if side == side2 {
+						continue;
+					}
+					stack.push(BspFrame::Evaluate(second_child));
+				}
 			}
 		}
 
-		let bsp = &level.geom.nodes[bspnum];
-		let bsp_divline = DivLine {
-			x: bsp.x as f32,
-			z: bsp.y as f32,
-			dx: bsp.dx as f32,
-			dz: bsp.dy as f32,
-		};
-
-		let mut side = p_divline_side(self.strace.x, self.strace.z, &bsp_divline);
-		if side == 2 {
-			side = 0;
-		}
-
-		if !self.cross_bsp_node(bsp.children[side as usize] as usize, level) {
-			return false;
-		}
-
-		if side == p_divline_side(self.t2x, self.t2z, &bsp_divline) {
-			return true;
-		}
-
-		self.cross_bsp_node(bsp.children[(side ^ 1) as usize] as usize, level)
+		true
 	}
 }
 
@@ -334,10 +369,10 @@ fn check_sound(ctx: &mut LookContext, sound_targets: &mut [Option<Entity>]) {
 			&SightContext {
 				pos: ctx.pos,
 				cur_sector: ctx.cur_sector,
-				height: ctx.db.mobjinfo[&ctx.mobj.type_].height,
+				height: ctx.db.mobjinfo[ctx.mobj.type_ as usize].height,
 				target_pos,
 				target_sector,
-				target_height: ctx.db.mobjinfo[&target.type_].height,
+				target_height: ctx.db.mobjinfo[target.type_ as usize].height,
 				level: ctx.level,
 			},
 			ctx.traversal,
@@ -369,7 +404,7 @@ fn check_sight(ctx: &mut LookContext) {
 			&SightContext {
 				pos: ctx.pos,
 				cur_sector: ctx.cur_sector,
-				height: ctx.db.mobjinfo[&ctx.mobj.type_].height,
+				height: ctx.db.mobjinfo[ctx.mobj.type_ as usize].height,
 				target_pos: player_pos,
 				target_sector: player_sector,
 				target_height: PLAYERHEIGHT,
@@ -383,7 +418,7 @@ fn check_sight(ctx: &mut LookContext) {
 }
 
 fn wake_up_monster(ctx: &mut LookContext, target: Entity) {
-	let mobj_info = ctx.db.mobjinfo.get(&ctx.mobj.type_).unwrap();
+	let mobj_info = ctx.db.mobjinfo.get(ctx.mobj.type_ as usize).unwrap();
 
 	if let (Some(see_state_num), Some(mut see_sound)) = (mobj_info.see_state, mobj_info.see_sound) {
 		set_mobj_state(

@@ -1,6 +1,5 @@
 use crate::*;
 use hecs::{CommandBuffer, Entity, EntityBuilder, World};
-use rustc_hash::FxHashMap;
 use wad_parser::{
 	map::Level,
 	wad_types::{MapThing, ThingFlags},
@@ -11,7 +10,7 @@ pub fn spawn_mobj(
 	world: &mut World,
 	random: &mut Random,
 	thing: &MapThing,
-	blocklists: &mut [FxHashMap<Entity, Collider>],
+	blocklists: &mut [Vec<(Entity, Collider)>],
 	cfg: &GameConfig,
 ) -> Option<Entity> {
 	let thing_type = (*MOBJTYPE_BY_DOOMEDNUM.get(&thing.type_)?)?;
@@ -50,7 +49,7 @@ pub fn spawn_mobj(
 	let db = DB.get().unwrap();
 	let mobj_info = db
 		.mobjinfo
-		.get(&thing_type)
+		.get(thing_type as usize)
 		.unwrap_or_else(|| panic!("[FATAL] mobj_info with {:?} was not found!", thing_type));
 
 	let mut mobj_flags = mobj_info
@@ -72,8 +71,8 @@ pub fn spawn_mobj(
 
 	let spawn_state_data = db
 		.states
-		.get(&spawn_state)
-		.expect("Spawn state not found in database!");
+		.get(spawn_state as usize)
+		.unwrap_or_else(|| panic!("[FATAL] state {:?} was not found!", spawn_state));
 	let cached_rotations = spawn_state_data.cached_rotations;
 	let full_bright = spawn_state_data.frame & (1 << 15) != 0;
 
@@ -108,14 +107,8 @@ pub fn spawn_mobj(
 
 	let mut entity_builder = EntityBuilder::new();
 
-	let pos = Position {
-		x,
-		y,
-		z,
-		prev_x: x,
-		prev_y: y,
-		prev_z: z,
-	};
+	let pos = Position { x, y, z };
+
 	let mobj = MobjType {
 		type_: thing_type,
 		flags: mobj_flags,
@@ -123,6 +116,7 @@ pub fn spawn_mobj(
 
 	entity_builder
 		.add(pos)
+		.add(PrevPosition { x, y, z })
 		.add(CurrentSector(sector_idx))
 		.add(Velocity::default())
 		.add(mobj)
@@ -175,14 +169,14 @@ pub fn spawn_mobj(
 	};
 
 	let ent = world.spawn(entity_builder.build());
-	blocklists[row * level.geom.blockmap.col_num + col].insert(
+	blocklists[row * level.geom.blockmap.col_num + col].push((
 		ent,
 		Collider {
 			pos,
 			mobj,
 			target: None,
 		},
-	);
+	));
 
 	Some(ent)
 }
@@ -192,7 +186,7 @@ pub fn spawn_all_things(
 	level: &Level,
 	random: &mut Random,
 	player_entity: &mut Entity,
-	blocklists: &mut [FxHashMap<Entity, Collider>],
+	blocklists: &mut [Vec<(Entity, Collider)>],
 	cfg: &GameConfig,
 ) {
 	let mut player_spawned = false;
@@ -216,14 +210,14 @@ pub fn kill_mobj(
 	world: &World,
 	level: &Level,
 	cmd: &mut CommandBuffer,
-	blocklists: &mut [FxHashMap<Entity, Collider>],
+	blocklists: &mut [Vec<(Entity, Collider)>],
 ) {
 	let Ok(pos) = world.get::<&Position>(ent) else {
 		return;
 	};
 
 	let (col, row) = level.geom.blockmap.world_to_grid(pos.x, pos.z);
-	blocklists[row * level.geom.blockmap.col_num + col].remove(&ent);
+	blocklists[row * level.geom.blockmap.col_num + col].retain(|(e, _)| *e != ent);
 
 	cmd.despawn(ent);
 }

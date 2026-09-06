@@ -1,5 +1,4 @@
 use hecs::{CommandBuffer, Entity, World};
-use rustc_hash::FxHashMap;
 use wad_parser::{Level, to_u64};
 
 use crate::{
@@ -43,7 +42,7 @@ pub fn execute_events_system(
 	ui_to_update: &mut Vec<UpdatableUiType>,
 	cmd: &mut CommandBuffer,
 	audio: &mut Vec<SfxEvent>,
-	blocklists: &mut [FxHashMap<Entity, Collider>],
+	blocklists: &mut [Vec<(Entity, Collider)>],
 	graphics_buffer: &mut Vec<GraphicsCommand>,
 	cfg: GameConfig,
 	global_timer: u32,
