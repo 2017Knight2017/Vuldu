@@ -58,6 +58,9 @@ pub struct Health(pub i32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ReactionTime(pub u32);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct UseDown(pub bool);
+
 #[derive(Debug, Clone, Copy)]
 pub struct SpriteAnimation {
 	pub cached_rotations: [CachedStateSprite; 9],

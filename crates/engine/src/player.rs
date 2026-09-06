@@ -1,6 +1,5 @@
 use crate::{
-	CurrentSector, NUMAMMO, NUMCARDS, NUMWEAPONS, PlayerMarker, PlayerRotation, PlayerState,
-	Position, PrevPosition, Velocity, WeaponType,
+	CurrentSector, NUMAMMO, NUMCARDS, NUMWEAPONS, PlayerMarker, PlayerRotation, PlayerState, Position, PrevPosition, UseDown, Velocity, WeaponType, p_use_lines,
 };
 use hecs::{Entity, World};
 use std::f64::consts::TAU;
@@ -123,11 +122,11 @@ pub fn handle_position_input(world: &World, player_ent: Entity, input: PlayerInp
 	vel.y += move_vertically * 4.0;
 }
 
-pub fn handle_rotation_input(world: &World, player_ent: Entity, input: PlayerInput) {
+pub fn handle_rotation_input(world: &World, player_ent: Entity, mouse_delta_x: f32) {
 	let mut rot = world.get::<&mut PlayerRotation>(player_ent).unwrap();
 
 	let sensitivity = 0.008;
-	let angle_delta_rad = input.mouse_delta_x * sensitivity;
+	let angle_delta_rad = mouse_delta_x * sensitivity;
 	let factor = (angle_delta_rad as f64) / TAU;
 
 	let angle_delta = (factor * u32::MAX as f64) as i32;
@@ -136,7 +135,7 @@ pub fn handle_rotation_input(world: &World, player_ent: Entity, input: PlayerInp
 	rot.angle = rot.angle.wrapping_add_signed(angle_delta);
 }
 
-pub fn apply_player_movement_system(world: &World, map: &Level) {
+pub fn apply_player_movement_system(world: &World, level: &Level) {
 	let mut query = world
 		.query::<(
 			&mut Position,
@@ -153,6 +152,16 @@ pub fn apply_player_movement_system(world: &World, map: &Level) {
 		pos.y += velocity.y;
 		pos.z += velocity.z;
 
-		current_sector.0 = map.get_sector_by_pos(pos.x, pos.z);
+		current_sector.0 = level.get_sector_by_pos(pos.x, pos.z);
+	}
+}
+
+pub fn handle_use_input(world: &World, player_ent: Entity, use_pressed: bool) {
+	let mut use_down = world.get::<&mut UseDown>(player_ent).unwrap();
+	if use_pressed && !use_down.0 {
+		use_down.0 = true;
+		p_use_lines()
+	} else {
+		use_down.0 = false;
 	}
 }

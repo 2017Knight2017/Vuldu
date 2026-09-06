@@ -142,7 +142,9 @@ pub fn spawn_mobj(
 				tics: 0,
 				sx: 0.0,
 				sy: 0.0,
-			});
+			})
+			.add(UseDown(false));
+			
 	} else {
 		entity_builder
 			.add(InstantMoveIntent {

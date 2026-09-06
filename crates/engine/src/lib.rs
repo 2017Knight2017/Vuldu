@@ -18,6 +18,8 @@ pub mod ui;
 pub mod utils;
 pub mod weapons;
 pub mod world_event;
+pub mod plats;
+pub mod switches;
 
 pub use action::*;
 pub use angles::*;
@@ -39,3 +41,5 @@ pub use ui::*;
 pub use utils::*;
 pub use weapons::*;
 pub use world_event::*;
+pub use plats::*;
+pub use switches::*;

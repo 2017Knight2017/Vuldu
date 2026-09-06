@@ -1,12 +1,13 @@
-use wad_parser::{SCREEN_HEIGHT, Ui};
+use wad_parser::Ui;
 
 use crate::{
 	AmmoType, Card, Health, NUMCARDS, NUMWEAPONS, PlayerInventory, PlayerStats, WeaponType,
 };
 
+const SCREEN_HEIGHT: f32 = 200.0;
+const STBAR_Y_OFFSET: f32 = SCREEN_HEIGHT - 32.0;
 const STT_NUM_WIDTH: f32 = 14.0;
 const STYS_NUM_WIDTH: f32 = 4.0;
-const STBAR_Y_OFFSET: f32 = SCREEN_HEIGHT - 32.0;
 const NUM_Y_OFFSET: f32 = 4.0;
 
 pub struct STBarUi {

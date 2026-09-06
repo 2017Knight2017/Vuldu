@@ -1,7 +1,7 @@
 use crate::{
 	Active, CurrentSector, DB, Database, FLOATSPEED, InstantMoveIntent, MAXRADIUS, MobjFlagCommand,
 	MobjFlags, MobjInfo, MobjNum, MobjType, MonsterRotation, Position, PrevPosition, Random,
-	Target, Velocity, WorldEvent, XSPEED, YSPEED, p_box_on_line_side, p_use_special_line,
+	Target, Velocity, WorldEvent, XSPEED, YSPEED, p_box_on_line_side,
 };
 use hecs::{Entity, World};
 use rustc_hash::FxHashMap;
@@ -71,15 +71,15 @@ pub(crate) fn p_move(
 			return false;
 		}
 
-		let mut good = false;
+		//let mut good = false;
+		//
+		//for line_id in ctx.inner.spec_hit.drain(..) {
+		//	if p_use_special_line(ctx.level, line_id, ctx.mobj, None, ctx.pos, ) {
+		//		good = true;
+		//	}
+		//}
 
-		for line_id in ctx.inner.spec_hit.drain(..) {
-			if p_use_special_line(ctx.mobj, ctx.level.geom.lines[line_id.0]) {
-				good = true;
-			}
-		}
-
-		return good;
+		return false;
 	} else {
 		mobj_flags.push(MobjFlagCommand::Remove {
 			ent: ctx.ent,

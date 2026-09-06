@@ -289,9 +289,10 @@ impl Level {
 					.get(&to_u64(final_tex_name))
 					.unwrap_or(&(TextureId(0), 64, 64, false));
 
-				let is_switch = front_side
-					.switch_slot
-					.is_some_and(|id| self.state.switch_ids.contains(&id));
+				let is_switch = match front_side.switch_slot {
+					Some(slot) => tex_id.0 == self.state.switch_ids[slot as usize],
+					None => false,
+				};
 
 				let (final_tex_id, floor_tex_id) = if final_tex_name.starts_with(b"F_SKY1")
 					|| (other_sector_ceilingpic.starts_with(b"F_SKY1")

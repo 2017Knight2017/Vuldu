@@ -1,7 +1,5 @@
 use crate::{
-	ActionContext, ActionFunc, Active, CurrentSector, Database, MobjAi, MobjFlags, MobjNum,
-	MobjType, MonsterRotation, PLAYERHEIGHT, Pass, PlayerMarker, Position, Random, SfxEvent,
-	SpriteAnimation, Target, Traversal, in_fov, set_mobj_state,
+	ActionContext, ActionFunc, Active, CurrentSector, Database, MobjAi, MobjFlags, MobjNum, MobjType, MonsterRotation, PLAYERHEIGHT, Pass, PlayerMarker, Position, Random, SfxEvent, SpriteAnimation, Target, Traversal, in_fov, p_generic_line_side, set_mobj_state,
 };
 use hecs::{CommandBuffer, Entity, World};
 use wad_parser::{Level, LineFlags, LineId, NF_SUBSECTOR, SubsectorId, to_u64};
@@ -15,39 +13,7 @@ struct DivLine {
 }
 
 fn p_divline_side(x: f32, y: f32, node: &DivLine) -> i32 {
-	if node.dx == 0.0 {
-		if x == node.x {
-			return 2;
-		}
-		if x <= node.x {
-			return if node.dz > 0.0 { 1 } else { 0 };
-		}
-		return if node.dz < 0.0 { 1 } else { 0 };
-	}
-
-	if node.dz == 0.0 {
-		if y == node.z {
-			return 2;
-		}
-		if y <= node.z {
-			return if node.dx < 0.0 { 1 } else { 0 };
-		}
-		return if node.dx > 0.0 { 1 } else { 0 };
-	}
-
-	let dx = x - node.x;
-	let dy = y - node.z;
-
-	let left = node.dz * dx;
-	let right = dy * node.dx;
-
-	if right < left {
-		0 // front side
-	} else if (left - right).abs() < f32::EPSILON {
-		2 // on line
-	} else {
-		1 // back side
-	}
+    p_generic_line_side(x, y, node.x, node.z, node.dx, node.dz)
 }
 
 fn p_intercept_vector2(v2: &DivLine, v1: &DivLine) -> f32 {

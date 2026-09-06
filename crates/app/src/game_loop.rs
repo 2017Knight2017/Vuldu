@@ -14,6 +14,7 @@ pub struct GameContext {
 	pub config: GameConfig,
 	pub blocklists: Vec<Vec<(Entity, Collider)>>,
 	pub graphics_buffer: Vec<GraphicsCommand>,
+	buttons: Vec<Button>,
 	sound_targets: Vec<Option<Entity>>,
 	world_events: Vec<WorldEvent>,
 	mobj_flags: Vec<MobjFlagCommand>,
@@ -35,6 +36,7 @@ impl GameContext {
 			graphics_buffer: Vec::new(),
 			world_events: Vec::new(),
 			mobj_flags: Vec::new(),
+			buttons: Vec::new(),
 			cmd: CommandBuffer::new(),
 			actions: Vec::new(),
 			player_entity: Entity::DANGLING,
@@ -47,21 +49,22 @@ impl GameContext {
 	pub fn tick(
 		&mut self,
 		audio: &mut AudioContext,
-		current_input: PlayerInput,
+		input: PlayerInput,
 		random: &mut Random,
 		ui_to_update: &mut Vec<UpdatableUiType>,
 		last_buttons: &mut VecDeque<Option<PhysicalKey>>,
 	) {
-		handle_rotation_input(&self.world, self.player_entity, current_input);
-		handle_position_input(&self.world, self.player_entity, current_input);
+		handle_rotation_input(&self.world, self.player_entity, input.mouse_delta_x);
+		handle_position_input(&self.world, self.player_entity, input);
 		handle_weapons_input(
 			&self.world,
 			self.player_entity,
 			ui_to_update,
 			&mut self.cmd,
 			&mut audio.buffer,
-			current_input,
+			input,
 		);
+		handle_use_input(&self.world, self.player_entity, input.use_);
 
 		self.flush_command_buffer();
 
@@ -127,8 +130,9 @@ impl GameContext {
 		);
 		apply_mobj_flags_system(&mut self.mobj_flags, &self.world);
 
-		audio.system(&self.world, self.player_entity);
+		button_system(&mut self.level, &mut self.buttons, &mut audio.buffer);
 		animation_system(&self.world);
+		audio.system(&self.world, self.player_entity);
 		update_blocklists_system(&self.world, &self.level, &mut self.blocklists);
 	}
 
