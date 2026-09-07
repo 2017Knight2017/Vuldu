@@ -1,31 +1,29 @@
 use std::f64::consts::TAU;
 
 use crate::{
-	Button, Intercept, MobjNum, MobjType, PlayerInventory, PlayerRotation, Position, SfxEvent,
-	Traversal, USERANGE, collect_line_intercepts, p_change_switch_texture,
+	Intercept, MobjNum, MobjType, PlayerInventory, PlayerRotation, Position, SfxEvent, Traversal,
+	USERANGE, UseContext, collect_line_intercepts, p_change_switch_texture,
 };
 use hecs::{Entity, World};
-use wad_parser::{Level, Line, LineFlags, LineId, to_u64};
+use wad_parser::{Line, LineFlags, LineId, to_u64};
 
 fn ptr_use_traverse(
-	level: &mut Level,
+	ctx: &mut UseContext,
 	line_id: LineId,
 	user_pos: Position,
 	mobj: MobjType,
 	inv_opt: Option<PlayerInventory>,
-	buttons: &mut Vec<Button>,
-	audio: &mut Vec<SfxEvent>,
 ) -> bool {
-	let line = level.geom.lines[line_id.0];
+	let line = ctx.level.geom.lines[line_id.0];
 
 	if line.special == 0 {
-		let blocked = match level.get_opening(line_id) {
+		let blocked = match ctx.level.get_opening(line_id) {
 			Some(open) => open.top - open.floor_high <= 0.0,
 			None => true,
 		};
 
 		if blocked {
-			audio.push(SfxEvent {
+			ctx.audio.push(SfxEvent {
 				sfx_id: to_u64(b"DSNOWAY"),
 				pos: Some((user_pos.x, user_pos.y, user_pos.z)),
 			});
@@ -36,33 +34,23 @@ fn ptr_use_traverse(
 		return true;
 	}
 
-	p_use_special_line(
-		level,
-		line_id,
-		mobj,
-		inv_opt,
-		Some(user_pos.y),
-		buttons,
-		audio,
-	);
+	p_use_special_line(ctx, line_id, mobj, inv_opt, Some(user_pos.y));
 
 	false
 }
 
-#[allow(clippy::too_many_arguments)]
-pub fn p_use_lines(
+pub(crate) fn p_use_lines(
+	mut ctx: UseContext,
 	world: &World,
 	player_ent: Entity,
-	level: &mut Level,
 	traversal: &mut Traversal,
-	intercepts: &mut Vec<Intercept>,
-	buttons: &mut Vec<Button>,
-	audio: &mut Vec<SfxEvent>,
+	inters: &mut Vec<Intercept>,
 ) {
-	let mut query =
-		world.query_one::<(&Position, &PlayerRotation, &MobjType, &PlayerInventory)>(player_ent);
-
-	let Ok((pos, rot, mobj, inv)) = query.get().map(|(p, r, m, i)| (*p, *r, *m, *i)) else {
+	let Ok((pos, rot, mobj, inv)) = world
+		.query_one::<(&Position, &PlayerRotation, &MobjType, &PlayerInventory)>(player_ent)
+		.get()
+		.map(|(p, r, m, i)| (*p, *r, *m, *i))
+	else {
 		return;
 	};
 
@@ -70,19 +58,17 @@ pub fn p_use_lines(
 	let x2 = pos.x + USERANGE * f64::sin(angle) as f32;
 	let z2 = pos.z + USERANGE * f64::cos(angle) as f32;
 
-	intercepts.clear();
-
 	{
 		let mut pass = traversal.begin();
-		collect_line_intercepts(level, &mut pass, pos.x, pos.z, x2, z2, intercepts);
+		collect_line_intercepts(ctx.level, &mut pass, pos.x, pos.z, x2, z2, inters);
 	}
 
-	intercepts.sort_unstable_by(|a, b| a.frac.total_cmp(&b.frac));
+	inters.sort_unstable_by(|a, b| a.frac.total_cmp(&b.frac));
 
-	for i in 0..intercepts.len() {
-		let line_id = intercepts[i].line_id;
+	for inter in inters.drain(..) {
+		let line_id = inter.line_id;
 
-		if !ptr_use_traverse(level, line_id, pos, mobj, Some(inv), buttons, audio) {
+		if !ptr_use_traverse(&mut ctx, line_id, pos, mobj, Some(inv)) {
 			return;
 		}
 	}
@@ -92,18 +78,16 @@ pub fn p_cross_special_line() {
 	todo!();
 }
 
-pub fn p_use_special_line(
-	level: &mut Level,
+fn p_use_special_line(
+	ctx: &mut UseContext,
 	line_id: LineId,
 	mobj: MobjType,
 	inv_opt: Option<PlayerInventory>,
 	player_y_opt: Option<f32>,
-	buttons: &mut Vec<Button>,
-	audio: &mut Vec<SfxEvent>,
 ) -> bool {
-	let line = level.geom.lines[line_id.0];
+	let line = ctx.level.geom.lines[line_id.0];
 
-	if level.state.lines[line_id.0].used {
+	if ctx.level.state.lines[line_id.0].used {
 		return false;
 	}
 
@@ -137,15 +121,15 @@ pub fn p_use_special_line(
 		| 103 | 111 | 112 | 113 | 122 | 127 | 131 | 133 | 135 | 137 | 140
 			if effect(line, inv_opt) =>
 		{
-			p_change_switch_texture(level, line_id, false, audio, buttons, player_y_opt);
-			level.state.lines[line_id.0].used = true;
+			p_change_switch_texture(ctx, line_id, false, player_y_opt);
+			ctx.level.state.lines[line_id.0].used = true;
 		}
 
 		42 | 43 | 45 | 60 | 61 | 62 | 63 | 64 | 66 | 67 | 65 | 68 | 69 | 70 | 114 | 115 | 116
 		| 123 | 132 | 99 | 134 | 136 | 138 | 139
 			if effect(line, inv_opt) =>
 		{
-			p_change_switch_texture(level, line_id, true, audio, buttons, player_y_opt);
+			p_change_switch_texture(ctx, line_id, true, player_y_opt);
 		}
 
 		_ => return false,

@@ -543,10 +543,10 @@ impl Level {
 			.filter_map(|side| {
 				let name = [side.toptexture, side.midtexture, side.bottomtexture]
 					.into_iter()
-					.find(|n| {
+					.find(|tex_name| {
 						texture_ids
-							.get(&to_u64(n))
-							.is_some_and(|&(id, ..)| self.geom.switch_pairs.contains_key(&id))
+							.get(&to_u64(tex_name))
+							.is_some_and(|(id, ..)| self.geom.switch_pairs.contains_key(id))
 					})?;
 
 				let (base_id, ..) = texture_ids[&to_u64(&name)];

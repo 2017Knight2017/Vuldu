@@ -218,17 +218,6 @@ impl GraphicsContext {
 			}
 		}
 
-		let mut switch_pairs = FxHashMap::default();
-		for (off, on) in SWITCH_LIST {
-			let (Some(&(off_id, ..)), Some(&(on_id, ..))) =
-				(self.data.get(&to_u64(off)), self.data.get(&to_u64(on)))
-			else {
-				continue;
-			};
-			switch_pairs.insert(off_id, on_id);
-			switch_pairs.insert(on_id, off_id);
-		}
-
 		for (pic, ui_insert_idx) in ui_pics.into_iter().zip(ui_shown.ones()) {
 			descriptors.push(TextureDescriptor {
 				width: pic.width,
@@ -263,6 +252,16 @@ impl GraphicsContext {
 	}
 
 	pub fn setup_level_geometry(&mut self, level: &mut Level) {
+		for (off, on) in SWITCH_LIST {
+			let (Some(&(off_id, ..)), Some(&(on_id, ..))) =
+				(self.data.get(&to_u64(off)), self.data.get(&to_u64(on)))
+			else {
+				continue;
+			};
+			level.geom.switch_pairs.insert(off_id, on_id);
+			level.geom.switch_pairs.insert(on_id, off_id);
+		}
+
 		level.assign_switch_slots(&self.data);
 
 		println!("Building map geometry...");

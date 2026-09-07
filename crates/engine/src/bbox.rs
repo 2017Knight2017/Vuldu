@@ -48,7 +48,16 @@ pub(crate) fn p_divline_side(x: f32, z: f32, node: DivLine) -> i32 {
 
 pub(crate) fn p_point_on_line_side(x: f32, y: f32, line: &Line, level: &Level) -> i32 {
 	let v1 = level.geom.vertices[line.v1.0];
-	p_divline_side(x, y, DivLine { x: v1.0, z: v1.1, dx: line.delta.0, dz: line.delta.1 })
+	p_divline_side(
+		x,
+		y,
+		DivLine {
+			x: v1.0,
+			z: v1.1,
+			dx: line.delta.0,
+			dz: line.delta.1,
+		},
+	)
 }
 
 pub(crate) fn p_box_on_line_side(bbox: &AABB, line: &Line, level: &Level) -> i32 {
@@ -105,6 +114,7 @@ pub(crate) fn line_midpoint(level: &Level, line_id: LineId) -> (f32, f32) {
 	((v1_x + v2_x) / 2.0, (v1_z + v2_z) / 2.0)
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct Intercept {
 	pub frac: f32,
 	pub line_id: LineId,
@@ -185,16 +195,44 @@ pub(crate) fn collect_line_intercepts(
 			let v1 = level.geom.vertices[line.v1.0];
 			let v2 = level.geom.vertices[line.v2.0];
 
-			let s1 = p_divline_side(v1.0, v1.1, DivLine { x: x1, z: z1, dx, dz });
-			let s2 = p_divline_side(v2.0, v2.1, DivLine { x: x1, z: z1, dx, dz });
+			let s1 = p_divline_side(
+				v1.0,
+				v1.1,
+				DivLine {
+					x: x1,
+					z: z1,
+					dx,
+					dz,
+				},
+			);
+			let s2 = p_divline_side(
+				v2.0,
+				v2.1,
+				DivLine {
+					x: x1,
+					z: z1,
+					dx,
+					dz,
+				},
+			);
 
 			if s1 == s2 {
 				continue;
 			}
 
 			let frac = p_intercept_vector(
-				DivLine { x: x1, z: z1, dx, dz }, 
-				DivLine { x: v1.0, z: v1.1, dx: line.delta.0, dz: line.delta.1 }
+				DivLine {
+					x: x1,
+					z: z1,
+					dx,
+					dz,
+				},
+				DivLine {
+					x: v1.0,
+					z: v1.1,
+					dx: line.delta.0,
+					dz: line.delta.1,
+				},
 			);
 
 			if !(0.0..=1.0).contains(&frac) {

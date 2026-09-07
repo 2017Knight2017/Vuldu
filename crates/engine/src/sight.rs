@@ -1,5 +1,8 @@
 use crate::{
-	ActionContext, ActionFunc, Active, CurrentSector, Database, DivLine, MobjAi, MobjFlags, MobjNum, MobjType, MonsterRotation, PLAYERHEIGHT, Pass, PlayerMarker, Position, Random, SfxEvent, SpriteAnimation, Target, Traversal, in_fov, p_divline_side, p_intercept_vector, set_mobj_state,
+	ActionContext, ActionFunc, Active, CurrentSector, Database, DivLine, MobjAi, MobjFlags,
+	MobjNum, MobjType, MonsterRotation, PLAYERHEIGHT, Pass, PlayerMarker, Position, Random,
+	SfxEvent, SpriteAnimation, Target, Traversal, in_fov, p_divline_side, p_intercept_vector,
+	set_mobj_state,
 };
 use hecs::{CommandBuffer, Entity, World};
 use wad_parser::{Level, LineFlags, LineId, NF_SUBSECTOR, SubsectorId, to_u64};

@@ -158,6 +158,13 @@ pub fn apply_player_movement_system(world: &World, level: &Level) {
 	}
 }
 
+pub(crate) struct UseContext<'a> {
+	pub(crate) level: &'a mut Level,
+	pub(crate) buttons: &'a mut Vec<Button>,
+	pub(crate) audio: &'a mut Vec<SfxEvent>,
+}
+
+#[allow(clippy::too_many_arguments)]
 pub fn handle_use_input(
 	world: &World,
 	player_ent: Entity,
@@ -180,6 +187,14 @@ pub fn handle_use_input(
 
 	use_down.0 = true;
 	p_use_lines(
-		world, player_ent, level, traversal, intercepts, buttons, audio,
+		UseContext {
+			level,
+			buttons,
+			audio,
+		},
+		world,
+		player_ent,
+		traversal,
+		intercepts,
 	);
 }
