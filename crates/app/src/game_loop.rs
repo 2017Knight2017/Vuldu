@@ -14,6 +14,7 @@ pub struct GameContext {
 	pub config: GameConfig,
 	pub blocklists: Vec<Vec<(Entity, Collider)>>,
 	pub graphics_buffer: Vec<GraphicsCommand>,
+	intercepts: Vec<Intercept>,
 	buttons: Vec<Button>,
 	sound_targets: Vec<Option<Entity>>,
 	world_events: Vec<WorldEvent>,
@@ -36,6 +37,7 @@ impl GameContext {
 			graphics_buffer: Vec::new(),
 			world_events: Vec::new(),
 			mobj_flags: Vec::new(),
+			intercepts: Vec::new(),
 			buttons: Vec::new(),
 			cmd: CommandBuffer::new(),
 			actions: Vec::new(),
@@ -64,7 +66,16 @@ impl GameContext {
 			&mut audio.buffer,
 			input,
 		);
-		handle_use_input(&self.world, self.player_entity, input.use_);
+		handle_use_input(
+			&self.world,
+			self.player_entity,
+			input.use_,
+			&mut self.level,
+			&mut self.traversal,
+			&mut self.intercepts,
+			&mut self.buttons,
+			&mut audio.buffer,
+		);
 
 		self.flush_command_buffer();
 

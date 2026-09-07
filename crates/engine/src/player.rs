@@ -1,5 +1,7 @@
 use crate::{
-	CurrentSector, NUMAMMO, NUMCARDS, NUMWEAPONS, PlayerMarker, PlayerRotation, PlayerState, Position, PrevPosition, UseDown, Velocity, WeaponType, p_use_lines,
+	Button, CurrentSector, Intercept, NUMAMMO, NUMCARDS, NUMWEAPONS, PlayerMarker, PlayerRotation,
+	PlayerState, Position, PrevPosition, SfxEvent, Traversal, UseDown, Velocity, WeaponType,
+	p_use_lines,
 };
 use hecs::{Entity, World};
 use std::f64::consts::TAU;
@@ -156,12 +158,28 @@ pub fn apply_player_movement_system(world: &World, level: &Level) {
 	}
 }
 
-pub fn handle_use_input(world: &World, player_ent: Entity, use_pressed: bool) {
+pub fn handle_use_input(
+	world: &World,
+	player_ent: Entity,
+	use_pressed: bool,
+	level: &mut Level,
+	traversal: &mut Traversal,
+	intercepts: &mut Vec<Intercept>,
+	buttons: &mut Vec<Button>,
+	audio: &mut Vec<SfxEvent>,
+) {
 	let mut use_down = world.get::<&mut UseDown>(player_ent).unwrap();
-	if use_pressed && !use_down.0 {
-		use_down.0 = true;
-		p_use_lines()
-	} else {
+	if !use_pressed {
 		use_down.0 = false;
+		return;
 	}
+
+	if use_down.0 {
+		return;
+	}
+
+	use_down.0 = true;
+	p_use_lines(
+		world, player_ent, level, traversal, intercepts, buttons, audio,
+	);
 }

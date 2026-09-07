@@ -1,31 +1,8 @@
 use crate::{
-	ActionContext, ActionFunc, Active, CurrentSector, Database, MobjAi, MobjFlags, MobjNum, MobjType, MonsterRotation, PLAYERHEIGHT, Pass, PlayerMarker, Position, Random, SfxEvent, SpriteAnimation, Target, Traversal, in_fov, p_generic_line_side, set_mobj_state,
+	ActionContext, ActionFunc, Active, CurrentSector, Database, DivLine, MobjAi, MobjFlags, MobjNum, MobjType, MonsterRotation, PLAYERHEIGHT, Pass, PlayerMarker, Position, Random, SfxEvent, SpriteAnimation, Target, Traversal, in_fov, p_divline_side, p_intercept_vector, set_mobj_state,
 };
 use hecs::{CommandBuffer, Entity, World};
 use wad_parser::{Level, LineFlags, LineId, NF_SUBSECTOR, SubsectorId, to_u64};
-
-#[derive(Debug, Clone, Copy)]
-struct DivLine {
-	pub x: f32,
-	pub z: f32,
-	pub dx: f32,
-	pub dz: f32,
-}
-
-fn p_divline_side(x: f32, y: f32, node: &DivLine) -> i32 {
-    p_generic_line_side(x, y, node.x, node.z, node.dx, node.dz)
-}
-
-fn p_intercept_vector2(v2: &DivLine, v1: &DivLine) -> f32 {
-	let den = v1.dz * v2.dx - v1.dx * v2.dz;
-
-	if den == 0.0 {
-		return 0.0;
-	}
-
-	let num = (v1.x - v2.x) * v1.dz + (v2.z - v1.z) * v1.dx;
-	num / den
-}
 
 enum BspFrame {
 	Evaluate(usize),
@@ -97,8 +74,8 @@ impl<'a> SightContextInner<'a> {
 			let seg_v2_x = level.geom.vertices[seg.v2 as usize].0;
 			let seg_v2_z = level.geom.vertices[seg.v2 as usize].1;
 
-			let s1 = p_divline_side(seg_v1_x, seg_v1_z, &self.strace);
-			let s2 = p_divline_side(seg_v2_x, seg_v2_z, &self.strace);
+			let s1 = p_divline_side(seg_v1_x, seg_v1_z, self.strace);
+			let s2 = p_divline_side(seg_v2_x, seg_v2_z, self.strace);
 
 			if s1 == s2 {
 				continue;
@@ -111,8 +88,8 @@ impl<'a> SightContextInner<'a> {
 				dz: seg_v2_z - seg_v1_z,
 			};
 
-			let s1 = p_divline_side(self.strace.x, self.strace.z, &divl);
-			let s2 = p_divline_side(self.t2x, self.t2z, &divl);
+			let s1 = p_divline_side(self.strace.x, self.strace.z, divl);
+			let s2 = p_divline_side(self.t2x, self.t2z, divl);
 
 			if s1 == s2 {
 				continue;
@@ -137,7 +114,7 @@ impl<'a> SightContextInner<'a> {
 			let front_sector = &level.state.sectors[level.geom.sides[front_side_id.0].sector.0];
 			let back_sector = &level.state.sectors[level.geom.sides[back_side_id.0].sector.0];
 
-			let frac = p_intercept_vector2(&self.strace, &divl);
+			let frac = p_intercept_vector(self.strace, divl);
 
 			if front_sector.floor_h != back_sector.floor_h {
 				let slope = (open.floor_high - self.sight_ystart) / frac;
@@ -162,7 +139,6 @@ impl<'a> SightContextInner<'a> {
 	}
 
 	pub fn cross_bsp_node(&mut self, bspnum: usize, level: &Level) -> bool {
-		// Резервируем память под типичную глубину BSP-дерева (обычно не больше 32)
 		let mut stack = Vec::with_capacity(32);
 		stack.push(BspFrame::Evaluate(bspnum));
 
@@ -187,7 +163,7 @@ impl<'a> SightContextInner<'a> {
 							dz: bsp.dy as f32,
 						};
 
-						let mut side = p_divline_side(self.strace.x, self.strace.z, &bsp_divline);
+						let mut side = p_divline_side(self.strace.x, self.strace.z, bsp_divline);
 						if side == 2 {
 							side = 0;
 						}
@@ -208,7 +184,7 @@ impl<'a> SightContextInner<'a> {
 					side,
 					second_child,
 				} => {
-					let side2 = p_divline_side(self.t2x, self.t2z, &bsp_divline);
+					let side2 = p_divline_side(self.t2x, self.t2z, bsp_divline);
 					if side == side2 {
 						continue;
 					}

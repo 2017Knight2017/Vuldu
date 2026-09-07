@@ -144,7 +144,6 @@ pub fn spawn_mobj(
 				sy: 0.0,
 			})
 			.add(UseDown(false));
-			
 	} else {
 		entity_builder
 			.add(InstantMoveIntent {

@@ -4,69 +4,68 @@ use crate::PlayerInventory;
 
 pub enum PlatType {
 	PerpetualRaise,
-    DownWaitUpStay,
-    RaiseAndChange,
-    RaiseToNearestAndChange,
-    BlazeDWUS
+	DownWaitUpStay,
+	RaiseAndChange,
+	RaiseToNearestAndChange,
+	BlazeDWUS,
 }
 
 pub enum DoorType {
-    Normal,
-    Close30ThenOpen,
-    Close,
-    Open,
-    RaiseIn5Mins,
-    BlazeRaise,
-    BlazeOpen,
-    BlazeClose
+	Normal,
+	Close30ThenOpen,
+	Close,
+	Open,
+	RaiseIn5Mins,
+	BlazeRaise,
+	BlazeOpen,
+	BlazeClose,
 }
 
 pub enum CeilType {
-    LowerToFloor,
-    RaiseToHighest,
-    LowerAndCrush,
-    CrushAndRaise,
-    FastCrushAndRaise,
-    SilentCrushAndRaise
+	LowerToFloor,
+	RaiseToHighest,
+	LowerAndCrush,
+	CrushAndRaise,
+	FastCrushAndRaise,
+	SilentCrushAndRaise,
 }
 
-pub enum FloorType
-{
-    // lower floor to highest surrounding floor
-    LowerFloor,
-    
-    // lower floor to lowest surrounding floor
-    LowerFloorToLowest,
-    
-    // lower floor to highest surrounding floor VERY FAST
-    TurboLower,
-    
-    // raise floor to lowest surrounding CEILING
-    RaiseFloor,
-    
-    // raise floor to next highest surrounding floor
-    RaiseFloorToNearest,
+pub enum FloorType {
+	// lower floor to highest surrounding floor
+	LowerFloor,
 
-    // raise floor to shortest height texture around it
-    RaiseToTexture,
-    
-    // lower floor to lowest surrounding floor
-    //  and change floorpic
-    LowerAndChange,
-  
-    RaiseFloor24,
-    RaiseFloor24AndChange,
-    RaiseFloorCrush,
+	// lower floor to lowest surrounding floor
+	LowerFloorToLowest,
 
-     // raise to next highest floor, turbo-speed
-    RaiseFloorTurbo,       
-    DonutRaise,
-    RaiseFloor512
+	// lower floor to highest surrounding floor VERY FAST
+	TurboLower,
+
+	// raise floor to lowest surrounding CEILING
+	RaiseFloor,
+
+	// raise floor to next highest surrounding floor
+	RaiseFloorToNearest,
+
+	// raise floor to shortest height texture around it
+	RaiseToTexture,
+
+	// lower floor to lowest surrounding floor
+	//  and change floorpic
+	LowerAndChange,
+
+	RaiseFloor24,
+	RaiseFloor24AndChange,
+	RaiseFloorCrush,
+
+	// raise to next highest floor, turbo-speed
+	RaiseFloorTurbo,
+	DonutRaise,
+	RaiseFloor512,
 }
 
 pub enum StairType {
-    Build8,	// slowly build by 8
-    Turbo16	// quickly build by 16
+	Build8,  // slowly build by 8
+	Turbo16, // quickly build by 16
 }
 
 pub fn ev_build_stairs(_line: Line, _type_: StairType) -> bool {
