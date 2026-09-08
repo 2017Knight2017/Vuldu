@@ -4,4 +4,5 @@
 /.cache
 compile_commands.json
 doomdata.h
-/assets
+*.wad
+*.WAD
