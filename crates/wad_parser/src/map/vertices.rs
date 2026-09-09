@@ -195,7 +195,7 @@ impl Level {
 			} else {
 				line.sides.1
 			};
-			let back_side_idx_opt = if seg.side == 0 {
+			let back_side_id_opt = if seg.side == 0 {
 				line.sides.1
 			} else {
 				line.sides.0
@@ -208,7 +208,7 @@ impl Level {
 			let front_sector_id = sides_geom[front_side_idx.0].sector;
 			let front_sector = &sectors[front_sector_id.0];
 
-			let back_sector_id = back_side_idx_opt.map(|idx| sides_geom[idx.0].sector);
+			let back_sector_id = back_side_id_opt.map(|idx| sides_geom[idx.0].sector);
 
 			let moves = |sec: SectorId| self.geom.movable_sectors.contains(sec.0);
 
@@ -225,10 +225,10 @@ impl Level {
 			                         low: QuadEdge,
 			                         high: QuadEdge,
 			                         anchor: Option<Plane>,
-			                         tex_name: &[u8],
+			                         tex_name: [u8; 8],
 			                         v_offset: f32,
-			                         fake_flat_name: &[u8],
-			                         other_sector_ceilingpic: &[u8],
+			                         fake_flat_name: [u8; 8],
+			                         other_sector_ceilingpic: Option<[u8; 8]>,
 			                         is_mid_unpegged: bool|
 			 -> Option<TextureId> {
 				let wall_height = y_high - y_low;
@@ -286,7 +286,7 @@ impl Level {
 				};
 
 				let (tex_id, tex_width, tex_height, _) = *texture_ids
-					.get(&to_u64(final_tex_name))
+					.get(&to_u64(&final_tex_name))
 					.unwrap_or(&(TextureId(0), 64, 64, false));
 
 				let is_switch = match front_side.switch_slot {
@@ -295,7 +295,7 @@ impl Level {
 				};
 
 				let (final_tex_id, floor_tex_id) = if final_tex_name.starts_with(b"F_SKY1")
-					|| (other_sector_ceilingpic.starts_with(b"F_SKY1")
+					|| (other_sector_ceilingpic.is_some_and(|p| p.starts_with(b"F_SKY1"))
 						&& fake_flat_name.starts_with(b"F_SKY1"))
 				{
 					(SKY_WALL_ID, TextureId(0))
@@ -434,10 +434,10 @@ impl Level {
 						QuadEdge::plain(f_floor),
 						QuadEdge::plain(f_ceil),
 						anchor,
-						&front_side.midtexture,
+						front_side.midtexture,
 						v_offset,
-						&front_sector.floorpic,
-						&[],
+						front_sector.floorpic,
+						None,
 						false,
 					);
 				}
@@ -453,6 +453,11 @@ impl Level {
 
 					let b_sector = &self.state.sectors[b_sector_id.0];
 
+					let floor_low = front_sector.floor_h.min(b_sector.floor_h);
+					let floor_high = front_sector.floor_h.max(b_sector.floor_h);
+					let ceil_low = front_sector.ceil_h.min(b_sector.ceil_h);
+					let ceil_high = front_sector.ceil_h.max(b_sector.ceil_h);
+
 					if front_sector.ceil_h > b_sector.ceil_h
 						|| (dynamic_side && front_side.toptexture[0] != 0x2d)
 					{
@@ -464,20 +469,20 @@ impl Level {
 						let (v_offset, anchor) = if dont_peg_top {
 							(0.0, Some(f_ceil))
 						} else {
-							let offset = b_sector.ceil_h - front_sector.ceil_h;
+							let offset = ceil_high - ceil_low;
 							(offset - tex_h, Some(b_ceil))
 						};
 
 						front_side.top_tex = add_wall_quad(
-							b_sector.ceil_h,
-							front_sector.ceil_h,
+							ceil_low,
+							ceil_high,
 							QuadEdge::plain(b_ceil),
 							QuadEdge::plain(f_ceil),
 							anchor,
-							&front_side.toptexture,
+							front_side.toptexture,
 							v_offset,
-							&front_sector.ceilingpic,
-							&b_sector.ceilingpic,
+							front_sector.ceilingpic,
+							Some(b_sector.ceilingpic),
 							false,
 						);
 					}
@@ -491,22 +496,22 @@ impl Level {
 						};
 
 						let (v_offset, anchor) = if dont_peg_bottom {
-							let offset = front_sector.ceil_h - b_sector.floor_h;
+							let offset = ceil_high - floor_high;
 							(offset - tex_h, Some(f_ceil))
 						} else {
 							(0.0, Some(b_floor))
 						};
 
 						front_side.bottom_tex = add_wall_quad(
-							front_sector.floor_h,
-							b_sector.floor_h,
+							floor_low,
+							floor_high,
 							QuadEdge::plain(f_floor),
 							QuadEdge::plain(b_floor),
 							anchor,
-							&front_side.bottomtexture,
+							front_side.bottomtexture,
 							v_offset,
-							&b_sector.floorpic,
-							&front_sector.ceilingpic,
+							b_sector.floorpic,
+							Some(front_sector.ceilingpic),
 							false,
 						);
 					}
@@ -520,10 +525,10 @@ impl Level {
 							QuadEdge::max(f_floor, b_floor),
 							QuadEdge::min(f_ceil, b_ceil),
 							None,
-							&front_side.midtexture,
+							front_side.midtexture,
 							0.0,
-							&front_sector.floorpic,
-							&b_sector.ceilingpic,
+							front_sector.floorpic,
+							Some(b_sector.ceilingpic),
 							dont_peg_bottom,
 						);
 					}

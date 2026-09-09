@@ -110,12 +110,9 @@ pub fn handle_position_input(world: &World, player_ent: Entity, input: PlayerInp
 	}
 
 	let current_angle_rad = (rot.angle as f64 / u32::MAX as f64) * TAU;
-
-	let sin = f64::sin(current_angle_rad);
-	let cos = f64::cos(current_angle_rad);
+	let (sin, cos) = current_angle_rad.sin_cos();
 
 	let speed = 8.0;
-
 	let thrust_x = (cos * move_sideways + sin * move_forward) * speed;
 	let thrust_z = (-sin * move_sideways + cos * move_forward) * speed;
 

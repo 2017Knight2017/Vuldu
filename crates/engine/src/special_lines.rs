@@ -55,8 +55,10 @@ pub(crate) fn p_use_lines(
 	};
 
 	let angle = (rot.angle as f64 / u32::MAX as f64) * TAU;
-	let x2 = pos.x + USERANGE * f64::sin(angle) as f32;
-	let z2 = pos.z + USERANGE * f64::cos(angle) as f32;
+	let (sin, cos) = angle.sin_cos();
+
+	let x2 = pos.x + USERANGE * sin as f32;
+	let z2 = pos.z + USERANGE * cos as f32;
 
 	{
 		let mut pass = traversal.begin();
