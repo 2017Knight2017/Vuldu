@@ -452,11 +452,11 @@ impl Level {
 					};
 
 					let b_sector = &self.state.sectors[b_sector_id.0];
-
-					let floor_low = front_sector.floor_h.min(b_sector.floor_h);
-					let floor_high = front_sector.floor_h.max(b_sector.floor_h);
-					let ceil_low = front_sector.ceil_h.min(b_sector.ceil_h);
-					let ceil_high = front_sector.ceil_h.max(b_sector.ceil_h);
+					
+					let mut floor = [(b_sector.floor_h, b_floor), (front_sector.floor_h, f_floor)];
+					let mut ceil = [(b_sector.ceil_h, b_ceil), (front_sector.ceil_h, f_ceil)];
+					if floor[0].0 > floor[1].0 { floor.swap(0, 1) }
+					if ceil[0].0 > ceil[1].0 { ceil.swap(0, 1) }
 
 					if front_sector.ceil_h > b_sector.ceil_h
 						|| (dynamic_side && front_side.toptexture[0] != 0x2d)
@@ -467,17 +467,17 @@ impl Level {
 						};
 
 						let (v_offset, anchor) = if dont_peg_top {
-							(0.0, Some(f_ceil))
+							(0.0, Some(ceil[1].1))
 						} else {
-							let offset = ceil_high - ceil_low;
-							(offset - tex_h, Some(b_ceil))
+							let offset = ceil[1].0 - ceil[0].0;
+							(offset - tex_h, Some(ceil[0].1))
 						};
 
 						front_side.top_tex = add_wall_quad(
-							ceil_low,
-							ceil_high,
-							QuadEdge::plain(b_ceil),
-							QuadEdge::plain(f_ceil),
+							ceil[0].0,
+							ceil[1].0,
+							QuadEdge::plain(ceil[0].1),
+							QuadEdge::plain(ceil[1].1),
 							anchor,
 							front_side.toptexture,
 							v_offset,
@@ -496,17 +496,17 @@ impl Level {
 						};
 
 						let (v_offset, anchor) = if dont_peg_bottom {
-							let offset = ceil_high - floor_high;
-							(offset - tex_h, Some(f_ceil))
+							let offset = ceil[1].0 - floor[1].0;
+							(offset - tex_h, Some(ceil[1].1))
 						} else {
-							(0.0, Some(b_floor))
+							(0.0, Some(floor[1].1))
 						};
 
 						front_side.bottom_tex = add_wall_quad(
-							floor_low,
-							floor_high,
-							QuadEdge::plain(f_floor),
-							QuadEdge::plain(b_floor),
+							floor[0].0,
+							floor[1].0,
+							QuadEdge::plain(floor[0].1),
+							QuadEdge::plain(floor[1].1),
 							anchor,
 							front_side.bottomtexture,
 							v_offset,
