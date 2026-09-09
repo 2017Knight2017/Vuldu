@@ -11,7 +11,7 @@ pub fn spawn_mobj(
 	random: &mut Random,
 	thing: &MapThing,
 	blocklists: &mut [Vec<(Entity, Collider)>],
-	cfg: &GameConfig,
+	cfg: GameConfig,
 ) -> Option<Entity> {
 	let thing_type = (*MOBJTYPE_BY_DOOMEDNUM.get(&thing.type_)?)?;
 	let thing_flags = ThingFlags::from_bits(thing.flags).unwrap_or(ThingFlags::NONE);
@@ -188,10 +188,11 @@ pub fn spawn_all_things(
 	random: &mut Random,
 	player_entity: &mut Entity,
 	blocklists: &mut [Vec<(Entity, Collider)>],
-	cfg: &GameConfig,
+	cfg: GameConfig,
 ) {
 	let mut player_spawned = false;
-	for thing in level.things.iter() {
+	// all player things before the last one are voodoo dolls
+	for thing in level.things.iter().rev() {
 		if thing.type_ == 1 {
 			if player_spawned {
 				continue;

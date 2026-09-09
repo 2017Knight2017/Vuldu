@@ -198,7 +198,7 @@ impl ApplicationHandler for App {
 			&mut self.random,
 			&mut self.game.player_entity,
 			&mut self.game.blocklists,
-			&self.game.config,
+			self.game.config,
 		);
 		println!("Mobj spawning is done!");
 	}

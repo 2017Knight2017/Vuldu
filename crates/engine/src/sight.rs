@@ -363,7 +363,7 @@ fn check_sight(ctx: &mut LookContext) {
 }
 
 fn wake_up_monster(ctx: &mut LookContext, target: Entity) {
-	let mobj_info = ctx.db.mobjinfo.get(ctx.mobj.type_ as usize).unwrap();
+	let mobj_info = &ctx.db.mobjinfo[ctx.mobj.type_ as usize];
 
 	if let (Some(see_state_num), Some(mut see_sound)) = (mobj_info.see_state, mobj_info.see_sound) {
 		set_mobj_state(
