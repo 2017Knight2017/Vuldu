@@ -166,7 +166,8 @@ pub fn spawn_mobj(
 				tics_left,
 				threshold: 0,
 				reaction_time: mobj_info.reaction_time,
-			});
+			})
+			.add(Action(None));
 	};
 
 	let ent = world.spawn(entity_builder.build());

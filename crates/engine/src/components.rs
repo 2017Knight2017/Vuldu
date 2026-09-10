@@ -1,4 +1,4 @@
-use crate::{CachedStateSprite, Direction, MobjFlags, MobjNum, StateNum};
+use crate::{ActionFunc, CachedStateSprite, Direction, MobjFlags, MobjNum, StateNum};
 use hecs::Entity;
 use wad_parser::SectorId;
 
@@ -60,6 +60,9 @@ pub struct ReactionTime(pub u32);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UseDown(pub bool);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Action(pub Option<ActionFunc>);
 
 #[derive(Debug, Clone, Copy)]
 pub struct SpriteAnimation {

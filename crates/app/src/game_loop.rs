@@ -19,7 +19,6 @@ pub struct GameContext {
 	sound_targets: Vec<Option<Entity>>,
 	world_events: Vec<WorldEvent>,
 	mobj_flags: Vec<MobjFlagCommand>,
-	actions: Vec<(Entity, ActionFunc)>,
 	cmd: CommandBuffer,
 	traversal: Traversal,
 	pub player_entity: Entity,
@@ -40,7 +39,6 @@ impl GameContext {
 			intercepts: Vec::new(),
 			buttons: Vec::new(),
 			cmd: CommandBuffer::new(),
-			actions: Vec::new(),
 			player_entity: Entity::DANGLING,
 			state: GameState::Level,
 			global_timer: 0,
@@ -89,11 +87,10 @@ impl GameContext {
 
 		self.flush_command_buffer();
 
-		ai_system(&self.world, &mut self.actions);
+		ai_system(&self.world);
 
 		action_system(
 			&self.world,
-			&mut self.actions,
 			random,
 			&mut self.level,
 			self.config,

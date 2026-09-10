@@ -452,11 +452,15 @@ impl Level {
 					};
 
 					let b_sector = &self.state.sectors[b_sector_id.0];
-					
+
 					let mut floor = [(b_sector.floor_h, b_floor), (front_sector.floor_h, f_floor)];
 					let mut ceil = [(b_sector.ceil_h, b_ceil), (front_sector.ceil_h, f_ceil)];
-					if floor[0].0 > floor[1].0 { floor.swap(0, 1) }
-					if ceil[0].0 > ceil[1].0 { ceil.swap(0, 1) }
+					if floor[0].0 > floor[1].0 {
+						floor.swap(0, 1)
+					}
+					if ceil[0].0 > ceil[1].0 {
+						ceil.swap(0, 1)
+					}
 
 					if front_sector.ceil_h > b_sector.ceil_h
 						|| (dynamic_side && front_side.toptexture[0] != 0x2d)
