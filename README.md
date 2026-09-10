@@ -64,8 +64,39 @@ as possible. It works perfectly when more data needs
 to be processed without significantly increasing 
 the load.
 
+## Benchmarks & Performance Profile
+Vuldu is engineered with data locality in mind to keep frame 
+allocations close to zero during gameplay.
+
+To push the engine to its limits, I benchmarked it on the 
+iconic **Okuplok Slaughter Map** (oku2v31.wad), running around 
+**23,000 active AI monsters** and complex geometry at once.
+
+### Test Environment
+- Map: DOOM2.WAD + oku2v31.wad
+- Entities: ~23,000 active AI monsters
+- Profiling Tool: Linux *perf* (Hardware Performance Counters)
+
+### CPU & Cache Metrics (`perf stat`)
+Here are the metrics by the Linux *perf*. Combining *hecs* for 
+contiguous component memory with the chosen threading strategy 
+(*micropool* for frame tasks, *rayon* for loading) helps keep 
+CPU cache misses low:
+
+| Metric | Measured Value | Notes |
+| :--- | :--- | :--- |
+| L1 Data Cache Miss Rate | **3.75%** *(1.83B misses / 48.8B loads)* | High cache locality |
+| IPC (Instructions / Cycle) | **1.35** *(101.7B inst / 75.4B cycles)* | Low ALU stalls |
+| Branch Miss Rate | **2.20%** *(304M misses / 13.8B branches)* | Predictable execution |
+| Execution Bound Time | **42.9s** *(34.7s user / 1.48s sys)* | Stable CPU-bound workload |
+
+> A **3.75% L1 miss rate** across 23,000 entities shows that 
+the Data-Oriented ECS design successfully fits the active AI 
+state into CPU caches, avoiding memory bandwidth bottlenecks.
+
 ## Project Architecture
-The project is designed so that the crates are loosely coupled with each other in a *strictly one-way order*:
+The project is designed so that the crates are loosely coupled 
+with each other in a *strictly one-way order*:
 
 <details>
 <summary><b>↓ Renderer ↓</b></summary>
