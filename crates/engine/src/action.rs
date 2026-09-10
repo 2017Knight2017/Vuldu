@@ -200,7 +200,7 @@ pub(crate) fn chase(ctx: &mut ActionContext, query: QueryIter<'_, ChaseComponent
 
 		if ai.reaction_time > 0 {
 			ai.reaction_time -= 1;
-			return;
+			continue;
 		}
 
 		let Ok((target_hp, target_pos, target_cur_sector, target)) = ctx
@@ -212,14 +212,14 @@ pub(crate) fn chase(ctx: &mut ActionContext, query: QueryIter<'_, ChaseComponent
 			if let Some(spawn_state) = mobj_info.spawn_state {
 				set_mobj_state(act, ai, anim, spawn_state, ctx.db, 0);
 			}
-			return;
+			continue;
 		};
 
 		if target_hp.0 <= 0 {
 			if let Some(spawn_state) = mobj_info.spawn_state {
 				set_mobj_state(act, ai, anim, spawn_state, ctx.db, 0);
 			}
-			return;
+			continue;
 		}
 
 		if ai.threshold > 0 {
@@ -253,7 +253,7 @@ pub(crate) fn chase(ctx: &mut ActionContext, query: QueryIter<'_, ChaseComponent
 			if ctx.cfg.skill != SkillLevel::Nightmare && !ctx.cfg.fast_monsters {
 				p_new_chase_dir(&mut move_ctx, rot, target_pos, ctx.mobj_flags);
 			}
-			return;
+			continue;
 		}
 
 		let target_info = &ctx.db.mobjinfo[target.type_ as usize];
@@ -278,7 +278,7 @@ pub(crate) fn chase(ctx: &mut ActionContext, query: QueryIter<'_, ChaseComponent
 			}
 
 			set_mobj_state(act, ai, anim, melee_state, ctx.db, 0);
-			return;
+			continue;
 		}
 
 		let mut check_missile = true;
@@ -302,7 +302,7 @@ pub(crate) fn chase(ctx: &mut ActionContext, query: QueryIter<'_, ChaseComponent
 					mobj_info.melee_state.is_none(),
 				) {
 				set_mobj_state(act, ai, anim, missile_state, ctx.db, 0);
-				return;
+				continue;
 			}
 		}
 
@@ -321,5 +321,9 @@ pub(crate) fn chase(ctx: &mut ActionContext, query: QueryIter<'_, ChaseComponent
 				pos: Some((pos.x, pos.y, pos.z)),
 			});
 		};
+
+		if act.0 == Some(ActionFunc::Chase) {
+			act.0 = None;
+		}
 	}
 }

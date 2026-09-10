@@ -291,6 +291,10 @@ pub(crate) fn look(ctx: &mut ActionContext, iter: QueryIter<'_, LookComponents>)
 		check_sound(&mut look_ctx, ctx.sound_targets);
 
 		check_sight(&mut look_ctx);
+
+		if look_ctx.act.0 == Some(ActionFunc::Look) {
+			look_ctx.act.0 = None;
+		}
 	}
 }
 
