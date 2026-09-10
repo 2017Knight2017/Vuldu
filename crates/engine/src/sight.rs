@@ -316,7 +316,7 @@ fn check_sound(ctx: &mut LookContext, sound_targets: &mut [Option<Entity>]) {
 		return;
 	}
 
-	if !ctx.mobj.flags.contains(MobjFlags::AMBUSH)
+	if ctx.mobj.flags.contains(MobjFlags::AMBUSH)
 		&& !p_check_sight(
 			&SightContext {
 				pos: ctx.pos,
