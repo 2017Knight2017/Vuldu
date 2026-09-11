@@ -590,7 +590,7 @@ impl Blockmap {
 						max_z: origin_z + ((row + 1) as f32) * MAPBLOCKSIZE,
 					};
 
-					if block_aabb.intersects_line(&line.bbox, v1, v2) {
+					if block_aabb.intersects_line(line.bbox, v1, v2) {
 						result.push(row * self.col_num + col);
 					}
 				}

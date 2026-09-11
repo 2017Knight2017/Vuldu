@@ -46,7 +46,7 @@ pub(crate) fn p_divline_side(x: f32, z: f32, node: DivLine) -> i32 {
 	}
 }
 
-pub(crate) fn p_point_on_line_side(x: f32, y: f32, line: &Line, level: &Level) -> i32 {
+pub(crate) fn p_point_on_line_side(x: f32, y: f32, line: Line, level: &Level) -> i32 {
 	let v1 = level.geom.vertices[line.v1.0];
 	p_divline_side(
 		x,
@@ -60,7 +60,7 @@ pub(crate) fn p_point_on_line_side(x: f32, y: f32, line: &Line, level: &Level) -
 	)
 }
 
-pub(crate) fn p_box_on_line_side(bbox: &AABB, line: &Line, level: &Level) -> i32 {
+pub(crate) fn p_box_on_line_side(bbox: AABB, line: Line, level: &Level) -> i32 {
 	let v1 = level.geom.vertices[line.v1.0];
 
 	let p1: i32;

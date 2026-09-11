@@ -285,13 +285,13 @@ fn pit_check_thing(ctx: &mut MoveContext, other_ent: Entity, coll: Collider) -> 
 }
 
 fn pit_check_line(ctx: &mut MoveContext, bbox: AABB, line_id: LineId) -> bool {
-	let line = &ctx.level.geom.lines[line_id.0];
+	let line = ctx.level.geom.lines[line_id.0];
 
-	if !line.bbox.intersects_aabb(&bbox) {
+	if !line.bbox.intersects_aabb(bbox) {
 		return true;
 	}
 
-	if p_box_on_line_side(&bbox, line, ctx.level) != -1 {
+	if p_box_on_line_side(bbox, line, ctx.level) != -1 {
 		return true;
 	}
 

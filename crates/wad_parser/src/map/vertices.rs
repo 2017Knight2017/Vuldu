@@ -122,14 +122,14 @@ impl AABB {
 		}
 	}
 
-	pub fn intersects_aabb(&self, other: &Self) -> bool {
+	pub fn intersects_aabb(self, other: Self) -> bool {
 		self.min_x < other.max_x
 			&& self.max_x > other.min_x
 			&& self.min_z < other.max_z
 			&& self.max_z > other.min_z
 	}
 
-	pub fn intersects_line(&self, line_bbox: &AABB, v1: (f32, f32), v2: (f32, f32)) -> bool {
+	pub fn intersects_line(self, line_bbox: AABB, v1: (f32, f32), v2: (f32, f32)) -> bool {
 		if line_bbox.intersects_aabb(self) {
 			return true;
 		}
@@ -730,8 +730,8 @@ impl Level {
 				let poly_aabb = AABB::from_polygon(&poly_loop);
 				let mut is_hole = false;
 
-				for (outer, outer_aabb) in &outer_sectors {
-					if poly_aabb.intersects_aabb(outer_aabb)
+				for (outer, outer_aabb) in outer_sectors.iter() {
+					if poly_aabb.intersects_aabb(*outer_aabb)
 						&& poly_loop.iter().any(|&pt| point_in_polygon(pt, outer))
 					{
 						is_hole = true;
@@ -772,7 +772,7 @@ impl Level {
 
 				for hole in &hole_loops {
 					let hole_aabb = AABB::from_polygon(hole);
-					if !outer_aabb.intersects_aabb(&hole_aabb) {
+					if !outer_aabb.intersects_aabb(hole_aabb) {
 						continue;
 					}
 

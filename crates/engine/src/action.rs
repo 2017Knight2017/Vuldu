@@ -170,12 +170,15 @@ pub fn action_system(
 		db,
 	};
 
-	let mut chase_query = ctx.world.query::<ChaseComponents>();
-	chase(&mut ctx, chase_query.iter());
-	drop(chase_query);
+	{
+		let mut chase_query = ctx.world.query::<ChaseComponents>();
+		chase(&mut ctx, chase_query.iter());
+	}
 
-	let mut look_query = ctx.world.query::<LookComponents>();
-	look(&mut ctx, look_query.iter());
+	{
+		let mut look_query = ctx.world.query::<LookComponents>();
+		look(&mut ctx, look_query.iter());
+	}
 }
 
 type ChaseComponents<'a> = (
@@ -198,9 +201,7 @@ pub(crate) fn chase(ctx: &mut ActionContext, query: QueryIter<'_, ChaseComponent
 	{
 		let mobj_info = &ctx.db.mobjinfo[mobj.type_ as usize];
 
-		if ai.reaction_time > 0 {
-			ai.reaction_time -= 1;
-		}
+		ai.reaction_time = ai.reaction_time.saturating_sub(1);
 
 		let Ok((target_hp, target_pos, target_cur_sector, target)) = ctx
 			.world
@@ -252,6 +253,8 @@ pub(crate) fn chase(ctx: &mut ActionContext, query: QueryIter<'_, ChaseComponent
 			if ctx.cfg.skill != SkillLevel::Nightmare && !ctx.cfg.fast_monsters {
 				p_new_chase_dir(&mut move_ctx, rot, target_pos, ctx.mobj_flags);
 			}
+
+			act.0 = None;
 			continue;
 		}
 
@@ -322,8 +325,6 @@ pub(crate) fn chase(ctx: &mut ActionContext, query: QueryIter<'_, ChaseComponent
 			});
 		};
 
-		if act.0 == Some(ActionFunc::Chase) {
-			act.0 = None;
-		}
+		act.0 = None;
 	}
 }
