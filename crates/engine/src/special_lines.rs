@@ -2,17 +2,17 @@ use std::f64::consts::TAU;
 
 use crate::{
 	Intercept, MobjNum, MobjType, PlayerInventory, PlayerRotation, Position, SfxEvent, Traversal,
-	USERANGE, UseContext, collect_line_intercepts, p_change_switch_texture,
+	USERANGE, UseContext, WorldEvent, collect_line_intercepts,
 };
 use hecs::{Entity, World};
-use wad_parser::{Line, LineFlags, LineId, to_u64};
+use wad_parser::{Level, Line, LineFlags, LineId, to_u64};
 
 fn ptr_use_traverse(
 	ctx: &mut UseContext,
 	line_id: LineId,
 	user_pos: Position,
 	mobj: MobjType,
-	inv_opt: Option<PlayerInventory>,
+	inv: PlayerInventory,
 ) -> bool {
 	let line = ctx.level.geom.lines[line_id.0];
 
@@ -34,7 +34,14 @@ fn ptr_use_traverse(
 		return true;
 	}
 
-	p_use_special_line(ctx, line_id, mobj, inv_opt, Some(user_pos.y));
+	p_use_special_line(
+		line_id,
+		mobj,
+		Some(inv),
+		user_pos.y,
+		ctx.level,
+		ctx.world_events,
+	);
 
 	false
 }
@@ -70,7 +77,7 @@ pub(crate) fn p_use_lines(
 	for inter in inters.drain(..) {
 		let line_id = inter.line_id;
 
-		if !ptr_use_traverse(&mut ctx, line_id, pos, mobj, Some(inv)) {
+		if !ptr_use_traverse(&mut ctx, line_id, pos, mobj, inv) {
 			return;
 		}
 	}
@@ -80,16 +87,17 @@ pub fn p_cross_special_line() {
 	todo!();
 }
 
-fn p_use_special_line(
-	ctx: &mut UseContext,
+pub(crate) fn p_use_special_line(
 	line_id: LineId,
 	mobj: MobjType,
 	inv_opt: Option<PlayerInventory>,
-	player_y_opt: Option<f32>,
+	y: f32,
+	level: &Level,
+	world_events: &mut Vec<WorldEvent>,
 ) -> bool {
-	let line = ctx.level.geom.lines[line_id.0];
+	let line = level.geom.lines[line_id.0];
 
-	if ctx.level.state.lines[line_id.0].used {
+	if level.state.lines[line_id.0].used {
 		return false;
 	}
 
@@ -123,15 +131,24 @@ fn p_use_special_line(
 		| 103 | 111 | 112 | 113 | 122 | 127 | 131 | 133 | 135 | 137 | 140
 			if effect(line, inv_opt) =>
 		{
-			p_change_switch_texture(ctx, line_id, false, player_y_opt);
-			ctx.level.state.lines[line_id.0].used = true;
+			world_events.push(WorldEvent::ChangeSwitchTex {
+				line_id,
+				use_again: false,
+				single_use: true,
+				y,
+			});
 		}
 
 		42 | 43 | 45 | 60 | 61 | 62 | 63 | 64 | 66 | 67 | 65 | 68 | 69 | 70 | 114 | 115 | 116
 		| 123 | 132 | 99 | 134 | 136 | 138 | 139
 			if effect(line, inv_opt) =>
 		{
-			p_change_switch_texture(ctx, line_id, true, player_y_opt);
+			world_events.push(WorldEvent::ChangeSwitchTex {
+				line_id,
+				use_again: true,
+				single_use: false,
+				y,
+			});
 		}
 
 		_ => return false,

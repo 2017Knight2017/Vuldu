@@ -1,7 +1,7 @@
 use crate::{
-	Button, CurrentSector, Intercept, NUMAMMO, NUMCARDS, NUMWEAPONS, PlayerMarker, PlayerRotation,
+	CurrentSector, Intercept, NUMAMMO, NUMCARDS, NUMWEAPONS, PlayerMarker, PlayerRotation,
 	PlayerState, Position, PrevPosition, SfxEvent, Traversal, UseDown, Velocity, WeaponType,
-	p_use_lines,
+	WorldEvent, p_use_lines,
 };
 use hecs::{Entity, World};
 use std::f64::consts::TAU;
@@ -156,9 +156,9 @@ pub fn apply_player_movement_system(world: &World, level: &Level) {
 }
 
 pub(crate) struct UseContext<'a> {
-	pub(crate) level: &'a mut Level,
-	pub(crate) buttons: &'a mut Vec<Button>,
+	pub(crate) level: &'a Level,
 	pub(crate) audio: &'a mut Vec<SfxEvent>,
+	pub(crate) world_events: &'a mut Vec<WorldEvent>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -166,11 +166,11 @@ pub fn handle_use_input(
 	world: &World,
 	player_ent: Entity,
 	use_pressed: bool,
-	level: &mut Level,
+	level: &Level,
 	traversal: &mut Traversal,
 	intercepts: &mut Vec<Intercept>,
-	buttons: &mut Vec<Button>,
 	audio: &mut Vec<SfxEvent>,
+	world_events: &mut Vec<WorldEvent>,
 ) {
 	let mut use_down = world.get::<&mut UseDown>(player_ent).unwrap();
 	if !use_pressed {
@@ -186,8 +186,8 @@ pub fn handle_use_input(
 	p_use_lines(
 		UseContext {
 			level,
-			buttons,
 			audio,
+			world_events,
 		},
 		world,
 		player_ent,

@@ -1,11 +1,13 @@
 use hecs::{CommandBuffer, Entity, World};
-use wad_parser::{Level, to_u64};
+use wad_parser::{Level, LineId, TextureId, to_u64};
 
 use crate::{
-	AmmoType, Card, Collider, GameConfig, Health, MobjFlags, MobjNum, MobjType, NUMCARDS,
+	AmmoType, Button, Card, Collider, GameConfig, Health, MobjFlags, MobjNum, MobjType, NUMCARDS,
 	NUMWEAPONS, PICKUP_MESSAGES, PlayerInventory, PlayerStats, SfxEvent, SkillLevel,
-	UpdatableUiType, WeaponType, kill_mobj,
+	UpdatableUiType, WeaponType, kill_mobj, line_midpoint,
 };
+
+const BUTTONTIME: u32 = 35;
 
 #[derive(Debug)]
 pub enum WorldEvent {
@@ -25,6 +27,12 @@ pub enum WorldEvent {
 	CheatIDFA,
 	CheatIDDQD,
 	CheatNOCLIP,
+	ChangeSwitchTex {
+		line_id: LineId,
+		use_again: bool,
+		single_use: bool,
+		y: f32,
+	},
 }
 
 #[derive(PartialEq, Eq)]
@@ -37,13 +45,14 @@ pub enum GraphicsCommand {
 pub fn execute_events_system(
 	world_events: &mut Vec<WorldEvent>,
 	world: &World,
-	level: &Level,
+	level: &mut Level,
 	player_ent: Entity,
 	ui_to_update: &mut Vec<UpdatableUiType>,
 	cmd: &mut CommandBuffer,
 	audio: &mut Vec<SfxEvent>,
 	blocklists: &mut [Vec<(Entity, Collider)>],
 	graphics_buffer: &mut Vec<GraphicsCommand>,
+	buttons: &mut Vec<Button>,
 	cfg: GameConfig,
 	global_timer: u32,
 ) {
@@ -137,6 +146,49 @@ pub fn execute_events_system(
 			}
 			WorldEvent::CheatIDDQD => {}
 			WorldEvent::CheatNOCLIP => {}
+			WorldEvent::ChangeSwitchTex {
+				line_id,
+				use_again,
+				single_use,
+				y,
+			} => {
+				let line = level.geom.lines[line_id.0];
+				let Some(side_id) = line.sides.0 else { return };
+				let Some(slot) = level.state.sides[side_id.0].switch_slot else {
+					return;
+				};
+
+				if single_use {
+					level.state.lines[line_id.0].used = true;
+				}
+
+				let cur = TextureId(level.state.switch_ids[slot as usize]);
+				let Some(&next) = level.geom.switch_pairs.get(&cur) else {
+					return;
+				};
+				level.state.switch_ids[slot as usize] = next.0;
+
+				let sfx = if line.special == 11 {
+					b"DSSWTCHX"
+				} else {
+					b"DSSWTCHN"
+				};
+
+				let (x, z) = line_midpoint(level, line_id);
+				audio.push(SfxEvent {
+					sfx_id: to_u64(sfx),
+					pos: Some((x, y, z)),
+				});
+
+				if use_again && !buttons.iter().any(|b| b.slot == slot) {
+					buttons.push(Button {
+						slot,
+						line_id,
+						timer: BUTTONTIME,
+						y,
+					});
+				}
+			}
 		}
 	}
 }

@@ -68,11 +68,11 @@ impl GameContext {
 			&self.world,
 			self.player_entity,
 			input.use_,
-			&mut self.level,
+			&self.level,
 			&mut self.traversal,
 			&mut self.intercepts,
-			&mut self.buttons,
 			&mut audio.buffer,
+			&mut self.world_events,
 		);
 
 		self.flush_command_buffer();
@@ -123,22 +123,22 @@ impl GameContext {
 
 		cheat_system(last_buttons, &mut self.world_events);
 
+		button_system(&mut self.buttons, &mut self.world_events);
 		execute_events_system(
 			&mut self.world_events,
 			&self.world,
-			&self.level,
+			&mut self.level,
 			self.player_entity,
 			ui_to_update,
 			&mut self.cmd,
 			&mut audio.buffer,
 			&mut self.blocklists,
 			&mut self.graphics_buffer,
+			&mut self.buttons,
 			self.config,
 			self.global_timer,
 		);
 		apply_mobj_flags_system(&mut self.mobj_flags, &self.world);
-
-		button_system(&mut self.level, &mut self.buttons, &mut audio.buffer);
 		animation_system(&self.world);
 		audio.system(&self.world, self.player_entity);
 		update_blocklists_system(&self.world, &self.level, &mut self.blocklists);
