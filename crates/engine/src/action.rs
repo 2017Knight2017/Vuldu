@@ -200,7 +200,6 @@ pub(crate) fn chase(ctx: &mut ActionContext, query: QueryIter<'_, ChaseComponent
 
 		if ai.reaction_time > 0 {
 			ai.reaction_time -= 1;
-			continue;
 		}
 
 		let Ok((target_hp, target_pos, target_cur_sector, target)) = ctx
@@ -300,6 +299,7 @@ pub(crate) fn chase(ctx: &mut ActionContext, query: QueryIter<'_, ChaseComponent
 					move_ctx.random,
 					ctx.mobj_flags,
 					mobj_info.melee_state.is_none(),
+					ai.reaction_time,
 				) {
 				set_mobj_state(act, ai, anim, missile_state, ctx.db, 0);
 				continue;

@@ -47,6 +47,7 @@ pub(crate) fn p_check_melee_range(
 	dist < MELEERANGE - 20.0 + target_radius
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn p_check_missile_range(
 	ctx: &SightContext,
 	ent: Entity,
@@ -55,6 +56,7 @@ pub(crate) fn p_check_missile_range(
 	random: &mut Random,
 	mobj_flags: &mut Vec<MobjFlagCommand>,
 	is_melee_state_none: bool,
+	reaction_time: u32,
 ) -> bool {
 	if !p_check_sight(ctx, traversal) {
 		return false;
@@ -66,6 +68,10 @@ pub(crate) fn p_check_missile_range(
 			flag: MobjFlags::JUST_HIT,
 		});
 		return true;
+	}
+
+	if reaction_time > 0 {
+		return false;
 	}
 
 	let mut dist =
