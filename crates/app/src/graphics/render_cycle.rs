@@ -5,7 +5,7 @@ use glam::{Mat4, Vec3};
 use hecs::{Entity, World};
 use micropool::iter::*;
 use renderer::{MAX_SKY, MVP, ObjectInstance, UiInstance};
-use wad_parser::{Level, SectorState, Ui};
+use wad_parser::{Level, SectorState, TextureData, Ui};
 use winit::window::Window;
 
 use crate::graphics::GraphicsFlags;
@@ -31,11 +31,20 @@ impl GraphicsContext {
 			return;
 		}
 
-		let ui_instances = self.collect_ui_instances(world, player_entity, game_state);
+		let (inv, stats, hp, pos, prev_pos) = world
+			.query_one::<(&PlayerInventory, &PlayerStats, &Health, &Position, &PrevPosition)>(player_entity)
+			.get()
+			.map(|(i, s, h, p, pp)| (*i, *s, *h, *p, *pp))
+			.unwrap();
+
+		let ui_instances = self.collect_ui_instances(inv, stats, hp, game_state);
 		self.renderer.pin().updateUiInstances(&ui_instances);
 
+		let weapon_instance = self.collect_weapon_instance(inv.weapon_tex);
+		self.renderer.pin().updateWeaponInstance(weapon_instance);
+
 		let obj_instances =
-			self.collect_object_instances(world, player_entity, &level.state.sectors, alpha);
+			self.collect_object_instances(world, pos, prev_pos, &level.state.sectors, alpha);
 		self.renderer.pin().updateObjectInstances(&obj_instances);
 
 		level
@@ -54,7 +63,9 @@ impl GraphicsContext {
 		self.renderer.pin().updateSwitches(&level.state.switch_ids);
 
 		let aspect_ratio = size.width as f32 / size.height as f32;
-		let proj = Mat4::perspective_rh(FOV_ANGLE.to_radians(), aspect_ratio, 1.0, 10000.0);
+		let mut proj = Mat4::perspective_rh(FOV_ANGLE.to_radians(), aspect_ratio, 1.0, 10000.0);
+		proj.x_axis.x *= -1.0;
+		proj.y_axis.y *= -1.0;
 
 		update_camera_from_player(&mut self.view_matrix, world, player_entity, alpha);
 
@@ -71,6 +82,7 @@ impl GraphicsContext {
 		self.renderer.pin().setGlobalTimer(global_timer);
 		self.renderer.pin().drawLevel();
 		self.renderer.pin().drawObjects();
+		self.renderer.pin().drawWeapon();
 		self.renderer.pin().drawUi();
 		self.renderer.pin().endFrame();
 	}
@@ -78,18 +90,11 @@ impl GraphicsContext {
 	fn collect_object_instances(
 		&self,
 		world: &World,
-		player_entity: Entity,
+		pos: Position,
+		prev_pos: PrevPosition,
 		sectors: &[SectorState],
 		alpha: f32,
 	) -> Vec<ObjectInstance> {
-		let Ok((pos, prev_pos)) = world
-			.query_one::<(&Position, &PrevPosition)>(player_entity)
-			.get()
-			.map(|(p, pp)| (*p, *pp))
-		else {
-			return Vec::new();
-		};
-
 		let lerped_x = prev_pos.x * (1.0 - alpha) + pos.x * alpha;
 		let lerped_y = prev_pos.y * (1.0 - alpha) + pos.y * alpha;
 		let lerped_z = prev_pos.z * (1.0 - alpha) + pos.z * alpha;
@@ -197,20 +202,13 @@ impl GraphicsContext {
 
 	fn collect_ui_instances(
 		&mut self,
-		world: &World,
-		player_entity: Entity,
+		inv: PlayerInventory,
+		stats: PlayerStats,
+		hp: Health,
 		game_state: GameState,
 	) -> Vec<UiInstance> {
 		match game_state {
 			GameState::Level | GameState::Demoscreen => {
-				let Ok((inv, stats, hp)) = world
-					.query_one::<(&PlayerInventory, &PlayerStats, &Health)>(player_entity)
-					.get()
-					.map(|(i, s, h)| (*i, *s, *h))
-				else {
-					return Vec::new();
-				};
-
 				if self.cached_stbar_ui.arms.is_empty() {
 					get_stbar(&mut self.cached_stbar_ui, inv, stats, hp);
 				} else {
@@ -270,6 +268,14 @@ impl GraphicsContext {
 			pos: [x, y],
 			sprite_size: [width as f32, height as f32],
 			texture_id: tex_id.0,
+		}
+	}
+
+	fn collect_weapon_instance(&mut self, weapon_tex: TextureData) -> UiInstance {
+		UiInstance {
+			pos: [50.0, 50.0],
+			sprite_size: [weapon_tex.1 as f32, weapon_tex.2 as f32],
+			texture_id: weapon_tex.0.0,
 		}
 	}
 

@@ -82,6 +82,7 @@ pub(crate) mod ffi {
 		fn drawLevel(self: Pin<&mut VulkanRenderer>);
 		fn drawObjects(self: Pin<&mut VulkanRenderer>);
 		fn drawUi(self: Pin<&mut VulkanRenderer>);
+		fn drawWeapon(self: Pin<&mut VulkanRenderer>);
 		fn updateLevelGeometry(
 			self: Pin<&mut VulkanRenderer>,
 			vertices: &[LevelVertex],
@@ -97,8 +98,14 @@ pub(crate) mod ffi {
 			vertices: &[SpriteVertex],
 			indices: &[u32],
 		);
+		fn updateWeaponGeometry(
+			self: Pin<&mut VulkanRenderer>,
+			vertices: &[SpriteVertex],
+			indices: &[u32],
+		);
 		fn updateObjectInstances(self: Pin<&mut VulkanRenderer>, instances: &[ObjectInstance]);
 		fn updateUiInstances(self: Pin<&mut VulkanRenderer>, instances: &[UiInstance]);
+		fn updateWeaponInstance(self: Pin<&mut VulkanRenderer>, instance: UiInstance);
 		fn uploadPalettes(self: Pin<&mut VulkanRenderer>, palettes: &[u8]);
 		fn uploadColormap(self: Pin<&mut VulkanRenderer>, colormap: &[u8]);
 		fn uploadTextureArray(

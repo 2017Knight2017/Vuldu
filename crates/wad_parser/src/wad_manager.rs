@@ -145,9 +145,10 @@ impl WadManager {
 
 	pub fn get_palettes(&self, map_name: &[u8; 8]) -> Result<Vec<u8>, String> {
 		let map_wad_index = self.map_directory[map_name][0].wad_index;
-		let pal_wad_index = match self.colormaps[map_wad_index] {
-			Some(_) => map_wad_index,
-			None => 0,
+		let pal_wad_index = if self.colormaps[map_wad_index].is_some() {
+			map_wad_index
+		} else {
+			0
 		};
 
 		let pal_lump = self.palettes[pal_wad_index].unwrap();
@@ -169,9 +170,10 @@ impl WadManager {
 
 	pub fn get_colormap(&self, map_name: &[u8; 8]) -> Result<&[u8], String> {
 		let map_wad_index = self.map_directory[map_name][0].wad_index;
-		let clm_wad_index = match self.colormaps[map_wad_index] {
-			Some(_) => map_wad_index,
-			None => 0,
+		let clm_wad_index = if self.colormaps[map_wad_index].is_some() {
+			map_wad_index
+		} else {
+			0
 		};
 
 		let clm_lump = self.colormaps[clm_wad_index].unwrap();

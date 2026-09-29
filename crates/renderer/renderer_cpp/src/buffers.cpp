@@ -5,7 +5,13 @@
 #include "renderer/src/bridge.rs.h"
 #include "utils.h"
 
-void VulkanRenderer::createBuffer(VkDeviceSize bufferSize, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory) {
+void VulkanRenderer::createBuffer(
+    VkDeviceSize bufferSize, 
+    VkBufferUsageFlags usage, 
+    VkMemoryPropertyFlags properties, 
+    VkBuffer& buffer, 
+    VkDeviceMemory& bufferMemory
+) {
 	VkBufferCreateInfo bufferInfo{};
 	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	bufferInfo.size = bufferSize;
@@ -115,7 +121,7 @@ void VulkanRenderer::uploadTextureArray(
     }
     VkCommandBuffer commandBuffer = beginSingleTimeCommands();
 
-    changeImageLayout(
+    changeMultipleImageLayout(
         commandBuffer, 
         VK_IMAGE_LAYOUT_UNDEFINED, 
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
@@ -134,7 +140,7 @@ void VulkanRenderer::uploadTextureArray(
                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
     }
 
-    changeImageLayout(
+    changeMultipleImageLayout(
         commandBuffer, 
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
@@ -294,11 +300,11 @@ void VulkanRenderer::createDataTexture(
 
     VkCommandBuffer commandBuffer = beginSingleTimeCommands();
 
-    changeImageLayout(
+    changeSingleImageLayout(
         commandBuffer, 
         VK_IMAGE_LAYOUT_UNDEFINED, 
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
-        {&dstImage, 1}
+        dstImage
     );
     
     VkBufferImageCopy region{};
@@ -313,11 +319,11 @@ void VulkanRenderer::createDataTexture(
     vkCmdCopyBufferToImage(commandBuffer, stagingBuffer, dstImage, 
                            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
-    changeImageLayout(
+    changeSingleImageLayout(
         commandBuffer, 
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 
-        {&dstImage, 1}
+        dstImage
     );
 
     endSingleTimeCommands(commandBuffer);

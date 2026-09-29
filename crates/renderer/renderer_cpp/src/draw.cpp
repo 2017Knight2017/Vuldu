@@ -65,14 +65,6 @@ void VulkanRenderer::createSyncObjects() {
 	}
 }
 
-void VulkanRenderer::updateMVPBuffer(const MVP& mvp) {
-	memcpy(this->MVPBuffersMapped[this->currentFrame], &mvp, sizeof(MVP));
-	
-	auto* mvp_ptr = reinterpret_cast<MVP*>(this->MVPBuffersMapped[this->currentFrame]);
-    mvp_ptr->proj[5] *= -1.0f;
-    mvp_ptr->proj[0] *= -1.0f;
-}
-
 void VulkanRenderer::updateObjectInstances(rust::Slice<const ObjectInstance> instances) {
     if (instances.empty() || instances.size() > MAX_OBJECTS) return;
 
@@ -89,6 +81,10 @@ void VulkanRenderer::updateUiInstances(rust::Slice<const UiInstance> instances) 
 
 	VkDeviceSize instanceBufferSize = sizeof(UiInstance) * instances.size();
     memcpy(this->uiInstanceBuffersMapped[this->currentFrame], instances.data(), instanceBufferSize);   
+}
+
+void VulkanRenderer::updateWeaponInstance(UiInstance instance) {
+    memcpy(this->weaponInstanceBuffersMapped[this->currentFrame], &instance, sizeof(UiInstance));   
 }
 
 void VulkanRenderer::setPaletteIndex(uint32_t idx) {
@@ -132,7 +128,7 @@ void VulkanRenderer::startFrame(const MVP& mvp) {
         throw std::runtime_error("failed to acquire swap chain image!");
     }
 
-	updateMVPBuffer(mvp);
+	memcpy(this->MVPBuffersMapped[this->currentFrame], &mvp, sizeof(MVP));
 
 	vkResetFences(this->device, 1, &this->inFlightFences[this->currentFrame]);
 	vkResetCommandBuffer(currentCommandBuffer, 0);
@@ -145,17 +141,17 @@ void VulkanRenderer::startFrame(const MVP& mvp) {
         throw std::runtime_error("Failed to begin recording command buffer!");
     }
 
-    changeImageLayout(
+    changeSingleImageLayout(
         currentCommandBuffer, 
         VK_IMAGE_LAYOUT_UNDEFINED, 
         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-        {&this->depthImage, 1} 
+        this->depthImage 
     );
-    changeImageLayout(
+    changeSingleImageLayout(
         currentCommandBuffer, 
         VK_IMAGE_LAYOUT_UNDEFINED, 
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        {&this->swapChainImages[this->currentImageIndex], 1} 
+        this->swapChainImages[this->currentImageIndex]
     );
     beginRendering(currentCommandBuffer);
 
@@ -174,7 +170,7 @@ void VulkanRenderer::startFrame(const MVP& mvp) {
     vkCmdSetScissor(currentCommandBuffer, 0, 1, &scissor);
 }
 
-void VulkanRenderer::drawLevel() {
+void VulkanRenderer::drawLevel() noexcept {
     if (this->levelVertexBuffer == VK_NULL_HANDLE || this->levelVertexCount == 0) return;
 
     VkCommandBuffer currentCommandBuffer = this->commandBuffers[this->currentFrame];
@@ -220,7 +216,7 @@ void VulkanRenderer::drawLevel() {
     vkCmdDrawIndexed(currentCommandBuffer, this->levelIndexCount, 1, 0, 0, 0);
 }
 
-void VulkanRenderer::drawObjects() {
+void VulkanRenderer::drawObjects() noexcept {
     if (this->objectVertexBuffer == VK_NULL_HANDLE || this->objectIndexCount == 0) return;
     
     VkCommandBuffer currentCommandBuffer = this->commandBuffers[this->currentFrame];
@@ -258,7 +254,7 @@ void VulkanRenderer::drawObjects() {
     vkCmdDrawIndexed(currentCommandBuffer, this->objectIndexCount, this->activeObjectsCount, 0, 0, 0);
 }
 
-void VulkanRenderer::drawUi() {
+void VulkanRenderer::drawUi() noexcept {
     if (this->uiVertexBuffer == VK_NULL_HANDLE || this->uiIndexCount == 0) return;
     
     VkCommandBuffer currentCommandBuffer = this->commandBuffers[this->currentFrame];
@@ -292,15 +288,49 @@ void VulkanRenderer::drawUi() {
     vkCmdDrawIndexed(currentCommandBuffer, this->uiIndexCount, this->activeUiCount, 0, 0, 0);
 }
 
+void VulkanRenderer::drawWeapon() noexcept {
+    if (this->weaponVertexBuffer == VK_NULL_HANDLE || this->weaponIndexCount == 0) return;
+    
+    VkCommandBuffer currentCommandBuffer = this->commandBuffers[this->currentFrame];
+        
+    vkCmdBindPipeline(currentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->weaponPipeline);
+        
+    vkCmdBindDescriptorSets(
+        currentCommandBuffer, 
+        VK_PIPELINE_BIND_POINT_GRAPHICS, 
+        this->weaponPipelineLayout, 
+        0, 1, 
+        &this->descriptorSets[this->currentFrame], 
+        0, nullptr
+    );
+        
+    VkBuffer vertexBuffers[] = {this->weaponVertexBuffer, this->weaponInstanceBuffers[this->currentFrame]};
+    VkDeviceSize offsets[] = {0, 0};
+    vkCmdBindVertexBuffers(currentCommandBuffer, 0, 2, vertexBuffers, offsets);
+        
+    vkCmdBindIndexBuffer(currentCommandBuffer, this->weaponIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
+    vkCmdPushConstants(
+        currentCommandBuffer,
+        this->weaponPipelineLayout,
+        VK_SHADER_STAGE_FRAGMENT_BIT,
+        0,                    
+        sizeof(uint32_t),
+        &this->currentPaletteIndex
+    );
+
+    vkCmdDrawIndexed(currentCommandBuffer, this->weaponIndexCount, this->activeUiCount, 0, 0, 0);
+}
+
 void VulkanRenderer::endFrame() {
 	VkCommandBuffer currentCommandBuffer = this->commandBuffers[this->currentFrame];
 
     vkCmdEndRendering(currentCommandBuffer);
-    changeImageLayout(
+    changeSingleImageLayout(
         currentCommandBuffer, 
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 
         VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-        {&this->swapChainImages[this->currentImageIndex], 1} 
+        this->swapChainImages[this->currentImageIndex] 
     );
 
     if (vkEndCommandBuffer(currentCommandBuffer) != VK_SUCCESS) {
@@ -344,7 +374,7 @@ void VulkanRenderer::endFrame() {
 }
 
 
-void VulkanRenderer::beginRendering(VkCommandBuffer currentCommandBuffer) {
+void VulkanRenderer::beginRendering(VkCommandBuffer currentCommandBuffer) noexcept {
     VkClearValue clearColor{{{0.1f, 0.1f, 0.1f, 1.0f}}};
     VkClearValue clearDepth{{{1.0f, 0}}};
 

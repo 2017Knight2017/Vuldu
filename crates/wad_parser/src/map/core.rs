@@ -1,4 +1,5 @@
 use crate::{AABB, ActiveEffect, WadManager, wad_types::*};
+use approx::abs_diff_eq;
 use fixedbitset::FixedBitSet;
 use rayon::prelude::*;
 use rustc_hash::FxHashMap;
@@ -41,9 +42,9 @@ pub enum SlopeType {
 }
 
 fn get_slope_type(dx: f32, dy: f32) -> SlopeType {
-	if dx == 0.0 {
+	if abs_diff_eq!(dx, 0.0) {
 		SlopeType::Vertical
-	} else if dy == 0.0 {
+	} else if abs_diff_eq!(dy, 0.0) {
 		SlopeType::Horizontal
 	} else if (dx > 0.0 && dy > 0.0) || (dx < 0.0 && dy < 0.0) {
 		SlopeType::Positive
@@ -261,17 +262,12 @@ impl Level {
 			.map(|chunk| {
 				let l = unsafe { read_unaligned(chunk.as_ptr() as *const MapLinedef) };
 
-				if l.special != 0 {
-					match l.special {
-						1 | 26 | 27 | 28 | 31 | 32 | 33 | 34 | 117 | 118
-							if l.sidenum[1] != u16::MAX =>
-						{
-							let sector_id = level.geom.sides[l.sidenum[1] as usize].sector;
-							level.geom.movable_sectors.insert(sector_id.0);
-						}
-
-						_ => {}
-					}
+				if l.special != 0
+					&& l.sidenum[1] != u16::MAX
+					&& matches!(l.special, 1 | 26 | 27 | 28 | 31 | 32 | 33 | 34 | 117 | 118)
+				{
+					let sector_id = level.geom.sides[l.sidenum[1] as usize].sector;
+					level.geom.movable_sectors.insert(sector_id.0);
 				}
 
 				let (v1_x, v1_y) = level.geom.vertices[l.v1 as usize];
@@ -483,18 +479,17 @@ impl Level {
 	pub fn get_other_sector(&self, line_id: LineId, sector_id: SectorId) -> Option<SectorId> {
 		let line = &self.geom.lines[line_id.0];
 
-		match line.sides {
-			(Some(front_side_id), Some(back_side_id)) => {
-				let front_sector = self.geom.sides[front_side_id.0].sector;
-				let back_sector = self.geom.sides[back_side_id.0].sector;
+		let (Some(front_side_id), Some(back_side_id)) = line.sides else {
+			return None;
+		};
 
-				if front_sector == sector_id {
-					Some(back_sector)
-				} else {
-					Some(front_sector)
-				}
-			}
-			_ => None,
+		let front_sector = self.geom.sides[front_side_id.0].sector;
+		let back_sector = self.geom.sides[back_side_id.0].sector;
+
+		if front_sector == sector_id {
+			Some(back_sector)
+		} else {
+			Some(front_sector)
 		}
 	}
 }

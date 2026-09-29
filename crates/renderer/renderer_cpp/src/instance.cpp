@@ -43,7 +43,7 @@ bool checkValidationLayerSupport() {
     return true;
 }
 
-std::vector<const char*> getRequiredExtensions(bool is_x11) {
+std::vector<const char*> getRequiredExtensions([[maybe_unused]] bool is_x11) {
     std::vector<const char*> extensions = { VK_KHR_SURFACE_EXTENSION_NAME };
 
     #if defined(_WIN32)

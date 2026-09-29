@@ -75,7 +75,7 @@ pub fn execute_events_system(
 					continue;
 				};
 
-				match special_item_effect(
+				let Ok(opt) = special_item_effect(
 					item,
 					inv,
 					stats,
@@ -84,8 +84,12 @@ pub fn execute_events_system(
 					audio,
 					cfg,
 					global_timer,
-				) {
-					Ok(Some(_)) => {
+				) else {
+					continue;
+				};
+
+				match opt {
+					Some(_) => {
 						if item.type_ == MobjNum::Misc11 && hp.0 < 25 {
 							println!("Picked up a medikit that you REALLY need!")
 						} else {
@@ -102,7 +106,7 @@ pub fn execute_events_system(
 						graphics_buffer.push(GraphicsCommand::Palette(12));
 						kill_mobj(item_ent, world, level, cmd, blocklists);
 					}
-					Ok(None) => {
+					None => {
 						// if we're here, we've just picked up a weapon,
 						// so we don't check for medikit.
 						println!(
@@ -111,7 +115,6 @@ pub fn execute_events_system(
 						);
 						graphics_buffer.push(GraphicsCommand::Palette(12));
 					}
-					Err(_) => {}
 				}
 			}
 			WorldEvent::CheatIDKFA => {

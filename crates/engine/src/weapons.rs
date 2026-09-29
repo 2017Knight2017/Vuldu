@@ -1,7 +1,8 @@
 use hecs::{CommandBuffer, Entity, World};
+use rustc_hash::FxHashMap;
 use serde::Deserialize;
 use strum::EnumIter;
-use wad_parser::to_u64;
+use wad_parser::{TextureData, to_u64};
 
 use crate::{PlayerInput, PlayerInventory, PlayerShoot, SfxEvent, UpdatableUiType};
 
@@ -56,37 +57,49 @@ pub fn handle_weapons_input(
 	ui_to_update: &mut Vec<UpdatableUiType>,
 	command_buffer: &mut CommandBuffer,
 	audio: &mut Vec<SfxEvent>,
+	texture_ids: &FxHashMap<u64, TextureData>,
 	input: PlayerInput,
 ) {
 	let mut inv = world.get::<&mut PlayerInventory>(player_entity).unwrap();
 	let previous_ready_weapon = inv.ready_weapon;
 
 	if input.switch_fist_chainsaw {
-		if inv.ready_weapon == WeaponType::Chainsaw || !is_available(WeaponType::Chainsaw, *inv) {
+		if inv.ready_weapon == WeaponType::Chainsaw || !is_available(WeaponType::Chainsaw, &inv) {
 			inv.ready_weapon = WeaponType::Fist;
+			inv.weapon_tex = texture_ids[&to_u64(b"PUNGA0")];
 		} else {
 			inv.ready_weapon = WeaponType::Chainsaw;
+			inv.weapon_tex = texture_ids[&to_u64(b"CSAWA0")];
 		}
 	} else if input.switch_fist_chainsaw && inv.ready_weapon == WeaponType::Chainsaw {
 		inv.ready_weapon = WeaponType::Fist;
-	} else if input.choose_pistol && is_available(WeaponType::Pistol, *inv) {
+		inv.weapon_tex = texture_ids[&to_u64(b"PUNGA0")];
+	} else if input.choose_pistol && is_available(WeaponType::Pistol, &inv) {
 		inv.ready_weapon = WeaponType::Pistol;
-	} else if input.choose_shotgun && is_available(WeaponType::SuperShotgun, *inv) {
-		inv.ready_weapon = if inv.ready_weapon == WeaponType::SuperShotgun {
-			WeaponType::Shotgun
+		inv.weapon_tex = texture_ids[&to_u64(b"PISGA0")];
+	} else if input.choose_shotgun && is_available(WeaponType::SuperShotgun, &inv) {
+		if inv.ready_weapon == WeaponType::SuperShotgun {
+			inv.ready_weapon = WeaponType::Shotgun;
+			inv.weapon_tex = texture_ids[&to_u64(b"SHTGA0")];
 		} else {
-			WeaponType::SuperShotgun
+			inv.ready_weapon = WeaponType::SuperShotgun;
+			inv.weapon_tex = texture_ids[&to_u64(b"SHT2A0")];
 		};
-	} else if input.choose_shotgun && is_available(WeaponType::Shotgun, *inv) {
+	} else if input.choose_shotgun && is_available(WeaponType::Shotgun, &inv) {
 		inv.ready_weapon = WeaponType::Shotgun;
-	} else if input.choose_chaingun && is_available(WeaponType::Chaingun, *inv) {
+		inv.weapon_tex = texture_ids[&to_u64(b"SHTGA0")];
+	} else if input.choose_chaingun && is_available(WeaponType::Chaingun, &inv) {
 		inv.ready_weapon = WeaponType::Chaingun;
-	} else if input.choose_rlauncher && is_available(WeaponType::Missile, *inv) {
+		inv.weapon_tex = texture_ids[&to_u64(b"CHGGA0")];
+	} else if input.choose_rlauncher && is_available(WeaponType::Missile, &inv) {
 		inv.ready_weapon = WeaponType::Missile;
-	} else if input.choose_plasma && is_available(WeaponType::Plasma, *inv) {
+		inv.weapon_tex = texture_ids[&to_u64(b"MISGA0")];
+	} else if input.choose_plasma && is_available(WeaponType::Plasma, &inv) {
 		inv.ready_weapon = WeaponType::Plasma;
-	} else if input.choose_bfg && is_available(WeaponType::BFG, *inv) {
+		inv.weapon_tex = texture_ids[&to_u64(b"PLSGA0")];
+	} else if input.choose_bfg && is_available(WeaponType::BFG, &inv) {
 		inv.ready_weapon = WeaponType::BFG;
+		inv.weapon_tex = texture_ids[&to_u64(b"BFGGA0")];
 	}
 
 	if previous_ready_weapon != inv.ready_weapon {
@@ -101,7 +114,7 @@ pub fn handle_weapons_input(
 			let ammo_remained = inv.ammo[ammo_type as usize];
 
 			if ammo_per_shot > ammo_remained {
-				inv.ready_weapon = choose_best(*inv);
+				inv.ready_weapon = choose_best(&inv);
 				ui_to_update.push(UpdatableUiType::Ammo);
 				return;
 			}
@@ -130,7 +143,7 @@ pub fn handle_weapons_input(
 	}
 }
 
-fn choose_best(inv: PlayerInventory) -> WeaponType {
+fn choose_best(inv: &PlayerInventory) -> WeaponType {
 	if is_available(WeaponType::Plasma, inv) {
 		WeaponType::Plasma
 	} else if is_available(WeaponType::SuperShotgun, inv) {
@@ -152,7 +165,7 @@ fn choose_best(inv: PlayerInventory) -> WeaponType {
 	}
 }
 
-fn is_available(weapon: WeaponType, inv: PlayerInventory) -> bool {
+fn is_available(weapon: WeaponType, inv: &PlayerInventory) -> bool {
 	let ammo_type = AmmoType::from(weapon);
 	if ammo_type == AmmoType::NoAmmo {
 		inv.weapon_owned[weapon as usize]

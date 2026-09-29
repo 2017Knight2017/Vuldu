@@ -9,8 +9,7 @@ use renderer::{
 };
 use rustc_hash::FxHashMap;
 use wad_parser::{
-	DoomPicture, GpuLevelVertex, GpuSpriteVertex, Level, NUM_UI, SWITCH_LIST, TextureId,
-	WadManager, construct_map_name, to_u64,
+	DoomPicture, GpuLevelVertex, GpuSpriteVertex, Level, NUM_UI, SWITCH_LIST, TextureData, TextureId, WadManager, construct_map_name, to_u64,
 };
 
 bitflags! {
@@ -70,7 +69,12 @@ impl GraphicsContext {
 		wad_manager: &WadManager,
 		map_num: u8,
 	) -> Result<(), String> {
-		let ((wall_names, wall_pics), (sky_names, sky_pics), sky_widths) = wad_manager
+		let (
+			(wall_names, wall_pics),
+			(weapon_names, weapon_pics),
+			(sky_names, sky_pics),
+			sky_widths,
+		) = wad_manager
 			.bake_walls(*MAX_SKY)
 			.map_err(|e| format!("Wall baking failed: {e}"))?;
 		println!("[load_and_upload_textures] walls are baked");
@@ -88,20 +92,27 @@ impl GraphicsContext {
 		let (ui_shown, ui_pics) = wad_manager.bake_ui();
 		println!("[load_and_upload_textures] ui is baked");
 
-		let total_textures =
-			wall_pics.len() + flat_pics.len() + obj_pics.len() + ui_pics.len() + *MAX_SKY;
+		let total_textures = wall_pics.len()
+			+ flat_pics.len()
+			+ obj_pics.len()
+			+ ui_pics.len()
+			+ weapon_pics.len()
+			+ *MAX_SKY;
 		let total_pixels = 1 + sky_pics
 			.iter()
 			.chain(&obj_pics)
 			.chain(&wall_pics)
 			.chain(&flat_pics)
 			.chain(&ui_pics)
+			.chain(&weapon_pics)
 			.map(|p| p.raw_pixels.len())
 			.sum::<usize>();
 
 		let mut all_pixels = Vec::with_capacity(total_pixels);
 		let mut descriptors = Vec::with_capacity(total_textures);
 		let mut current_gpu_id = 0;
+
+		/* SKY */
 
 		let mut sky_data: Vec<(&u64, DoomPicture, f32)> = sky_names
 			.iter()
@@ -133,7 +144,28 @@ impl GraphicsContext {
 		}
 		all_pixels.push(0);
 
-		self.offsets.reserve(obj_pics.len());
+		/* WEAPONS */
+
+		for (idx, pic) in weapon_pics.iter().enumerate() {
+			let name = weapon_names[idx];
+
+			self.data.insert(
+				name,
+				(TextureId(current_gpu_id), pic.width, pic.height, false),
+			);
+
+			descriptors.push(TextureDescriptor {
+				width: pic.width,
+				height: pic.height,
+				pixel_offset: all_pixels.len(),
+			});
+			all_pixels.extend_from_slice(&pic.raw_pixels);
+			current_gpu_id += 1;
+		}
+
+		/* OBJECTS */
+
+		self.offsets.reserve_exact(obj_pics.len());
 		for (idx, pic) in obj_pics.iter().enumerate() {
 			let name = obj_names[idx];
 			if name.iter().all(|&char| char == b'\0') {
@@ -155,6 +187,8 @@ impl GraphicsContext {
 			all_pixels.extend_from_slice(&pic.raw_pixels);
 			current_gpu_id += 1;
 		}
+
+		/* WALLS AND FLATS */
 
 		let mut anim_map: FxHashMap<u64, u32> = FxHashMap::from_iter([
 			(to_u64(b"FWATER1"), 4),
@@ -218,6 +252,8 @@ impl GraphicsContext {
 			}
 		}
 
+		/* UI */
+
 		for (pic, ui_insert_idx) in ui_pics.into_iter().zip(ui_shown.ones()) {
 			descriptors.push(TextureDescriptor {
 				width: pic.width,
@@ -269,8 +305,9 @@ impl GraphicsContext {
 		println!("Walls geometry has been built");
 		let (flat_vertices, flat_indices) = level.get_flats_vertices(&self.data);
 		println!("Flats geometry has been built");
-		let (obj_gpu_vertices, obj_indices) = level.get_objects_vertices();
-		let (ui_gpu_vertices, ui_indices) = level.get_ui_vertices();
+		let (obj_gpu_vertices, obj_indices) = level.get_instance_vertices(false);
+		let (wpn_gpu_vertices, wpn_indices) = level.get_instance_vertices(true);
+		let (ui_gpu_vertices, ui_indices) = level.get_instance_vertices(true);
 
 		self.sector_heights = level
 			.state
@@ -293,6 +330,8 @@ impl GraphicsContext {
 			obj_gpu_vertices.into_iter().map(to_sprite_vertex).collect();
 		let ui_vertices: Vec<SpriteVertex> =
 			ui_gpu_vertices.into_iter().map(to_sprite_vertex).collect();
+		let wpn_vertices: Vec<SpriteVertex> =
+			wpn_gpu_vertices.into_iter().map(to_sprite_vertex).collect();
 
 		self.renderer.pin().setFlags(self.flags.bits());
 		self.renderer
@@ -304,13 +343,16 @@ impl GraphicsContext {
 		self.renderer
 			.pin()
 			.updateUiGeometry(&ui_vertices, &ui_indices);
+		self.renderer
+			.pin()
+			.updateWeaponGeometry(&wpn_vertices, &wpn_indices);
 		self.renderer.pin().initSectorHeights(&self.sector_heights);
 		self.renderer.pin().initSwitches(&level.state.switch_ids);
 	}
 }
 
 fn register_sprite(
-	texture_data_map: &mut FxHashMap<u64, (TextureId, u32, u32, bool)>,
+	texture_data_map: &mut FxHashMap<u64, TextureData>,
 	lump_name: &[u8],
 	texture_tuple: (TextureId, u32, u32),
 ) {

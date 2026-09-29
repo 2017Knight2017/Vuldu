@@ -13,14 +13,14 @@ const bool enableValidationLayers = true;
 const bool enableValidationLayers = false;
 #endif
 
-inline const uint32_t MAX_FRAMES_IN_FLIGHT = 2;
-inline const uint32_t MAX_TEXTURES = 8192;
-inline const uint32_t ANIM_INFO_SIZE = 4096;
-inline const uint32_t MAX_SKY = 16;  
-inline const uint32_t MAX_PAL = 14;
-inline const uint32_t MAX_OBJECTS = 50000;
-inline const uint32_t MAX_UI = 512;
-inline const float PIXELS_IN_PANORAMA = 1024.0;
+inline constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
+inline constexpr uint32_t MAX_TEXTURES = 8192;
+inline constexpr uint32_t ANIM_INFO_SIZE = 4096;
+inline constexpr uint32_t MAX_SKY = 16;  
+inline constexpr uint32_t MAX_PAL = 14;
+inline constexpr uint32_t MAX_OBJECTS = 50000;
+inline constexpr uint32_t MAX_UI = 512;
+inline constexpr float PIXELS_IN_PANORAMA = 1024.0;
 
 struct WindowHandles;
 struct LevelVertex;
@@ -82,8 +82,10 @@ public:
     void updateLevelGeometry(rust::Slice<const LevelVertex> vertices, rust::Slice<const uint32_t> indices);
     void updateObjectGeometry(rust::Slice<const SpriteVertex> vertices, rust::Slice<const uint32_t> indices);
     void updateUiGeometry(rust::Slice<const SpriteVertex> vertices, rust::Slice<const uint32_t> indices);
+    void updateWeaponGeometry(rust::Slice<const SpriteVertex> vertices, rust::Slice<const uint32_t> indices);
     void updateObjectInstances(rust::Slice<const ObjectInstance> instances);
     void updateUiInstances(rust::Slice<const UiInstance> instances);
+    void updateWeaponInstance(UiInstance instance);
     void uploadPalettes(rust::Slice<const uint8_t> palettes);
     void uploadColormap(rust::Slice<const uint8_t> colormap);
     void uploadTextureArray(
@@ -104,9 +106,10 @@ public:
     void setFlags(uint32_t flags_to_invert);
     void startFrame(const MVP& mvp);
     void endFrame();
-    void drawLevel();
-    void drawObjects();
-    void drawUi();
+    void drawLevel() noexcept;
+    void drawObjects() noexcept;
+    void drawUi() noexcept;
+    void drawWeapon() noexcept;
     
 private:
     VkInstance instance = VK_NULL_HANDLE;
@@ -131,6 +134,8 @@ private:
     VkPipeline levelPipeline = VK_NULL_HANDLE;
     VkPipelineLayout uiPipelineLayout = VK_NULL_HANDLE;
     VkPipeline uiPipeline = VK_NULL_HANDLE;
+    VkPipelineLayout weaponPipelineLayout = VK_NULL_HANDLE;
+    VkPipeline weaponPipeline = VK_NULL_HANDLE;
 
     VkCommandPool commandPool = VK_NULL_HANDLE;
     std::vector<VkCommandBuffer> commandBuffers;
@@ -150,6 +155,10 @@ private:
     std::vector<VkDeviceMemory> uiInstanceBuffersMemory;
     std::vector<void*> uiInstanceBuffersMapped;
     uint32_t activeUiCount = 0;
+
+    std::vector<VkBuffer> weaponInstanceBuffers;
+    std::vector<VkDeviceMemory> weaponInstanceBuffersMemory;
+    std::vector<void*> weaponInstanceBuffersMapped;
 
     VkBuffer levelVertexBuffer = VK_NULL_HANDLE;
     VkDeviceMemory levelVertexBufferMemory = VK_NULL_HANDLE;
@@ -171,6 +180,13 @@ private:
     VkDeviceMemory uiIndexBufferMemory = VK_NULL_HANDLE;
     uint32_t uiVertexCount = 0;
     uint32_t uiIndexCount = 0;
+
+    VkBuffer weaponVertexBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory weaponVertexBufferMemory = VK_NULL_HANDLE;
+    VkBuffer weaponIndexBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory weaponIndexBufferMemory = VK_NULL_HANDLE;
+    uint32_t weaponVertexCount = 0;
+    uint32_t weaponIndexCount = 0;
 
     std::vector<VkImage> textureImages;
     std::vector<VkDeviceMemory> textureImageMemories;
@@ -223,16 +239,13 @@ private:
     void createPipelines();
     void createDepthResources();
     void createMVPBuffer();
-    void createObjectInstanceBuffers();
-    void createUiInstanceBuffers();
+    void createInstanceBuffers();
     void createDescriptorPool();
     void createDescriptorSets();
     void createTextureSamplers();
     void createCommandPool();
     void createCommandBuffers();
     void createSyncObjects();
-
-    void updateMVPBuffer(const MVP& mvp);
 
     void cleanupSwapChain();
 
@@ -244,7 +257,14 @@ private:
     void createImage(uint32_t width, uint32_t height, VkFormat format, 
         VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, 
         VkDeviceMemory& imageMemory);
-    void beginRendering(VkCommandBuffer currentCommandBuffer);
+    void beginRendering(VkCommandBuffer currentCommandBuffer) noexcept;
+
+    void createInstanceBuffersInternal(
+        VkDeviceSize bufferSize, 
+        std::vector<VkBuffer>& pBuffers,
+        std::vector<VkDeviceMemory>& pBuffersMemory,
+        std::vector<void*>& pBuffersMapped
+    );
 
     void updateGeometry(
     	const void* vertices, 
@@ -293,6 +313,15 @@ private:
     	VkPipelineRenderingCreateInfo* renderingInfo
     );
     void createUiPipeline(
+    	VkPipelineInputAssemblyStateCreateInfo* inputAssembly,
+    	VkPipelineViewportStateCreateInfo* viewportState,
+    	VkPipelineRasterizationStateCreateInfo* rasterizer,
+    	VkPipelineMultisampleStateCreateInfo* multisampling,
+        VkPipelineColorBlendStateCreateInfo* colorBlending,
+    	VkPipelineDynamicStateCreateInfo* dynamicState,
+    	VkPipelineRenderingCreateInfo* renderingInfo
+    );
+    void createWeaponPipeline(
     	VkPipelineInputAssemblyStateCreateInfo* inputAssembly,
     	VkPipelineViewportStateCreateInfo* viewportState,
     	VkPipelineRasterizationStateCreateInfo* rasterizer,

@@ -111,62 +111,61 @@ void VulkanRenderer::createMVPBuffer() {
     }
 }
 
-void VulkanRenderer::createObjectInstanceBuffers() {
-    VkDeviceSize bufferSize = sizeof(ObjectInstance) * MAX_OBJECTS;
-
-    this->objectInstanceBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-    this->objectInstanceBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
-    this->objectInstanceBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
-
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        createBuffer(
-            bufferSize, 
-            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
-            objectInstanceBuffers[i], 
-            objectInstanceBuffersMemory[i]
-        );
-
-        vkMapMemory(this->device, this->objectInstanceBuffersMemory[i], 0, bufferSize, 0, &objectInstanceBuffersMapped[i]);
-    }
-}
-
-void VulkanRenderer::createUiInstanceBuffers() {
-    VkDeviceSize bufferSize = sizeof(UiInstance) * MAX_UI;
-
-    this->uiInstanceBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-    this->uiInstanceBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
-    this->uiInstanceBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
+void VulkanRenderer::createInstanceBuffersInternal(
+    VkDeviceSize bufferSize, 
+    std::vector<VkBuffer>& pBuffers,
+    std::vector<VkDeviceMemory>& pBuffersMemory,
+    std::vector<void*>& pBuffersMapped
+) {
+    pBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+    pBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
+    pBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         createBuffer(
             bufferSize, 
             VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
-            uiInstanceBuffers[i], 
-            uiInstanceBuffersMemory[i]
+            pBuffers[i], 
+            pBuffersMemory[i]
         );
 
-        vkMapMemory(this->device, this->uiInstanceBuffersMemory[i], 0, bufferSize, 0, &uiInstanceBuffersMapped[i]);
+        vkMapMemory(this->device, pBuffersMemory[i], 0, bufferSize, 0, &pBuffersMapped[i]);
     }
 }
 
+void VulkanRenderer::createInstanceBuffers() {
+    createInstanceBuffersInternal(
+        sizeof(ObjectInstance) * MAX_OBJECTS, 
+        this->objectInstanceBuffers, 
+        this->objectInstanceBuffersMemory, 
+        this->objectInstanceBuffersMapped
+    );
+    createInstanceBuffersInternal(
+        sizeof(UiInstance) * MAX_UI, 
+        this->uiInstanceBuffers, 
+        this->uiInstanceBuffersMemory, 
+        this->uiInstanceBuffersMapped
+    );
+    createInstanceBuffersInternal(
+        sizeof(UiInstance), 
+        this->weaponInstanceBuffers, 
+        this->weaponInstanceBuffersMemory, 
+        this->weaponInstanceBuffersMapped
+    );
+}
+
+using PoolSize = VkDescriptorPoolSize;
 void VulkanRenderer::createDescriptorPool() {
-	std::array<VkDescriptorPoolSize, 7> poolSizes{};
-	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	poolSizes[0].descriptorCount = MAX_FRAMES_IN_FLIGHT;
-    poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	poolSizes[1].descriptorCount = MAX_FRAMES_IN_FLIGHT;
-    poolSizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	poolSizes[2].descriptorCount = MAX_FRAMES_IN_FLIGHT;
-    poolSizes[3].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	poolSizes[3].descriptorCount = MAX_FRAMES_IN_FLIGHT;
-    poolSizes[4].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	poolSizes[4].descriptorCount = MAX_FRAMES_IN_FLIGHT;
-    poolSizes[5].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	poolSizes[5].descriptorCount = MAX_FRAMES_IN_FLIGHT;
-    poolSizes[6].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	poolSizes[6].descriptorCount = MAX_FRAMES_IN_FLIGHT * MAX_TEXTURES;
+	std::array<VkDescriptorPoolSize, 7> poolSizes{
+        PoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT},
+        PoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT},
+        PoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT},
+        PoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT},
+        PoolSize{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MAX_FRAMES_IN_FLIGHT},
+        PoolSize{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MAX_FRAMES_IN_FLIGHT},
+        PoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT * MAX_TEXTURES},
+    };
 	
 	VkDescriptorPoolCreateInfo poolInfo{};
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;

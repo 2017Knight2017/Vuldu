@@ -1,3 +1,4 @@
+use approx::abs_diff_eq;
 use wad_parser::{AABB, Level, Line, LineId, MAPBLOCKSIZE, SlopeType};
 
 use crate::Pass;
@@ -11,21 +12,21 @@ pub(crate) struct DivLine {
 }
 
 pub(crate) fn p_divline_side(x: f32, z: f32, node: DivLine) -> i32 {
-	if node.dx == 0.0 {
-		if x == node.x {
+	if abs_diff_eq!(node.dx, 0.0) {
+		if abs_diff_eq!(x, node.x) {
 			return 2;
 		}
-		if x <= node.x {
+		if x < node.x {
 			return if node.dz > 0.0 { 1 } else { 0 };
 		}
 		return if node.dz < 0.0 { 1 } else { 0 };
 	}
 
-	if node.dz == 0.0 {
-		if z == node.z {
+	if abs_diff_eq!(node.dz, 0.0) {
+		if abs_diff_eq!(z, node.z) {
 			return 2;
 		}
-		if z <= node.z {
+		if z < node.z {
 			return if node.dx < 0.0 { 1 } else { 0 };
 		}
 		return if node.dx > 0.0 { 1 } else { 0 };
@@ -37,10 +38,10 @@ pub(crate) fn p_divline_side(x: f32, z: f32, node: DivLine) -> i32 {
 	let left = node.dz * px;
 	let right = py * node.dx;
 
-	if right < left {
-		0
-	} else if (left - right).abs() < f32::EPSILON {
+	if abs_diff_eq!(left, right) {
 		2
+	} else if right < left {
+		0
 	} else {
 		1
 	}
@@ -123,7 +124,7 @@ pub struct Intercept {
 pub(crate) fn p_intercept_vector(v2: DivLine, v1: DivLine) -> f32 {
 	let den = v1.dz * v2.dx - v1.dx * v2.dz;
 
-	if den == 0.0 {
+	if abs_diff_eq!(den, 0.0) {
 		return 0.0;
 	}
 

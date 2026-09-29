@@ -1,4 +1,5 @@
 use crate::{Level, LineFlags, LineId, SectorId, TextureId, to_u64};
+use approx::abs_diff_eq;
 use earcut::Earcut;
 use rustc_hash::{FxBuildHasher, FxHashMap};
 
@@ -252,10 +253,10 @@ impl Level {
 						PlaneType::Static
 					};
 
-					let (anchor_bit, b) = match anchor {
-						Some(an) if dynamic && edge.op == Op::CopyA && an != edge.a => (1u32, an),
-						_ => (0u32, edge.b),
-					};
+					let (anchor_bit, b) = anchor
+						.filter(|&an| dynamic && edge.op == Op::CopyA && an != edge.a)
+						.map(|an| (1u32, an))
+						.unwrap_or((0u32, edge.b));
 
 					let plane_a_bits = edge.a.sector.0 as u32
 						| ((a_type as u32) << TYPE_SHIFT)
@@ -289,10 +290,10 @@ impl Level {
 					.get(&to_u64(&final_tex_name))
 					.unwrap_or(&(TextureId(0), 64, 64, false));
 
-				let is_switch = match front_side.switch_slot {
-					Some(slot) => tex_id.0 == self.state.switch_ids[slot as usize],
-					None => false,
-				};
+				let is_switch = front_side
+					.switch_slot
+					.map(|slot| tex_id.0 == self.state.switch_ids[slot as usize])
+					.unwrap_or(false);
 
 				let (final_tex_id, floor_tex_id) = if final_tex_name.starts_with(b"F_SKY1")
 					|| (other_sector_ceilingpic.is_some_and(|p| p.starts_with(b"F_SKY1"))
@@ -416,10 +417,10 @@ impl Level {
 
 			match back_sector_id {
 				None => {
-					let tex_h = match texture_ids.get(&to_u64(&front_side.midtexture)) {
-						Some(tex) => tex.2 as f32,
-						None => 64.0,
-					};
+					let tex_h = texture_ids
+						.get(&to_u64(&front_side.midtexture))
+						.map(|(_, _, h, _)| *h as f32)
+						.unwrap_or(64.0);
 
 					let (v_offset, anchor) = if dont_peg_bottom {
 						let offset = front_sector.ceil_h - front_sector.floor_h;
@@ -465,10 +466,10 @@ impl Level {
 					if front_sector.ceil_h > b_sector.ceil_h
 						|| (dynamic_side && front_side.toptexture[0] != 0x2d)
 					{
-						let tex_h = match texture_ids.get(&to_u64(&front_side.toptexture)) {
-							Some(tex) => tex.2 as f32,
-							None => 64.0,
-						};
+						let tex_h = texture_ids
+							.get(&to_u64(&front_side.toptexture))
+							.map(|(_, _, h, _)| *h as f32)
+							.unwrap_or(64.0);
 
 						let (v_offset, anchor) = if dont_peg_top {
 							(0.0, Some(ceil[1].1))
@@ -494,10 +495,10 @@ impl Level {
 					if front_sector.floor_h < b_sector.floor_h
 						|| (dynamic_side && front_side.bottomtexture[0] != 0x2d)
 					{
-						let tex_h = match texture_ids.get(&to_u64(&front_side.bottomtexture)) {
-							Some(tex) => tex.2 as f32,
-							None => 64.0,
-						};
+						let tex_h = texture_ids
+							.get(&to_u64(&front_side.bottomtexture))
+							.map(|(_, _, h, _)| *h as f32)
+							.unwrap_or(64.0);
 
 						let (v_offset, anchor) = if dont_peg_bottom {
 							let offset = ceil[1].0 - floor[1].0;
@@ -827,19 +828,19 @@ impl Level {
 				sector.floor_tex = if sector.floorpic.starts_with(b"F_SKY1") {
 					SKY_CEIL_ID
 				} else {
-					match texture_ids.get(&floor_texture_name) {
-						Some(tex) => tex.0,
-						None => TextureId(0),
-					}
+					texture_ids
+						.get(&floor_texture_name)
+						.map(|(tex_id, ..)| *tex_id)
+						.unwrap_or(TextureId(0))
 				};
 
 				sector.ceil_tex = if sector.ceilingpic.starts_with(b"F_SKY1") {
 					SKY_CEIL_ID
 				} else {
-					match texture_ids.get(&ceil_texture_name) {
-						Some(tex) => tex.0,
-						None => TextureId(0),
-					}
+					texture_ids
+						.get(&ceil_texture_name)
+						.map(|(tex_id, ..)| *tex_id)
+						.unwrap_or(TextureId(0))
 				};
 
 				let light_level = sector.light.clamp(0, 255) as u32;
@@ -921,31 +922,22 @@ impl Level {
 		}
 	}
 
-	pub fn get_objects_vertices(&self) -> (Vec<GpuSpriteVertex>, Vec<u32>) {
-		let corners = [
-			([0.0, 0.0, 0.0], [1.0, 1.0]),
-			([1.0, 0.0, 0.0], [0.0, 1.0]),
-			([1.0, 1.0, 0.0], [0.0, 0.0]),
-			([0.0, 1.0, 0.0], [1.0, 0.0]),
-		];
-
-		let vertices: Vec<GpuSpriteVertex> = corners
-			.iter()
-			.map(|&(pos, texture_pos)| GpuSpriteVertex { pos, texture_pos })
-			.collect();
-
-		let indices = vec![0, 3, 2, 0, 2, 1];
-
-		(vertices, indices)
-	}
-
-	pub fn get_ui_vertices(&self) -> (Vec<GpuSpriteVertex>, Vec<u32>) {
-		let corners = [
-			([0.0, 0.0, 0.0], [0.0, 0.0]),
-			([1.0, 0.0, 0.0], [1.0, 0.0]),
-			([1.0, 1.0, 0.0], [1.0, 1.0]),
-			([0.0, 1.0, 0.0], [0.0, 1.0]),
-		];
+	pub fn get_instance_vertices(&self, is_ui: bool) -> (Vec<GpuSpriteVertex>, Vec<u32>) {
+		let corners = if is_ui {
+			[
+				([0.0, 0.0, 0.0], [0.0, 0.0]),
+				([1.0, 0.0, 0.0], [1.0, 0.0]),
+				([1.0, 1.0, 0.0], [1.0, 1.0]),
+				([0.0, 1.0, 0.0], [0.0, 1.0]),
+			]
+		} else {
+			[
+				([0.0, 0.0, 0.0], [1.0, 1.0]),
+				([1.0, 0.0, 0.0], [0.0, 1.0]),
+				([1.0, 1.0, 0.0], [0.0, 0.0]),
+				([0.0, 1.0, 0.0], [1.0, 0.0]),
+			]
+		};
 
 		let vertices: Vec<GpuSpriteVertex> = corners
 			.iter()
@@ -1052,7 +1044,7 @@ fn find_next_edge_by_angle(
 
 fn pseudo_angle(dx: f32, dy: f32) -> f32 {
 	let sum = dx.abs() + dy.abs();
-	if sum == 0.0 {
+	if abs_diff_eq!(sum, 0.0) {
 		return 0.0;
 	}
 

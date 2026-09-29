@@ -43,10 +43,7 @@ where
 {
 	let opt = Option::<String>::deserialize(deserializer)?;
 
-	let s = match opt {
-		Some(s) => s,
-		None => return Ok(None),
-	};
+	let Some(s) = opt else { return Ok(None) };
 
 	if s.len() > 8 {
 		return Err(serde::de::Error::custom(format!(
@@ -167,15 +164,15 @@ pub fn populate_database(
 			let tex_prefix = state.sprite;
 			let frame_letter = (b'A' + state.frame as u8) as char;
 
-			let mut key_0 = pack_sprite_u64(&tex_prefix, frame_letter, 0);
-			if !texture_data.contains_key(&key_0) {
-				key_0 = pack_sprite_u64(&tex_prefix, frame_letter, 1);
-			}
+			let primary_key = pack_sprite_u64(&tex_prefix, frame_letter, 0);
+			let secondary_key = pack_sprite_u64(&tex_prefix, frame_letter, 1);
 
-			let &(tex_id, width, height, need_flip) =
-				texture_data
-					.get(&key_0)
-					.unwrap_or(&(TextureId(0), 64, 64, false));
+			let (tex_id, width, height, need_flip) = texture_data
+				.get(&primary_key)
+				.or(texture_data.get(&secondary_key))
+				.copied()
+				.unwrap_or((TextureId(0), 64, 64, false));
+
 			cached_rotations[0] = CachedStateSprite {
 				tex_id,
 				width,
@@ -186,19 +183,16 @@ pub fn populate_database(
 			for rot in 1..=8_usize {
 				let lookup_key = pack_sprite_u64(&tex_prefix, frame_letter, rot as u8);
 
-				if !texture_data.contains_key(&lookup_key) {
-					cached_rotations[rot] = cached_rotations[0];
-				} else {
-					let &(tex_id, width, height, need_flip) = texture_data
-						.get(&lookup_key)
-						.unwrap_or(&(TextureId(0), 64, 64, false));
-					cached_rotations[rot] = CachedStateSprite {
+				cached_rotations[rot] = texture_data
+					.get(&lookup_key)
+					.copied()
+					.map(|(tex_id, width, height, need_flip)| CachedStateSprite {
 						tex_id,
 						width,
 						height,
 						need_flip,
-					};
-				}
+					})
+					.unwrap_or(cached_rotations[0]);
 			}
 
 			State {

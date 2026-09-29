@@ -145,9 +145,8 @@ impl AudioContext {
 		};
 
 		for event in self.buffer.drain(..) {
-			let sound = match self.data.get(&event.sfx_id) {
-				Some(sound) => sound,
-				None => continue,
+			let Some(sound) = self.data.get(&event.sfx_id) else {
+				continue;
 			};
 
 			match event.pos {

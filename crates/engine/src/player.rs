@@ -5,7 +5,7 @@ use crate::{
 };
 use hecs::{Entity, World};
 use std::f64::consts::TAU;
-use wad_parser::Level;
+use wad_parser::{Level, TextureData, TextureId};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PlayerCamera {
@@ -35,6 +35,7 @@ pub struct PlayerStats {
 pub struct PlayerInventory {
 	pub ready_weapon: WeaponType,
 	pub pending_weapon: WeaponType,
+	pub weapon_tex: TextureData,
 	pub backpack: bool,
 	pub cards: [bool; NUMCARDS],
 	pub weapon_owned: [bool; NUMWEAPONS],
@@ -50,6 +51,7 @@ impl Default for PlayerInventory {
 			cards: [false; NUMCARDS],
 			weapon_owned: [true, true, false, false, false, false, false, false, false],
 			ammo: [50, 0, 0, 0],
+			weapon_tex: (TextureId(0), 0, 0, false),
 		}
 	}
 }

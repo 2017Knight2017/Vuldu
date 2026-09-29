@@ -1,5 +1,6 @@
 #include <cstring>
 #include <stdexcept>
+#include <array>
 #include "renderer.h"
 #include "renderer/src/bridge.rs.h"
 #include "utils.h"
@@ -28,6 +29,14 @@ static const uint32_t uiFragShader[] =
 #include "ui_frag.h"
 ;
 
+static const uint32_t weaponVertShader[] = 
+#include "weapon_vert.h"
+;
+
+static const uint32_t weaponFragShader[] = 
+#include "weapon_frag.h"
+;
+
 VkFormat findSupportedFormat(VkPhysicalDevice physicalDevice, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) {
     for (VkFormat format : candidates) {
         VkFormatProperties props;
@@ -52,57 +61,77 @@ VkFormat VulkanRenderer::findDepthFormat() {
     );
 }
 
-std::vector<VkVertexInputBindingDescription> getLevelBindings() {
-    return { { 0, sizeof(LevelVertex), VK_VERTEX_INPUT_RATE_VERTEX } };
+using BindDesc = VkVertexInputBindingDescription;
+using AttrDesc = VkVertexInputAttributeDescription;
+
+constexpr std::array<BindDesc, 1> getLevelBindings() {
+    return std::array{ BindDesc{ 0, sizeof(LevelVertex), VK_VERTEX_INPUT_RATE_VERTEX } };
 }
 
-std::vector<VkVertexInputAttributeDescription> getLevelAttributes() {
-    return {
-        { 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(LevelVertex, pos) },
-        { 1, 0, VK_FORMAT_R32G32_SFLOAT,    offsetof(LevelVertex, texture_pos) },
-        { 2, 0, VK_FORMAT_R32_UINT,         offsetof(LevelVertex, light_level) },
-        { 3, 0, VK_FORMAT_R32_UINT,         offsetof(LevelVertex, texture_id) },
-		{ 4, 0, VK_FORMAT_R32_UINT,         offsetof(LevelVertex, floor_tex_id) },
-		{ 5, 0, VK_FORMAT_R32_SFLOAT,       offsetof(LevelVertex, scroll_dir) },
-		{ 6, 0, VK_FORMAT_R32_UINT,         offsetof(LevelVertex, plane_a) },
-		{ 7, 0, VK_FORMAT_R32_UINT,         offsetof(LevelVertex, plane_b) },
-		{ 8, 0, VK_FORMAT_R32_SFLOAT,       offsetof(LevelVertex, inv_tex_h) },
+constexpr std::array<AttrDesc, 9> getLevelAttributes() {
+    return std::array{
+        AttrDesc{ 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(LevelVertex, pos) },
+        AttrDesc{ 1, 0, VK_FORMAT_R32G32_SFLOAT,    offsetof(LevelVertex, texture_pos) },
+        AttrDesc{ 2, 0, VK_FORMAT_R32_UINT,         offsetof(LevelVertex, light_level) },
+        AttrDesc{ 3, 0, VK_FORMAT_R32_UINT,         offsetof(LevelVertex, texture_id) },
+		AttrDesc{ 4, 0, VK_FORMAT_R32_UINT,         offsetof(LevelVertex, floor_tex_id) },
+		AttrDesc{ 5, 0, VK_FORMAT_R32_SFLOAT,       offsetof(LevelVertex, scroll_dir) },
+		AttrDesc{ 6, 0, VK_FORMAT_R32_UINT,         offsetof(LevelVertex, plane_a) },
+		AttrDesc{ 7, 0, VK_FORMAT_R32_UINT,         offsetof(LevelVertex, plane_b) },
+		AttrDesc{ 8, 0, VK_FORMAT_R32_SFLOAT,       offsetof(LevelVertex, inv_tex_h) },
     };
 }
 
-std::vector<VkVertexInputBindingDescription> getObjectBindings() {
-    return {
-        { 0, sizeof(SpriteVertex), VK_VERTEX_INPUT_RATE_VERTEX },
-        { 1, sizeof(ObjectInstance), VK_VERTEX_INPUT_RATE_INSTANCE }
+constexpr std::array<BindDesc, 2> getObjectBindings() {
+    return std::array{
+        BindDesc{ 0, sizeof(SpriteVertex), VK_VERTEX_INPUT_RATE_VERTEX },
+        BindDesc{ 1, sizeof(ObjectInstance), VK_VERTEX_INPUT_RATE_INSTANCE }
     };
 }
 
-std::vector<VkVertexInputAttributeDescription> getObjectAttributes() {
-    return {
-        { 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(SpriteVertex, pos) },
-        { 1, 0, VK_FORMAT_R32G32_SFLOAT,    offsetof(SpriteVertex, texture_pos) },
-        { 2, 1, VK_FORMAT_R32G32B32_SFLOAT, offsetof(ObjectInstance, pos) },
-        { 3, 1, VK_FORMAT_R32G32_SFLOAT,    offsetof(ObjectInstance, sprite_offset) },
-		{ 4, 1, VK_FORMAT_R32G32_SFLOAT,    offsetof(ObjectInstance, sprite_size) },
-        { 5, 1, VK_FORMAT_R32_UINT,         offsetof(ObjectInstance, light_level) },
-        { 6, 1, VK_FORMAT_R32_UINT,         offsetof(ObjectInstance, texture_id) },
+constexpr std::array<AttrDesc, 7> getObjectAttributes() {
+    return std::array{
+        AttrDesc{ 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(SpriteVertex, pos) },
+        AttrDesc{ 1, 0, VK_FORMAT_R32G32_SFLOAT,    offsetof(SpriteVertex, texture_pos) },
+        AttrDesc{ 2, 1, VK_FORMAT_R32G32B32_SFLOAT, offsetof(ObjectInstance, pos) },
+        AttrDesc{ 3, 1, VK_FORMAT_R32G32_SFLOAT,    offsetof(ObjectInstance, sprite_offset) },
+		AttrDesc{ 4, 1, VK_FORMAT_R32G32_SFLOAT,    offsetof(ObjectInstance, sprite_size) },
+        AttrDesc{ 5, 1, VK_FORMAT_R32_UINT,         offsetof(ObjectInstance, light_level) },
+        AttrDesc{ 6, 1, VK_FORMAT_R32_UINT,         offsetof(ObjectInstance, texture_id) },
     };
 }
 
-std::vector<VkVertexInputBindingDescription> getUiBindings() {
-    return {
-        { 0, sizeof(SpriteVertex), VK_VERTEX_INPUT_RATE_VERTEX },
-        { 1, sizeof(UiInstance), VK_VERTEX_INPUT_RATE_INSTANCE }
+constexpr std::array<BindDesc, 2> getUiBindings() {
+    return std::array{
+        BindDesc{ 0, sizeof(SpriteVertex), VK_VERTEX_INPUT_RATE_VERTEX },
+        BindDesc{ 1, sizeof(UiInstance), VK_VERTEX_INPUT_RATE_INSTANCE }
     };
 }
 
-std::vector<VkVertexInputAttributeDescription> getUiAttributes() {
-    return {
-        { 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(SpriteVertex, pos) },
-        { 1, 0, VK_FORMAT_R32G32_SFLOAT,    offsetof(SpriteVertex, texture_pos) },
-		{ 2, 1, VK_FORMAT_R32G32_SFLOAT,    offsetof(UiInstance, pos) },
-		{ 3, 1, VK_FORMAT_R32G32_SFLOAT,    offsetof(UiInstance, sprite_size) },
-        { 4, 1, VK_FORMAT_R32_UINT,         offsetof(UiInstance, texture_id) }
+constexpr std::array<AttrDesc, 5> getUiAttributes() {
+    return std::array{
+        AttrDesc{ 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(SpriteVertex, pos) },
+        AttrDesc{ 1, 0, VK_FORMAT_R32G32_SFLOAT,    offsetof(SpriteVertex, texture_pos) },
+		AttrDesc{ 2, 1, VK_FORMAT_R32G32_SFLOAT,    offsetof(UiInstance, pos) },
+		AttrDesc{ 3, 1, VK_FORMAT_R32G32_SFLOAT,    offsetof(UiInstance, sprite_size) },
+        AttrDesc{ 4, 1, VK_FORMAT_R32_UINT,         offsetof(UiInstance, texture_id) }
+    };
+}
+
+constexpr std::array<BindDesc, 2> getWeaponBindings() {
+    return std::array{
+        BindDesc{ 0, sizeof(SpriteVertex), VK_VERTEX_INPUT_RATE_VERTEX },
+        BindDesc{ 1, sizeof(UiInstance), VK_VERTEX_INPUT_RATE_INSTANCE }
+    };
+}
+
+constexpr std::array<AttrDesc, 5> getWeaponAttributes() {
+    return std::array{
+        AttrDesc{ 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(SpriteVertex, pos) },
+        AttrDesc{ 1, 0, VK_FORMAT_R32G32_SFLOAT,    offsetof(SpriteVertex, texture_pos) },
+		AttrDesc{ 2, 1, VK_FORMAT_R32G32_SFLOAT,    offsetof(UiInstance, pos) },
+		AttrDesc{ 3, 1, VK_FORMAT_R32G32_SFLOAT,    offsetof(UiInstance, sprite_size) },
+        AttrDesc{ 4, 1, VK_FORMAT_R32_UINT,         offsetof(UiInstance, texture_id) }
     };
 }
 
@@ -136,7 +165,7 @@ void VulkanRenderer::updateLevelGeometry(rust::Slice<const LevelVertex> vertices
 	VkDeviceSize vertexBufferSize = sizeof(LevelVertex) * vertices.size();
     VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.size();
 
-	updateGeometry(reinterpret_cast<const void*>(vertices.data()), 
+	updateGeometry(vertices.data(), 
 		indices, this->levelVertexBuffer, 
 		this->levelVertexBufferMemory, vertexBufferSize, 
 		this->levelIndexBuffer, this->levelIndexBufferMemory,
@@ -155,7 +184,7 @@ void VulkanRenderer::updateObjectGeometry(
 	VkDeviceSize vertexBufferSize = sizeof(SpriteVertex) * vertices.size();
     VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.size();
 
-    updateGeometry(reinterpret_cast<const void*>(vertices.data()), 
+    updateGeometry(vertices.data(), 
 		indices, this->objectVertexBuffer, 
 		this->objectVertexBufferMemory, vertexBufferSize, 
 		this->objectIndexBuffer, this->objectIndexBufferMemory, 
@@ -163,6 +192,25 @@ void VulkanRenderer::updateObjectGeometry(
 }
 
 void VulkanRenderer::updateUiGeometry(
+	rust::Slice<const SpriteVertex> vertices, 
+	rust::Slice<const uint32_t> indices
+) {
+	if (vertices.empty() || indices.empty()) return;
+
+	this->uiVertexCount = static_cast<uint32_t>(vertices.size());
+	this->uiIndexCount = static_cast<uint32_t>(indices.size());
+
+	VkDeviceSize vertexBufferSize = sizeof(SpriteVertex) * vertices.size();
+    VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.size();
+
+    updateGeometry(vertices.data(), 
+		indices, this->uiVertexBuffer, 
+		this->uiVertexBufferMemory, vertexBufferSize, 
+		this->uiIndexBuffer, this->uiIndexBufferMemory, 
+		indexBufferSize);
+}
+
+void VulkanRenderer::updateWeaponGeometry(
 	rust::Slice<const SpriteVertex> vertices, 
 	rust::Slice<const uint32_t> indices
 ) {
@@ -324,6 +372,15 @@ void VulkanRenderer::createPipelines() {
 		&renderingInfo
 	);
 	createUiPipeline(
+		&inputAssembly,
+		&viewportState,
+		&rasterizer,
+		&multisampling,
+		&colorBlending,
+		&dynamicState,
+		&renderingInfo
+	);
+	createWeaponPipeline(
 		&inputAssembly,
 		&viewportState,
 		&rasterizer,
@@ -572,6 +629,93 @@ void VulkanRenderer::createUiPipeline(
 	VkResult PipelineResult = vkCreateGraphicsPipelines(this->device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &this->uiPipeline);
 	if (PipelineResult != VK_SUCCESS) {
     	throw std::runtime_error("failed to create ui's pipeline!");
+	}
+	
+	vkDestroyShaderModule(this->device, fragShaderModule, nullptr);
+    vkDestroyShaderModule(this->device, vertShaderModule, nullptr);
+}
+
+void VulkanRenderer::createWeaponPipeline(
+	VkPipelineInputAssemblyStateCreateInfo* inputAssembly,
+	VkPipelineViewportStateCreateInfo* viewportState,
+	VkPipelineRasterizationStateCreateInfo* rasterizer,
+	VkPipelineMultisampleStateCreateInfo* multisampling,
+	VkPipelineColorBlendStateCreateInfo* colorBlending,
+	VkPipelineDynamicStateCreateInfo* dynamicState,
+	VkPipelineRenderingCreateInfo* renderingInfo
+) {
+	VkShaderModule vertShaderModule = createShaderModule(this->device, weaponVertShader);
+    VkShaderModule fragShaderModule = createShaderModule(this->device, weaponFragShader);
+
+	VkPipelineShaderStageCreateInfo vertShaderInfo{};
+	vertShaderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	vertShaderInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	vertShaderInfo.module = vertShaderModule;
+	vertShaderInfo.pName = "main";
+
+	VkPipelineShaderStageCreateInfo fragShaderInfo{};
+	fragShaderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	fragShaderInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	fragShaderInfo.module = fragShaderModule;
+	fragShaderInfo.pName = "main";
+
+	VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderInfo, fragShaderInfo};
+
+	VkPipelineDepthStencilStateCreateInfo depthStencil{};
+	depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+	depthStencil.depthTestEnable = VK_FALSE;
+	depthStencil.depthWriteEnable = VK_FALSE;
+	depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+	depthStencil.depthBoundsTestEnable = VK_FALSE;
+	depthStencil.stencilTestEnable = VK_FALSE;
+
+	auto bindingDescriptions = getWeaponBindings();
+	auto attributeDescriptions = getWeaponAttributes();
+
+	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
+	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+	vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions.data();
+	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+
+	// TODO weapon PushConstants
+	VkPushConstantRange pushConstantRange{};
+	pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; 
+	pushConstantRange.offset = 0;
+	pushConstantRange.size = sizeof(uint32_t);
+
+	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutInfo.setLayoutCount = 1;
+	pipelineLayoutInfo.pSetLayouts = &this->descriptorSetLayout;
+	pipelineLayoutInfo.pushConstantRangeCount = 1;
+	pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
+
+	VkResult pipelineLayoutResult = vkCreatePipelineLayout(this->device, &pipelineLayoutInfo, nullptr, &this->weaponPipelineLayout);
+	if (pipelineLayoutResult != VK_SUCCESS) {
+	    throw std::runtime_error("failed to create weapon's layout!");
+	}
+
+	VkGraphicsPipelineCreateInfo pipelineInfo{};
+	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	pipelineInfo.pNext = renderingInfo;
+	pipelineInfo.stageCount = 2;
+	pipelineInfo.pStages = shaderStages;
+	pipelineInfo.pVertexInputState = &vertexInputInfo;
+	pipelineInfo.pInputAssemblyState = inputAssembly;
+	pipelineInfo.pViewportState = viewportState;
+	pipelineInfo.pRasterizationState = rasterizer;
+	pipelineInfo.pMultisampleState = multisampling;
+	pipelineInfo.pDepthStencilState = &depthStencil;
+	pipelineInfo.pColorBlendState = colorBlending;
+	pipelineInfo.pDynamicState = dynamicState;
+	pipelineInfo.layout = this->weaponPipelineLayout;
+	pipelineInfo.subpass = 0;
+
+	VkResult PipelineResult = vkCreateGraphicsPipelines(this->device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &this->weaponPipeline);
+	if (PipelineResult != VK_SUCCESS) {
+    	throw std::runtime_error("failed to create weapon's pipeline!");
 	}
 	
 	vkDestroyShaderModule(this->device, fragShaderModule, nullptr);

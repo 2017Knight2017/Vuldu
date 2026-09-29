@@ -53,10 +53,10 @@ void createImageView(
     }
 }
 
-VkImageMemoryBarrier2 getBarrier(
+constexpr VkImageMemoryBarrier2 getBarrier(
 	VkImageLayout oldLayout, 
 	VkImageLayout newLayout
-) {
+) noexcept {
 	VkImageMemoryBarrier2 barrier{};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
 	barrier.oldLayout = oldLayout;
@@ -99,29 +99,46 @@ VkImageMemoryBarrier2 getBarrier(
 	}
 
 	return barrier;
+} 
+
+void changeSingleImageLayout(
+    VkCommandBuffer commandBuffer, 
+    VkImageLayout oldLayout, 
+    VkImageLayout newLayout, 
+    VkImage image
+) noexcept {
+    VkImageMemoryBarrier2 barrier = getBarrier(oldLayout, newLayout);
+    barrier.image = image;
+
+    VkDependencyInfo dependencyInfo{};
+    dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+    dependencyInfo.imageMemoryBarrierCount = 1;
+    dependencyInfo.pImageMemoryBarriers = &barrier;
+
+    vkCmdPipelineBarrier2(commandBuffer, &dependencyInfo);
 }
 
-void changeImageLayout(
-	VkCommandBuffer commandBuffer, 
-	VkImageLayout oldLayout, 
-	VkImageLayout newLayout, 
-	std::span<const VkImage> images
+void changeMultipleImageLayout(
+    VkCommandBuffer commandBuffer, 
+    VkImageLayout oldLayout, 
+    VkImageLayout newLayout, 
+    std::span<const VkImage> images
 ) {
-	VkImageMemoryBarrier2 templateBarrier = getBarrier(oldLayout, newLayout);
+    VkImageMemoryBarrier2 templateBarrier = getBarrier(oldLayout, newLayout);
 
-	std::vector<VkImageMemoryBarrier2> barriers;
+    std::vector<VkImageMemoryBarrier2> barriers;
     barriers.reserve(images.size());
 
-	for (VkImage img : images) {
+    for (VkImage img : images) {
         VkImageMemoryBarrier2 barrier = templateBarrier;
         barrier.image = img;
         barriers.push_back(barrier);
     }
 
-	VkDependencyInfo dependencyInfo{};
-	dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-	dependencyInfo.imageMemoryBarrierCount = barriers.size();
-	dependencyInfo.pImageMemoryBarriers = barriers.data();
+    VkDependencyInfo dependencyInfo{};
+    dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+    dependencyInfo.imageMemoryBarrierCount = static_cast<uint32_t>(barriers.size());
+    dependencyInfo.pImageMemoryBarriers = barriers.data();
 
-	vkCmdPipelineBarrier2(commandBuffer, &dependencyInfo);
-} 
+    vkCmdPipelineBarrier2(commandBuffer, &dependencyInfo);
+}

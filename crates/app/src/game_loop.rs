@@ -2,7 +2,8 @@ use std::collections::VecDeque;
 
 use engine::*;
 use hecs::{CommandBuffer, Entity, World};
-use wad_parser::Level;
+use rustc_hash::FxHashMap;
+use wad_parser::{Level, TextureData};
 use winit::keyboard::PhysicalKey;
 
 use crate::{cheats::cheat_system, sound_player::AudioContext};
@@ -50,6 +51,7 @@ impl GameContext {
 		&mut self,
 		audio: &mut AudioContext,
 		input: PlayerInput,
+		texture_ids: &FxHashMap<u64, TextureData>,
 		random: &mut Random,
 		ui_to_update: &mut Vec<UpdatableUiType>,
 		last_buttons: &mut VecDeque<Option<PhysicalKey>>,
@@ -62,6 +64,7 @@ impl GameContext {
 			ui_to_update,
 			&mut self.cmd,
 			&mut audio.buffer,
+			texture_ids,
 			input,
 		);
 		handle_use_input(

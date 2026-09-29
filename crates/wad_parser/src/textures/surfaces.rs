@@ -161,11 +161,16 @@ pub static SPRITE_NAMES: Map<i16, Option<&'static str>> = phf_map! {
 	3006i16 => Some("SKUL"),
 };
 
+const WEAPONS_NAMES: [&[u8]; 15] = [
+	b"PUNG", b"PISG", b"PISF", b"SHTG", b"SHTF", b"SHT2", b"CHGG", b"CHGF", b"MISG", b"MISF",
+	b"SAWG", b"PLSG", b"PLSF", b"BFGG", b"BFGF",
+];
+
 impl WadManager {
 	pub fn bake_walls(
 		&self,
 		max_sky: usize,
-	) -> Result<(TextureBundle, TextureBundle, Vec<f32>), String> {
+	) -> Result<(TextureBundle, TextureBundle, TextureBundle, Vec<f32>), String> {
 		let all_patchnames_raw = self.get_data(b"PNAMES")?;
 		let patch_names: Vec<&[u8; 8]> = all_patchnames_raw
 			.get(4..)
@@ -178,11 +183,8 @@ impl WadManager {
 		let patches = patch_names
 			.into_iter()
 			.map(|name| {
-				let data = self.get_data(name);
-				match data {
-					Ok(data) => decode_column_picture(data, name),
-					Err(err) => Err(err),
-				}
+				let data = self.get_data(name)?;
+				decode_column_picture(data, name)
 			})
 			.collect::<Result<Vec<DoomPicture>, String>>()?;
 
@@ -287,6 +289,8 @@ impl WadManager {
 		let total_textures = texture_lumps.iter().map(|(_, offsets)| offsets.len()).sum();
 		let mut wall_textures = Vec::with_capacity(total_textures);
 		let mut wall_tex_names = Vec::with_capacity(total_textures);
+		let mut weapon_textures = Vec::with_capacity(total_textures);
+		let mut weapon_tex_names = Vec::with_capacity(total_textures);
 		let mut sky_textures = Vec::with_capacity(max_sky);
 		let mut sky_tex_names = Vec::with_capacity(max_sky);
 		let mut sky_widths = Vec::with_capacity(max_sky);
@@ -296,6 +300,9 @@ impl WadManager {
 				sky_tex_names.push(to_u64(&name));
 				sky_widths.push(picture.width as f32);
 				sky_textures.push(picture);
+			} else if WEAPONS_NAMES.iter().any(|&wpn| name.starts_with(wpn)) {
+				weapon_tex_names.push(to_u64(&name));
+				weapon_textures.push(picture);
 			} else {
 				wall_tex_names.push(to_u64(&name));
 				wall_textures.push(picture);
@@ -304,6 +311,7 @@ impl WadManager {
 
 		Ok((
 			(wall_tex_names, wall_textures),
+			(weapon_tex_names, weapon_textures),
 			(sky_tex_names, sky_textures),
 			sky_widths,
 		))

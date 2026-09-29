@@ -80,7 +80,7 @@ pub fn ev_do_door(_line: Line, _type_: DoorType) -> bool {
 	todo!();
 }
 
-pub fn ev_do_locked_door(_line: Line, _type_: DoorType, _inv: PlayerInventory) -> bool {
+pub fn ev_do_locked_door(_line: Line, _type_: DoorType, _inv: &PlayerInventory) -> bool {
 	todo!();
 }
 
@@ -96,6 +96,6 @@ pub fn ev_do_donut(_line: Line) -> bool {
 	todo!();
 }
 
-pub fn ev_vertical_door(_line: Line, _inv: PlayerInventory) {
+pub fn ev_vertical_door(_line: Line, _inv: &PlayerInventory) {
 	todo!();
 }

@@ -23,8 +23,7 @@ void VulkanRenderer::initVulkan(const WindowHandles& handles, uint32_t width, ui
     createDescriptorSetLayout();
     createPipelines();
     createMVPBuffer();
-    createObjectInstanceBuffers();
-    createUiInstanceBuffers();
+    createInstanceBuffers();
     createDescriptorPool();
     createDescriptorSets(); 
     createCommandPool();
@@ -87,6 +86,8 @@ void VulkanRenderer::cleanup() {
         vkFreeMemory(this->device, this->objectInstanceBuffersMemory[i], nullptr);
         vkDestroyBuffer(this->device, this->uiInstanceBuffers[i], nullptr);
         vkFreeMemory(this->device, this->uiInstanceBuffersMemory[i], nullptr);
+        vkDestroyBuffer(this->device, this->weaponInstanceBuffers[i], nullptr);
+        vkFreeMemory(this->device, this->weaponInstanceBuffersMemory[i], nullptr);
     }
 
     destroyResource(this->device, this->descriptorPool, vkDestroyDescriptorPool);
@@ -121,6 +122,8 @@ void VulkanRenderer::cleanup() {
     destroyResource(this->device, this->spritePipelineLayout, vkDestroyPipelineLayout);
     destroyResource(this->device, this->uiPipeline, vkDestroyPipeline);
     destroyResource(this->device, this->uiPipelineLayout, vkDestroyPipelineLayout);
+    destroyResource(this->device, this->weaponPipeline, vkDestroyPipeline);
+    destroyResource(this->device, this->weaponPipelineLayout, vkDestroyPipelineLayout);
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroyFence(this->device, this->inFlightFences[i], nullptr);

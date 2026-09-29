@@ -1,3 +1,5 @@
+use approx::abs_diff_eq;
+
 pub const ANG45: u32 = 0x20000000;
 pub const ANG90: u32 = 0x40000000;
 pub const ANG180: u32 = 0x80000000;
@@ -25,7 +27,7 @@ pub fn fast_atan2(mut dx: f32, mut dy: f32) -> u32 {
 		(dx, dy) = (dx + dy, -updated_y);
 	}
 
-	if dx == 0.0 {
+	if abs_diff_eq!(dx, 0.0) {
 		return arctan_approx;
 	}
 

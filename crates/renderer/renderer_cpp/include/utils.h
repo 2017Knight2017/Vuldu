@@ -5,7 +5,13 @@
 VkShaderModule createShaderModule(VkDevice device, std::span<const uint32_t> code);
 uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties);
 void createImageView(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, VkImageView* dstView);
-void changeImageLayout(
+void changeSingleImageLayout(
+	VkCommandBuffer currentCommandBuffer, 
+	VkImageLayout oldLayout, 
+	VkImageLayout newLayout, 
+	VkImage image
+) noexcept;
+void changeMultipleImageLayout(
 	VkCommandBuffer currentCommandBuffer, 
 	VkImageLayout oldLayout, 
 	VkImageLayout newLayout, 

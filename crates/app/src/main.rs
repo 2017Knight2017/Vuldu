@@ -75,6 +75,7 @@ impl App {
 			self.game.tick(
 				&mut self.audio,
 				self.current_input,
+				&self.graphics.data,
 				&mut self.random,
 				&mut self.graphics.ui_to_update,
 				&mut self.last_buttons_pressed,
