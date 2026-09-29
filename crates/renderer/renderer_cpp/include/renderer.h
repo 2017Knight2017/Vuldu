@@ -85,7 +85,7 @@ public:
     void updateWeaponGeometry(rust::Slice<const SpriteVertex> vertices, rust::Slice<const uint32_t> indices);
     void updateObjectInstances(rust::Slice<const ObjectInstance> instances);
     void updateUiInstances(rust::Slice<const UiInstance> instances);
-    void updateWeaponInstance(UiInstance instance);
+    void updateWeaponInstance(const UiInstance& instance);
     void uploadPalettes(rust::Slice<const uint8_t> palettes);
     void uploadColormap(rust::Slice<const uint8_t> colormap);
     void uploadTextureArray(

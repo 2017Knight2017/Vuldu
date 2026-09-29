@@ -116,6 +116,10 @@ void VulkanRenderer::cleanup() {
     destroyResource(this->device, this->uiIndexBufferMemory, vkFreeMemory);
     destroyResource(this->device, this->uiVertexBuffer, vkDestroyBuffer);
     destroyResource(this->device, this->uiVertexBufferMemory, vkFreeMemory);
+    destroyResource(this->device, this->weaponIndexBuffer, vkDestroyBuffer);
+    destroyResource(this->device, this->weaponIndexBufferMemory, vkFreeMemory);
+    destroyResource(this->device, this->weaponVertexBuffer, vkDestroyBuffer);
+    destroyResource(this->device, this->weaponVertexBufferMemory, vkFreeMemory);
     destroyResource(this->device, this->levelPipeline, vkDestroyPipeline);
     destroyResource(this->device, this->levelPipelineLayout, vkDestroyPipelineLayout);
     destroyResource(this->device, this->spritePipeline, vkDestroyPipeline);

@@ -37,7 +37,7 @@ static const uint32_t weaponFragShader[] =
 #include "weapon_frag.h"
 ;
 
-VkFormat findSupportedFormat(VkPhysicalDevice physicalDevice, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) {
+constexpr VkFormat findSupportedFormat(VkPhysicalDevice physicalDevice, const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) {
     for (VkFormat format : candidates) {
         VkFormatProperties props;
         vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &props);
@@ -216,16 +216,16 @@ void VulkanRenderer::updateWeaponGeometry(
 ) {
 	if (vertices.empty() || indices.empty()) return;
 
-	this->uiVertexCount = static_cast<uint32_t>(vertices.size());
-	this->uiIndexCount = static_cast<uint32_t>(indices.size());
+	this->weaponVertexCount = static_cast<uint32_t>(vertices.size());
+	this->weaponIndexCount = static_cast<uint32_t>(indices.size());
 
 	VkDeviceSize vertexBufferSize = sizeof(SpriteVertex) * vertices.size();
     VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.size();
 
-    updateGeometry(reinterpret_cast<const void*>(vertices.data()), 
-		indices, this->uiVertexBuffer, 
-		this->uiVertexBufferMemory, vertexBufferSize, 
-		this->uiIndexBuffer, this->uiIndexBufferMemory, 
+    updateGeometry(vertices.data(), 
+		indices, this->weaponVertexBuffer, 
+		this->weaponVertexBufferMemory, vertexBufferSize, 
+		this->weaponIndexBuffer, this->weaponIndexBufferMemory, 
 		indexBufferSize);
 }
 

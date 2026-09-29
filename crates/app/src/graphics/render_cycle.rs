@@ -41,7 +41,7 @@ impl GraphicsContext {
 		self.renderer.pin().updateUiInstances(&ui_instances);
 
 		let weapon_instance = self.collect_weapon_instance(inv.weapon_tex);
-		self.renderer.pin().updateWeaponInstance(weapon_instance);
+		self.renderer.pin().updateWeaponInstance(&weapon_instance);
 
 		let obj_instances =
 			self.collect_object_instances(world, pos, prev_pos, &level.state.sectors, alpha);
@@ -273,7 +273,7 @@ impl GraphicsContext {
 
 	fn collect_weapon_instance(&mut self, weapon_tex: TextureData) -> UiInstance {
 		UiInstance {
-			pos: [50.0, 50.0],
+			pos: [127.0, 127.0],
 			sprite_size: [weapon_tex.1 as f32, weapon_tex.2 as f32],
 			texture_id: weapon_tex.0.0,
 		}

@@ -83,7 +83,7 @@ void VulkanRenderer::updateUiInstances(rust::Slice<const UiInstance> instances) 
     memcpy(this->uiInstanceBuffersMapped[this->currentFrame], instances.data(), instanceBufferSize);   
 }
 
-void VulkanRenderer::updateWeaponInstance(UiInstance instance) {
+void VulkanRenderer::updateWeaponInstance(const UiInstance& instance) {
     memcpy(this->weaponInstanceBuffersMapped[this->currentFrame], &instance, sizeof(UiInstance));   
 }
 
@@ -319,7 +319,7 @@ void VulkanRenderer::drawWeapon() noexcept {
         &this->currentPaletteIndex
     );
 
-    vkCmdDrawIndexed(currentCommandBuffer, this->weaponIndexCount, this->activeUiCount, 0, 0, 0);
+    vkCmdDrawIndexed(currentCommandBuffer, this->weaponIndexCount, 1, 0, 0, 0);
 }
 
 void VulkanRenderer::endFrame() {

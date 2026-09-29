@@ -105,7 +105,7 @@ pub(crate) mod ffi {
 		);
 		fn updateObjectInstances(self: Pin<&mut VulkanRenderer>, instances: &[ObjectInstance]);
 		fn updateUiInstances(self: Pin<&mut VulkanRenderer>, instances: &[UiInstance]);
-		fn updateWeaponInstance(self: Pin<&mut VulkanRenderer>, instance: UiInstance);
+		fn updateWeaponInstance(self: Pin<&mut VulkanRenderer>, instance: &UiInstance);
 		fn uploadPalettes(self: Pin<&mut VulkanRenderer>, palettes: &[u8]);
 		fn uploadColormap(self: Pin<&mut VulkanRenderer>, colormap: &[u8]);
 		fn uploadTextureArray(
