@@ -84,9 +84,10 @@ In this case we iterate through them with the PlayerMarker
 component.
 */
 
-pub fn handle_position_input(world: &World, player_ent: Entity, input: PlayerInput) {
-	let rot = world.get::<&PlayerRotation>(player_ent).unwrap();
-	let mut vel = world.get::<&mut Velocity>(player_ent).unwrap();
+pub fn handle_position_input(world: &mut World, player_ent: Entity, input: PlayerInput) {
+	let Ok((rot, vel)) = world.query_one_mut::<(&PlayerRotation, &mut Velocity)>(player_ent) else {
+		return;
+	};
 
 	let mut move_forward = 0.0;
 	let mut move_sideways = 0.0;
@@ -123,8 +124,10 @@ pub fn handle_position_input(world: &World, player_ent: Entity, input: PlayerInp
 	vel.y += move_vertically * 4.0;
 }
 
-pub fn handle_rotation_input(world: &World, player_ent: Entity, mouse_delta_x: f32) {
-	let mut rot = world.get::<&mut PlayerRotation>(player_ent).unwrap();
+pub fn handle_rotation_input(world: &mut World, player_ent: Entity, mouse_delta_x: f32) {
+	let rot = world
+		.query_one_mut::<&mut PlayerRotation>(player_ent)
+		.unwrap();
 
 	let sensitivity = 0.008;
 	let angle_delta_rad = mouse_delta_x * sensitivity;
@@ -136,16 +139,16 @@ pub fn handle_rotation_input(world: &World, player_ent: Entity, mouse_delta_x: f
 	rot.angle = rot.angle.wrapping_add_signed(angle_delta);
 }
 
-pub fn apply_player_movement_system(world: &World, level: &Level) {
-	let mut query = world
-		.query::<(
+pub fn apply_player_movement_system(world: &mut World, level: &Level) {
+	for (pos, prev_pos, velocity, current_sector) in world
+		.query_mut::<(
 			&mut Position,
 			&mut PrevPosition,
 			&Velocity,
 			&mut CurrentSector,
 		)>()
-		.with::<&PlayerMarker>();
-	for (pos, prev_pos, velocity, current_sector) in query.iter() {
+		.with::<&PlayerMarker>()
+	{
 		prev_pos.x = pos.x;
 		prev_pos.y = pos.y;
 		prev_pos.z = pos.z;
@@ -165,7 +168,7 @@ pub(crate) struct UseContext<'a> {
 
 #[allow(clippy::too_many_arguments)]
 pub fn handle_use_input(
-	world: &World,
+	world: &mut World,
 	player_ent: Entity,
 	use_pressed: bool,
 	level: &Level,
@@ -174,7 +177,7 @@ pub fn handle_use_input(
 	audio: &mut Vec<SfxEvent>,
 	world_events: &mut Vec<WorldEvent>,
 ) {
-	let mut use_down = world.get::<&mut UseDown>(player_ent).unwrap();
+	let use_down = world.query_one_mut::<&mut UseDown>(player_ent).unwrap();
 	if !use_pressed {
 		use_down.0 = false;
 		return;

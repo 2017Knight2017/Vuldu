@@ -135,10 +135,9 @@ impl AudioContext {
 		})
 	}
 
-	pub fn system(&mut self, world: &World, player_ent: Entity) {
+	pub fn system(&mut self, world: &mut World, player_ent: Entity) {
 		let Ok((pos, rot)) = world
-			.query_one::<(&Position, &PlayerRotation)>(player_ent)
-			.get()
+			.query_one_mut::<(&Position, &PlayerRotation)>(player_ent)
 			.map(|(p, r)| (*p, *r))
 		else {
 			return;

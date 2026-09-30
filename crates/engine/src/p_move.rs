@@ -348,7 +348,7 @@ type PendingMoves = FxHashMap<
 
 /// Must be called after friction_system
 pub fn try_move_system(
-	world: &World,
+	world: &mut World,
 	level: &Level,
 	random: &mut Random,
 	blocklists: &[Vec<(Entity, Collider)>],
@@ -357,17 +357,16 @@ pub fn try_move_system(
 	let db = DB.get().unwrap();
 	let mut pending_moves = PendingMoves::default();
 
-	let mut query = world
-		.query::<(
+	for (ent, imi, velocity, pos, mobj) in world
+		.query_mut::<(
 			Entity,
 			&mut InstantMoveIntent,
 			&mut Velocity,
 			&Position,
 			&MobjType,
 		)>()
-		.with::<&Active>();
-
-	for (ent, imi, velocity, pos, mobj) in query.iter() {
+		.with::<&Active>()
+	{
 		let mut ctx = MoveContext {
 			ent,
 			pos: *pos,
@@ -430,15 +429,15 @@ pub fn try_move_system(
 }
 
 pub fn apply_monster_movement_system(
-	world: &World,
+	world: &mut World,
 	mut pending_moves: PendingMoves,
 	level: &Level,
 	blocklists: &mut [Vec<(Entity, Collider)>],
 ) {
-	let mut query = world
-		.query::<(Entity, &mut Position, &mut PrevPosition, &mut CurrentSector)>()
-		.with::<&Active>();
-	for (ent, pos, prev_pos, current_sector) in query.iter() {
+	for (ent, pos, prev_pos, current_sector) in world
+		.query_mut::<(Entity, &mut Position, &mut PrevPosition, &mut CurrentSector)>()
+		.with::<&Active>()
+	{
 		let Some((
 			prev_x,
 			prev_y,

@@ -1,10 +1,8 @@
 use crate::{
-	Action, ActionContext, ActionFunc, Active, CurrentSector, Database, DivLine, MobjAi, MobjFlags,
+	Action, ActionContext, ActionFunc, Active, CurrentSector, Database, DivLine, MobjFlags,
 	MobjNum, MobjType, MonsterRotation, PLAYERHEIGHT, Pass, PlayerMarker, Position, Random,
-	SfxEvent, SpriteAnimation, Target, Traversal, in_fov, p_divline_side, p_intercept_vector,
-	set_mobj_state,
+	SfxEvent, StateCommand, Target, Traversal, in_fov, p_divline_side, p_intercept_vector,
 };
-use fixedbitset::FixedBitSet;
 use hecs::{CommandBuffer, Entity, QueryIter, World};
 use wad_parser::{Level, LineFlags, LineId, NF_SUBSECTOR, SubsectorId, to_u64};
 
@@ -246,9 +244,8 @@ pub(crate) struct LookContext<'a> {
 	pub(crate) cmd: &'a mut CommandBuffer,
 	pub(crate) random: &'a mut Random,
 	pub(crate) audio: &'a mut Vec<SfxEvent>,
+	pub(crate) state_buffer: &'a mut Vec<StateCommand>,
 	pub(crate) traversal: &'a mut Traversal,
-	pub(crate) anim: &'a mut SpriteAnimation,
-	pub(crate) ai: &'a mut MobjAi,
 	pub(crate) act: &'a mut Action,
 	pub(crate) pos: Position,
 	pub(crate) cur_sector: CurrentSector,
@@ -258,8 +255,6 @@ pub(crate) struct LookContext<'a> {
 
 pub(crate) type LookComponents<'a> = (
 	Entity,
-	&'a mut SpriteAnimation,
-	&'a mut MobjAi,
 	&'a Position,
 	&'a CurrentSector,
 	&'a MonsterRotation,
@@ -267,20 +262,10 @@ pub(crate) type LookComponents<'a> = (
 	&'a mut Action,
 );
 
-pub(crate) fn look(
-	ctx: &mut ActionContext,
-	iter: QueryIter<'_, LookComponents>,
-	processed: &mut FixedBitSet,
-) {
-	for (ent, anim, ai, pos, cur_sector, rot, mobj, act) in
+pub(crate) fn look(ctx: &mut ActionContext, iter: QueryIter<'_, LookComponents>) {
+	for (ent, pos, cur_sector, rot, mobj, act) in
 		iter.filter(|(.., act)| act.0 == Some(ActionFunc::Look))
 	{
-		let ent_idx = ent.id() as usize;
-		if processed.contains(ent_idx) {
-			continue;
-		}
-
-		processed.insert(ent_idx);
 		let mut look_ctx = LookContext {
 			world: ctx.world,
 			ent,
@@ -289,9 +274,8 @@ pub(crate) fn look(
 			cmd: ctx.cmd,
 			random: ctx.random,
 			audio: ctx.audio,
+			state_buffer: ctx.state_buffer,
 			traversal: ctx.traversal,
-			anim,
-			ai,
 			act,
 			pos: *pos,
 			cur_sector: *cur_sector,
@@ -384,14 +368,11 @@ fn wake_up_monster(ctx: &mut LookContext, target: Entity) {
 	let mobj_info = &ctx.db.mobjinfo[ctx.mobj.type_ as usize];
 
 	if let (Some(see_state_num), Some(mut see_sound)) = (mobj_info.see_state, mobj_info.see_sound) {
-		set_mobj_state(
-			ctx.act,
-			ctx.ai,
-			ctx.anim,
-			see_state_num,
-			ctx.db,
-			(ctx.random.p() & 0b111) as i32,
-		);
+		ctx.state_buffer.push(StateCommand {
+			ent: ctx.ent,
+			state: see_state_num,
+			tics_to_add: (ctx.random.p() & 0b111) as i32,
+		});
 
 		if see_sound.starts_with(b"DSPOSIT") {
 			see_sound[7] = ctx.random.p() % 3 + b'1';

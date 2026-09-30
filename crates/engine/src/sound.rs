@@ -98,16 +98,16 @@ pub fn propagate_sound(
 }
 
 pub fn propagate_sound_system(
-	world: &World,
+	world: &mut World,
 	level: &Level,
 	sound_targets: &mut [Option<Entity>],
 	traversal: &mut Traversal,
 	command_buffer: &mut CommandBuffer,
 ) {
-	let mut query = world
-		.query::<(Entity, &CurrentSector)>()
-		.with::<&PlayerShoot>();
-	for (ent, current_sector) in query.iter() {
+	for (ent, current_sector) in world
+		.query_mut::<(Entity, &CurrentSector)>()
+		.with::<&PlayerShoot>()
+	{
 		propagate_sound(level, traversal, sound_targets, current_sector.0, ent);
 
 		command_buffer.remove_one::<PlayerShoot>(ent);

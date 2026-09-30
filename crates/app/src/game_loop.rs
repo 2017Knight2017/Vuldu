@@ -20,6 +20,7 @@ pub struct GameContext {
 	sound_targets: Vec<Option<Entity>>,
 	world_events: Vec<WorldEvent>,
 	mobj_flags: Vec<MobjFlagCommand>,
+	state_buffer: Vec<StateCommand>,
 	cmd: CommandBuffer,
 	traversal: Traversal,
 	pub player_entity: Entity,
@@ -37,6 +38,7 @@ impl GameContext {
 			graphics_buffer: Vec::new(),
 			world_events: Vec::new(),
 			mobj_flags: Vec::new(),
+			state_buffer: Vec::new(),
 			intercepts: Vec::new(),
 			buttons: Vec::new(),
 			cmd: CommandBuffer::new(),
@@ -47,6 +49,7 @@ impl GameContext {
 		}
 	}
 
+	#[allow(clippy::too_many_arguments)]
 	pub fn tick(
 		&mut self,
 		audio: &mut AudioContext,
@@ -55,11 +58,12 @@ impl GameContext {
 		random: &mut Random,
 		ui_to_update: &mut Vec<UpdatableUiType>,
 		last_buttons: &mut VecDeque<Option<PhysicalKey>>,
+		is_doom1: bool,
 	) {
-		handle_rotation_input(&self.world, self.player_entity, input.mouse_delta_x);
-		handle_position_input(&self.world, self.player_entity, input);
+		handle_rotation_input(&mut self.world, self.player_entity, input.mouse_delta_x);
+		handle_position_input(&mut self.world, self.player_entity, input);
 		handle_weapons_input(
-			&self.world,
+			&mut self.world,
 			self.player_entity,
 			ui_to_update,
 			&mut self.cmd,
@@ -68,7 +72,7 @@ impl GameContext {
 			input,
 		);
 		handle_use_input(
-			&self.world,
+			&mut self.world,
 			self.player_entity,
 			input.use_,
 			&self.level,
@@ -81,7 +85,7 @@ impl GameContext {
 		self.flush_command_buffer();
 
 		propagate_sound_system(
-			&self.world,
+			&mut self.world,
 			&self.level,
 			&mut self.sound_targets,
 			&mut self.traversal,
@@ -90,7 +94,7 @@ impl GameContext {
 
 		self.flush_command_buffer();
 
-		ai_system(&self.world);
+		ai_system(&mut self.world, &mut self.state_buffer);
 
 		action_system(
 			&self.world,
@@ -101,24 +105,26 @@ impl GameContext {
 			&self.blocklists,
 			&mut self.world_events,
 			&mut self.mobj_flags,
+			&mut self.state_buffer,
 			&mut self.traversal,
 			&mut self.cmd,
 			&mut self.sound_targets,
 		);
 
-		friction_system(&self.world);
+		state_system(&mut self.world, &mut self.state_buffer);
+		friction_system(&mut self.world);
 
 		let pending_moves = try_move_system(
-			&self.world,
+			&mut self.world,
 			&self.level,
 			random,
 			&self.blocklists,
 			&mut self.world_events,
 		);
 
-		apply_player_movement_system(&self.world, &self.level);
+		apply_player_movement_system(&mut self.world, &self.level);
 		apply_monster_movement_system(
-			&self.world,
+			&mut self.world,
 			pending_moves,
 			&self.level,
 			&mut self.blocklists,
@@ -129,7 +135,7 @@ impl GameContext {
 		button_system(&mut self.buttons, &mut self.world_events);
 		execute_events_system(
 			&mut self.world_events,
-			&self.world,
+			&mut self.world,
 			&mut self.level,
 			self.player_entity,
 			ui_to_update,
@@ -138,13 +144,14 @@ impl GameContext {
 			&mut self.blocklists,
 			&mut self.graphics_buffer,
 			&mut self.buttons,
+			is_doom1,
 			self.config,
 			self.global_timer,
 		);
-		apply_mobj_flags_system(&mut self.mobj_flags, &self.world);
-		animation_system(&self.world);
-		audio.system(&self.world, self.player_entity);
-		update_blocklists_system(&self.world, &self.level, &mut self.blocklists);
+		apply_mobj_flags_system(&mut self.mobj_flags, &mut self.world);
+		animation_system(&mut self.world);
+		audio.system(&mut self.world, self.player_entity);
+		update_blocklists_system(&mut self.world, &self.level, &mut self.blocklists);
 	}
 
 	fn flush_command_buffer(&mut self) {

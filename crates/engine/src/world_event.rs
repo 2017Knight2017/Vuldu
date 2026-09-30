@@ -44,7 +44,7 @@ pub enum GraphicsCommand {
 #[allow(clippy::too_many_arguments)]
 pub fn execute_events_system(
 	world_events: &mut Vec<WorldEvent>,
-	world: &World,
+	world: &mut World,
 	level: &mut Level,
 	player_ent: Entity,
 	ui_to_update: &mut Vec<UpdatableUiType>,
@@ -53,6 +53,7 @@ pub fn execute_events_system(
 	blocklists: &mut [Vec<(Entity, Collider)>],
 	graphics_buffer: &mut Vec<GraphicsCommand>,
 	buttons: &mut Vec<Button>,
+	is_doom1: bool,
 	cfg: GameConfig,
 	global_timer: u32,
 ) {
@@ -65,13 +66,15 @@ pub fn execute_events_system(
 			} => {}
 			WorldEvent::ResetSkullFly { actor_id: _ } => {}
 			WorldEvent::TouchSpecialThing { item_ent, picker } => {
-				let mut query = world
-					.query_one::<(&mut PlayerInventory, &mut PlayerStats, &mut Health)>(picker);
-				let Ok((inv, stats, hp)) = query.get() else {
+				let Ok(item) = world.get::<&MobjType>(item_ent).map(|i| *i) else {
 					continue;
 				};
 
-				let Ok(item) = world.get::<&MobjType>(item_ent).map(|i| *i) else {
+				let Ok((inv, stats, hp)) =
+					world.query_one_mut::<(&mut PlayerInventory, &mut PlayerStats, &mut Health)>(
+						picker,
+					)
+				else {
 					continue;
 				};
 
@@ -122,8 +125,11 @@ pub fn execute_events_system(
 
 				inv.backpack = true;
 				inv.ammo = [400, 100, 100, 600];
-				inv.weapon_owned = [true; NUMWEAPONS];
 				inv.cards = [true; NUMCARDS];
+				inv.weapon_owned = [true; NUMWEAPONS];
+				if is_doom1 {
+					inv.weapon_owned[WeaponType::SuperShotgun as usize] = false;
+				}
 
 				ui_to_update.push(UpdatableUiType::Ammo);
 				ui_to_update.push(UpdatableUiType::Arms);
@@ -139,6 +145,9 @@ pub fn execute_events_system(
 				inv.backpack = true;
 				inv.ammo = [400, 100, 100, 600];
 				inv.weapon_owned = [true; NUMWEAPONS];
+				if is_doom1 {
+					inv.weapon_owned[WeaponType::SuperShotgun as usize] = false;
+				}
 
 				ui_to_update.push(UpdatableUiType::Ammo);
 				ui_to_update.push(UpdatableUiType::Arms);

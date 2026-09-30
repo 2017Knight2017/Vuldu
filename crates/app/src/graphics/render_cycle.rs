@@ -19,7 +19,7 @@ impl GraphicsContext {
 	pub fn render(
 		&mut self,
 		window: &Window,
-		world: &World,
+		world: &mut World,
 		player_entity: Entity,
 		level: &Level,
 		game_state: GameState,
@@ -32,14 +32,13 @@ impl GraphicsContext {
 		}
 
 		let (inv, stats, hp, pos, prev_pos) = world
-			.query_one::<(
+			.query_one_mut::<(
 				&PlayerInventory,
 				&PlayerStats,
 				&Health,
 				&Position,
 				&PrevPosition,
 			)>(player_entity)
-			.get()
 			.map(|(i, s, h, p, pp)| (*i, *s, *h, *p, *pp))
 			.unwrap();
 
@@ -95,7 +94,7 @@ impl GraphicsContext {
 
 	fn collect_object_instances(
 		&self,
-		world: &World,
+		world: &mut World,
 		pos: Position,
 		prev_pos: PrevPosition,
 		sectors: &[SectorState],
@@ -169,24 +168,24 @@ impl GraphicsContext {
 			}
 		};
 
-		let mut entities_query = world.query::<(
-			&Position,
-			&PrevPosition,
-			&MonsterRotation,
-			&CurrentSector,
-			&SpriteAnimation,
-		)>();
-		let iter = entities_query
-			.iter()
+		let query = world
+			.query_mut::<(
+				&Position,
+				&PrevPosition,
+				&MonsterRotation,
+				&CurrentSector,
+				&SpriteAnimation,
+			)>()
+			.into_iter()
 			.map(|(p, pp, m, c, s)| (*p, *pp, *m, *c, *s));
 
-		let (lower_bound, _) = iter.size_hint();
+		let (lower_bound, _) = query.size_hint();
 		const PARALLEL_THRESHOLD: usize = 2000;
 
 		if lower_bound < PARALLEL_THRESHOLD {
-			iter.map(&process_entity).collect()
+			query.map(&process_entity).collect()
 		} else {
-			let entities_to_process = iter.collect::<Vec<_>>();
+			let entities_to_process = query.collect::<Vec<_>>();
 
 			let nested_instances = entities_to_process
 				.into_par_iter()

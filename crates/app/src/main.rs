@@ -79,6 +79,7 @@ impl App {
 				&mut self.random,
 				&mut self.graphics.ui_to_update,
 				&mut self.last_buttons_pressed,
+				self.wad_manager.is_doom1,
 			);
 			self.current_input.mouse_delta_x = 0.0;
 			self.graphics
@@ -378,7 +379,7 @@ impl ApplicationHandler for App {
 					let alpha = self.time_accumulator / TICK_TIME;
 					self.graphics.render(
 						window,
-						&self.game.world,
+						&mut self.game.world,
 						self.game.player_entity,
 						&self.game.level,
 						self.game.state,

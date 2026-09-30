@@ -1,11 +1,10 @@
 use crate::{
 	Action, Collider, CurrentSector, DB, Database, GameConfig, Health, InstantMoveIntent,
 	LookComponents, MobjAi, MobjFlagCommand, MobjFlags, MobjType, MonsterRotation, MoveContext,
-	MoveContextInner, Position, Random, SfxEvent, SightContext, SkillLevel, SpriteAnimation,
-	StateNum, Target, Traversal, WorldEvent, look, p_check_melee_range, p_check_missile_range,
-	p_move, p_new_chase_dir,
+	MoveContextInner, Position, Random, SfxEvent, SightContext, SkillLevel, StateCommand, Target,
+	Traversal, WorldEvent, look, p_check_melee_range, p_check_missile_range, p_move,
+	p_new_chase_dir,
 };
-use fixedbitset::FixedBitSet;
 use hecs::{CommandBuffer, Entity, QueryIter, World};
 use serde::Deserialize;
 use wad_parser::{Level, to_u64};
@@ -89,11 +88,10 @@ pub enum ActionFunc {
 }
 
 /// Must be called before animation_system
-pub fn ai_system(world: &World) {
+pub fn ai_system(world: &mut World, state_buffer: &mut Vec<StateCommand>) {
 	let db = DB.get().unwrap();
 
-	let mut query = world.query::<(&mut MobjAi, &mut SpriteAnimation, &mut Action)>();
-	for (ai, anim, act) in query.iter() {
+	for (ent, ai) in world.query_mut::<(Entity, &mut MobjAi)>() {
 		if ai.tics_left <= 0 {
 			continue;
 		}
@@ -103,26 +101,14 @@ pub fn ai_system(world: &World) {
 			let current_state = db.states[ai.current_state as usize];
 
 			if let Some(next_state_num) = current_state.next_state {
-				set_mobj_state(act, ai, anim, next_state_num, db, 0);
+				state_buffer.push(StateCommand {
+					ent,
+					state: next_state_num,
+					tics_to_add: 0,
+				});
 			}
 		}
 	}
-}
-
-pub(crate) fn set_mobj_state(
-	action: &mut Action,
-	ai: &mut MobjAi,
-	anim: &mut SpriteAnimation,
-	state_num: StateNum,
-	db: &Database,
-	tics_to_add: i32,
-) {
-	ai.current_state = state_num;
-
-	let state = db.states[state_num as usize];
-	ai.tics_left = state.tics + tics_to_add;
-	anim.cached_rotations = state.cached_rotations;
-	action.0 = state.action;
 }
 
 pub(crate) struct ActionContext<'a> {
@@ -133,6 +119,7 @@ pub(crate) struct ActionContext<'a> {
 	pub audio: &'a mut Vec<SfxEvent>,
 	pub blocklists: &'a [Vec<(Entity, Collider)>],
 	pub world_events: &'a mut Vec<WorldEvent>,
+	pub state_buffer: &'a mut Vec<StateCommand>,
 	pub mobj_flags: &'a mut Vec<MobjFlagCommand>,
 	pub traversal: &'a mut Traversal,
 	pub cmd: &'a mut CommandBuffer,
@@ -150,13 +137,12 @@ pub fn action_system(
 	blocklists: &[Vec<(Entity, Collider)>],
 	world_events: &mut Vec<WorldEvent>,
 	mobj_flags: &mut Vec<MobjFlagCommand>,
+	state_buffer: &mut Vec<StateCommand>,
 	traversal: &mut Traversal,
 	cmd: &mut CommandBuffer,
 	sound_targets: &mut [Option<Entity>],
 ) {
 	let db = DB.get().unwrap();
-
-	let mut processed = FixedBitSet::with_capacity(world.len() as usize);
 
 	let mut ctx = ActionContext {
 		world,
@@ -166,6 +152,7 @@ pub fn action_system(
 		audio,
 		blocklists,
 		world_events,
+		state_buffer,
 		mobj_flags,
 		traversal,
 		cmd,
@@ -175,12 +162,12 @@ pub fn action_system(
 
 	{
 		let mut chase_query = ctx.world.query::<ChaseComponents>();
-		chase(&mut ctx, chase_query.iter(), &mut processed);
+		chase(&mut ctx, chase_query.iter());
 	}
 
 	{
 		let mut look_query = ctx.world.query::<LookComponents>();
-		look(&mut ctx, look_query.iter(), &mut processed);
+		look(&mut ctx, look_query.iter());
 	}
 }
 
@@ -189,7 +176,6 @@ type ChaseComponents<'a> = (
 	&'a mut MonsterRotation,
 	&'a mut MobjAi,
 	&'a mut InstantMoveIntent,
-	&'a mut SpriteAnimation,
 	&'a MobjType,
 	&'a Position,
 	&'a CurrentSector,
@@ -197,21 +183,11 @@ type ChaseComponents<'a> = (
 	&'a mut Action,
 );
 
-pub(crate) fn chase(
-	ctx: &mut ActionContext,
-	query: QueryIter<'_, ChaseComponents>,
-	processed: &mut FixedBitSet,
-) {
-	for (ent, rot, ai, imi, anim, mobj, pos, cur_sector, target, act) in query
+pub(crate) fn chase(ctx: &mut ActionContext, query: QueryIter<'_, ChaseComponents>) {
+	for (ent, rot, ai, imi, mobj, pos, cur_sector, target, act) in query
 		.filter(|(.., act)| act.0 == Some(ActionFunc::Chase))
-		.map(|(_e, _r, _ai, _i, _an, m, p, s, t, _ac)| (_e, _r, _ai, _i, _an, *m, *p, *s, *t, _ac))
+		.map(|(_e, _r, _ai, _i, m, p, s, t, _ac)| (_e, _r, _ai, _i, *m, *p, *s, *t, _ac))
 	{
-		let ent_idx = ent.id() as usize;
-		if processed.contains(ent_idx) {
-			continue;
-		}
-
-		processed.insert(ent_idx);
 		let mobj_info = &ctx.db.mobjinfo[mobj.type_ as usize];
 
 		ai.reaction_time = ai.reaction_time.saturating_sub(1);
@@ -223,14 +199,22 @@ pub(crate) fn chase(
 			.map(|(h, p, s, t)| (*h, *p, *s, *t))
 		else {
 			if let Some(spawn_state) = mobj_info.spawn_state {
-				set_mobj_state(act, ai, anim, spawn_state, ctx.db, 0);
+				ctx.state_buffer.push(StateCommand {
+					ent,
+					state: spawn_state,
+					tics_to_add: 0,
+				});
 			}
 			continue;
 		};
 
 		if target_hp.0 <= 0 {
 			if let Some(spawn_state) = mobj_info.spawn_state {
-				set_mobj_state(act, ai, anim, spawn_state, ctx.db, 0);
+				ctx.state_buffer.push(StateCommand {
+					ent,
+					state: spawn_state,
+					tics_to_add: 0,
+				});
 			}
 			continue;
 		}
@@ -292,7 +276,11 @@ pub(crate) fn chase(
 				});
 			}
 
-			set_mobj_state(act, ai, anim, melee_state, ctx.db, 0);
+			ctx.state_buffer.push(StateCommand {
+				ent,
+				state: melee_state,
+				tics_to_add: 0,
+			});
 			continue;
 		}
 
@@ -317,7 +305,11 @@ pub(crate) fn chase(
 					mobj_info.melee_state.is_none(),
 					ai.reaction_time,
 				) {
-				set_mobj_state(act, ai, anim, missile_state, ctx.db, 0);
+				ctx.state_buffer.push(StateCommand {
+					ent,
+					state: missile_state,
+					tics_to_add: 0,
+				});
 				continue;
 			}
 		}

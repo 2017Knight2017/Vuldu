@@ -785,7 +785,6 @@ version = "0.2.1"
 dependencies = [
  "approx",
  "bitflags 2.13.1",
- "fixedbitset",
  "hecs",
  "phf",
  "rustc-hash",
