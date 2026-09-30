@@ -4,6 +4,7 @@ use crate::{
 	SfxEvent, SpriteAnimation, Target, Traversal, in_fov, p_divline_side, p_intercept_vector,
 	set_mobj_state,
 };
+use fixedbitset::FixedBitSet;
 use hecs::{CommandBuffer, Entity, QueryIter, World};
 use wad_parser::{Level, LineFlags, LineId, NF_SUBSECTOR, SubsectorId, to_u64};
 
@@ -266,10 +267,20 @@ pub(crate) type LookComponents<'a> = (
 	&'a mut Action,
 );
 
-pub(crate) fn look(ctx: &mut ActionContext, iter: QueryIter<'_, LookComponents>) {
+pub(crate) fn look(
+	ctx: &mut ActionContext,
+	iter: QueryIter<'_, LookComponents>,
+	processed: &mut FixedBitSet,
+) {
 	for (ent, anim, ai, pos, cur_sector, rot, mobj, act) in
 		iter.filter(|(.., act)| act.0 == Some(ActionFunc::Look))
 	{
+		let ent_idx = ent.id() as usize;
+		if processed.contains(ent_idx) {
+			continue;
+		}
+
+		processed.insert(ent_idx);
 		let mut look_ctx = LookContext {
 			world: ctx.world,
 			ent,

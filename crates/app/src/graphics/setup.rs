@@ -9,7 +9,8 @@ use renderer::{
 };
 use rustc_hash::FxHashMap;
 use wad_parser::{
-	DoomPicture, GpuLevelVertex, GpuSpriteVertex, Level, NUM_UI, SWITCH_LIST, TextureData, TextureId, WadManager, construct_map_name, to_u64,
+	DoomPicture, GpuLevelVertex, GpuSpriteVertex, Level, NUM_UI, SWITCH_LIST, TextureData,
+	TextureId, WadManager, construct_map_name, to_u64,
 };
 
 bitflags! {

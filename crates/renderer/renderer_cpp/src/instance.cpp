@@ -104,7 +104,7 @@ void VulkanRenderer::createInstance(const WindowHandles& handles) {
     }
 };
 
-void VulkanRenderer::createSurface(const WindowHandles& handles) {
+void VulkanRenderer::createSurface([[maybe_unused]] const WindowHandles& handles) {
     VkResult surfaceResult = VK_ERROR_INITIALIZATION_FAILED;
 
     #if defined(_WIN32)

@@ -32,7 +32,13 @@ impl GraphicsContext {
 		}
 
 		let (inv, stats, hp, pos, prev_pos) = world
-			.query_one::<(&PlayerInventory, &PlayerStats, &Health, &Position, &PrevPosition)>(player_entity)
+			.query_one::<(
+				&PlayerInventory,
+				&PlayerStats,
+				&Health,
+				&Position,
+				&PrevPosition,
+			)>(player_entity)
 			.get()
 			.map(|(i, s, h, p, pp)| (*i, *s, *h, *p, *pp))
 			.unwrap();

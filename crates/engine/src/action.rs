@@ -5,6 +5,7 @@ use crate::{
 	StateNum, Target, Traversal, WorldEvent, look, p_check_melee_range, p_check_missile_range,
 	p_move, p_new_chase_dir,
 };
+use fixedbitset::FixedBitSet;
 use hecs::{CommandBuffer, Entity, QueryIter, World};
 use serde::Deserialize;
 use wad_parser::{Level, to_u64};
@@ -155,6 +156,8 @@ pub fn action_system(
 ) {
 	let db = DB.get().unwrap();
 
+	let mut processed = FixedBitSet::with_capacity(world.len() as usize);
+
 	let mut ctx = ActionContext {
 		world,
 		random,
@@ -172,12 +175,12 @@ pub fn action_system(
 
 	{
 		let mut chase_query = ctx.world.query::<ChaseComponents>();
-		chase(&mut ctx, chase_query.iter());
+		chase(&mut ctx, chase_query.iter(), &mut processed);
 	}
 
 	{
 		let mut look_query = ctx.world.query::<LookComponents>();
-		look(&mut ctx, look_query.iter());
+		look(&mut ctx, look_query.iter(), &mut processed);
 	}
 }
 
@@ -194,11 +197,21 @@ type ChaseComponents<'a> = (
 	&'a mut Action,
 );
 
-pub(crate) fn chase(ctx: &mut ActionContext, query: QueryIter<'_, ChaseComponents>) {
+pub(crate) fn chase(
+	ctx: &mut ActionContext,
+	query: QueryIter<'_, ChaseComponents>,
+	processed: &mut FixedBitSet,
+) {
 	for (ent, rot, ai, imi, anim, mobj, pos, cur_sector, target, act) in query
 		.filter(|(.., act)| act.0 == Some(ActionFunc::Chase))
 		.map(|(_e, _r, _ai, _i, _an, m, p, s, t, _ac)| (_e, _r, _ai, _i, _an, *m, *p, *s, *t, _ac))
 	{
+		let ent_idx = ent.id() as usize;
+		if processed.contains(ent_idx) {
+			continue;
+		}
+
+		processed.insert(ent_idx);
 		let mobj_info = &ctx.db.mobjinfo[mobj.type_ as usize];
 
 		ai.reaction_time = ai.reaction_time.saturating_sub(1);
