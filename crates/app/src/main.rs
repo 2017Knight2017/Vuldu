@@ -16,7 +16,6 @@ use renderer::*;
 use sound_player::*;
 use std::{
 	collections::VecDeque,
-	error::Error,
 	time::{Duration, Instant},
 };
 use wad_parser::map::Level;
@@ -70,7 +69,7 @@ impl App {
 		Ok(window)
 	}
 
-	fn update_game_logic(&mut self) -> Result<(), Box<dyn Error>> {
+	fn update_game_logic(&mut self) {
 		while self.time_accumulator >= TICK_TIME {
 			self.game.tick(
 				&mut self.audio,
@@ -87,8 +86,6 @@ impl App {
 			self.time_accumulator -= TICK_TIME;
 			self.game.global_timer = self.game.global_timer.wrapping_add(1);
 		}
-
-		Ok(())
 	}
 }
 
@@ -362,31 +359,21 @@ impl ApplicationHandler for App {
 					.as_secs_f32()
 					.min(0.25);
 				self.last_frame_time = current_time;
-
 				self.time_accumulator += delta_time;
 
-				if let Err(err) = self.update_game_logic() {
-					handle_fatal_error(
-						&mut self.is_shutting_down,
-						event_loop,
-						&mut self.graphics.renderer,
-						&err.to_string(),
-					);
-					return;
-				};
+				self.update_game_logic();
 
-				if let Some(window) = &self.window {
-					let alpha = self.time_accumulator / TICK_TIME;
-					self.graphics.render(
-						window,
-						&mut self.game.world,
-						self.game.player_entity,
-						&self.game.level,
-						self.game.state,
-						self.game.global_timer,
-						alpha,
-					);
-				}
+				let window = self.window.as_ref().unwrap();
+				let alpha = self.time_accumulator / TICK_TIME;
+				self.graphics.render(
+					window,
+					&mut self.game.world,
+					self.game.player_entity,
+					&self.game.level,
+					self.game.state,
+					self.game.global_timer,
+					alpha,
+				);
 			}
 			_ => (),
 		}

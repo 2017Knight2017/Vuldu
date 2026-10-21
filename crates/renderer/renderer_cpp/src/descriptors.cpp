@@ -3,169 +3,169 @@
 #include "renderer/src/bridge.rs.h"
 
 void VulkanRenderer::createDescriptorSetLayout() {
-    VkDescriptorSetLayoutBinding mvpLayoutBinding{};
-    mvpLayoutBinding.binding = 0;
-    mvpLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    mvpLayoutBinding.descriptorCount = 1;
-    mvpLayoutBinding.pImmutableSamplers = nullptr;
-    mvpLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	VkDescriptorSetLayoutBinding mvpLayoutBinding{};
+	mvpLayoutBinding.binding = 0;
+	mvpLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	mvpLayoutBinding.descriptorCount = 1;
+	mvpLayoutBinding.pImmutableSamplers = nullptr;
+	mvpLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
-    VkDescriptorSetLayoutBinding paletteLayoutBinding{};
-    paletteLayoutBinding.binding = 1;
-    paletteLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    paletteLayoutBinding.descriptorCount = 1;
-    paletteLayoutBinding.pImmutableSamplers = nullptr;
-    paletteLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	VkDescriptorSetLayoutBinding paletteLayoutBinding{};
+	paletteLayoutBinding.binding = 1;
+	paletteLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	paletteLayoutBinding.descriptorCount = 1;
+	paletteLayoutBinding.pImmutableSamplers = nullptr;
+	paletteLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-    VkDescriptorSetLayoutBinding colormapLayoutBinding{};
-    colormapLayoutBinding.binding = 2;
-    colormapLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    colormapLayoutBinding.descriptorCount = 1;
-    colormapLayoutBinding.pImmutableSamplers = nullptr;
-    colormapLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	VkDescriptorSetLayoutBinding colormapLayoutBinding{};
+	colormapLayoutBinding.binding = 2;
+	colormapLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	colormapLayoutBinding.descriptorCount = 1;
+	colormapLayoutBinding.pImmutableSamplers = nullptr;
+	colormapLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-    VkDescriptorSetLayoutBinding animLevelLayoutBinding{};
-    animLevelLayoutBinding.binding = 3;
-    animLevelLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    animLevelLayoutBinding.descriptorCount = 1;
-    animLevelLayoutBinding.pImmutableSamplers = nullptr;
-    animLevelLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-    
-    VkDescriptorSetLayoutBinding sectorHeightsLayoutBinding{};
-    sectorHeightsLayoutBinding.binding = 4;
-    sectorHeightsLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    sectorHeightsLayoutBinding.descriptorCount = 1;
-    sectorHeightsLayoutBinding.pImmutableSamplers = nullptr;
-    sectorHeightsLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	VkDescriptorSetLayoutBinding animLevelLayoutBinding{};
+	animLevelLayoutBinding.binding = 3;
+	animLevelLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	animLevelLayoutBinding.descriptorCount = 1;
+	animLevelLayoutBinding.pImmutableSamplers = nullptr;
+	animLevelLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	
+	VkDescriptorSetLayoutBinding sectorHeightsLayoutBinding{};
+	sectorHeightsLayoutBinding.binding = 4;
+	sectorHeightsLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	sectorHeightsLayoutBinding.descriptorCount = 1;
+	sectorHeightsLayoutBinding.pImmutableSamplers = nullptr;
+	sectorHeightsLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
-    VkDescriptorSetLayoutBinding switchesLayoutBinding{};
-    switchesLayoutBinding.binding = 5;
-    switchesLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    switchesLayoutBinding.descriptorCount = 1;
-    switchesLayoutBinding.pImmutableSamplers = nullptr;
-    switchesLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	VkDescriptorSetLayoutBinding switchesLayoutBinding{};
+	switchesLayoutBinding.binding = 5;
+	switchesLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	switchesLayoutBinding.descriptorCount = 1;
+	switchesLayoutBinding.pImmutableSamplers = nullptr;
+	switchesLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
-    VkDescriptorSetLayoutBinding textureSamplerLayoutBinding{};
-    textureSamplerLayoutBinding.binding = 6;
-    textureSamplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    textureSamplerLayoutBinding.descriptorCount = MAX_TEXTURES;
-    textureSamplerLayoutBinding.pImmutableSamplers = nullptr;
-    textureSamplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-    
+	VkDescriptorSetLayoutBinding textureSamplerLayoutBinding{};
+	textureSamplerLayoutBinding.binding = 6;
+	textureSamplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	textureSamplerLayoutBinding.descriptorCount = MAX_TEXTURES;
+	textureSamplerLayoutBinding.pImmutableSamplers = nullptr;
+	textureSamplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	
 
-    std::array<VkDescriptorSetLayoutBinding, 7> bindings = {
-        mvpLayoutBinding,
-        paletteLayoutBinding, 
-        colormapLayoutBinding,
-        animLevelLayoutBinding,
-        sectorHeightsLayoutBinding,
-        switchesLayoutBinding,
-        textureSamplerLayoutBinding,
-    };
+	std::array<VkDescriptorSetLayoutBinding, 7> bindings = {
+		mvpLayoutBinding,
+		paletteLayoutBinding, 
+		colormapLayoutBinding,
+		animLevelLayoutBinding,
+		sectorHeightsLayoutBinding,
+		switchesLayoutBinding,
+		textureSamplerLayoutBinding,
+	};
 
-    std::array<VkDescriptorBindingFlags, 7> bindingFlags = {
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT,
-    };
+	std::array<VkDescriptorBindingFlags, 7> bindingFlags = {
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT,
+	};
 
-    VkDescriptorSetLayoutBindingFlagsCreateInfo layoutFlagsInfo{};
-    layoutFlagsInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
-    layoutFlagsInfo.bindingCount = static_cast<uint32_t>(bindingFlags.size());
-    layoutFlagsInfo.pBindingFlags = bindingFlags.data(); 
+	VkDescriptorSetLayoutBindingFlagsCreateInfo layoutFlagsInfo{};
+	layoutFlagsInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+	layoutFlagsInfo.bindingCount = static_cast<uint32_t>(bindingFlags.size());
+	layoutFlagsInfo.pBindingFlags = bindingFlags.data(); 
 
-    VkDescriptorSetLayoutCreateInfo layoutInfo{};
-    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
-    layoutInfo.pBindings = bindings.data();
-    layoutInfo.pNext = &layoutFlagsInfo; 
-    layoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
+	VkDescriptorSetLayoutCreateInfo layoutInfo{};
+	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+	layoutInfo.pBindings = bindings.data();
+	layoutInfo.pNext = &layoutFlagsInfo; 
+	layoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
 
-    VkResult descriptorSetResult = vkCreateDescriptorSetLayout(this->device, &layoutInfo, nullptr, &this->descriptorSetLayout);
-    if (descriptorSetResult != VK_SUCCESS) {
-        throw std::runtime_error("failed to create descriptor set layout!");
-    }
+	VkResult descriptorSetResult = vkCreateDescriptorSetLayout(this->device, &layoutInfo, nullptr, &this->descriptorSetLayout);
+	if (descriptorSetResult != VK_SUCCESS) {
+		throw std::runtime_error("failed to create descriptor set layout!");
+	}
 }
 
 void VulkanRenderer::createMVPBuffer() {
-    VkDeviceSize bufferSize = sizeof(MVP);
+	VkDeviceSize bufferSize = sizeof(MVP);
 
-    this->MVPBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-    this->MVPBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
-    this->MVPBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
+	this->MVPBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+	this->MVPBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
+	this->MVPBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
 
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        createBuffer(
-            bufferSize, 
-            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
-            this->MVPBuffers[i], 
-            this->MVPBuffersMemory[i]
-        );
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		createBuffer(
+			bufferSize, 
+			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
+			this->MVPBuffers[i], 
+			this->MVPBuffersMemory[i]
+		);
 
-        vkMapMemory(this->device, this->MVPBuffersMemory[i], 0, bufferSize, 0, &MVPBuffersMapped[i]);
-    }
+		vkMapMemory(this->device, this->MVPBuffersMemory[i], 0, bufferSize, 0, &MVPBuffersMapped[i]);
+	}
 }
 
 void VulkanRenderer::createInstanceBuffersInternal(
-    VkDeviceSize bufferSize, 
-    std::vector<VkBuffer>& pBuffers,
-    std::vector<VkDeviceMemory>& pBuffersMemory,
-    std::vector<void*>& pBuffersMapped
+	VkDeviceSize bufferSize, 
+	std::vector<VkBuffer>& pBuffers,
+	std::vector<VkDeviceMemory>& pBuffersMemory,
+	std::vector<void*>& pBuffersMapped
 ) {
-    pBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-    pBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
-    pBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
+	pBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+	pBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
+	pBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
 
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        createBuffer(
-            bufferSize, 
-            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
-            pBuffers[i], 
-            pBuffersMemory[i]
-        );
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		createBuffer(
+			bufferSize, 
+			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
+			pBuffers[i], 
+			pBuffersMemory[i]
+		);
 
-        vkMapMemory(this->device, pBuffersMemory[i], 0, bufferSize, 0, &pBuffersMapped[i]);
-    }
+		vkMapMemory(this->device, pBuffersMemory[i], 0, bufferSize, 0, &pBuffersMapped[i]);
+	}
 }
 
 void VulkanRenderer::createInstanceBuffers() {
-    createInstanceBuffersInternal(
-        sizeof(ObjectInstance) * MAX_OBJECTS, 
-        this->objectInstanceBuffers, 
-        this->objectInstanceBuffersMemory, 
-        this->objectInstanceBuffersMapped
-    );
-    createInstanceBuffersInternal(
-        sizeof(UiInstance) * MAX_UI, 
-        this->uiInstanceBuffers, 
-        this->uiInstanceBuffersMemory, 
-        this->uiInstanceBuffersMapped
-    );
-    createInstanceBuffersInternal(
-        sizeof(UiInstance), 
-        this->weaponInstanceBuffers, 
-        this->weaponInstanceBuffersMemory, 
-        this->weaponInstanceBuffersMapped
-    );
+	createInstanceBuffersInternal(
+		sizeof(ObjectInstance) * MAX_OBJECTS, 
+		this->objectInstanceBuffers, 
+		this->objectInstanceBuffersMemory, 
+		this->objectInstanceBuffersMapped
+	);
+	createInstanceBuffersInternal(
+		sizeof(UiInstance) * MAX_UI, 
+		this->uiInstanceBuffers, 
+		this->uiInstanceBuffersMemory, 
+		this->uiInstanceBuffersMapped
+	);
+	createInstanceBuffersInternal(
+		sizeof(UiInstance), 
+		this->weaponInstanceBuffers, 
+		this->weaponInstanceBuffersMemory, 
+		this->weaponInstanceBuffersMapped
+	);
 }
 
 using PoolSize = VkDescriptorPoolSize;
 void VulkanRenderer::createDescriptorPool() {
 	std::array<VkDescriptorPoolSize, 7> poolSizes{
-        PoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT},
-        PoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT},
-        PoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT},
-        PoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT},
-        PoolSize{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MAX_FRAMES_IN_FLIGHT},
-        PoolSize{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MAX_FRAMES_IN_FLIGHT},
-        PoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT * MAX_TEXTURES},
-    };
+		PoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT},
+		PoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT},
+		PoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT},
+		PoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT},
+		PoolSize{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MAX_FRAMES_IN_FLIGHT},
+		PoolSize{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MAX_FRAMES_IN_FLIGHT},
+		PoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT * MAX_TEXTURES},
+	};
 	
 	VkDescriptorPoolCreateInfo poolInfo{};
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -176,48 +176,48 @@ void VulkanRenderer::createDescriptorPool() {
 	
 	VkResult descriptorPoolResult = vkCreateDescriptorPool(this->device, &poolInfo, nullptr, &this->descriptorPool);
 	if (descriptorPoolResult != VK_SUCCESS) {
-	    throw std::runtime_error("failed to create descriptor pool!");
+		throw std::runtime_error("failed to create descriptor pool!");
 	}
 }
 
 void VulkanRenderer::createDescriptorSets() {
-    std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, this->descriptorSetLayout);
-    std::vector<uint32_t> variableCounts(MAX_FRAMES_IN_FLIGHT, MAX_TEXTURES);
+	std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, this->descriptorSetLayout);
+	std::vector<uint32_t> variableCounts(MAX_FRAMES_IN_FLIGHT, MAX_TEXTURES);
 
-    VkDescriptorSetVariableDescriptorCountAllocateInfo variableCountInfo{};
-    variableCountInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO;
-    variableCountInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-    variableCountInfo.pDescriptorCounts = variableCounts.data();
+	VkDescriptorSetVariableDescriptorCountAllocateInfo variableCountInfo{};
+	variableCountInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO;
+	variableCountInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+	variableCountInfo.pDescriptorCounts = variableCounts.data();
 
-    VkDescriptorSetAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocInfo.pNext = &variableCountInfo;
-    allocInfo.descriptorPool = this->descriptorPool;
-    allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-    allocInfo.pSetLayouts = layouts.data();
+	VkDescriptorSetAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	allocInfo.pNext = &variableCountInfo;
+	allocInfo.descriptorPool = this->descriptorPool;
+	allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+	allocInfo.pSetLayouts = layouts.data();
 
-    this->descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
-    
-    VkResult descriptorSetsResult = vkAllocateDescriptorSets(this->device, &allocInfo, this->descriptorSets.data());
-    if (descriptorSetsResult != VK_SUCCESS) {
-        throw std::runtime_error("failed to allocate descriptor sets!");
-    }
+	this->descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+	
+	VkResult descriptorSetsResult = vkAllocateDescriptorSets(this->device, &allocInfo, this->descriptorSets.data());
+	if (descriptorSetsResult != VK_SUCCESS) {
+		throw std::runtime_error("failed to allocate descriptor sets!");
+	}
 
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        VkDescriptorBufferInfo bufferInfo{};
-        bufferInfo.buffer = this->MVPBuffers[i];
-        bufferInfo.offset = 0;
-        bufferInfo.range = sizeof(MVP);
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		VkDescriptorBufferInfo bufferInfo{};
+		bufferInfo.buffer = this->MVPBuffers[i];
+		bufferInfo.offset = 0;
+		bufferInfo.range = sizeof(MVP);
 
-        VkWriteDescriptorSet descriptorWrite{};
-        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrite.dstSet = this->descriptorSets[i];
-        descriptorWrite.dstBinding = 0; 
-        descriptorWrite.dstArrayElement = 0;
-        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        descriptorWrite.descriptorCount = 1;
-        descriptorWrite.pBufferInfo = &bufferInfo;
+		VkWriteDescriptorSet descriptorWrite{};
+		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite.dstSet = this->descriptorSets[i];
+		descriptorWrite.dstBinding = 0; 
+		descriptorWrite.dstArrayElement = 0;
+		descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		descriptorWrite.descriptorCount = 1;
+		descriptorWrite.pBufferInfo = &bufferInfo;
 
-        vkUpdateDescriptorSets(this->device, 1, &descriptorWrite, 0, nullptr);
-    }
+		vkUpdateDescriptorSets(this->device, 1, &descriptorWrite, 0, nullptr);
+	}
 }

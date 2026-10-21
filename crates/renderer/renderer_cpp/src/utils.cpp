@@ -12,7 +12,7 @@ VkShaderModule createShaderModule(VkDevice device, std::span<const uint32_t> cod
 	VkShaderModule shaderModule;
 	VkResult shaderModuleResult = vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule);
 	if (shaderModuleResult != VK_SUCCESS) {
-	    throw std::runtime_error("failed to create shader module!");
+		throw std::runtime_error("failed to create shader module!");
 	}
 
 	return shaderModule;
@@ -22,9 +22,9 @@ uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, Vk
 	VkPhysicalDeviceMemoryProperties memProperties;
 	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
 	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-	    if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
-	        return i;
-	    }
+		if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+			return i;
+		}
 	}
 
 	throw std::runtime_error("failed to find suitable memory type!");
@@ -37,20 +37,20 @@ void createImageView(
 	VkImageAspectFlags aspectFlags,
 	VkImageView* dstView
 ) {
-    VkImageViewCreateInfo viewInfo{};
-    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    viewInfo.image = image;
-    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format = format;
-    viewInfo.subresourceRange.aspectMask = aspectFlags;
-    viewInfo.subresourceRange.baseMipLevel = 0;
-    viewInfo.subresourceRange.levelCount = 1;
-    viewInfo.subresourceRange.baseArrayLayer = 0;
-    viewInfo.subresourceRange.layerCount = 1;
+	VkImageViewCreateInfo viewInfo{};
+	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	viewInfo.image = image;
+	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	viewInfo.format = format;
+	viewInfo.subresourceRange.aspectMask = aspectFlags;
+	viewInfo.subresourceRange.baseMipLevel = 0;
+	viewInfo.subresourceRange.levelCount = 1;
+	viewInfo.subresourceRange.baseArrayLayer = 0;
+	viewInfo.subresourceRange.layerCount = 1;
 
-    if (vkCreateImageView(device, &viewInfo, nullptr, dstView) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create image view!");
-    }
+	if (vkCreateImageView(device, &viewInfo, nullptr, dstView) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create image view!");
+	}
 }
 
 constexpr VkImageMemoryBarrier2 getBarrier(
@@ -85,12 +85,12 @@ constexpr VkImageMemoryBarrier2 getBarrier(
 		barrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
 		barrier.dstStageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
 	} else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
-        barrier.srcAccessMask = VK_ACCESS_2_NONE_KHR;
-        barrier.dstAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+		barrier.srcAccessMask = VK_ACCESS_2_NONE_KHR;
+		barrier.dstAccessMask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
-        barrier.srcStageMask = VK_PIPELINE_STAGE_2_NONE_KHR;
-        barrier.dstStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
-    } else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+		barrier.srcStageMask = VK_PIPELINE_STAGE_2_NONE_KHR;
+		barrier.dstStageMask = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+	} else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
 		barrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
 		barrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
 
@@ -102,43 +102,43 @@ constexpr VkImageMemoryBarrier2 getBarrier(
 } 
 
 void changeSingleImageLayout(
-    VkCommandBuffer commandBuffer, 
-    VkImageLayout oldLayout, 
-    VkImageLayout newLayout, 
-    VkImage image
+	VkCommandBuffer commandBuffer, 
+	VkImageLayout oldLayout, 
+	VkImageLayout newLayout, 
+	VkImage image
 ) noexcept {
-    VkImageMemoryBarrier2 barrier = getBarrier(oldLayout, newLayout);
-    barrier.image = image;
+	VkImageMemoryBarrier2 barrier = getBarrier(oldLayout, newLayout);
+	barrier.image = image;
 
-    VkDependencyInfo dependencyInfo{};
-    dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-    dependencyInfo.imageMemoryBarrierCount = 1;
-    dependencyInfo.pImageMemoryBarriers = &barrier;
+	VkDependencyInfo dependencyInfo{};
+	dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+	dependencyInfo.imageMemoryBarrierCount = 1;
+	dependencyInfo.pImageMemoryBarriers = &barrier;
 
-    vkCmdPipelineBarrier2(commandBuffer, &dependencyInfo);
+	vkCmdPipelineBarrier2(commandBuffer, &dependencyInfo);
 }
 
 void changeMultipleImageLayout(
-    VkCommandBuffer commandBuffer, 
-    VkImageLayout oldLayout, 
-    VkImageLayout newLayout, 
-    std::span<const VkImage> images
+	VkCommandBuffer commandBuffer, 
+	VkImageLayout oldLayout, 
+	VkImageLayout newLayout, 
+	std::span<const VkImage> images
 ) {
-    VkImageMemoryBarrier2 templateBarrier = getBarrier(oldLayout, newLayout);
+	VkImageMemoryBarrier2 templateBarrier = getBarrier(oldLayout, newLayout);
 
-    std::vector<VkImageMemoryBarrier2> barriers;
-    barriers.reserve(images.size());
+	std::vector<VkImageMemoryBarrier2> barriers;
+	barriers.reserve(images.size());
 
-    for (VkImage img : images) {
-        VkImageMemoryBarrier2 barrier = templateBarrier;
-        barrier.image = img;
-        barriers.push_back(barrier);
-    }
+	for (VkImage img : images) {
+		VkImageMemoryBarrier2 barrier = templateBarrier;
+		barrier.image = img;
+		barriers.push_back(barrier);
+	}
 
-    VkDependencyInfo dependencyInfo{};
-    dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-    dependencyInfo.imageMemoryBarrierCount = static_cast<uint32_t>(barriers.size());
-    dependencyInfo.pImageMemoryBarriers = barriers.data();
+	VkDependencyInfo dependencyInfo{};
+	dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+	dependencyInfo.imageMemoryBarrierCount = static_cast<uint32_t>(barriers.size());
+	dependencyInfo.pImageMemoryBarriers = barriers.data();
 
-    vkCmdPipelineBarrier2(commandBuffer, &dependencyInfo);
+	vkCmdPipelineBarrier2(commandBuffer, &dependencyInfo);
 }

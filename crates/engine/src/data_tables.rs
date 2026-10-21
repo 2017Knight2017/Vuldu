@@ -2,7 +2,7 @@ use crate::{ActionFunc, AmmoType, MobjFlagNum, NUMMOBJTYPES, NUMSTATES, NUMWEAPO
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Deserializer};
 use std::sync::OnceLock;
-use wad_parser::TextureId;
+use wad_parser::{TextureData, TextureId};
 
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
@@ -141,7 +141,7 @@ pub(crate) struct Database {
 pub(crate) static DB: OnceLock<Database> = OnceLock::new();
 
 pub fn populate_database(
-	texture_data: &FxHashMap<u64, (TextureId, u32, u32, bool)>,
+	texture_data: &FxHashMap<u64, TextureData>,
 ) -> Result<(), toml::de::Error> {
 	let states_content = include_str!("../data_tables/states.toml");
 	let state_config: StateConfig = toml::from_str(states_content)?;

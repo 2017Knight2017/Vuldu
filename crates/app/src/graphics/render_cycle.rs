@@ -183,7 +183,7 @@ impl GraphicsContext {
 		const PARALLEL_THRESHOLD: usize = 2000;
 
 		if lower_bound < PARALLEL_THRESHOLD {
-			query.map(&process_entity).collect()
+			query.map(process_entity).collect()
 		} else {
 			let entities_to_process = query.collect::<Vec<_>>();
 
@@ -193,7 +193,7 @@ impl GraphicsContext {
 				.map(process_entity)
 				.collect_per_thread();
 
-			let total_count: usize = nested_instances.iter().map(|v: &Vec<_>| v.len()).sum();
+			let total_count = nested_instances.iter().map(|v: &Vec<_>| v.len()).sum();
 
 			let mut instances = Vec::with_capacity(total_count);
 
