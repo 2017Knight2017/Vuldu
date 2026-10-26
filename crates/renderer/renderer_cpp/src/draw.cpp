@@ -1,90 +1,69 @@
 #include <cstring>
 #include <stdexcept>
+#include <iostream>
 #include "renderer.h" 
 #include "renderer/src/bridge.rs.h"
 
 void VulkanRenderer::createCommandPool() {
 	QueueFamilyIndices queueFamilyIndices = findQueueFamilies(this->physicalDevice, this->surface);
 
-	VkCommandPoolCreateInfo poolInfo{};
-	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
+	vk::CommandPoolCreateInfo poolInfo;
+	poolInfo
+		.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
+		.setQueueFamilyIndex(queueFamilyIndices.graphicsFamily.value());
 
-	VkResult poolResult = vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool);
-	if (poolResult != VK_SUCCESS) {
-		throw std::runtime_error("failed to create command pool!");
-	}
+	this->commandPool = this->device.createCommandPool(poolInfo);
 }
 
 void VulkanRenderer::createCommandBuffers() {
-	this->commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+	vk::CommandBufferAllocateInfo allocInfo{
+		this->commandPool,
+		vk::CommandBufferLevel::ePrimary,
+		MAX_FRAMES_IN_FLIGHT
+	};
 
-	VkCommandBufferAllocateInfo allocInfo{};
-	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocInfo.commandPool = this->commandPool;
-	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocInfo.commandBufferCount = static_cast<uint32_t>(this->commandBuffers.size());
+	auto commandBuffers = this->device.allocateCommandBuffers(allocInfo);
 
-	if (vkAllocateCommandBuffers(this->device, &allocInfo, this->commandBuffers.data()) != VK_SUCCESS) {
-		throw std::runtime_error("failed to allocate command buffers!");
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+		this->commandBuffers[i] = std::move(commandBuffers[i]);
 	}
 }
 
 void VulkanRenderer::createSyncObjects() {
-	imageAvailableSemaphores.clear();
-	renderFinishedSemaphores.clear();
-	inFlightFences.clear();
+	size_t imageCount = this->swapchainRes->images.size();
 
-	size_t imageCount = this->swapChainImages.size();
+	this->renderFinishedSemaphores.reserve(imageCount);
 
-	imageAvailableSemaphores.resize(imageCount);
-	renderFinishedSemaphores.resize(imageCount);
-	inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
-
-	VkSemaphoreCreateInfo semaphoreInfo{};
-	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-	VkFenceCreateInfo fenceInfo{};
-	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-	for (size_t i = 0; i < imageCount; i++) {
-		VkResult imageAvailableSemaphoreResult = vkCreateSemaphore(this->device, &semaphoreInfo, nullptr, &this->imageAvailableSemaphores[i]);
-		VkResult renderFinishedSemaphoreResult = vkCreateSemaphore(this->device, &semaphoreInfo, nullptr, &this->renderFinishedSemaphores[i]);
-		if (imageAvailableSemaphoreResult != VK_SUCCESS || renderFinishedSemaphoreResult != VK_SUCCESS) {
-			throw std::runtime_error("failed to create semaphores!");
-		}
+	for (size_t i = 0; i < imageCount; ++i) {
+		this->renderFinishedSemaphores.emplace_back(this->device, vk::SemaphoreCreateInfo{});
 	}
 
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		VkResult inFlightFenceResult = vkCreateFence(this->device, &fenceInfo, nullptr, &this->inFlightFences[i]);
-		if (inFlightFenceResult != VK_SUCCESS) {
-			throw std::runtime_error("failed to create fences!");
-		}
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+		this->imageAvailableSemaphores[i] = this->device.createSemaphore({});
+		this->inFlightFences[i] = this->device.createFence({vk::FenceCreateFlagBits::eSignaled});
 	}
 }
 
 void VulkanRenderer::updateObjectInstances(rust::Slice<const ObjectInstance> instances) {
 	if (instances.empty() || instances.size() > MAX_OBJECTS) return;
 
-	this->activeObjectsCount = static_cast<uint32_t>(instances.size());
+	this->objectInst.activeCount = static_cast<uint32_t>(instances.size());
 
-	VkDeviceSize instanceBufferSize = sizeof(ObjectInstance) * instances.size();
-	memcpy(this->objectInstanceBuffersMapped[this->currentFrame], instances.data(), instanceBufferSize);   
+	vk::DeviceSize instanceBufferSize = sizeof(ObjectInstance) * instances.size();
+	memcpy(this->objectInst.mapped[this->currentFrame], instances.data(), instanceBufferSize);   
 }
 
 void VulkanRenderer::updateUiInstances(rust::Slice<const UiInstance> instances) {
 	if (instances.empty() || instances.size() > MAX_UI) return;
 
-	this->activeUiCount = static_cast<uint32_t>(instances.size());
+	this->uiInst.activeCount = static_cast<uint32_t>(instances.size());
 
-	VkDeviceSize instanceBufferSize = sizeof(UiInstance) * instances.size();
-	memcpy(this->uiInstanceBuffersMapped[this->currentFrame], instances.data(), instanceBufferSize);   
+	vk::DeviceSize instanceBufferSize = sizeof(UiInstance) * instances.size();
+	memcpy(this->uiInst.mapped[this->currentFrame], instances.data(), instanceBufferSize);   
 }
 
 void VulkanRenderer::updateWeaponInstance(const UiInstance& instance) {
-	memcpy(this->weaponInstanceBuffersMapped[this->currentFrame], &instance, sizeof(UiInstance));   
+	memcpy(this->weaponInst.mapped[this->currentFrame], &instance, sizeof(UiInstance));   
 }
 
 void VulkanRenderer::setPaletteIndex(uint32_t idx) {
@@ -120,297 +99,299 @@ size_t getAnimInfoSize() {
 }
 
 void VulkanRenderer::startFrame(const MVP& mvp) {
-	VkCommandBuffer currentCommandBuffer = this->commandBuffers[this->currentFrame];
-	vkWaitForFences(this->device, 1, &this->inFlightFences[this->currentFrame], VK_TRUE, UINT64_MAX);
+	if (!this->swapchainRes.has_value()) return;
+	vk::CommandBuffer currentCommandBuffer = this->commandBuffers[this->currentFrame];
 
-	VkResult acquireNextImageResult = vkAcquireNextImageKHR(this->device, this->swapChain, UINT64_MAX, this->imageAvailableSemaphores[this->currentFrame], VK_NULL_HANDLE, &this->currentImageIndex);
-	if (acquireNextImageResult != VK_SUCCESS && acquireNextImageResult != VK_ERROR_OUT_OF_DATE_KHR) {
-		throw std::runtime_error("failed to acquire swap chain image!");
+	vk::Result waitResult = this->device.waitForFences(
+		*this->inFlightFences[this->currentFrame], 
+		VK_TRUE, 
+		std::numeric_limits<uint64_t>::max()
+	);
+
+	if (waitResult != vk::Result::eSuccess) {
+		throw std::runtime_error("failed to acquire swapchain image!");
 	}
+
+	this->currentImageIndex = this->swapchainRes->swapchain.acquireNextImage(
+		std::numeric_limits<uint64_t>::max(), 
+		this->imageAvailableSemaphores[this->currentFrame], 
+		VK_NULL_HANDLE
+	).value;
 
 	memcpy(this->MVPBuffersMapped[this->currentFrame], &mvp, sizeof(MVP));
 
-	vkResetFences(this->device, 1, &this->inFlightFences[this->currentFrame]);
-	vkResetCommandBuffer(currentCommandBuffer, 0);
+	this->device.resetFences(*this->inFlightFences[this->currentFrame]);
+	currentCommandBuffer.reset({});
 
-	VkCommandBufferBeginInfo beginInfo{};
-	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-	if (vkBeginCommandBuffer(currentCommandBuffer, &beginInfo) != VK_SUCCESS) {
-		throw std::runtime_error("Failed to begin recording command buffer!");
-	}
+	currentCommandBuffer.begin({
+		vk::CommandBufferUsageFlagBits::eOneTimeSubmit
+	});
 
 	changeSingleImageLayout(
 		currentCommandBuffer, 
-		VK_IMAGE_LAYOUT_UNDEFINED, 
-		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-		this->depthImage 
+		vk::ImageLayout::eUndefined, 
+		vk::ImageLayout::eDepthStencilAttachmentOptimal,
+		this->swapchainRes->depthImage 
 	);
 	changeSingleImageLayout(
 		currentCommandBuffer, 
-		VK_IMAGE_LAYOUT_UNDEFINED, 
-		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-		this->swapChainImages[this->currentImageIndex]
+		vk::ImageLayout::eUndefined, 
+		vk::ImageLayout::eColorAttachmentOptimal,
+		this->swapchainRes->images[this->currentImageIndex]
 	);
 	beginRendering(currentCommandBuffer);
 
-	VkViewport viewport{};
-	viewport.x = 0.0f;
-	viewport.y = 0.0f;
-	viewport.width = static_cast<float>(this->swapChainExtent.width);
-	viewport.height = static_cast<float>(this->swapChainExtent.height);
-	viewport.minDepth = 0.0f;
-	viewport.maxDepth = 1.0f;
-	vkCmdSetViewport(currentCommandBuffer, 0, 1, &viewport);
+	vk::Viewport viewport;
+	viewport
+		.setWidth(static_cast<float>(this->swapchainRes->extent.width))
+		.setHeight(static_cast<float>(this->swapchainRes->extent.height))
+		.setMinDepth(0.0f)
+		.setMaxDepth(1.0f);
+	
+	currentCommandBuffer.setViewport(0, viewport);
 
-	VkRect2D scissor{};
-	scissor.offset = {0, 0};
-	scissor.extent = this->swapChainExtent;
-	vkCmdSetScissor(currentCommandBuffer, 0, 1, &scissor);
+	vk::Rect2D scissor;
+	scissor.setExtent(this->swapchainRes->extent);
+	
+	currentCommandBuffer.setScissor(0, scissor);
+}
+
+void VulkanRenderer::beginRendering(vk::CommandBuffer currentCommandBuffer) noexcept {
+	vk::ClearValue clearColor{{0.1f, 0.1f, 0.1f, 1.0f}};
+	vk::ClearValue clearDepth{{1.0f, 0}};
+
+	vk::RenderingAttachmentInfo depthAttachment;
+	depthAttachment
+		.setImageView(*this->swapchainRes->depthImageView)
+		.setImageLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)
+		.setLoadOp(vk::AttachmentLoadOp::eClear)
+		.setClearValue(clearDepth);
+
+	vk::RenderingAttachmentInfo colorAttachment;
+	colorAttachment
+		.setImageView(*this->swapchainRes->imageViews[this->currentImageIndex])
+		.setImageLayout(vk::ImageLayout::eColorAttachmentOptimal)
+		.setLoadOp(vk::AttachmentLoadOp::eClear)
+		.setClearValue(clearColor);
+
+	vk::RenderingInfo renderingInfo{
+		{},
+		{{}, this->swapchainRes->extent},
+		1,
+		0,
+		colorAttachment,
+		&depthAttachment,
+	};
+
+	currentCommandBuffer.beginRendering(renderingInfo);
+}
+
+void VulkanRenderer::draw(
+	PipelineType pipelineType,
+	const MeshBuffers& mesh,
+	const InstanceBuffers& inst,
+	const void* constants,
+	uint32_t constantsSize
+) noexcept {
+	vk::CommandBuffer currentCommandBuffer = this->commandBuffers[this->currentFrame];
+	
+	currentCommandBuffer.bindPipeline(
+		vk::PipelineBindPoint::eGraphics, 
+		this->pipelines[pipelineType]
+	);
+		
+	currentCommandBuffer.bindDescriptorSets(
+		vk::PipelineBindPoint::eGraphics, 
+		this->pipelineLayouts[pipelineType], 
+		0, 
+		*this->descriptorSets[this->currentFrame], 
+		{}
+	);
+
+	currentCommandBuffer.bindVertexBuffers(
+		0, 
+		{mesh.vertexBuffer, inst.buffers[this->currentFrame]}, 
+		{0, 0}
+	);
+	
+	currentCommandBuffer.bindIndexBuffer(mesh.indexBuffer, 0, vk::IndexType::eUint32);
+
+	currentCommandBuffer.pushConstants(
+		this->pipelineLayouts[pipelineType],
+		SHADER_STAGE_FLAGS[pipelineType],
+		0,
+		constantsSize,
+		constants
+	);
+
+	currentCommandBuffer.drawIndexed(
+		mesh.indexCount, 
+		inst.activeCount, 
+		0, 
+		0, 
+		0
+	);
+}
+
+void VulkanRenderer::draw(
+	PipelineType pipelineType,
+	const MeshBuffers& mesh,
+	const void* constants,
+	uint32_t constantsSize
+) noexcept {
+	vk::CommandBuffer currentCommandBuffer = this->commandBuffers[this->currentFrame];
+	
+	currentCommandBuffer.bindPipeline(
+		vk::PipelineBindPoint::eGraphics, 
+		this->pipelines[pipelineType]
+	);
+		
+	currentCommandBuffer.bindDescriptorSets(
+		vk::PipelineBindPoint::eGraphics, 
+		this->pipelineLayouts[pipelineType], 
+		0, 
+		*this->descriptorSets[this->currentFrame], 
+		{}
+	);
+
+	currentCommandBuffer.bindVertexBuffers(0, *mesh.vertexBuffer, {0});
+	currentCommandBuffer.bindIndexBuffer(mesh.indexBuffer, 0, vk::IndexType::eUint32);
+
+	currentCommandBuffer.pushConstants(
+		this->pipelineLayouts[pipelineType],
+		SHADER_STAGE_FLAGS[pipelineType],
+		0,
+		constantsSize,
+		constants
+	);
+
+	currentCommandBuffer.drawIndexed(
+		mesh.indexCount, 
+		1, 
+		0, 
+		0, 
+		0
+	);
 }
 
 void VulkanRenderer::drawLevel() noexcept {
-	if (this->levelVertexBuffer == VK_NULL_HANDLE || this->levelVertexCount == 0) return;
+	if (!this->swapchainRes.has_value()) return;
+	if (this->levelMesh.vertexBuffer == VK_NULL_HANDLE || this->levelMesh.indexCount == 0) return;
 
-	VkCommandBuffer currentCommandBuffer = this->commandBuffers[this->currentFrame];
-	
-	vkCmdBindPipeline(currentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->levelPipeline);
-		
-	vkCmdBindDescriptorSets(
-		currentCommandBuffer, 
-		VK_PIPELINE_BIND_POINT_GRAPHICS, 
-		this->levelPipelineLayout, 
-		0, 1, 
-		&this->descriptorSets[this->currentFrame], 
-		0, nullptr
-	);
-		
-	VkBuffer vertexBuffers[] = {this->levelVertexBuffer};
-	VkDeviceSize offsets[] = {0};
+	std::cout << "level indices: " << this->levelMesh.indexCount << '\n';
 
-	vkCmdBindVertexBuffers(currentCommandBuffer, 0, 1, vertexBuffers, offsets);
-	vkCmdBindIndexBuffer(currentCommandBuffer, this->levelIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
-
-	LevelPushConstants constants{};
-	constants.resolution = {
-		static_cast<float>(this->swapChainExtent.width),
-		static_cast<float>(this->swapChainExtent.height)
+	LevelPushConstants constants{
+		{
+			static_cast<float>(this->swapchainRes->extent.width),
+			static_cast<float>(this->swapchainRes->extent.height)
+		},
+		this->currentPaletteIndex,
+		this->currentSkyIndex,
+		PIXELS_IN_PANORAMA / this->skyWidths[this->currentSkyIndex],
+		this->globalTimer,
+		this->cameraYaw,
+		this->flags
 	};
-	constants.paletteIndex = this->currentPaletteIndex;
-	constants.skyIndex = this->currentSkyIndex;
-	constants.widthFactor = PIXELS_IN_PANORAMA / this->skyWidths[this->currentSkyIndex];
-	constants.globalTimer = this->globalTimer;
-	constants.cameraYaw = this->cameraYaw;
-	constants.flags = this->flags;
 
-	vkCmdPushConstants(
-		currentCommandBuffer,
-		this->levelPipelineLayout,
-		VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-		0,
-		sizeof(LevelPushConstants),
-		&constants 
+	draw(
+		PipelineType::Level, 
+		this->levelMesh, 
+		&constants, 
+		sizeof(constants) 
 	);
-
-	vkCmdDrawIndexed(currentCommandBuffer, this->levelIndexCount, 1, 0, 0, 0);
 }
 
 void VulkanRenderer::drawObjects() noexcept {
-	if (this->objectVertexBuffer == VK_NULL_HANDLE || this->objectIndexCount == 0) return;
+	if (!this->swapchainRes.has_value()) return;
+	if (this->objectMesh.vertexBuffer == VK_NULL_HANDLE || this->objectMesh.indexCount == 0) return;
+
+	std::cout << "object indices: " << this->objectMesh.indexCount << '\n';
 	
-	VkCommandBuffer currentCommandBuffer = this->commandBuffers[this->currentFrame];
-		
-	vkCmdBindPipeline(currentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->spritePipeline);
-		
-	vkCmdBindDescriptorSets(
-		currentCommandBuffer, 
-		VK_PIPELINE_BIND_POINT_GRAPHICS, 
-		this->spritePipelineLayout, 
-		0, 1, 
-		&this->descriptorSets[this->currentFrame], 
-		0, nullptr
+	ObjectPushConstants constants{
+		this->currentPaletteIndex,
+		this->flags
+	};
+
+	draw(
+		PipelineType::Object, 
+		this->objectMesh, 
+		this->objectInst,
+		&constants, 
+		sizeof(constants) 
 	);
-		
-	VkBuffer vertexBuffers[] = {this->objectVertexBuffer, this->objectInstanceBuffers[this->currentFrame]};
-	VkDeviceSize offsets[] = {0, 0};
-	vkCmdBindVertexBuffers(currentCommandBuffer, 0, 2, vertexBuffers, offsets);
-		
-	vkCmdBindIndexBuffer(currentCommandBuffer, this->objectIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
-
-	ObjectPushConstants constants{};
-	constants.paletteIndex = this->currentPaletteIndex;
-	constants.flags = this->flags;
-
-	vkCmdPushConstants(
-		currentCommandBuffer,
-		this->spritePipelineLayout,
-		VK_SHADER_STAGE_FRAGMENT_BIT,
-		0,                    
-		sizeof(ObjectPushConstants),
-		&constants 
-	);
-
-	vkCmdDrawIndexed(currentCommandBuffer, this->objectIndexCount, this->activeObjectsCount, 0, 0, 0);
 }
 
 void VulkanRenderer::drawUi() noexcept {
-	if (this->uiVertexBuffer == VK_NULL_HANDLE || this->uiIndexCount == 0) return;
-	
-	VkCommandBuffer currentCommandBuffer = this->commandBuffers[this->currentFrame];
-		
-	vkCmdBindPipeline(currentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->uiPipeline);
-		
-	vkCmdBindDescriptorSets(
-		currentCommandBuffer, 
-		VK_PIPELINE_BIND_POINT_GRAPHICS, 
-		this->uiPipelineLayout, 
-		0, 1, 
-		&this->descriptorSets[this->currentFrame], 
-		0, nullptr
-	);
-		
-	VkBuffer vertexBuffers[] = {this->uiVertexBuffer, this->uiInstanceBuffers[this->currentFrame]};
-	VkDeviceSize offsets[] = {0, 0};
-	vkCmdBindVertexBuffers(currentCommandBuffer, 0, 2, vertexBuffers, offsets);
-		
-	vkCmdBindIndexBuffer(currentCommandBuffer, this->uiIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
+	if (!this->swapchainRes.has_value()) return;
+	if (this->uiMesh.vertexBuffer == VK_NULL_HANDLE || this->uiMesh.indexCount == 0) return;
 
-	vkCmdPushConstants(
-		currentCommandBuffer,
-		this->uiPipelineLayout,
-		VK_SHADER_STAGE_FRAGMENT_BIT,
-		0,                    
-		sizeof(uint32_t),
-		&this->currentPaletteIndex
-	);
+	std::cout << "ui indices: " << this->uiMesh.indexCount << '\n';
 
-	vkCmdDrawIndexed(currentCommandBuffer, this->uiIndexCount, this->activeUiCount, 0, 0, 0);
+	draw(
+		PipelineType::Ui, 
+		this->uiMesh, 
+		this->uiInst,
+		&this->currentPaletteIndex, 
+		sizeof(uint32_t) 
+	);
 }
 
 void VulkanRenderer::drawWeapon() noexcept {
-	if (this->weaponVertexBuffer == VK_NULL_HANDLE || this->weaponIndexCount == 0) return;
-	
-	VkCommandBuffer currentCommandBuffer = this->commandBuffers[this->currentFrame];
-		
-	vkCmdBindPipeline(currentCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->weaponPipeline);
-		
-	vkCmdBindDescriptorSets(
-		currentCommandBuffer, 
-		VK_PIPELINE_BIND_POINT_GRAPHICS, 
-		this->weaponPipelineLayout, 
-		0, 1, 
-		&this->descriptorSets[this->currentFrame], 
-		0, nullptr
-	);
-		
-	VkBuffer vertexBuffers[] = {this->weaponVertexBuffer, this->weaponInstanceBuffers[this->currentFrame]};
-	VkDeviceSize offsets[] = {0, 0};
-	vkCmdBindVertexBuffers(currentCommandBuffer, 0, 2, vertexBuffers, offsets);
-		
-	vkCmdBindIndexBuffer(currentCommandBuffer, this->weaponIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
+	if (!this->swapchainRes.has_value()) return;
+	if (this->weaponMesh.vertexBuffer == VK_NULL_HANDLE || this->weaponMesh.indexCount == 0) return;
 
-	vkCmdPushConstants(
-		currentCommandBuffer,
-		this->weaponPipelineLayout,
-		VK_SHADER_STAGE_FRAGMENT_BIT,
-		0,                    
-		sizeof(uint32_t),
-		&this->currentPaletteIndex
-	);
+	std::cout << "weapon indices: " << this->weaponMesh.indexCount << '\n';
 
-	vkCmdDrawIndexed(currentCommandBuffer, this->weaponIndexCount, 1, 0, 0, 0);
+	draw(
+		PipelineType::Weapon, 
+		this->weaponMesh, 
+		this->weaponInst,
+		&this->currentPaletteIndex, 
+		sizeof(uint32_t) 
+	);
 }
 
 void VulkanRenderer::endFrame() {
-	VkCommandBuffer currentCommandBuffer = this->commandBuffers[this->currentFrame];
+	if (!this->swapchainRes.has_value()) return;
 
-	vkCmdEndRendering(currentCommandBuffer);
+	vk::CommandBuffer currentCommandBuffer = this->commandBuffers[this->currentFrame];
+
+	currentCommandBuffer.endRendering();
+	
 	changeSingleImageLayout(
 		currentCommandBuffer, 
-		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 
-		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-		this->swapChainImages[this->currentImageIndex] 
+		vk::ImageLayout::eAttachmentOptimal, 
+		vk::ImageLayout::ePresentSrcKHR,
+		this->swapchainRes->images[this->currentImageIndex] 
 	);
 
-	if (vkEndCommandBuffer(currentCommandBuffer) != VK_SUCCESS) {
-		throw std::runtime_error("Failed to record command buffer!");
-	}
+	currentCommandBuffer.end();
 
-	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-	VkSubmitInfo submitInfo{};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = &this->imageAvailableSemaphores[this->currentFrame];
-	submitInfo.pWaitDstStageMask = waitStages;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &currentCommandBuffer;
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &this->renderFinishedSemaphores[this->currentImageIndex];
+	vk::PipelineStageFlags waitStages = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+	vk::SubmitInfo submitInfo{
+		*this->imageAvailableSemaphores[this->currentFrame],
+		waitStages,
+		currentCommandBuffer,
+		*this->renderFinishedSemaphores[this->currentImageIndex]
+	};
 
-	vkResetFences(this->device, 1, &this->inFlightFences[this->currentFrame]);
-	if (vkQueueSubmit(this->graphicsQueue, 1, &submitInfo, this->inFlightFences[this->currentFrame]) != VK_SUCCESS) {
-		throw std::runtime_error("Failed to submit draw command buffer!");
-	}
+	this->device.resetFences(*this->inFlightFences[this->currentFrame]);
+	this->graphicsQueue.submit(submitInfo, this->inFlightFences[this->currentFrame]);
 
-	VkPresentInfoKHR presentInfo{};
-	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = &this->renderFinishedSemaphores[this->currentImageIndex];
-	presentInfo.swapchainCount = 1;
-	presentInfo.pSwapchains = &this->swapChain;
-	presentInfo.pImageIndices = &this->currentImageIndex;
+	vk::PresentInfoKHR presentInfo{
+		*this->renderFinishedSemaphores[this->currentImageIndex],
+		*this->swapchainRes->swapchain,
+		this->currentImageIndex
+	};
 
-	VkResult presentResult = vkQueuePresentKHR(this->presentQueue, &presentInfo);
+	vk::Result presentResult = this->presentQueue.presentKHR(presentInfo);
 
-	if (presentResult != VK_SUCCESS &&
-		presentResult != VK_ERROR_OUT_OF_DATE_KHR &&
-		presentResult != VK_SUBOPTIMAL_KHR
+	if (presentResult != vk::Result::eSuccess &&
+		presentResult != vk::Result::eErrorOutOfDateKHR &&
+		presentResult != vk::Result::eSuboptimalKHR
 	) {
 		throw std::runtime_error("failed to present swap chain image!");
 	}
 	
-	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
-}
-
-
-void VulkanRenderer::beginRendering(VkCommandBuffer currentCommandBuffer) noexcept {
-	VkClearValue clearColor{{{0.1f, 0.1f, 0.1f, 1.0f}}};
-	VkClearValue clearDepth{{{1.0f, 0}}};
-
-	VkRenderingAttachmentInfo depthAttachment{};
-	depthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-	depthAttachment.imageView = this->depthImageView;
-	depthAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	depthAttachment.resolveMode = VK_RESOLVE_MODE_NONE;
-	depthAttachment.resolveImageView = VK_NULL_HANDLE;
-	depthAttachment.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	depthAttachment.clearValue = clearDepth;
-
-	VkRenderingAttachmentInfo colorAttachment{};
-	colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-	colorAttachment.imageView = this->swapChainImageViews[this->currentImageIndex];
-	colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	colorAttachment.resolveMode = VK_RESOLVE_MODE_NONE;
-	colorAttachment.resolveImageView = VK_NULL_HANDLE;
-	colorAttachment.resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	colorAttachment.clearValue = clearColor;
-
-	VkRenderingInfo renderingInfo{};
-	renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
-	renderingInfo.renderArea = {
-		{0, 0}, 
-		this->swapChainExtent
-	};
-	renderingInfo.layerCount = 1;
-	renderingInfo.viewMask = 0;
-	renderingInfo.colorAttachmentCount = 1;
-	renderingInfo.pColorAttachments = &colorAttachment;
-	renderingInfo.pDepthAttachment = &depthAttachment;
-
-	vkCmdBeginRendering(currentCommandBuffer, &renderingInfo);
+	this->currentFrame = (this->currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }

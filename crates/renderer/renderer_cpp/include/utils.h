@@ -1,27 +1,23 @@
 #pragma once
-#include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan_raii.hpp>
 #include <span>
 
-VkShaderModule createShaderModule(VkDevice device, std::span<const uint32_t> code);
-uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties);
-void createImageView(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, VkImageView* dstView);
+uint32_t findMemoryType(vk::PhysicalDevice physicalDevice, uint32_t typeFilter, vk::MemoryPropertyFlags properties);
+vk::raii::ImageView createImageView(
+	const vk::raii::Device& device, 
+	vk::Image image, 
+	vk::Format format, 
+	vk::ImageAspectFlags aspectFlags
+);
 void changeSingleImageLayout(
-	VkCommandBuffer currentCommandBuffer, 
-	VkImageLayout oldLayout, 
-	VkImageLayout newLayout, 
-	VkImage image
+	vk::CommandBuffer currentCommandBuffer, 
+	vk::ImageLayout oldLayout, 
+	vk::ImageLayout newLayout, 
+	vk::Image image
 ) noexcept;
 void changeMultipleImageLayout(
-	VkCommandBuffer currentCommandBuffer, 
-	VkImageLayout oldLayout, 
-	VkImageLayout newLayout, 
-	std::span<const VkImage> images
+	vk::CommandBuffer currentCommandBuffer, 
+	vk::ImageLayout oldLayout, 
+	vk::ImageLayout newLayout, 
+	std::span<const vk::raii::Image> images
 );
-
-template<typename T, typename F>
-inline void destroyResource(VkDevice device, T& resource, F destroyFunction) {
-	if (resource != VK_NULL_HANDLE) {
-		destroyFunction(device, resource, nullptr);
-		resource = VK_NULL_HANDLE;
-	}
-}

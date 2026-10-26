@@ -75,7 +75,6 @@ pub(crate) mod ffi {
 			width: u32,
 			height: u32,
 		);
-		fn cleanup(self: Pin<&mut VulkanRenderer>);
 		fn recreateSwapChain(self: Pin<&mut VulkanRenderer>, width: u32, height: u32);
 		fn startFrame(self: Pin<&mut VulkanRenderer>, mvp: &MVP);
 		fn endFrame(self: Pin<&mut VulkanRenderer>);

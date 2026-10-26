@@ -37,19 +37,18 @@ static const uint32_t weaponFragShader[] =
 #include "weapon_frag.h"
 ;
 
-constexpr VkFormat findSupportedFormat(
-	VkPhysicalDevice physicalDevice, 
-	const std::vector<VkFormat>& candidates, 
-	VkImageTiling tiling, 
-	VkFormatFeatureFlags features
+constexpr vk::Format findSupportedFormat(
+	vk::PhysicalDevice physicalDevice, 
+	const std::vector<vk::Format>& candidates, 
+	vk::ImageTiling tiling, 
+	vk::FormatFeatureFlags features
 ) {
-	for (VkFormat format : candidates) {
-		VkFormatProperties props;
-		vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &props);
+	for (vk::Format format : candidates) {
+		vk::FormatProperties props = physicalDevice.getFormatProperties(format);
 
-		if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features) {
+		if (tiling == vk::ImageTiling::eLinear && (props.linearTilingFeatures & features) == features) {
 			return format;
-		} else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features) {
+		} else if (tiling == vk::ImageTiling::eOptimal && (props.optimalTilingFeatures & features) == features) {
 			return format;
 		}
 	}
@@ -57,107 +56,108 @@ constexpr VkFormat findSupportedFormat(
 	throw std::runtime_error("failed to find supported format!");
 }
 
-VkFormat VulkanRenderer::findDepthFormat() {
+vk::Format VulkanRenderer::findDepthFormat() {
 	return findSupportedFormat(
 		this->physicalDevice,
-		{VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
-		VK_IMAGE_TILING_OPTIMAL,
-		VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
+		{vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint},
+		vk::ImageTiling::eOptimal,
+		vk::FormatFeatureFlagBits::eDepthStencilAttachment
 	);
 }
 
-using BindDesc = VkVertexInputBindingDescription;
-using AttrDesc = VkVertexInputAttributeDescription;
+using BindDesc = vk::VertexInputBindingDescription;
+using AttrDesc = vk::VertexInputAttributeDescription;
 
 consteval std::array<BindDesc, 1> getLevelBindings() {
-	return std::array{ BindDesc{ 0, sizeof(LevelVertex), VK_VERTEX_INPUT_RATE_VERTEX } };
+	return std::array{ BindDesc{ 0, sizeof(LevelVertex), vk::VertexInputRate::eVertex } };
 }
 
 consteval std::array<AttrDesc, 9> getLevelAttributes() {
 	return std::array{
-		AttrDesc{ 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(LevelVertex, pos) },
-		AttrDesc{ 1, 0, VK_FORMAT_R32G32_SFLOAT,    offsetof(LevelVertex, texture_pos) },
-		AttrDesc{ 2, 0, VK_FORMAT_R32_UINT,         offsetof(LevelVertex, light_level) },
-		AttrDesc{ 3, 0, VK_FORMAT_R32_UINT,         offsetof(LevelVertex, texture_id) },
-		AttrDesc{ 4, 0, VK_FORMAT_R32_UINT,         offsetof(LevelVertex, floor_tex_id) },
-		AttrDesc{ 5, 0, VK_FORMAT_R32_SFLOAT,       offsetof(LevelVertex, scroll_dir) },
-		AttrDesc{ 6, 0, VK_FORMAT_R32_UINT,         offsetof(LevelVertex, plane_a) },
-		AttrDesc{ 7, 0, VK_FORMAT_R32_UINT,         offsetof(LevelVertex, plane_b) },
-		AttrDesc{ 8, 0, VK_FORMAT_R32_SFLOAT,       offsetof(LevelVertex, inv_tex_h) },
+		AttrDesc{ 0, 0, vk::Format::eR32G32B32Sfloat, offsetof(LevelVertex, pos) },
+		AttrDesc{ 1, 0, vk::Format::eR32G32Sfloat,    offsetof(LevelVertex, texture_pos) },
+		AttrDesc{ 2, 0, vk::Format::eR32G32Uint,      offsetof(LevelVertex, light_level) },
+		AttrDesc{ 3, 0, vk::Format::eR32G32Uint,      offsetof(LevelVertex, texture_id) },
+		AttrDesc{ 4, 0, vk::Format::eR32G32Uint,      offsetof(LevelVertex, floor_tex_id) },
+		AttrDesc{ 5, 0, vk::Format::eR32G32Sfloat,    offsetof(LevelVertex, scroll_dir) },
+		AttrDesc{ 6, 0, vk::Format::eR32G32Uint,      offsetof(LevelVertex, plane_a) },
+		AttrDesc{ 7, 0, vk::Format::eR32G32Uint,      offsetof(LevelVertex, plane_b) },
+		AttrDesc{ 8, 0, vk::Format::eR32G32Sfloat,    offsetof(LevelVertex, inv_tex_h) },
 	};
 }
 
 consteval std::array<BindDesc, 2> getObjectBindings() {
 	return std::array{
-		BindDesc{ 0, sizeof(SpriteVertex), VK_VERTEX_INPUT_RATE_VERTEX },
-		BindDesc{ 1, sizeof(ObjectInstance), VK_VERTEX_INPUT_RATE_INSTANCE }
+		BindDesc{ 0, sizeof(SpriteVertex), vk::VertexInputRate::eVertex },
+		BindDesc{ 1, sizeof(ObjectInstance), vk::VertexInputRate::eInstance }
 	};
 }
 
 consteval std::array<AttrDesc, 7> getObjectAttributes() {
 	return std::array{
-		AttrDesc{ 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(SpriteVertex, pos) },
-		AttrDesc{ 1, 0, VK_FORMAT_R32G32_SFLOAT,    offsetof(SpriteVertex, texture_pos) },
-		AttrDesc{ 2, 1, VK_FORMAT_R32G32B32_SFLOAT, offsetof(ObjectInstance, pos) },
-		AttrDesc{ 3, 1, VK_FORMAT_R32G32_SFLOAT,    offsetof(ObjectInstance, sprite_offset) },
-		AttrDesc{ 4, 1, VK_FORMAT_R32G32_SFLOAT,    offsetof(ObjectInstance, sprite_size) },
-		AttrDesc{ 5, 1, VK_FORMAT_R32_UINT,         offsetof(ObjectInstance, light_level) },
-		AttrDesc{ 6, 1, VK_FORMAT_R32_UINT,         offsetof(ObjectInstance, texture_id) },
+		AttrDesc{ 0, 0, vk::Format::eR32G32B32Sfloat, offsetof(SpriteVertex, pos) },
+		AttrDesc{ 1, 0, vk::Format::eR32G32Sfloat,    offsetof(SpriteVertex, texture_pos) },
+		AttrDesc{ 2, 1, vk::Format::eR32G32B32Sfloat, offsetof(ObjectInstance, pos) },
+		AttrDesc{ 3, 1, vk::Format::eR32G32Sfloat,    offsetof(ObjectInstance, sprite_offset) },
+		AttrDesc{ 4, 1, vk::Format::eR32G32Sfloat,    offsetof(ObjectInstance, sprite_size) },
+		AttrDesc{ 5, 1, vk::Format::eR32G32Uint,      offsetof(ObjectInstance, light_level) },
+		AttrDesc{ 6, 1, vk::Format::eR32G32Uint,      offsetof(ObjectInstance, texture_id) },
 	};
 }
 
 consteval std::array<BindDesc, 2> getUiBindings() {
 	return std::array{
-		BindDesc{ 0, sizeof(SpriteVertex), VK_VERTEX_INPUT_RATE_VERTEX },
-		BindDesc{ 1, sizeof(UiInstance), VK_VERTEX_INPUT_RATE_INSTANCE }
+		BindDesc{ 0, sizeof(SpriteVertex), vk::VertexInputRate::eVertex },
+		BindDesc{ 1, sizeof(UiInstance), vk::VertexInputRate::eInstance }
 	};
 }
 
 consteval std::array<AttrDesc, 5> getUiAttributes() {
 	return std::array{
-		AttrDesc{ 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(SpriteVertex, pos) },
-		AttrDesc{ 1, 0, VK_FORMAT_R32G32_SFLOAT,    offsetof(SpriteVertex, texture_pos) },
-		AttrDesc{ 2, 1, VK_FORMAT_R32G32_SFLOAT,    offsetof(UiInstance, pos) },
-		AttrDesc{ 3, 1, VK_FORMAT_R32G32_SFLOAT,    offsetof(UiInstance, sprite_size) },
-		AttrDesc{ 4, 1, VK_FORMAT_R32_UINT,         offsetof(UiInstance, texture_id) }
+		AttrDesc{ 0, 0, vk::Format::eR32G32B32Sfloat, offsetof(SpriteVertex, pos) },
+		AttrDesc{ 1, 0, vk::Format::eR32G32Sfloat,    offsetof(SpriteVertex, texture_pos) },
+		AttrDesc{ 2, 1, vk::Format::eR32G32Sfloat,    offsetof(UiInstance, pos) },
+		AttrDesc{ 3, 1, vk::Format::eR32G32Sfloat,    offsetof(UiInstance, sprite_size) },
+		AttrDesc{ 4, 1, vk::Format::eR32G32Uint,      offsetof(UiInstance, texture_id) }
 	};
 }
 
 consteval std::array<BindDesc, 2> getWeaponBindings() {
 	return std::array{
-		BindDesc{ 0, sizeof(SpriteVertex), VK_VERTEX_INPUT_RATE_VERTEX },
-		BindDesc{ 1, sizeof(UiInstance), VK_VERTEX_INPUT_RATE_INSTANCE }
+		BindDesc{ 0, sizeof(SpriteVertex), vk::VertexInputRate::eVertex },
+		BindDesc{ 1, sizeof(UiInstance), vk::VertexInputRate::eInstance }
 	};
 }
 
 consteval std::array<AttrDesc, 5> getWeaponAttributes() {
 	return std::array{
-		AttrDesc{ 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(SpriteVertex, pos) },
-		AttrDesc{ 1, 0, VK_FORMAT_R32G32_SFLOAT,    offsetof(SpriteVertex, texture_pos) },
-		AttrDesc{ 2, 1, VK_FORMAT_R32G32_SFLOAT,    offsetof(UiInstance, pos) },
-		AttrDesc{ 3, 1, VK_FORMAT_R32G32_SFLOAT,    offsetof(UiInstance, sprite_size) },
-		AttrDesc{ 4, 1, VK_FORMAT_R32_UINT,         offsetof(UiInstance, texture_id) }
+		AttrDesc{ 0, 0, vk::Format::eR32G32B32Sfloat, offsetof(SpriteVertex, pos) },
+		AttrDesc{ 1, 0, vk::Format::eR32G32Sfloat,    offsetof(SpriteVertex, texture_pos) },
+		AttrDesc{ 2, 1, vk::Format::eR32G32Sfloat,    offsetof(UiInstance, pos) },
+		AttrDesc{ 3, 1, vk::Format::eR32G32Sfloat,    offsetof(UiInstance, sprite_size) },
+		AttrDesc{ 4, 1, vk::Format::eR32G32Uint,      offsetof(UiInstance, texture_id) }
 	};
 }
 
 void VulkanRenderer::createDepthResources() {
-	VkFormat depthFormat = findDepthFormat();
+	vk::Format depthFormat = findDepthFormat();
 
-	createImage(
-		this->swapChainExtent.width, 
-		this->swapChainExtent.height, 
+	std::tie(
+		this->swapchainRes->depthImage, 
+		this->swapchainRes->depthImageMemory
+	) = createImage(
+		this->swapchainRes->extent.width, 
+		this->swapchainRes->extent.height, 
 		depthFormat, 
-		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
-		this->depthImage, 
-		this->depthImageMemory
+		vk::ImageUsageFlagBits::eDepthStencilAttachment,
+		vk::MemoryPropertyFlagBits::eDeviceLocal
 	);
-	createImageView(
+
+	this->swapchainRes->depthImageView = createImageView(
 		this->device, 
-		this->depthImage, 
+		this->swapchainRes->depthImage, 
 		depthFormat, 
-		VK_IMAGE_ASPECT_DEPTH_BIT, 
-		&this->depthImageView
+		vk::ImageAspectFlagBits::eDepth
 	);
 }
 
@@ -167,17 +167,19 @@ void VulkanRenderer::updateLevelGeometry(
 ) {
 	if (vertices.empty() || indices.empty()) return;
 
-	this->levelVertexCount = static_cast<uint32_t>(vertices.size());
-	this->levelIndexCount = static_cast<uint32_t>(indices.size());
+	this->levelMesh.vertexCount = static_cast<uint32_t>(vertices.size());
+	this->levelMesh.indexCount = static_cast<uint32_t>(indices.size());
 
-	VkDeviceSize vertexBufferSize = sizeof(LevelVertex) * vertices.size();
-	VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.size();
+	vk::DeviceSize vertexBufferSize = sizeof(LevelVertex) * vertices.size();
+	vk::DeviceSize indexBufferSize = sizeof(uint32_t) * indices.size();
 
-	updateGeometry(vertices.data(), 
-		indices, this->levelVertexBuffer, 
-		this->levelVertexBufferMemory, vertexBufferSize, 
-		this->levelIndexBuffer, this->levelIndexBufferMemory,
-		indexBufferSize);
+	updateGeometry(
+		vertices.data(), 
+		indices, 
+		this->levelMesh,
+		vertexBufferSize, 
+		indexBufferSize
+	);
 }
 
 void VulkanRenderer::updateObjectGeometry(
@@ -186,17 +188,19 @@ void VulkanRenderer::updateObjectGeometry(
 ) {
 	if (vertices.empty() || indices.empty()) return;
 
-	this->objectVertexCount = static_cast<uint32_t>(vertices.size());
-	this->objectIndexCount = static_cast<uint32_t>(indices.size());
+	this->objectMesh.vertexCount = static_cast<uint32_t>(vertices.size());
+	this->objectMesh.indexCount = static_cast<uint32_t>(indices.size());
 
-	VkDeviceSize vertexBufferSize = sizeof(SpriteVertex) * vertices.size();
-	VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.size();
+	vk::DeviceSize vertexBufferSize = sizeof(SpriteVertex) * vertices.size();
+	vk::DeviceSize indexBufferSize = sizeof(uint32_t) * indices.size();
 
-	updateGeometry(vertices.data(), 
-		indices, this->objectVertexBuffer, 
-		this->objectVertexBufferMemory, vertexBufferSize, 
-		this->objectIndexBuffer, this->objectIndexBufferMemory, 
-		indexBufferSize);
+	updateGeometry(
+		vertices.data(), 
+		indices, 
+		this->objectMesh, 
+		vertexBufferSize, 
+		indexBufferSize
+	);
 }
 
 void VulkanRenderer::updateUiGeometry(
@@ -205,17 +209,19 @@ void VulkanRenderer::updateUiGeometry(
 ) {
 	if (vertices.empty() || indices.empty()) return;
 
-	this->uiVertexCount = static_cast<uint32_t>(vertices.size());
-	this->uiIndexCount = static_cast<uint32_t>(indices.size());
+	this->uiMesh.vertexCount = static_cast<uint32_t>(vertices.size());
+	this->uiMesh.indexCount = static_cast<uint32_t>(indices.size());
 
-	VkDeviceSize vertexBufferSize = sizeof(SpriteVertex) * vertices.size();
-	VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.size();
+	vk::DeviceSize vertexBufferSize = sizeof(SpriteVertex) * vertices.size();
+	vk::DeviceSize indexBufferSize = sizeof(uint32_t) * indices.size();
 
-	updateGeometry(vertices.data(), 
-		indices, this->uiVertexBuffer, 
-		this->uiVertexBufferMemory, vertexBufferSize, 
-		this->uiIndexBuffer, this->uiIndexBufferMemory, 
-		indexBufferSize);
+	updateGeometry(
+		vertices.data(), 
+		indices, 
+		this->uiMesh, 
+		vertexBufferSize, 
+		indexBufferSize
+	);
 }
 
 void VulkanRenderer::updateWeaponGeometry(
@@ -224,508 +230,228 @@ void VulkanRenderer::updateWeaponGeometry(
 ) {
 	if (vertices.empty() || indices.empty()) return;
 
-	this->weaponVertexCount = static_cast<uint32_t>(vertices.size());
-	this->weaponIndexCount = static_cast<uint32_t>(indices.size());
+	this->weaponMesh.vertexCount = static_cast<uint32_t>(vertices.size());
+	this->weaponMesh.indexCount = static_cast<uint32_t>(indices.size());
 
-	VkDeviceSize vertexBufferSize = sizeof(SpriteVertex) * vertices.size();
-	VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.size();
+	vk::DeviceSize vertexBufferSize = sizeof(SpriteVertex) * vertices.size();
+	vk::DeviceSize indexBufferSize = sizeof(uint32_t) * indices.size();
 
-	updateGeometry(vertices.data(), 
-		indices, this->weaponVertexBuffer, 
-		this->weaponVertexBufferMemory, vertexBufferSize, 
-		this->weaponIndexBuffer, this->weaponIndexBufferMemory, 
-		indexBufferSize);
+	updateGeometry(
+		vertices.data(), 
+		indices, 
+		this->weaponMesh, 
+		vertexBufferSize,  
+		indexBufferSize
+	);
 }
 
 void VulkanRenderer::updateGeometry(
 	const void* vertices, 
 	rust::Slice<const uint32_t> indices,
-	VkBuffer& vertexBuffer,
-	VkDeviceMemory& vertexBufferMemory,
-	VkDeviceSize vertexBufferSize,
-	VkBuffer& indexBuffer,
-	VkDeviceMemory& indexBufferMemory,
-	VkDeviceSize indexBufferSize
+	MeshBuffers& mesh,
+	vk::DeviceSize vertexBufferSize,
+	vk::DeviceSize indexBufferSize
 ) {
-	vkDeviceWaitIdle(this->device);
+	this->device.waitIdle();
 
-	destroyResource(this->device, vertexBuffer, vkDestroyBuffer);
-	destroyResource(this->device, vertexBufferMemory, vkFreeMemory);
-	destroyResource(this->device, indexBuffer, vkDestroyBuffer);
-	destroyResource(this->device, indexBufferMemory, vkFreeMemory);
+	auto [vertexStagingBuffer, vertexStagingBufferMemory] = createBuffer(
+		vertexBufferSize, 
+		vk::BufferUsageFlagBits::eTransferSrc, 
+		vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
+	);
 
-	VkBuffer vertexStagingBuffer;
-	VkDeviceMemory vertexStagingBufferMemory;
-	createBuffer(vertexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
-		vertexStagingBuffer, vertexStagingBufferMemory);
+	void* vertexData = vertexStagingBufferMemory.mapMemory(0, vertexBufferSize, {});
+	memcpy(vertexData, vertices, vertexBufferSize);
+	vertexStagingBufferMemory.unmapMemory();
 
-	void* vertexData;
-	vkMapMemory(this->device, vertexStagingBufferMemory, 0, vertexBufferSize, 0, &vertexData);
-	memcpy(vertexData, vertices, static_cast<size_t>(vertexBufferSize));
-	vkUnmapMemory(this->device, vertexStagingBufferMemory);
-
-	createBuffer(vertexBufferSize, 
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
-		vertexBuffer, vertexBufferMemory);
-	copyBuffer(vertexStagingBuffer, vertexBuffer, vertexBufferSize);
-
-	vkDestroyBuffer(this->device, vertexStagingBuffer, nullptr);
-	vkFreeMemory(this->device, vertexStagingBufferMemory, nullptr);
-
+	std::tie(mesh.vertexBuffer, mesh.vertexBufferMemory) = createBuffer(
+		vertexBufferSize, 
+		vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer, 
+		vk::MemoryPropertyFlagBits::eDeviceLocal
+	);
+	copyBuffer(vertexStagingBuffer, mesh.vertexBuffer, vertexBufferSize);
 	
-	VkBuffer indexStagingBuffer;
-	VkDeviceMemory indexStagingBufferMemory;
-	createBuffer(indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
-		indexStagingBuffer, indexStagingBufferMemory);
+	auto [indexStagingBuffer, indexStagingBufferMemory] = createBuffer(
+		indexBufferSize, 
+		vk::BufferUsageFlagBits::eTransferSrc, 
+		vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
+	);
 	
-	void* indexData;
-   	vkMapMemory(this->device, indexStagingBufferMemory, 0, indexBufferSize, 0, &indexData);
-	memcpy(indexData, indices.data(), static_cast<size_t>(indexBufferSize));
-	vkUnmapMemory(this->device, indexStagingBufferMemory);
+	void* indexData = indexStagingBufferMemory.mapMemory(0, indexBufferSize, {});
+	memcpy(indexData, indices.data(), indexBufferSize);
+	indexStagingBufferMemory.unmapMemory();
 
-	createBuffer(indexBufferSize, 
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, 
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
-		indexBuffer, indexBufferMemory);
-	copyBuffer(indexStagingBuffer, indexBuffer, indexBufferSize);
-
-	vkDestroyBuffer(this->device, indexStagingBuffer, nullptr);
-	vkFreeMemory(this->device, indexStagingBufferMemory, nullptr);
+	std::tie(mesh.indexBuffer, mesh.indexBufferMemory) = createBuffer(
+		indexBufferSize, 
+		vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer, 
+		vk::MemoryPropertyFlagBits::eDeviceLocal 
+	);
+	copyBuffer(indexStagingBuffer, mesh.indexBuffer, indexBufferSize);
 }
+
+using ShaderStg = vk::PipelineShaderStageCreateInfo;
 
 void VulkanRenderer::createPipelines() {
-	std::vector<VkDynamicState> dynamicStates = {
-		VK_DYNAMIC_STATE_VIEWPORT,
-		VK_DYNAMIC_STATE_SCISSOR
+	std::array<vk::DynamicState, 2> dynamicStates{
+		vk::DynamicState::eViewport,
+		vk::DynamicState::eScissor
 	};
 
-	VkPipelineDynamicStateCreateInfo dynamicState{};
-	dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-	dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
-	dynamicState.pDynamicStates = dynamicStates.data();
+	vk::PipelineDynamicStateCreateInfo dynamicState{{}, dynamicStates};
 
-	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
-	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-	inputAssembly.primitiveRestartEnable = VK_FALSE;
+	vk::PipelineInputAssemblyStateCreateInfo inputAssembly;
+	inputAssembly.setTopology(vk::PrimitiveTopology::eTriangleList);
 
-	VkPipelineViewportStateCreateInfo viewportState{};
-	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-	viewportState.viewportCount = 1;
-	viewportState.scissorCount = 1;
+	vk::PipelineViewportStateCreateInfo viewportState;
+	viewportState
+		.setViewportCount(1)
+		.setScissorCount(1);
 
-	VkPipelineRasterizationStateCreateInfo rasterizer{};
-	rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-	rasterizer.depthClampEnable = VK_FALSE;
-	rasterizer.rasterizerDiscardEnable = VK_FALSE;
-	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-	rasterizer.lineWidth = 1.0f;
-	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-	//rasterizer.cullMode = VK_CULL_MODE_NONE;
-	//rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
-	rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-	rasterizer.depthBiasEnable = VK_FALSE;
+	vk::PipelineRasterizationStateCreateInfo rasterizer;
+	rasterizer
+		.setPolygonMode(vk::PolygonMode::eFill)
+		.setLineWidth(1.0f)
+		.setCullMode(vk::CullModeFlagBits::eBack)  // eNone
+		.setFrontFace(vk::FrontFace::eCounterClockwise);  // eClockwise
 
-	VkPipelineMultisampleStateCreateInfo multisampling{};
-	multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-	multisampling.sampleShadingEnable = VK_FALSE;
-	multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+	vk::PipelineMultisampleStateCreateInfo multisampling;
+	multisampling.setRasterizationSamples(vk::SampleCountFlagBits::e1);
 
-	VkPipelineDepthStencilStateCreateInfo depthStencil{};
-	depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-	depthStencil.depthTestEnable = VK_TRUE;
-	depthStencil.depthWriteEnable = VK_TRUE;
-	depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
-	depthStencil.depthBoundsTestEnable = VK_FALSE;
-	depthStencil.stencilTestEnable = VK_FALSE;
+	vk::PipelineColorBlendAttachmentState colorBlendAttachment{};
 
-	VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-	colorBlendAttachment.blendEnable = VK_FALSE;
+	vk::PipelineColorBlendStateCreateInfo colorBlending;
+	colorBlending.setAttachments(colorBlendAttachment);
 
-	VkPipelineColorBlendStateCreateInfo colorBlending{};
-	colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-	colorBlending.logicOpEnable = VK_FALSE;
-	colorBlending.attachmentCount = 1;
-	colorBlending.pAttachments = &colorBlendAttachment;
+	vk::PipelineRenderingCreateInfo renderingInfo;
+	renderingInfo
+		.setColorAttachmentFormats(this->swapchainRes->imageFormat)
+		.setDepthAttachmentFormat(findDepthFormat());
 
-	VkPipelineRenderingCreateInfo renderingInfo{};
-	renderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
-	renderingInfo.colorAttachmentCount = 1;
-	renderingInfo.pColorAttachmentFormats = &this->swapChainImageFormat; 
-	renderingInfo.depthAttachmentFormat = findDepthFormat();
-	renderingInfo.stencilAttachmentFormat = VK_FORMAT_UNDEFINED;	
-
-	createObjectPipeline(
-		&inputAssembly,
-		&viewportState,
-		&rasterizer,
-		&multisampling,
-		&depthStencil,
-		&colorBlending,
-		&dynamicState,
-		&renderingInfo
-	);
-	createLevelPipeline(
-		&inputAssembly,
-		&viewportState,
-		&rasterizer,
-		&multisampling,
-		&depthStencil,
-		&colorBlending,
-		&dynamicState,
-		&renderingInfo
-	);
-	createUiPipeline(
-		&inputAssembly,
-		&viewportState,
-		&rasterizer,
-		&multisampling,
-		&colorBlending,
-		&dynamicState,
-		&renderingInfo
-	);
-	createWeaponPipeline(
-		&inputAssembly,
-		&viewportState,
-		&rasterizer,
-		&multisampling,
-		&colorBlending,
-		&dynamicState,
-		&renderingInfo
-	);
-}
-
-void VulkanRenderer::createObjectPipeline(
-	VkPipelineInputAssemblyStateCreateInfo* inputAssembly,
-	VkPipelineViewportStateCreateInfo* viewportState,
-	VkPipelineRasterizationStateCreateInfo* rasterizer,
-	VkPipelineMultisampleStateCreateInfo* multisampling,
-	VkPipelineDepthStencilStateCreateInfo* depthStencil,
-	VkPipelineColorBlendStateCreateInfo* colorBlending,
-	VkPipelineDynamicStateCreateInfo* dynamicState,
-	VkPipelineRenderingCreateInfo* renderingInfo
-) {
-	VkShaderModule vertShaderModule = createShaderModule(this->device, objectVertShader);
-	VkShaderModule fragShaderModule = createShaderModule(this->device, objectFragShader);
-
-	VkPipelineShaderStageCreateInfo vertShaderInfo{};
-	vertShaderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	vertShaderInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	vertShaderInfo.module = vertShaderModule;
-	vertShaderInfo.pName = "main";
-
-	VkPipelineShaderStageCreateInfo fragShaderInfo{};
-	fragShaderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	fragShaderInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	fragShaderInfo.module = fragShaderModule;
-	fragShaderInfo.pName = "main";
-
-	VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderInfo, fragShaderInfo};
-
-	auto bindingDescriptions = getObjectBindings();
-	auto attributeDescriptions = getObjectAttributes();
-
-	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
-	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
-	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-	vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions.data();
-	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
-
-	VkPushConstantRange pushConstantRange{};
-	pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; 
-	pushConstantRange.offset = 0;
-	pushConstantRange.size = sizeof(ObjectPushConstants);
-
-	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutInfo.setLayoutCount = 1;
-	pipelineLayoutInfo.pSetLayouts = &this->descriptorSetLayout;
-	pipelineLayoutInfo.pushConstantRangeCount = 1;
-	pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
-
-	VkResult pipelineLayoutResult = vkCreatePipelineLayout(this->device, &pipelineLayoutInfo, nullptr, &this->spritePipelineLayout);
-	if (pipelineLayoutResult != VK_SUCCESS) {
-		throw std::runtime_error("failed to create objects' layout!");
-	}
-
-	VkGraphicsPipelineCreateInfo pipelineInfo{};
-	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	pipelineInfo.pNext = renderingInfo;
-	pipelineInfo.stageCount = 2;
-	pipelineInfo.pStages = shaderStages;
-	pipelineInfo.pVertexInputState = &vertexInputInfo;
-	pipelineInfo.pInputAssemblyState = inputAssembly;
-	pipelineInfo.pViewportState = viewportState;
-	pipelineInfo.pRasterizationState = rasterizer;
-	pipelineInfo.pMultisampleState = multisampling;
-	pipelineInfo.pDepthStencilState = depthStencil;
-	pipelineInfo.pColorBlendState = colorBlending;
-	pipelineInfo.pDynamicState = dynamicState;
-	pipelineInfo.layout = this->spritePipelineLayout;
-	pipelineInfo.subpass = 0;
-
-	VkResult PipelineResult = vkCreateGraphicsPipelines(this->device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &this->spritePipeline);
-	if (PipelineResult != VK_SUCCESS) {
-		throw std::runtime_error("failed to create objects' pipeline!");
-	}
+	vk::PipelineDepthStencilStateCreateInfo depthStencil{};
+	vk::PipelineDepthStencilStateCreateInfo depthTestWriteStencil;
+	depthTestWriteStencil
+		.setDepthTestEnable(VK_TRUE)
+		.setDepthWriteEnable(VK_TRUE)
+		.setDepthCompareOp(vk::CompareOp::eLessOrEqual);
 	
-	vkDestroyShaderModule(this->device, fragShaderModule, nullptr);
-	vkDestroyShaderModule(this->device, vertShaderModule, nullptr);
-}
+	vk::GraphicsPipelineCreateInfo pipelineInfoTemplate;
+	pipelineInfoTemplate
+		.setPNext(renderingInfo)
+		.setPInputAssemblyState(&inputAssembly)
+		.setPViewportState(&viewportState)
+		.setPRasterizationState(&rasterizer)
+		.setPMultisampleState(&multisampling)
+		.setPColorBlendState(&colorBlending)
+		.setPDynamicState(&dynamicState);
 
-void VulkanRenderer::createLevelPipeline(
-	VkPipelineInputAssemblyStateCreateInfo* inputAssembly,
-	VkPipelineViewportStateCreateInfo* viewportState,
-	VkPipelineRasterizationStateCreateInfo* rasterizer,
-	VkPipelineMultisampleStateCreateInfo* multisampling,
-	VkPipelineDepthStencilStateCreateInfo* depthStencil,
-	VkPipelineColorBlendStateCreateInfo* colorBlending,
-	VkPipelineDynamicStateCreateInfo* dynamicState,
-	VkPipelineRenderingCreateInfo* renderingInfo
-) {
-	VkShaderModule vertShaderModule = createShaderModule(this->device, levelVertShader);
-	VkShaderModule fragShaderModule = createShaderModule(this->device, levelFragShader);
+	std::array<vk::GraphicsPipelineCreateInfo, PIPELINES_COUNT> pipelineInfos;
+	pipelineInfos.fill(pipelineInfoTemplate);
 
-	VkPipelineShaderStageCreateInfo vertShaderInfo{};
-	vertShaderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	vertShaderInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	vertShaderInfo.module = vertShaderModule;
-	vertShaderInfo.pName = "main";
+	vk::raii::ShaderModule levelVertShaderModule = this->device.createShaderModule({{}, levelVertShader});
+	vk::raii::ShaderModule levelFragShaderModule = this->device.createShaderModule({{}, levelFragShader});
+	vk::raii::ShaderModule objectVertShaderModule = this->device.createShaderModule({{}, objectVertShader});
+	vk::raii::ShaderModule objectFragShaderModule = this->device.createShaderModule({{}, objectFragShader});
+	vk::raii::ShaderModule uiVertShaderModule = this->device.createShaderModule({{}, uiVertShader});
+	vk::raii::ShaderModule uiFragShaderModule = this->device.createShaderModule({{}, uiFragShader});
+	vk::raii::ShaderModule weaponVertShaderModule = this->device.createShaderModule({{}, weaponVertShader});
+	vk::raii::ShaderModule weaponFragShaderModule = this->device.createShaderModule({{}, weaponFragShader});
 
-	VkPipelineShaderStageCreateInfo fragShaderInfo{};
-	fragShaderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	fragShaderInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	fragShaderInfo.module = fragShaderModule;
-	fragShaderInfo.pName = "main";
+	std::array<ShaderStg, 2> levelStages{
+		ShaderStg{{}, vk::ShaderStageFlagBits::eVertex, levelVertShaderModule, "main"}, 
+		ShaderStg{{}, vk::ShaderStageFlagBits::eFragment, levelFragShaderModule, "main"}
+	};
 
-	VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderInfo, fragShaderInfo};
+	std::array<ShaderStg, 2> objectStages{
+		ShaderStg{{}, vk::ShaderStageFlagBits::eVertex, objectVertShaderModule, "main"}, 
+		ShaderStg{{}, vk::ShaderStageFlagBits::eFragment, objectFragShaderModule, "main"}
+	};
 
-	auto bindingDescriptions = getLevelBindings();
-	auto attributeDescriptions = getLevelAttributes();
+	std::array<ShaderStg, 2> uiStages{
+		ShaderStg{{}, vk::ShaderStageFlagBits::eVertex, uiVertShaderModule, "main"}, 
+		ShaderStg{{}, vk::ShaderStageFlagBits::eFragment, uiFragShaderModule, "main"}
+	};
 
-	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
-	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
-	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-	vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions.data();
-	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+	std::array<ShaderStg, 2> weaponStages{
+		ShaderStg{{}, vk::ShaderStageFlagBits::eVertex, weaponVertShaderModule, "main"}, 
+		ShaderStg{{}, vk::ShaderStageFlagBits::eFragment, weaponFragShaderModule, "main"}
+	};
 
-	VkPushConstantRange pushConstantRange{};
-	pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT; 
-	pushConstantRange.offset = 0;
-	pushConstantRange.size = sizeof(LevelPushConstants);
+	auto levelBindingDescriptions = getLevelBindings();
+	auto levelAttributeDescriptions = getLevelAttributes();
+	auto objectBindingDescriptions = getObjectBindings();
+	auto objectAttributeDescriptions = getObjectAttributes();
+	auto uiBindingDescriptions = getUiBindings();
+	auto uiAttributeDescriptions = getUiAttributes();
+	auto weaponBindingDescriptions = getWeaponBindings();
+	auto weaponAttributeDescriptions = getWeaponAttributes();
 
-	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutInfo.setLayoutCount = 1;
-	pipelineLayoutInfo.pSetLayouts = &this->descriptorSetLayout;
-	pipelineLayoutInfo.pushConstantRangeCount = 1;
-	pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
+	vk::PipelineVertexInputStateCreateInfo levelVertexInputInfo{{}, levelBindingDescriptions, levelAttributeDescriptions};
+	vk::PipelineVertexInputStateCreateInfo objectVertexInputInfo{{}, objectBindingDescriptions, objectAttributeDescriptions};
+	vk::PipelineVertexInputStateCreateInfo uiVertexInputInfo{{}, uiBindingDescriptions, uiAttributeDescriptions};
+	vk::PipelineVertexInputStateCreateInfo weaponVertexInputInfo{{}, weaponBindingDescriptions, weaponAttributeDescriptions};
 
-	VkResult pipelineLayoutResult = vkCreatePipelineLayout(this->device, &pipelineLayoutInfo, nullptr, &this->levelPipelineLayout);
-	if (pipelineLayoutResult != VK_SUCCESS) {
-		throw std::runtime_error("failed to create level's layout!");
+	vk::PushConstantRange levelPushConstantRange{
+		SHADER_STAGE_FLAGS[PipelineType::Level],
+		0,
+		sizeof(LevelPushConstants)
+	};
+	vk::PushConstantRange objectPushConstantRange{
+		SHADER_STAGE_FLAGS[PipelineType::Object], 
+		0, 
+		sizeof(ObjectPushConstants)
+	};
+	vk::PushConstantRange uiPushConstantRange{
+		SHADER_STAGE_FLAGS[PipelineType::Ui],
+		0,
+		sizeof(uint32_t)
+	};
+
+	this->pipelineLayouts = {
+		this->device.createPipelineLayout({
+			{}, 
+			*this->descriptorSetLayout, 
+			levelPushConstantRange
+		}),
+		this->device.createPipelineLayout({
+			{}, 
+			*this->descriptorSetLayout, 
+			objectPushConstantRange
+		}),
+		this->device.createPipelineLayout({
+			{}, 
+			*this->descriptorSetLayout, 
+			uiPushConstantRange
+		}),
+		this->device.createPipelineLayout({
+			{}, 
+			*this->descriptorSetLayout, 
+			uiPushConstantRange  // weapon uses the same constants as ui
+		})
+	};
+
+	pipelineInfos[PipelineType::Level]
+		.setLayout(this->pipelineLayouts[PipelineType::Level])
+		.setPVertexInputState(&levelVertexInputInfo)
+		.setPDepthStencilState(&depthTestWriteStencil)
+		.setStages(levelStages);
+	pipelineInfos[PipelineType::Object]
+		.setLayout(this->pipelineLayouts[PipelineType::Object])
+		.setPVertexInputState(&objectVertexInputInfo)
+		.setPDepthStencilState(&depthTestWriteStencil)
+		.setStages(objectStages);
+	pipelineInfos[PipelineType::Ui]
+		.setLayout(this->pipelineLayouts[PipelineType::Ui])
+		.setPVertexInputState(&uiVertexInputInfo)
+		.setPDepthStencilState(&depthStencil)
+		.setStages(uiStages);
+	pipelineInfos[PipelineType::Weapon]
+		.setLayout(this->pipelineLayouts[PipelineType::Weapon])
+		.setPVertexInputState(&weaponVertexInputInfo)
+		.setPDepthStencilState(&depthStencil)
+		.setStages(weaponStages);
+
+	auto pipelines = this->device.createGraphicsPipelines(VK_NULL_HANDLE, pipelineInfos);
+	for (size_t i = 0; i < PIPELINES_COUNT; ++i) {
+		this->pipelines[i] = std::move(pipelines[i]);
 	}
-
-	VkGraphicsPipelineCreateInfo pipelineInfo{};
-	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	pipelineInfo.pNext = renderingInfo;
-	pipelineInfo.stageCount = 2;
-	pipelineInfo.pStages = shaderStages;
-	pipelineInfo.pVertexInputState = &vertexInputInfo;
-	pipelineInfo.pInputAssemblyState = inputAssembly;
-	pipelineInfo.pViewportState = viewportState;
-	pipelineInfo.pRasterizationState = rasterizer;
-	pipelineInfo.pMultisampleState = multisampling;
-	pipelineInfo.pDepthStencilState = depthStencil;
-	pipelineInfo.pColorBlendState = colorBlending;
-	pipelineInfo.pDynamicState = dynamicState;
-	pipelineInfo.layout = this->levelPipelineLayout;
-	pipelineInfo.subpass = 0;
-
-	VkResult PipelineResult = vkCreateGraphicsPipelines(this->device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &this->levelPipeline);
-	if (PipelineResult != VK_SUCCESS) {
-		throw std::runtime_error("failed to create level's pipeline!");
-	}
-	
-	vkDestroyShaderModule(this->device, fragShaderModule, nullptr);
-	vkDestroyShaderModule(this->device, vertShaderModule, nullptr);
-}
-
-void VulkanRenderer::createUiPipeline(
-	VkPipelineInputAssemblyStateCreateInfo* inputAssembly,
-	VkPipelineViewportStateCreateInfo* viewportState,
-	VkPipelineRasterizationStateCreateInfo* rasterizer,
-	VkPipelineMultisampleStateCreateInfo* multisampling,
-	VkPipelineColorBlendStateCreateInfo* colorBlending,
-	VkPipelineDynamicStateCreateInfo* dynamicState,
-	VkPipelineRenderingCreateInfo* renderingInfo
-) {
-	VkShaderModule vertShaderModule = createShaderModule(this->device, uiVertShader);
-	VkShaderModule fragShaderModule = createShaderModule(this->device, uiFragShader);
-
-	VkPipelineShaderStageCreateInfo vertShaderInfo{};
-	vertShaderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	vertShaderInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	vertShaderInfo.module = vertShaderModule;
-	vertShaderInfo.pName = "main";
-
-	VkPipelineShaderStageCreateInfo fragShaderInfo{};
-	fragShaderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	fragShaderInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	fragShaderInfo.module = fragShaderModule;
-	fragShaderInfo.pName = "main";
-
-	VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderInfo, fragShaderInfo};
-
-	VkPipelineDepthStencilStateCreateInfo depthStencil{};
-	depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-	depthStencil.depthTestEnable = VK_FALSE;
-	depthStencil.depthWriteEnable = VK_FALSE;
-	depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
-	depthStencil.depthBoundsTestEnable = VK_FALSE;
-	depthStencil.stencilTestEnable = VK_FALSE;
-
-	auto bindingDescriptions = getUiBindings();
-	auto attributeDescriptions = getUiAttributes();
-
-	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
-	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
-	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-	vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions.data();
-	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
-
-	VkPushConstantRange pushConstantRange{};
-	pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; 
-	pushConstantRange.offset = 0;
-	pushConstantRange.size = sizeof(uint32_t);
-
-	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutInfo.setLayoutCount = 1;
-	pipelineLayoutInfo.pSetLayouts = &this->descriptorSetLayout;
-	pipelineLayoutInfo.pushConstantRangeCount = 1;
-	pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
-
-	VkResult pipelineLayoutResult = vkCreatePipelineLayout(this->device, &pipelineLayoutInfo, nullptr, &this->uiPipelineLayout);
-	if (pipelineLayoutResult != VK_SUCCESS) {
-		throw std::runtime_error("failed to create ui's layout!");
-	}
-
-	VkGraphicsPipelineCreateInfo pipelineInfo{};
-	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	pipelineInfo.pNext = renderingInfo;
-	pipelineInfo.stageCount = 2;
-	pipelineInfo.pStages = shaderStages;
-	pipelineInfo.pVertexInputState = &vertexInputInfo;
-	pipelineInfo.pInputAssemblyState = inputAssembly;
-	pipelineInfo.pViewportState = viewportState;
-	pipelineInfo.pRasterizationState = rasterizer;
-	pipelineInfo.pMultisampleState = multisampling;
-	pipelineInfo.pDepthStencilState = &depthStencil;
-	pipelineInfo.pColorBlendState = colorBlending;
-	pipelineInfo.pDynamicState = dynamicState;
-	pipelineInfo.layout = this->uiPipelineLayout;
-	pipelineInfo.subpass = 0;
-
-	VkResult PipelineResult = vkCreateGraphicsPipelines(this->device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &this->uiPipeline);
-	if (PipelineResult != VK_SUCCESS) {
-		throw std::runtime_error("failed to create ui's pipeline!");
-	}
-	
-	vkDestroyShaderModule(this->device, fragShaderModule, nullptr);
-	vkDestroyShaderModule(this->device, vertShaderModule, nullptr);
-}
-
-void VulkanRenderer::createWeaponPipeline(
-	VkPipelineInputAssemblyStateCreateInfo* inputAssembly,
-	VkPipelineViewportStateCreateInfo* viewportState,
-	VkPipelineRasterizationStateCreateInfo* rasterizer,
-	VkPipelineMultisampleStateCreateInfo* multisampling,
-	VkPipelineColorBlendStateCreateInfo* colorBlending,
-	VkPipelineDynamicStateCreateInfo* dynamicState,
-	VkPipelineRenderingCreateInfo* renderingInfo
-) {
-	VkShaderModule vertShaderModule = createShaderModule(this->device, weaponVertShader);
-	VkShaderModule fragShaderModule = createShaderModule(this->device, weaponFragShader);
-
-	VkPipelineShaderStageCreateInfo vertShaderInfo{};
-	vertShaderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	vertShaderInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	vertShaderInfo.module = vertShaderModule;
-	vertShaderInfo.pName = "main";
-
-	VkPipelineShaderStageCreateInfo fragShaderInfo{};
-	fragShaderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	fragShaderInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	fragShaderInfo.module = fragShaderModule;
-	fragShaderInfo.pName = "main";
-
-	VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderInfo, fragShaderInfo};
-
-	VkPipelineDepthStencilStateCreateInfo depthStencil{};
-	depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-	depthStencil.depthTestEnable = VK_FALSE;
-	depthStencil.depthWriteEnable = VK_FALSE;
-	depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
-	depthStencil.depthBoundsTestEnable = VK_FALSE;
-	depthStencil.stencilTestEnable = VK_FALSE;
-
-	auto bindingDescriptions = getWeaponBindings();
-	auto attributeDescriptions = getWeaponAttributes();
-
-	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
-	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
-	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-	vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions.data();
-	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
-
-	// TODO weapon PushConstants
-	VkPushConstantRange pushConstantRange{};
-	pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; 
-	pushConstantRange.offset = 0;
-	pushConstantRange.size = sizeof(uint32_t);
-
-	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutInfo.setLayoutCount = 1;
-	pipelineLayoutInfo.pSetLayouts = &this->descriptorSetLayout;
-	pipelineLayoutInfo.pushConstantRangeCount = 1;
-	pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
-
-	VkResult pipelineLayoutResult = vkCreatePipelineLayout(this->device, &pipelineLayoutInfo, nullptr, &this->weaponPipelineLayout);
-	if (pipelineLayoutResult != VK_SUCCESS) {
-		throw std::runtime_error("failed to create weapon's layout!");
-	}
-
-	VkGraphicsPipelineCreateInfo pipelineInfo{};
-	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	pipelineInfo.pNext = renderingInfo;
-	pipelineInfo.stageCount = 2;
-	pipelineInfo.pStages = shaderStages;
-	pipelineInfo.pVertexInputState = &vertexInputInfo;
-	pipelineInfo.pInputAssemblyState = inputAssembly;
-	pipelineInfo.pViewportState = viewportState;
-	pipelineInfo.pRasterizationState = rasterizer;
-	pipelineInfo.pMultisampleState = multisampling;
-	pipelineInfo.pDepthStencilState = &depthStencil;
-	pipelineInfo.pColorBlendState = colorBlending;
-	pipelineInfo.pDynamicState = dynamicState;
-	pipelineInfo.layout = this->weaponPipelineLayout;
-	pipelineInfo.subpass = 0;
-
-	VkResult PipelineResult = vkCreateGraphicsPipelines(this->device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &this->weaponPipeline);
-	if (PipelineResult != VK_SUCCESS) {
-		throw std::runtime_error("failed to create weapon's pipeline!");
-	}
-	
-	vkDestroyShaderModule(this->device, fragShaderModule, nullptr);
-	vkDestroyShaderModule(this->device, vertShaderModule, nullptr);
 }

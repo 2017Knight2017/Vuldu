@@ -1,5 +1,6 @@
 #pragma once
-#include <vulkan/vulkan.h>
+#define VULKAN_HPP_HAS_SPACESHIP_OPERATOR
+#include <vulkan/vulkan_raii.hpp>
 #include <vulkan/vulkan_beta.h>
 #include <memory>
 #include <vector>
@@ -8,12 +9,14 @@
 #include "rust/cxx.h"
 
 #ifdef DEBUG_MODE
-const bool enableValidationLayers = true;
+inline constexpr bool enableValidationLayers = true;
 #else
-const bool enableValidationLayers = false;
+inline constexpr bool enableValidationLayers = false;
 #endif
 
 inline constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
+inline constexpr uint32_t PIPELINES_COUNT = 4;
+inline constexpr uint32_t DESCRIPTORS_COUNT = 7;
 inline constexpr uint32_t MAX_TEXTURES = 8192;
 inline constexpr uint32_t ANIM_INFO_SIZE = 4096;
 inline constexpr uint32_t MAX_SKY = 16;  
@@ -21,6 +24,13 @@ inline constexpr uint32_t MAX_PAL = 14;
 inline constexpr uint32_t MAX_OBJECTS = 50000;
 inline constexpr uint32_t MAX_UI = 512;
 inline constexpr float PIXELS_IN_PANORAMA = 1024.0;
+
+inline constexpr std::array<vk::ShaderStageFlags, PIPELINES_COUNT> SHADER_STAGE_FLAGS = {
+	vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
+	vk::ShaderStageFlagBits::eFragment,
+	vk::ShaderStageFlagBits::eFragment,
+	vk::ShaderStageFlagBits::eFragment
+};
 
 struct WindowHandles;
 struct LevelVertex;
@@ -41,9 +51,9 @@ struct QueueFamilyIndices {
 };
 
 struct SwapChainSupportDetails {
-	VkSurfaceCapabilitiesKHR capabilities;
-	std::vector<VkSurfaceFormatKHR> formats;
-	std::vector<VkPresentModeKHR> presentModes;
+	vk::SurfaceCapabilitiesKHR capabilities;
+	std::vector<vk::SurfaceFormatKHR> formats;
+	std::vector<vk::PresentModeKHR> presentModes;
 };
 
 const std::vector<const char*> deviceExtensions = {
@@ -72,12 +82,58 @@ struct LevelPushConstants {
 	uint32_t flags;
 };
 
+enum PipelineType {
+	Level,
+	Object,
+	Ui,
+	Weapon
+};
+
+struct SwapchainResources {
+	vk::raii::SwapchainKHR swapchain{VK_NULL_HANDLE};
+	vk::Format imageFormat = vk::Format::eUndefined;
+	vk::Extent2D extent{};
+	std::vector<vk::Image> images;
+	std::vector<vk::raii::ImageView> imageViews;
+	vk::raii::Image depthImage{VK_NULL_HANDLE};
+	vk::raii::DeviceMemory depthImageMemory{VK_NULL_HANDLE};
+	vk::raii::ImageView depthImageView{VK_NULL_HANDLE};
+};
+
+struct InstanceBuffers {
+    std::array<vk::raii::Buffer, MAX_FRAMES_IN_FLIGHT> buffers{nullptr, nullptr};
+    std::array<vk::raii::DeviceMemory, MAX_FRAMES_IN_FLIGHT> memories{nullptr, nullptr};
+    std::array<void*, MAX_FRAMES_IN_FLIGHT> mapped{nullptr, nullptr};
+    uint32_t activeCount = 0;
+};
+
+struct DynamicBuffer {
+	vk::raii::Buffer buffer{VK_NULL_HANDLE};
+	vk::raii::DeviceMemory memory{VK_NULL_HANDLE};
+	void* mapped{VK_NULL_HANDLE};
+};
+
+struct DataTexture {
+	vk::raii::Image image{VK_NULL_HANDLE};
+	vk::raii::DeviceMemory memory{VK_NULL_HANDLE};
+	vk::raii::ImageView view{VK_NULL_HANDLE};
+};
+
+struct MeshBuffers {
+    vk::raii::Buffer vertexBuffer{VK_NULL_HANDLE};
+    vk::raii::DeviceMemory vertexBufferMemory{VK_NULL_HANDLE};
+    uint32_t vertexCount = 0;
+
+    vk::raii::Buffer indexBuffer{VK_NULL_HANDLE};
+    vk::raii::DeviceMemory indexBufferMemory{VK_NULL_HANDLE};
+    uint32_t indexCount = 0;
+};
+
 class VulkanRenderer {
 public:
 	VulkanRenderer();
 	~VulkanRenderer();
 	void initVulkan(const WindowHandles& handles, uint32_t width, uint32_t height);
-	void cleanup();
 	void recreateSwapChain(uint32_t width, uint32_t height);
 	void updateLevelGeometry(rust::Slice<const LevelVertex> vertices, rust::Slice<const uint32_t> indices);
 	void updateObjectGeometry(rust::Slice<const SpriteVertex> vertices, rust::Slice<const uint32_t> indices);
@@ -112,113 +168,49 @@ public:
 	void drawWeapon() noexcept;
 	
 private:
-	VkInstance instance = VK_NULL_HANDLE;
-	VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
-	VkSurfaceKHR surface = VK_NULL_HANDLE;
+    vk::raii::Context context{};
+    vk::raii::Instance instance = VK_NULL_HANDLE;
+    vk::raii::DebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
+    vk::raii::SurfaceKHR surface = VK_NULL_HANDLE;
 
-	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-	VkDevice device = VK_NULL_HANDLE;
-	VkQueue graphicsQueue = VK_NULL_HANDLE;
-	VkQueue presentQueue = VK_NULL_HANDLE;
+    vk::raii::PhysicalDevice physicalDevice = VK_NULL_HANDLE;
+    vk::raii::Device device = VK_NULL_HANDLE;
+    vk::raii::Queue graphicsQueue = VK_NULL_HANDLE;
+    vk::raii::Queue presentQueue = VK_NULL_HANDLE;
 
-	VkSwapchainKHR swapChain = VK_NULL_HANDLE;
-	VkFormat swapChainImageFormat = VK_FORMAT_UNDEFINED;
-	VkExtent2D swapChainExtent{};
-	std::vector<VkImage> swapChainImages;
-	std::vector<VkImageView> swapChainImageViews;
+    std::vector<vk::raii::Semaphore> renderFinishedSemaphores;
+    std::array<vk::raii::Semaphore, MAX_FRAMES_IN_FLIGHT> imageAvailableSemaphores{nullptr, nullptr};
+    std::array<vk::raii::Fence, MAX_FRAMES_IN_FLIGHT> inFlightFences{nullptr, nullptr};
 
-	VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
-	VkPipelineLayout spritePipelineLayout = VK_NULL_HANDLE;
-	VkPipeline spritePipeline = VK_NULL_HANDLE;
-	VkPipelineLayout levelPipelineLayout = VK_NULL_HANDLE;
-	VkPipeline levelPipeline = VK_NULL_HANDLE;
-	VkPipelineLayout uiPipelineLayout = VK_NULL_HANDLE;
-	VkPipeline uiPipeline = VK_NULL_HANDLE;
-	VkPipelineLayout weaponPipelineLayout = VK_NULL_HANDLE;
-	VkPipeline weaponPipeline = VK_NULL_HANDLE;
+    std::optional<SwapchainResources> swapchainRes{};
 
-	VkCommandPool commandPool = VK_NULL_HANDLE;
-	std::vector<VkCommandBuffer> commandBuffers;
+    vk::raii::DescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
+    std::array<vk::raii::PipelineLayout, PIPELINES_COUNT> pipelineLayouts{nullptr, nullptr, nullptr, nullptr};
+    std::array<vk::raii::Pipeline, PIPELINES_COUNT> pipelines{nullptr, nullptr, nullptr, nullptr};
 
-	VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
-	std::vector<VkDescriptorSet> descriptorSets;
-	std::vector<VkBuffer> MVPBuffers;
-	std::vector<VkDeviceMemory> MVPBuffersMemory;
-	std::vector<void*> MVPBuffersMapped;
+    vk::raii::DescriptorPool descriptorPool = VK_NULL_HANDLE;
+    std::array<vk::raii::DescriptorSet, MAX_FRAMES_IN_FLIGHT> descriptorSets{nullptr, nullptr};
 
-	std::vector<VkBuffer> objectInstanceBuffers;
-	std::vector<VkDeviceMemory> objectInstanceBuffersMemory;
-	std::vector<void*> objectInstanceBuffersMapped;
-	uint32_t activeObjectsCount = 0;
+    vk::raii::CommandPool commandPool = VK_NULL_HANDLE;
+    std::array<vk::raii::CommandBuffer, MAX_FRAMES_IN_FLIGHT> commandBuffers{nullptr, nullptr};
 
-	std::vector<VkBuffer> uiInstanceBuffers;
-	std::vector<VkDeviceMemory> uiInstanceBuffersMemory;
-	std::vector<void*> uiInstanceBuffersMapped;
-	uint32_t activeUiCount = 0;
+    std::array<vk::raii::Buffer, MAX_FRAMES_IN_FLIGHT> MVPBuffers{nullptr, nullptr};
+    std::array<vk::raii::DeviceMemory, MAX_FRAMES_IN_FLIGHT> MVPBuffersMemory{nullptr, nullptr};
+    std::array<void*, MAX_FRAMES_IN_FLIGHT> MVPBuffersMapped{nullptr, nullptr};
 
-	std::vector<VkBuffer> weaponInstanceBuffers;
-	std::vector<VkDeviceMemory> weaponInstanceBuffersMemory;
-	std::vector<void*> weaponInstanceBuffersMapped;
+    MeshBuffers levelMesh{}, objectMesh{}, uiMesh{}, weaponMesh{};
+    InstanceBuffers objectInst{}, uiInst{}, weaponInst{};
 
-	VkBuffer levelVertexBuffer = VK_NULL_HANDLE;
-	VkDeviceMemory levelVertexBufferMemory = VK_NULL_HANDLE;
-	VkBuffer levelIndexBuffer = VK_NULL_HANDLE;
-	VkDeviceMemory levelIndexBufferMemory = VK_NULL_HANDLE;
-	uint32_t levelVertexCount = 0;
-	uint32_t levelIndexCount = 0;
+    std::vector<vk::raii::Image> textureImages;
+    std::vector<vk::raii::ImageView> textureImageViews;
+	std::vector<vk::raii::DeviceMemory> textureImageMemories;
+    vk::raii::Sampler textureSampler = VK_NULL_HANDLE;
 
-	VkBuffer objectVertexBuffer = VK_NULL_HANDLE;
-	VkDeviceMemory objectVertexBufferMemory = VK_NULL_HANDLE;
-	VkBuffer objectIndexBuffer = VK_NULL_HANDLE;
-	VkDeviceMemory objectIndexBufferMemory = VK_NULL_HANDLE;
-	uint32_t objectVertexCount = 0;
-	uint32_t objectIndexCount = 0;
+    DataTexture palette{}, colormap{};
+    DynamicBuffer animLevel{}, sectorHeights{}, switches{};
 
-	VkBuffer uiVertexBuffer = VK_NULL_HANDLE;
-	VkDeviceMemory uiVertexBufferMemory = VK_NULL_HANDLE;
-	VkBuffer uiIndexBuffer = VK_NULL_HANDLE;
-	VkDeviceMemory uiIndexBufferMemory = VK_NULL_HANDLE;
-	uint32_t uiVertexCount = 0;
-	uint32_t uiIndexCount = 0;
-
-	VkBuffer weaponVertexBuffer = VK_NULL_HANDLE;
-	VkDeviceMemory weaponVertexBufferMemory = VK_NULL_HANDLE;
-	VkBuffer weaponIndexBuffer = VK_NULL_HANDLE;
-	VkDeviceMemory weaponIndexBufferMemory = VK_NULL_HANDLE;
-	uint32_t weaponVertexCount = 0;
-	uint32_t weaponIndexCount = 0;
-
-	std::vector<VkImage> textureImages;
-	std::vector<VkDeviceMemory> textureImageMemories;
-	std::vector<VkImageView> textureImageViews;
-	VkSampler textureSampler = VK_NULL_HANDLE;
-
-	VkImage depthImage = VK_NULL_HANDLE;
-	VkDeviceMemory depthImageMemory = VK_NULL_HANDLE;
-	VkImageView depthImageView = VK_NULL_HANDLE;
-
-	uint32_t currentFrame = 0;
-	uint32_t currentImageIndex = 0;
-	std::vector<VkSemaphore> imageAvailableSemaphores;
-	std::vector<VkSemaphore> renderFinishedSemaphores;
-	std::vector<VkFence> inFlightFences;
-
-	VkImage paletteImage = VK_NULL_HANDLE;
-	VkDeviceMemory paletteImageMemory = VK_NULL_HANDLE;
-	VkImageView paletteImageView = VK_NULL_HANDLE;
-	VkImage colormapImage = VK_NULL_HANDLE;
-	VkDeviceMemory colormapImageMemory = VK_NULL_HANDLE;
-	VkImageView colormapImageView = VK_NULL_HANDLE;
-
-	VkBuffer animLevelBuffer = VK_NULL_HANDLE;
-	VkDeviceMemory animLevelBufferMemory = VK_NULL_HANDLE;
-
-	VkBuffer sectorHeightsBuffer = VK_NULL_HANDLE;
-	VkDeviceMemory sectorHeightsBufferMemory = VK_NULL_HANDLE;
-	void* sectorHeightsBufferMapped = VK_NULL_HANDLE;
-	VkBuffer switchesBuffer = VK_NULL_HANDLE;
-	VkDeviceMemory switchesBufferMemory = VK_NULL_HANDLE;
-	void* switchesBufferMapped = VK_NULL_HANDLE;
+    uint32_t currentFrame = 0;
+    uint32_t currentImageIndex = 0;
 
 	float globalTimer = 0.0;
 	uint32_t currentPaletteIndex = 0;
@@ -227,14 +219,12 @@ private:
 	float cameraYaw = 0.0;
 	uint32_t flags = 0;
 	
-	
 	void createInstance(const WindowHandles& handles);
 	void setupDebugMessenger();
 	void createSurface(const WindowHandles& handles);
 	void pickPhysicalDevice();
 	void createLogicalDevice();
 	void createSwapChain(uint32_t width, uint32_t height);
-	void createImageViews();
 	void createDescriptorSetLayout();
 	void createPipelines();
 	void createDepthResources();
@@ -247,98 +237,66 @@ private:
 	void createCommandBuffers();
 	void createSyncObjects();
 
-	void cleanupSwapChain();
-
-	void createBuffer(VkDeviceSize bufferSize, VkBufferUsageFlags usage, 
-		VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
-	void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
-	void createBufferBinding(const void* data_ptr, VkDeviceSize bufferSize, VkBuffer& dstBuffer, 
-		VkDeviceMemory& dstBufferMemory, uint32_t dstBinding);
-	void createImage(uint32_t width, uint32_t height, VkFormat format, 
-		VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, 
-		VkDeviceMemory& imageMemory);
-	void beginRendering(VkCommandBuffer currentCommandBuffer) noexcept;
+	std::pair<vk::raii::Buffer, vk::raii::DeviceMemory> createBuffer(
+		vk::DeviceSize bufferSize, 
+		vk::BufferUsageFlags usage, 
+		vk::MemoryPropertyFlags properties
+	);
+	void copyBuffer(const vk::raii::Buffer& srcBuffer, const vk::raii::Buffer& dstBuffer, vk::DeviceSize size);
+	std::pair<vk::raii::Image, vk::raii::DeviceMemory> createImage(
+		uint32_t width, 
+		uint32_t height, 
+		vk::Format format, 
+		vk::ImageUsageFlags usage, 
+		vk::MemoryPropertyFlags properties
+	);
+	void beginRendering(vk::CommandBuffer currentCommandBuffer) noexcept;
+	void draw(
+		PipelineType pipelineType,
+		const MeshBuffers& mesh,
+		const InstanceBuffers& inst,
+		const void* constants,
+		uint32_t constantsSize
+	) noexcept;
+	void draw(
+		PipelineType pipelineType,
+		const MeshBuffers& mesh,
+		const void* constants,
+		uint32_t constantsSize
+	) noexcept;
 
 	void createInstanceBuffersInternal(
-		VkDeviceSize bufferSize, 
-		std::vector<VkBuffer>& pBuffers,
-		std::vector<VkDeviceMemory>& pBuffersMemory,
-		std::vector<void*>& pBuffersMapped
+		vk::DeviceSize bufferSize, 
+		std::array<vk::raii::Buffer, MAX_FRAMES_IN_FLIGHT>& pBuffers,
+		std::array<vk::raii::DeviceMemory, MAX_FRAMES_IN_FLIGHT>& pBuffersMemory,
+		std::array<void*, MAX_FRAMES_IN_FLIGHT>& pBuffersMapped
 	);
 
 	void updateGeometry(
 		const void* vertices, 
 		rust::Slice<const uint32_t> indices,
-		VkBuffer& vertexBuffer,
-		VkDeviceMemory& vertexBufferMemory,
-		VkDeviceSize vertexBufferSize,
-		VkBuffer& indexBuffer,
-		VkDeviceMemory& indexBufferMemory,
-		VkDeviceSize indexBufferSize
+		MeshBuffers& mesh,
+		vk::DeviceSize vertexBufferSize,
+		vk::DeviceSize indexBufferSize
 	);
 
-	void createDataTexture(
+	DataTexture createDataTexture(
 		const void* data_ptr, 
-		size_t width,
-		size_t height,
-		VkFormat format,
-		VkImage& dstImage, 
-		VkDeviceMemory& dstImageMemory,
-		VkImageView& dstImageView,
+		uint32_t width,
+		uint32_t height,
+		vk::Format format,
 		uint32_t dstBinding
 	);
 	
-	VkCommandBuffer beginSingleTimeCommands();
-	void endSingleTimeCommands(VkCommandBuffer commandBuffer);
-	VkFormat findDepthFormat();
-
-	void createObjectPipeline(
-		VkPipelineInputAssemblyStateCreateInfo* inputAssembly,
-		VkPipelineViewportStateCreateInfo* viewportState,
-		VkPipelineRasterizationStateCreateInfo* rasterizer,
-		VkPipelineMultisampleStateCreateInfo* multisampling,
-		VkPipelineDepthStencilStateCreateInfo* depthStencil,
-		VkPipelineColorBlendStateCreateInfo* colorBlending,
-		VkPipelineDynamicStateCreateInfo* dynamicState,
-		VkPipelineRenderingCreateInfo* renderingInfo
-	);
-	void createLevelPipeline(
-		VkPipelineInputAssemblyStateCreateInfo* inputAssembly,
-		VkPipelineViewportStateCreateInfo* viewportState,
-		VkPipelineRasterizationStateCreateInfo* rasterizer,
-		VkPipelineMultisampleStateCreateInfo* multisampling,
-		VkPipelineDepthStencilStateCreateInfo* depthStencil,
-		VkPipelineColorBlendStateCreateInfo* colorBlending,
-		VkPipelineDynamicStateCreateInfo* dynamicState,
-		VkPipelineRenderingCreateInfo* renderingInfo
-	);
-	void createUiPipeline(
-		VkPipelineInputAssemblyStateCreateInfo* inputAssembly,
-		VkPipelineViewportStateCreateInfo* viewportState,
-		VkPipelineRasterizationStateCreateInfo* rasterizer,
-		VkPipelineMultisampleStateCreateInfo* multisampling,
-		VkPipelineColorBlendStateCreateInfo* colorBlending,
-		VkPipelineDynamicStateCreateInfo* dynamicState,
-		VkPipelineRenderingCreateInfo* renderingInfo
-	);
-	void createWeaponPipeline(
-		VkPipelineInputAssemblyStateCreateInfo* inputAssembly,
-		VkPipelineViewportStateCreateInfo* viewportState,
-		VkPipelineRasterizationStateCreateInfo* rasterizer,
-		VkPipelineMultisampleStateCreateInfo* multisampling,
-		VkPipelineColorBlendStateCreateInfo* colorBlending,
-		VkPipelineDynamicStateCreateInfo* dynamicState,
-		VkPipelineRenderingCreateInfo* renderingInfo
-	);
-
-	void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
-	void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
+	vk::raii::CommandBuffer beginSingleTimeCommands();
+	void endSingleTimeCommands(vk::raii::CommandBuffer& commandBuffer);
+	vk::Format findDepthFormat();
 };
 
-bool isDeviceSuitable(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface);
-QueueFamilyIndices findQueueFamilies(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface);
-SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface);
-bool checkDeviceExtensionSupport(VkPhysicalDevice physicalDevice);
+bool isDeviceSuitable(vk::PhysicalDevice physicalDevice, vk::SurfaceKHR surface);
+QueueFamilyIndices findQueueFamilies(vk::PhysicalDevice physicalDevice, vk::SurfaceKHR surface);
+SwapChainSupportDetails querySwapChainSupport(vk::PhysicalDevice physicalDevice, vk::SurfaceKHR surface);
+bool checkDeviceExtensionSupport(vk::PhysicalDevice physicalDevice);
 bool checkValidationLayerSupport();
 
 std::unique_ptr<VulkanRenderer> createRenderer();
