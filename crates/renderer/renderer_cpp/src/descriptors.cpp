@@ -66,10 +66,12 @@ void VulkanRenderer::createDescriptorSetLayout() {
 	std::array<vk::DescriptorBindingFlags, DESCRIPTORS_COUNT> bindingFlags{};
 	bindingFlags.back() = Bind::ePartiallyBound | Bind::eUpdateAfterBind | Bind::eVariableDescriptorCount;
 
+	vk::DescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsInfo{bindingFlags}; 
+
 	vk::DescriptorSetLayoutCreateInfo layoutInfo{
 		vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool,
 		bindings,
-		vk::DescriptorSetLayoutBindingFlagsCreateInfo{bindingFlags}
+		bindingFlagsInfo
 	};
 	
 	this->descriptorSetLayout = this->device.createDescriptorSetLayout(layoutInfo);
@@ -161,10 +163,12 @@ void VulkanRenderer::createDescriptorSets() {
 	std::array<vk::DescriptorSetLayout, MAX_FRAMES_IN_FLIGHT> layouts{this->descriptorSetLayout, this->descriptorSetLayout};
 	std::array<uint32_t, MAX_FRAMES_IN_FLIGHT> variableCounts{MAX_TEXTURES, MAX_TEXTURES};
 
+	vk::DescriptorSetVariableDescriptorCountAllocateInfo variableCountsInfo{variableCounts};
+
 	vk::DescriptorSetAllocateInfo allocInfo{
 		this->descriptorPool, 
 		layouts,
-		vk::DescriptorSetVariableDescriptorCountAllocateInfo{variableCounts}
+		variableCountsInfo
 	};
 	
 	auto descriptorSets = this->device.allocateDescriptorSets(allocInfo);
