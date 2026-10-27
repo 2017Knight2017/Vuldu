@@ -344,7 +344,7 @@ impl ApplicationHandler for App {
 			WindowEvent::CloseRequested => {
 				println!("The close button was pressed; stopping");
 				self.is_shutting_down = true;
-				//self.graphics.renderer.pin().cleanup();
+				self.graphics.renderer.destroy();
 				event_loop.exit();
 			}
 
@@ -425,13 +425,12 @@ fn get_sky_texture_index(map: u8) -> u32 {
 fn handle_fatal_error(
 	is_shutting_down: &mut bool,
 	event_loop: &ActiveEventLoop,
-	_renderer: &mut SafeRenderer,
+	renderer: &mut SafeRenderer,
 	msg: &str,
 ) {
 	eprintln!("[FATAL] {}", msg);
 	*is_shutting_down = true;
-	//renderer.pin().cleanup();
-
+	renderer.destroy();
 	event_loop.exit();
 }
 

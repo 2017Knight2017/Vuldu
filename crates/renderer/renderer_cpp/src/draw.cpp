@@ -1,6 +1,5 @@
 #include <cstring>
 #include <stdexcept>
-#include <iostream>
 #include "renderer.h" 
 #include "renderer/src/bridge.rs.h"
 
@@ -278,8 +277,6 @@ void VulkanRenderer::drawLevel() noexcept {
 	if (!this->swapchainRes.has_value()) return;
 	if (this->levelMesh.vertexBuffer == VK_NULL_HANDLE || this->levelMesh.indexCount == 0) return;
 
-	std::cout << "level indices: " << this->levelMesh.indexCount << '\n';
-
 	LevelPushConstants constants{
 		{
 			static_cast<float>(this->swapchainRes->extent.width),
@@ -304,8 +301,6 @@ void VulkanRenderer::drawLevel() noexcept {
 void VulkanRenderer::drawObjects() noexcept {
 	if (!this->swapchainRes.has_value()) return;
 	if (this->objectMesh.vertexBuffer == VK_NULL_HANDLE || this->objectMesh.indexCount == 0) return;
-
-	std::cout << "object indices: " << this->objectMesh.indexCount << '\n';
 	
 	ObjectPushConstants constants{
 		this->currentPaletteIndex,
@@ -325,8 +320,6 @@ void VulkanRenderer::drawUi() noexcept {
 	if (!this->swapchainRes.has_value()) return;
 	if (this->uiMesh.vertexBuffer == VK_NULL_HANDLE || this->uiMesh.indexCount == 0) return;
 
-	std::cout << "ui indices: " << this->uiMesh.indexCount << '\n';
-
 	draw(
 		PipelineType::Ui, 
 		this->uiMesh, 
@@ -339,8 +332,6 @@ void VulkanRenderer::drawUi() noexcept {
 void VulkanRenderer::drawWeapon() noexcept {
 	if (!this->swapchainRes.has_value()) return;
 	if (this->weaponMesh.vertexBuffer == VK_NULL_HANDLE || this->weaponMesh.indexCount == 0) return;
-
-	std::cout << "weapon indices: " << this->weaponMesh.indexCount << '\n';
 
 	draw(
 		PipelineType::Weapon, 

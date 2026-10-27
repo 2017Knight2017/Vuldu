@@ -290,6 +290,7 @@ void VulkanRenderer::updateGeometry(
 }
 
 using ShaderStg = vk::PipelineShaderStageCreateInfo;
+using ColorChan = vk::ColorComponentFlagBits;
 
 void VulkanRenderer::createPipelines() {
 	std::array<vk::DynamicState, 2> dynamicStates{
@@ -317,7 +318,8 @@ void VulkanRenderer::createPipelines() {
 	vk::PipelineMultisampleStateCreateInfo multisampling;
 	multisampling.setRasterizationSamples(vk::SampleCountFlagBits::e1);
 
-	vk::PipelineColorBlendAttachmentState colorBlendAttachment{};
+	vk::PipelineColorBlendAttachmentState colorBlendAttachment;
+	colorBlendAttachment.setColorWriteMask(ColorChan::eR | ColorChan::eG | ColorChan::eB | ColorChan::eA);
 
 	vk::PipelineColorBlendStateCreateInfo colorBlending;
 	colorBlending.setAttachments(colorBlendAttachment);

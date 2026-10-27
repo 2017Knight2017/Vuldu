@@ -27,4 +27,8 @@ impl SafeRenderer {
 	pub fn pin(&mut self) -> Pin<&mut VulkanRenderer> {
 		self.0.pin_mut()
 	}
+
+	pub fn destroy(&mut self) {
+		*self = Self::new();
+	}
 }

@@ -6,11 +6,9 @@ std::unique_ptr<VulkanRenderer> createRenderer() {
 
 VulkanRenderer::VulkanRenderer() {}
 VulkanRenderer::~VulkanRenderer() {
-	try {
-		if (this->device != VK_NULL_HANDLE) {
-			this->device.waitIdle();
-		}
-	} catch (...) {}
+	if (this->device != VK_NULL_HANDLE) {
+		this->device.waitIdle();
+	}
 }
 
 void VulkanRenderer::initVulkan(const WindowHandles& handles, uint32_t width, uint32_t height) {
